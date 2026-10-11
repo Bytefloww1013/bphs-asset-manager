@@ -37,12 +37,33 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const ratings = lookups?.conditionRatings ?? []
   const addAnother = useRef(false)
   const [serverError, setServerError] = useState<ApiError | null>(null)
+  // Set once an entry has gone through and the sheet stays open for the next one.
+  const [issued, setIssued] = useState<{ assessorId: number | null } | null>(null)
 
-  const preset = assetId ? (assets.find((asset) => asset.id === assetId) ?? null) : null
+  // The link only presets the first entry. Once something is issued here, the linked asset shows up as
+  // assigned because of our own write, which is not a conflict worth warning about.
+  const preset = assetId && !issued ? (assets.find((asset) => asset.id === assetId) ?? null) : null
   const defaultRating = (asset: AssetRow | null) => asset?.condition?.ratingId ?? ratings.find((r) => r.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id ?? null
 
+  /**
+   * What an entry starts as. It is both the form's default and what it resets to: the form re-syncs
+   * itself to its defaults whenever those change, so any other reset value would be undone on the next render.
+   */
+  const startingValues = (asset: AssetRow | null, assessorId: number | null): Values => ({
+    asset: asset?.state === 'in_storage' ? asset : null,
+    employee: people.find((p) => p.id === employeeId) ?? null,
+    ratingId: defaultRating(asset),
+    assessor: people.find((p) => p.id === assessorId) ?? null,
+    notes: '',
+  })
+
   const issue = useWrite(
-    (value: { assetId: number; employeeId: number; conditionRatingId: number; assessedById: number | null; notes: string }) => api.post<AssignmentRow>('/assignments', value),
+    async (value: { assetId: number; employeeId: number; conditionRatingId: number; assessedById: number | null; notes: string }) => {
+      const row = await api.post<AssignmentRow>('/assignments', value)
+      // Before useWrite refetches the lists, so the sheet never sees the asset as assigned while it is still the preset.
+      if (addAnother.current) setIssued({ assessorId: value.assessedById })
+      return row
+    },
     {
       silent: true,
       success: (row) => `${row.assetTag} issued to ${row.employee.name}`,
@@ -50,13 +71,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   )
 
   const form = useForm({
-    defaultValues: {
-      asset: preset?.state === 'in_storage' ? preset : null,
-      employee: people.find((p) => p.id === employeeId) ?? null,
-      ratingId: defaultRating(preset),
-      assessor: people.find((p) => p.id === user.employeeId) ?? null,
-      notes: '',
-    } as Values,
+    defaultValues: startingValues(preset, issued ? issued.assessorId : user.employeeId),
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}
@@ -78,7 +93,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
         })
         if (addAnother.current) {
           addAnother.current = false
-          formApi.reset({ ...value, asset: null, employee: null, ratingId: defaultRating(null), notes: '' })
+          formApi.reset(startingValues(null, value.assessor?.id ?? null))
         } else onClose()
       } catch (error) {
         addAnother.current = false
