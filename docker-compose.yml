@@ -1,0 +1,28 @@
+services:
+  assets:
+    build: .
+    image: bphs-asset-manager:latest
+    container_name: bphs-assets
+    restart: unless-stopped
+    logging:
+      # Every request is logged; without rotation Docker keeps the whole history on disk.
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    ports:
+      - '8080:3000' # http://<this-machine>:8080
+    environment:
+      # Set to "true" only when users reach the app over HTTPS (for example behind a reverse proxy);
+      # on plain HTTP a Secure cookie would never be stored and nobody could sign in.
+      COOKIE_SECURE: 'false'
+      SESSION_IDLE_HOURS: '12'
+      # Used once, when the database has no users: the first Super Admin. Its one-time password
+      # is printed to the container log ("docker compose logs assets").
+      BOOTSTRAP_ADMIN_EMAIL: admin@bphs.local
+      BOOTSTRAP_ADMIN_NAME: Super Admin
+    volumes:
+      - bphs-data:/data # the SQLite database lives here; back this volume up
+
+volumes:
+  bphs-data:

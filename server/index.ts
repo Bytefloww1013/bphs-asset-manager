@@ -1,0 +1,33 @@
+import path from 'node:path'
+import { serve } from '@hono/node-server'
+import { createApp } from './app.ts'
+import { ensureBootstrapAdmin, ensureDefaultLists } from './bootstrap.ts'
+import { config, isProduction } from './config.ts'
+import { createDb, runMigrations } from './db/client.ts'
+import { purgeExpiredSessions } from './services/auth.ts'
+
+const { db, sqlite } = createDb(path.join(config.dataDir, 'bphs.sqlite'))
+runMigrations(db)
+ensureDefaultLists(db)
+await ensureBootstrapAdmin(db)
+purgeExpiredSessions(db)
+
+const app = createApp(db, { serveWeb: isProduction || process.env.SERVE_WEB === 'true' })
+const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' }, (info) => {
+  console.log(`BPHS Asset Management listening on :${info.port} (${config.env}), data in ${config.dataDir}`)
+})
+
+// Docker sends SIGTERM on stop: finish in-flight requests, then close the database cleanly.
+function shutdown(signal: string) {
+  console.log(`${signal} received, shutting down`)
+  server.close(() => {
+    sqlite.close()
+    process.exit(0)
+  })
+  setTimeout(() => process.exit(1), 10_000).unref()
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
+
+// Sessions are checked on every request, but keep the table tidy.
+setInterval(() => purgeExpiredSessions(db), 6 * 60 * 60 * 1000).unref()

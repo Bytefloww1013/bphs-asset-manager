@@ -1,0 +1,16 @@
+node_modules
+dist
+data
+qa-shots
+.git
+.env
+.env.local
+.impeccable
+.claude
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+npm-debug.log
+Dockerfile
+docker-compose.yml
+README.md

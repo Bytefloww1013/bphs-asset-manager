@@ -1,0 +1,193 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+/*
+ * BPHS Asset Management: design tokens.
+ * One cool neutral family (hue 262), one accent used only for primary action, selection and focus,
+ * and semantic status colours that always travel with an icon or a word.
+ * Every text/background pairing below was measured: body text >= 5.5:1, accent text 6.2:1.
+ */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  /* Grounds */
+  --color-canvas: oklch(0.975 0.004 262);
+  --color-surface: oklch(1 0 0);
+  --color-sunken: oklch(0.962 0.006 262);
+  --color-sidebar: oklch(0.958 0.008 262);
+  --color-line: oklch(0.925 0.006 262);
+  --color-line-strong: oklch(0.86 0.008 262);
+
+  /* Ink */
+  --color-ink: oklch(0.21 0.02 262);
+  --color-ink-2: oklch(0.37 0.02 262);
+  --color-ink-3: oklch(0.49 0.018 262);
+  --color-ink-4: oklch(0.62 0.014 262); /* decoration and disabled glyphs only, never text */
+
+  /* Accent */
+  --color-accent: oklch(0.5 0.19 262);
+  --color-accent-hover: oklch(0.44 0.19 262);
+  --color-accent-soft: oklch(0.96 0.025 262);
+  --color-accent-line: oklch(0.88 0.06 262);
+  --color-on-accent: oklch(0.99 0 0);
+
+  /* Status */
+  --color-ok: oklch(0.43 0.11 155);
+  --color-ok-soft: oklch(0.955 0.04 155);
+  --color-ok-line: oklch(0.87 0.07 155);
+  --color-warn: oklch(0.46 0.1 65);
+  --color-warn-soft: oklch(0.96 0.05 85);
+  --color-warn-line: oklch(0.87 0.09 85);
+  --color-bad: oklch(0.47 0.17 25);
+  --color-bad-soft: oklch(0.96 0.03 25);
+  --color-bad-line: oklch(0.86 0.08 25);
+
+  /* Type: a tight product scale. 12px is the floor and is for metadata only. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.375rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+
+  --radius-control: 0.5rem;
+  --radius-panel: 0.75rem;
+
+  --shadow-panel: 0 1px 2px oklch(0.2 0.02 262 / 0.05), 0 0 0 1px oklch(0.2 0.02 262 / 0.015);
+  --shadow-pop: 0 10px 28px -6px oklch(0.2 0.03 262 / 0.16), 0 2px 6px oklch(0.2 0.03 262 / 0.08);
+  --shadow-sheet: -16px 0 48px -12px oklch(0.2 0.03 262 / 0.22);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-sheet-in: sheet-in 220ms var(--ease-out-expo);
+  --animate-fade-in: fade-in 160ms ease-out;
+  --animate-pop-in: pop-in 160ms var(--ease-out-expo);
+  --animate-row-flash: row-flash 1800ms ease-out;
+  --animate-pulse-soft: pulse-soft 1.4s ease-in-out infinite;
+
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateX(28px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  /* The one authored moment: a row you just added, issued or returned settles from a tint. */
+  @keyframes row-flash {
+    from {
+      background-color: var(--color-accent-soft);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Form controls inherit the type system instead of the browser's. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+  ::selection {
+    background: var(--color-accent-line);
+    color: var(--color-ink);
+  }
+  input,
+  textarea {
+    caret-color: var(--color-accent);
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-accent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  [hidden] {
+    display: none !important;
+  }
+  ::placeholder {
+    color: var(--color-ink-3);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

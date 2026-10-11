@@ -1,0 +1,554 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T08:11:29.567089+00:00",
+  "title": "Design System: BPHS Asset Management",
+  "extensions": {
+    "colorMeta": {
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(0.975 0.004 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.004 262)",
+          "oklch(0.30 0.004 262)",
+          "oklch(0.40 0.004 262)",
+          "oklch(0.50 0.004 262)",
+          "oklch(0.62 0.004 262)",
+          "oklch(0.74 0.004 262)",
+          "oklch(0.86 0.004 262)",
+          "oklch(0.95 0.004 262)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Record White",
+        "canonical": "oklch(1 0 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.000 262)",
+          "oklch(0.30 0.000 262)",
+          "oklch(0.40 0.000 262)",
+          "oklch(0.50 0.000 262)",
+          "oklch(0.62 0.000 262)",
+          "oklch(0.74 0.000 262)",
+          "oklch(0.86 0.000 262)",
+          "oklch(0.95 0.000 262)"
+        ]
+      },
+      "sunken": {
+        "role": "neutral",
+        "displayName": "Sunken",
+        "canonical": "oklch(0.962 0.006 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.006 262)",
+          "oklch(0.30 0.006 262)",
+          "oklch(0.40 0.006 262)",
+          "oklch(0.50 0.006 262)",
+          "oklch(0.62 0.006 262)",
+          "oklch(0.74 0.006 262)",
+          "oklch(0.86 0.006 262)",
+          "oklch(0.95 0.006 262)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Slate Rail",
+        "canonical": "oklch(0.958 0.008 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.008 262)",
+          "oklch(0.30 0.008 262)",
+          "oklch(0.40 0.008 262)",
+          "oklch(0.50 0.008 262)",
+          "oklch(0.62 0.008 262)",
+          "oklch(0.74 0.008 262)",
+          "oklch(0.86 0.008 262)",
+          "oklch(0.95 0.008 262)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.925 0.006 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.006 262)",
+          "oklch(0.30 0.006 262)",
+          "oklch(0.40 0.006 262)",
+          "oklch(0.50 0.006 262)",
+          "oklch(0.62 0.006 262)",
+          "oklch(0.74 0.006 262)",
+          "oklch(0.86 0.006 262)",
+          "oklch(0.95 0.006 262)"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "oklch(0.86 0.008 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.008 262)",
+          "oklch(0.30 0.008 262)",
+          "oklch(0.40 0.008 262)",
+          "oklch(0.50 0.008 262)",
+          "oklch(0.62 0.008 262)",
+          "oklch(0.74 0.008 262)",
+          "oklch(0.86 0.008 262)",
+          "oklch(0.95 0.008 262)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.21 0.02 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.020 262)",
+          "oklch(0.30 0.020 262)",
+          "oklch(0.40 0.020 262)",
+          "oklch(0.50 0.020 262)",
+          "oklch(0.62 0.020 262)",
+          "oklch(0.74 0.020 262)",
+          "oklch(0.86 0.020 262)",
+          "oklch(0.95 0.020 262)"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink Two",
+        "canonical": "oklch(0.37 0.02 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.020 262)",
+          "oklch(0.30 0.020 262)",
+          "oklch(0.40 0.020 262)",
+          "oklch(0.50 0.020 262)",
+          "oklch(0.62 0.020 262)",
+          "oklch(0.74 0.020 262)",
+          "oklch(0.86 0.020 262)",
+          "oklch(0.95 0.020 262)"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink Three",
+        "canonical": "oklch(0.49 0.018 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.018 262)",
+          "oklch(0.30 0.018 262)",
+          "oklch(0.40 0.018 262)",
+          "oklch(0.50 0.018 262)",
+          "oklch(0.62 0.018 262)",
+          "oklch(0.74 0.018 262)",
+          "oklch(0.86 0.018 262)",
+          "oklch(0.95 0.018 262)"
+        ]
+      },
+      "ink-4": {
+        "role": "neutral",
+        "displayName": "Ink Four",
+        "canonical": "oklch(0.62 0.014 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.014 262)",
+          "oklch(0.30 0.014 262)",
+          "oklch(0.40 0.014 262)",
+          "oklch(0.50 0.014 262)",
+          "oklch(0.62 0.014 262)",
+          "oklch(0.74 0.014 262)",
+          "oklch(0.86 0.014 262)",
+          "oklch(0.95 0.014 262)"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Cobalt Action",
+        "canonical": "oklch(0.5 0.19 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.190 262)",
+          "oklch(0.30 0.190 262)",
+          "oklch(0.40 0.190 262)",
+          "oklch(0.50 0.190 262)",
+          "oklch(0.62 0.190 262)",
+          "oklch(0.74 0.190 262)",
+          "oklch(0.86 0.190 262)",
+          "oklch(0.95 0.190 262)"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Cobalt Deep",
+        "canonical": "oklch(0.44 0.19 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.190 262)",
+          "oklch(0.30 0.190 262)",
+          "oklch(0.40 0.190 262)",
+          "oklch(0.50 0.190 262)",
+          "oklch(0.62 0.190 262)",
+          "oklch(0.74 0.190 262)",
+          "oklch(0.86 0.190 262)",
+          "oklch(0.95 0.190 262)"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Cobalt Mist",
+        "canonical": "oklch(0.96 0.025 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.025 262)",
+          "oklch(0.30 0.025 262)",
+          "oklch(0.40 0.025 262)",
+          "oklch(0.50 0.025 262)",
+          "oklch(0.62 0.025 262)",
+          "oklch(0.74 0.025 262)",
+          "oklch(0.86 0.025 262)",
+          "oklch(0.95 0.025 262)"
+        ]
+      },
+      "accent-line": {
+        "role": "primary",
+        "displayName": "Cobalt Edge",
+        "canonical": "oklch(0.88 0.06 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.060 262)",
+          "oklch(0.30 0.060 262)",
+          "oklch(0.40 0.060 262)",
+          "oklch(0.50 0.060 262)",
+          "oklch(0.62 0.060 262)",
+          "oklch(0.74 0.060 262)",
+          "oklch(0.86 0.060 262)",
+          "oklch(0.95 0.060 262)"
+        ]
+      },
+      "on-accent": {
+        "role": "neutral",
+        "displayName": "On Cobalt",
+        "canonical": "oklch(0.99 0 262)",
+        "tonalRamp": [
+          "oklch(0.20 0.000 262)",
+          "oklch(0.30 0.000 262)",
+          "oklch(0.40 0.000 262)",
+          "oklch(0.50 0.000 262)",
+          "oklch(0.62 0.000 262)",
+          "oklch(0.74 0.000 262)",
+          "oklch(0.86 0.000 262)",
+          "oklch(0.95 0.000 262)"
+        ]
+      },
+      "ok": {
+        "role": "status",
+        "displayName": "Stock Green",
+        "canonical": "oklch(0.43 0.11 155)",
+        "tonalRamp": [
+          "oklch(0.20 0.110 155)",
+          "oklch(0.30 0.110 155)",
+          "oklch(0.40 0.110 155)",
+          "oklch(0.50 0.110 155)",
+          "oklch(0.62 0.110 155)",
+          "oklch(0.74 0.110 155)",
+          "oklch(0.86 0.110 155)",
+          "oklch(0.95 0.110 155)"
+        ]
+      },
+      "ok-soft": {
+        "role": "status",
+        "displayName": "Green Tint",
+        "canonical": "oklch(0.955 0.04 155)",
+        "tonalRamp": [
+          "oklch(0.20 0.040 155)",
+          "oklch(0.30 0.040 155)",
+          "oklch(0.40 0.040 155)",
+          "oklch(0.50 0.040 155)",
+          "oklch(0.62 0.040 155)",
+          "oklch(0.74 0.040 155)",
+          "oklch(0.86 0.040 155)",
+          "oklch(0.95 0.040 155)"
+        ]
+      },
+      "warn": {
+        "role": "status",
+        "displayName": "Amber Flag",
+        "canonical": "oklch(0.46 0.1 65)",
+        "tonalRamp": [
+          "oklch(0.20 0.100 65)",
+          "oklch(0.30 0.100 65)",
+          "oklch(0.40 0.100 65)",
+          "oklch(0.50 0.100 65)",
+          "oklch(0.62 0.100 65)",
+          "oklch(0.74 0.100 65)",
+          "oklch(0.86 0.100 65)",
+          "oklch(0.95 0.100 65)"
+        ]
+      },
+      "warn-soft": {
+        "role": "status",
+        "displayName": "Amber Tint",
+        "canonical": "oklch(0.96 0.05 85)",
+        "tonalRamp": [
+          "oklch(0.20 0.050 85)",
+          "oklch(0.30 0.050 85)",
+          "oklch(0.40 0.050 85)",
+          "oklch(0.50 0.050 85)",
+          "oklch(0.62 0.050 85)",
+          "oklch(0.74 0.050 85)",
+          "oklch(0.86 0.050 85)",
+          "oklch(0.95 0.050 85)"
+        ]
+      },
+      "bad": {
+        "role": "status",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.47 0.17 25)",
+        "tonalRamp": [
+          "oklch(0.20 0.170 25)",
+          "oklch(0.30 0.170 25)",
+          "oklch(0.40 0.170 25)",
+          "oklch(0.50 0.170 25)",
+          "oklch(0.62 0.170 25)",
+          "oklch(0.74 0.170 25)",
+          "oklch(0.86 0.170 25)",
+          "oklch(0.95 0.170 25)"
+        ]
+      },
+      "bad-soft": {
+        "role": "status",
+        "displayName": "Red Tint",
+        "canonical": "oklch(0.96 0.03 25)",
+        "tonalRamp": [
+          "oklch(0.20 0.030 25)",
+          "oklch(0.30 0.030 25)",
+          "oklch(0.40 0.030 25)",
+          "oklch(0.50 0.030 25)",
+          "oklch(0.62 0.030 25)",
+          "oklch(0.74 0.030 25)",
+          "oklch(0.86 0.030 25)",
+          "oklch(0.95 0.030 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page title, once per screen."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sheet, dialog and sign-in card titles."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Panel titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Table cells, descriptions and form text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, buttons, nav items, filter tabs."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Table headers, badges, hints and metadata. The 12px floor."
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "Inventory and import summary counts, tabular."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Asset tags, serials, employee IDs, timestamps, audit details."
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel",
+        "value": "0 1px 2px oklch(0.2 0.02 262 / 0.05), 0 0 0 1px oklch(0.2 0.02 262 / 0.015)",
+        "purpose": "Panels, tables, secondary buttons, selected nav item and filter tab."
+      },
+      {
+        "name": "pop",
+        "value": "0 10px 28px -6px oklch(0.2 0.03 262 / 0.16), 0 2px 6px oklch(0.2 0.03 262 / 0.08)",
+        "purpose": "Menus, comboboxes, tooltips, toasts, dialogs, the sign-in card."
+      },
+      {
+        "name": "sheet",
+        "value": "-16px 0 48px -12px oklch(0.2 0.03 262 / 0.22)",
+        "purpose": "Right-hand task sheets."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Sheet entry (220ms) and pop-ins (160ms)."
+      },
+      {
+        "name": "row-flash",
+        "value": "1800ms ease-out, tint from accent-soft to transparent",
+        "purpose": "The one authored moment: a row you just added, issued or returned settles."
+      },
+      {
+        "name": "state-transition",
+        "value": "150ms on background, border and colour",
+        "purpose": "Hover and focus changes on buttons, inputs and chips."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px (sidebar appears)"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action in a view or sheet.",
+      "html": "<button class=\"ds-btn-primary\">Issue</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;font:500 14px/20px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;border:0;background:var(--color-accent, oklch(0.5 0.19 262));color:var(--color-on-accent, oklch(0.99 0 0));box-shadow:inset 0 1px 0 oklch(1 0 0/.14),0 1px 2px oklch(0.3 0.1 262/.25)} .ds-btn-primary:hover{background:var(--color-accent-hover, oklch(0.44 0.19 262))} .ds-btn-primary:focus-visible{outline:2px solid var(--color-accent, oklch(0.5 0.19 262));outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Row actions such as Issue and Return, and every non-primary action.",
+      "html": "<button class=\"ds-btn-secondary\">Return</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;font:500 14px/20px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;border:1px solid var(--color-line-strong, oklch(0.86 0.008 262));background:var(--color-surface, oklch(1 0 0));color:var(--color-ink, oklch(0.21 0.02 262));box-shadow:0 1px 2px oklch(0.2 0.02 262/.05)} .ds-btn-secondary:hover{background:var(--color-sunken, oklch(0.962 0.006 262))} .ds-btn-secondary:focus-visible{outline:2px solid var(--color-accent, oklch(0.5 0.19 262));outline-offset:2px}"
+    },
+    {
+      "name": "Disabled With Reason",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A rule-based disable stays focusable and says why; shown here with its reason beneath.",
+      "html": "<div class=\"ds-reason\"><button class=\"ds-btn-off\" aria-disabled=\"true\">Delete</button><span>Only a Super Admin can do this.</span></div>",
+      "css": ".ds-reason{display:flex;flex-direction:column;gap:6px;align-items:flex-start;font:400 12px/16px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;color:var(--color-ink-3, oklch(0.49 0.018 262))} .ds-btn-off{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;font:500 14px/20px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;border:1px solid var(--color-line, oklch(0.925 0.006 262));background:var(--color-surface, oklch(1 0 0));color:var(--color-ink-3, oklch(0.49 0.018 262));cursor:not-allowed}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above, 36px field, hint or error beneath.",
+      "html": "<label class=\"ds-field\"><span>Asset tag</span><input class=\"ds-input\" value=\"BPHS-0151\" /><small>Next in sequence</small></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:6px;width:240px;font:500 14px/20px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;color:var(--color-ink, oklch(0.21 0.02 262))} .ds-field small{font:400 12px/16px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;color:var(--color-ink-3, oklch(0.49 0.018 262))} .ds-input{height:36px;padding:0 12px;border:1px solid var(--color-line-strong, oklch(0.86 0.008 262));border-radius:8px;background:var(--color-surface, oklch(1 0 0));font:400 13px 'Geist Mono Variable',ui-monospace,monospace;color:var(--color-ink, oklch(0.21 0.02 262));box-shadow:inset 0 1px 1px oklch(0.2 0.02 262/.04)} .ds-input:hover{border-color:var(--color-ink-4, oklch(0.62 0.014 262))} .ds-input:focus-visible{outline:none;border-color:var(--color-accent, oklch(0.5 0.19 262));box-shadow:0 0 0 3px oklch(0.5 0.19 262/.2)}"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Word plus dot in a tinted pill; neutral, accent, ok, warn and bad tones.",
+      "html": "<span class=\"ds-badge ds-ok\"><i></i>In storage</span> <span class=\"ds-badge ds-accent\"><i></i>Assigned</span> <span class=\"ds-badge ds-warn\"><i></i>Fair</span> <span class=\"ds-badge ds-bad\"><i></i>Damaged</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;gap:6px;padding:1px 8px;border:1px solid;border-radius:9999px;font:500 12px/16px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;white-space:nowrap} .ds-badge i{width:6px;height:6px;border-radius:9999px;background:currentColor} .ds-ok{background:oklch(0.955 0.04 155);border-color:oklch(0.87 0.07 155);color:oklch(0.43 0.11 155)} .ds-accent{background:oklch(0.96 0.025 262);border-color:oklch(0.88 0.06 262);color:oklch(0.5 0.19 262)} .ds-warn{background:oklch(0.96 0.05 85);border-color:oklch(0.87 0.09 85);color:oklch(0.46 0.1 65)} .ds-bad{background:oklch(0.96 0.03 25);border-color:oklch(0.86 0.08 25);color:oklch(0.47 0.17 25)}"
+    },
+    {
+      "name": "Rating Chips",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Radio group for condition rating; the selected chip shows a check and its tint.",
+      "html": "<div class=\"ds-chips\" role=\"radiogroup\"><button>New</button><button class=\"on\">&#10003; Good</button><button>Fair</button><button>Poor</button><button>Damaged</button></div>",
+      "css": ".ds-chips{display:flex;gap:6px;flex-wrap:wrap} .ds-chips button{height:36px;padding:0 12px;border:1px solid oklch(0.86 0.008 262);border-radius:8px;background:#fff;color:oklch(0.37 0.02 262);font:500 14px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;cursor:pointer} .ds-chips button:hover{background:oklch(0.962 0.006 262)} .ds-chips .on{background:oklch(0.955 0.04 155);border-color:oklch(0.87 0.07 155);color:oklch(0.43 0.11 155)}"
+    },
+    {
+      "name": "Filter Tabs",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Counts-first tabs in a sunken track; the selected tab lifts to white.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"on\">All <b>116</b></button><button>Assigned <b>66</b></button><button>In storage <b>43</b></button><button>Retired <b>7</b></button></div>",
+      "css": ".ds-tabs{display:inline-flex;gap:4px;padding:4px;border-radius:8px;background:oklch(0.962 0.006 262)} .ds-tabs button{display:inline-flex;gap:6px;align-items:center;height:28px;padding:0 12px;border:0;border-radius:6px;background:transparent;color:oklch(0.49 0.018 262);font:500 14px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;cursor:pointer} .ds-tabs b{font-weight:400;font-size:12px;font-variant-numeric:tabular-nums} .ds-tabs .on{background:#fff;color:oklch(0.21 0.02 262);box-shadow:0 1px 2px oklch(0.2 0.02 262/.05)}"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Active item is a white pill with a hairline ring and a cobalt icon.",
+      "html": "<nav class=\"ds-nav\"><a>Overview</a><a class=\"on\">Assignments</a><a>Available</a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:220px;padding:12px;border-radius:12px;background:oklch(0.958 0.008 262)} .ds-nav a{display:flex;align-items:center;height:36px;padding:0 10px;border-radius:8px;color:oklch(0.37 0.02 262);font:500 14px 'Geist Variable',ui-sans-serif,system-ui,sans-serif} .ds-nav a:hover{background:oklch(1 0 0/.7)} .ds-nav .on{background:#fff;color:oklch(0.21 0.02 262);box-shadow:0 1px 2px oklch(0.2 0.02 262/.05),0 0 0 1px oklch(0.925 0.006 262)}"
+    },
+    {
+      "name": "Data Row",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "56px record row: mono identifier, two-line person cell, status, days out, one secondary action.",
+      "html": "<div class=\"ds-row\"><span class=\"tag\">BPHS-0044</span><span class=\"who\">Rosa Delgado<small>E-1102 &middot; Intake</small></span><span class=\"days\">600 d</span><button>Return</button></div>",
+      "css": ".ds-row{display:grid;grid-template-columns:120px 1fr 80px auto;align-items:center;gap:16px;height:56px;padding:0 16px;width:560px;background:#fff;border:1px solid oklch(0.925 0.006 262);border-radius:12px;font:400 14px/20px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;color:oklch(0.21 0.02 262)} .ds-row:hover{background:oklch(0.975 0.004 262)} .ds-row .tag{font:500 13px 'Geist Mono Variable',ui-monospace,monospace;text-decoration:underline;text-decoration-color:oklch(0.86 0.008 262);text-underline-offset:4px} .ds-row small{display:block;font-size:12px;line-height:16px;color:oklch(0.49 0.018 262)} .ds-row .days{text-align:right;font-weight:600;color:oklch(0.46 0.1 65);font-variant-numeric:tabular-nums} .ds-row button{height:32px;padding:0 12px;border:1px solid oklch(0.86 0.008 262);border-radius:8px;background:#fff;font:500 14px 'Geist Variable',ui-sans-serif,system-ui,sans-serif;cursor:pointer}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ledger Desk",
+    "overview": "A well-kept ledger on a daylit desk: quiet, ruled, trustworthy, and easy to read for hours. Rows are the primary object; chrome recedes; every state is written down in words rather than implied by colour. It replaces a dense spreadsheet-style skin with 14px text, 36px controls, 56px rows, horizontal rules only, and every text pairing measured at 5.5:1 or better.",
+    "keyCharacteristics": [
+      "One cool neutral family (hue 262) and one cobalt accent used only for primary action, selection and focus.",
+      "Status always travels with a word plus a dot or icon.",
+      "Mono type is reserved for identifiers and measurements.",
+      "Permissions are visible: unusable controls stay, disabled, with the rule beside them.",
+      "Restrained motion: sheets slide in, changed rows settle from a tint, nothing else animates."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Cobalt is for the thing you can do next and the thing that is selected. It never decorates, never colours a heading, and never fills a status.",
+        "section": "colors"
+      },
+      {
+        "name": "The Words Beside Colour Rule",
+        "body": "Every status tint is paired with its word and a dot or icon. A greyscale screenshot must still say Assigned, In storage, Retired, Poor.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measured Grey Rule",
+        "body": "Text greys are chosen from measured contrast, not by eye. Nothing carrying meaning goes below 4.5:1; ink-4 is decoration only.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Means Data Rule",
+        "body": "If it is an identifier, a timestamp or a measured value, it is mono and tabular. If it is a sentence or a label, it is Geist.",
+        "section": "typography"
+      },
+      {
+        "name": "The Twelve Pixel Floor Rule",
+        "body": "No text under 12px. Anything that matters is 14px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Blur Has an Offset Rule",
+        "body": "Every shadow has a y or x offset and a soft blur. No zero-offset glows, no hard block shadows.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Floating Means Shadow Rule",
+        "body": "If it does not float above the page, it has no pop shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep text at 14px for anything a person reads or scans, 12px for metadata only, and every meaningful text pair at 4.5:1 or better.",
+      "Do give every status a word plus a dot or icon, and every disabled rule a visible reason.",
+      "Do set identifiers, timestamps and counts in Geist Mono or tabular figures so columns align.",
+      "Do keep controls at 36px (32px inside rows) and rows at 56px; make the common path keyboard-complete.",
+      "Do open focused tasks in the right-hand sheet and save centred dialogs for confirmations.",
+      "Do self-host fonts and icons. The app must work on a network with no internet."
+    ],
+    "donts": [
+      "Don't return to the spec's spreadsheet skin: no borders on every cell, no 9.5-11px labels, no controls under 32px, no greys under 4.5:1 for text.",
+      "Don't build the overview from a grid of same-size KPI cards or hero numbers; lead with what needs a decision.",
+      "Don't use the accent for decoration, headings or status fills.",
+      "Don't use a coloured side stripe on rows, cards or alerts. The row highlight is a tint, not a bar.",
+      "Don't use Unicode glyphs or emoji as icons (keyboard hints included); use the Lucide set.",
+      "Don't put a mono face on labels or sentences, or a display face on UI text.",
+      "Don't hide a control the user may not use. Disable it and say why.",
+      "Don't add motion beyond sheet entry, menu pop-ins and the row settle, and honour prefers-reduced-motion."
+    ]
+  }
+}
