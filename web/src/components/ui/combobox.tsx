@@ -1,6 +1,6 @@
 import * as Popover from '@radix-ui/react-popover'
 import { X } from 'lucide-react'
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { cn } from '@/lib/cn.ts'
 
 interface ComboboxProps<T> {
@@ -19,6 +19,8 @@ interface ComboboxProps<T> {
   disabled?: boolean
   mono?: boolean
   autoFocus?: boolean
+  /** Lets the parent move focus here, e.g. back to the first field when a batch entry starts over. */
+  inputRef?: RefObject<HTMLInputElement | null>
   className?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean
@@ -44,11 +46,13 @@ export function Combobox<T>({
   disabled,
   mono,
   autoFocus,
+  inputRef: outerRef,
   className,
   ...aria
 }: ComboboxProps<T>) {
   const listId = useId()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const ownRef = useRef<HTMLInputElement>(null)
+  const inputRef = outerRef ?? ownRef
   const [text, setText] = useState(value ? getLabel(value) : '')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)

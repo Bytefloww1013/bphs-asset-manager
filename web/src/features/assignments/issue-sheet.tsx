@@ -36,6 +36,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const people = lookups?.employees ?? []
   const ratings = lookups?.conditionRatings ?? []
   const toast = useToast()
+  const assetInput = useRef<HTMLInputElement>(null)
   const addAnother = useRef(false)
   const [serverError, setServerError] = useState<ApiError | null>(null)
   // Set once an entry has gone through and the sheet stays open for the next one.
@@ -102,6 +103,8 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
           addAnother.current = false
           setConfirmation(summary)
           formApi.reset(startingValues(null, value.assessor?.id ?? null))
+          // The next entry starts with the asset, wherever focus was when this one was submitted.
+          assetInput.current?.focus()
         } else {
           toast({ title: summary })
           onClose()
@@ -230,6 +233,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
                 placeholder="Start typing a tag or serial"
                 emptyText="No matching assets in storage"
                 autoFocus={!preset}
+                inputRef={assetInput}
               />
             </Field>
           )}
