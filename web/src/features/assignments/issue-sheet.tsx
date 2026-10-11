@@ -1,11 +1,11 @@
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AssetRow, AssignmentRow, EmployeeRef } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
-import { Alert } from '@/components/ui/feedback.tsx'
+import { Alert, useToast } from '@/components/ui/feedback.tsx'
 import { Field, Segmented, Textarea } from '@/components/ui/form.tsx'
 import { EnterKey, Kbd, Mono, ShiftEnterKeys } from '@/components/ui/layout.tsx'
 import { Sheet } from '@/components/ui/overlay.tsx'
@@ -35,10 +35,19 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const available = useMemo(() => assets.filter((asset) => asset.state === 'in_storage'), [assets])
   const people = lookups?.employees ?? []
   const ratings = lookups?.conditionRatings ?? []
+  const toast = useToast()
   const addAnother = useRef(false)
   const [serverError, setServerError] = useState<ApiError | null>(null)
   // Set once an entry has gone through and the sheet stays open for the next one.
   const [issued, setIssued] = useState<{ assessorId: number | null } | null>(null)
+  // What the last "Issue & add another" did. A toast would sit over the footer buttons the next entry needs,
+  // so while the sheet stays open the confirmation is shown here instead.
+  const [confirmation, setConfirmation] = useState<string | null>(null)
+  const confirmationRef = useRef<HTMLDivElement>(null)
+  // On a short window the form scrolls, and the confirmation sits at its top.
+  useEffect(() => {
+    confirmationRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [confirmation])
 
   // The link only presets the first entry. Once something is issued here, the linked asset shows up as
   // assigned because of our own write, which is not a conflict worth warning about.
@@ -64,10 +73,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
       if (addAnother.current) setIssued({ assessorId: value.assessedById })
       return row
     },
-    {
-      silent: true,
-      success: (row) => `${row.assetTag} issued to ${row.employee.name}`,
-    },
+    { silent: true },
   )
 
   const form = useForm({
@@ -84,19 +90,25 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
     onSubmit: async ({ value, formApi }) => {
       setServerError(null)
       try {
-        await issue.mutateAsync({
+        const row = await issue.mutateAsync({
           assetId: value.asset!.id,
           employeeId: value.employee!.id,
           conditionRatingId: value.ratingId!,
           assessedById: value.assessor?.id ?? null,
           notes: value.notes,
         })
+        const summary = `${row.assetTag} issued to ${row.employee.name}`
         if (addAnother.current) {
           addAnother.current = false
+          setConfirmation(summary)
           formApi.reset(startingValues(null, value.assessor?.id ?? null))
-        } else onClose()
+        } else {
+          toast({ title: summary })
+          onClose()
+        }
       } catch (error) {
         addAnother.current = false
+        setConfirmation(null)
         if (error instanceof ApiError) setServerError(error)
       }
     },
@@ -161,6 +173,11 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
           }
         }}
       >
+        {confirmation && (
+          <div ref={confirmationRef} className="scroll-mt-5">
+            <Alert tone="ok" title={confirmation} />
+          </div>
+        )}
         {blocked && (
           <Alert tone="warn" title={`${blocked.tag} can't be issued`}>
             It is {stateLabel(blocked.state).toLowerCase()}
