@@ -1,3 +1,4 @@
+import { Branch as DismissableBranch } from '@radix-ui/react-dismissable-layer'
 import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle, type LucideIcon } from 'lucide-react'
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/cn.ts'
@@ -80,7 +81,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-[80] flex flex-col items-end gap-2 sm:left-auto sm:w-96">
+      {/* Toasts sit outside every dialog. As a branch of Radix's dismissable layers they no longer count as "outside", so
+          clicking one (its Dismiss button, say) leaves an open sheet or dialog alone instead of closing it. */}
+      <DismissableBranch aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-[80] flex flex-col items-end gap-2 sm:left-auto sm:w-96">
         {items.map((item) => {
           const tone = item.tone ?? 'ok'
           const Icon = toneIcon[tone]
@@ -97,7 +100,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </div>
           )
         })}
-      </div>
+      </DismissableBranch>
     </ToastContext.Provider>
   )
 }

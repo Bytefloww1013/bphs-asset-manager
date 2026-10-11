@@ -93,7 +93,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
 function mountWeb(app: Hono<Env>) {
   const root = path.relative(process.cwd(), config.webDir) || '.'
   if (!fs.existsSync(path.join(config.webDir, 'index.html'))) {
-    console.warn(`No built web app at ${config.webDir}. Run "npm run build" first.`)
+    console.warn(`No built web app at ${config.webDir}. Run "bun run build" first.`)
     return
   }
   // Built files are content-hashed, so they can be cached forever; the shell must always be revalidated.

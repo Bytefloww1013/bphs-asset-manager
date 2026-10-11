@@ -2,8 +2,8 @@
  * Development seed: synthetic employees, assets, history and users modelled on the design spec.
  * Every name and serial here is made up. Never run against production data.
  *
- *   npm run db:seed            # fills an empty database
- *   npm run db:seed -- --reset # deletes data/bphs.sqlite first
+ *   bun run db:seed            # fills an empty database
+ *   bun run db:seed --reset    # deletes data/bphs.sqlite first
  */
 import fs from 'node:fs'
 import path from 'node:path'

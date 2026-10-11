@@ -10,12 +10,12 @@ The design system lives in [DESIGN.md](DESIGN.md) and the product brief in [PROD
 
 ## Run it locally
 
-Requires Node 24 or newer.
+Requires [Bun](https://bun.sh) 1.3 or newer (package manager and script runner) and Node 24 or newer (what the app actually runs on).
 
 ```bash
-npm install
-npm run db:seed        # optional: synthetic demo data (employees, 116 assets, history, 5 users)
-npm run dev            # API on :3000, app on http://localhost:5173
+bun install
+bun run db:seed        # optional: synthetic demo data (employees, 116 assets, history, 5 users)
+bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
 The seed prints the demo sign-ins (a Super Admin, an Admin, an account that must change its password, a locked account, a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin and prints a one-time password in the terminal.
@@ -24,13 +24,15 @@ Other scripts:
 
 | Script | What it does |
 | --- | --- |
-| `npm test` | API integration tests (auth, lockout, one-active-assignment, CSV import, permissions, audit) against an in-memory database |
-| `npm run typecheck` | Strict TypeScript for `web/` and `server/` |
-| `npm run build` | Builds the SPA to `dist/web` |
-| `npm start` | Production mode: API serves the built SPA from `dist/web` |
-| `npm run db:generate` | Generate a new SQL migration from `server/db/schema.ts` (Drizzle Kit) |
-| `npm run db:backup` | Safe online backup of the SQLite file |
-| `npm run admin -- <command>` | Break-glass account recovery: `list`, `unlock <email>`, `reset-password <email>` (see the runbook) |
+| `bun run test` | API integration tests (auth, lockout, one-active-assignment, CSV import, permissions, audit) against an in-memory database |
+| `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
+| `bun run build` | Builds the SPA to `dist/web` |
+| `bun run start` | Production mode: API serves the built SPA from `dist/web` |
+| `bun run db:generate` | Generate a new SQL migration from `server/db/schema.ts` (Drizzle Kit) |
+| `bun run db:backup` | Safe online backup of the SQLite file |
+| `bun run admin <command>` | Break-glass account recovery: `list`, `unlock <email>`, `reset-password <email>` (see the runbook) |
+
+Bun only installs packages and runs these scripts; every script still executes on Node, because `better-sqlite3` is a native addon that Bun's runtime cannot load. Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest. Commit `bun.lock`.
 
 ## Deploy with Docker
 

@@ -1,14 +1,21 @@
 # syntax=docker/dockerfile:1
 
+# Bun is only the package manager and script runner (keep in step with "packageManager" in package.json).
+# The app itself runs on Node: better-sqlite3 is a native addon that Bun's runtime cannot load.
+ARG BUN_VERSION=1.3.14
+FROM oven/bun:${BUN_VERSION} AS bun
+
 # ---- build: install, compile the SPA, keep only production dependencies ----
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 # better-sqlite3 ships prebuilt binaries; these are the fallback if one is not available.
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN npm run build && npm prune --omit=dev
+# Bun has no prune command: reinstall with production dependencies only.
+RUN bun run build && rm -rf node_modules && bun install --frozen-lockfile --production
 
 # ---- runtime: Node runs the TypeScript server directly (type stripping), no compile step ----
 FROM node:24-bookworm-slim AS runtime

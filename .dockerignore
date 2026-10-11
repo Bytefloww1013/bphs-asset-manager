@@ -10,7 +10,6 @@ qa-shots
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
-npm-debug.log
 Dockerfile
 docker-compose.yml
 README.md

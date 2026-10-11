@@ -2,8 +2,8 @@
  * Online backup of the SQLite database using SQLite's own backup API, so it is safe to run
  * while the app is serving requests (unlike copying the file, which can miss the WAL).
  *
- *   npm run db:backup                      # data/backups/bphs-<timestamp>.sqlite
- *   npm run db:backup -- /path/to/file     # explicit destination
+ *   bun run db:backup                      # data/backups/bphs-<timestamp>.sqlite
+ *   bun run db:backup /path/to/file        # explicit destination
  *   docker compose exec assets node server/backup.ts
  */
 import fs from 'node:fs'
