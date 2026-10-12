@@ -3,6 +3,7 @@ import { cloneElement, isValidElement, useId, useState, type ComponentProps, typ
 import { cn } from '@/lib/cn.ts'
 import type { Tone } from './badge.tsx'
 import { IconButton } from './button.tsx'
+import { Tooltip } from './tooltip.tsx'
 
 const control =
   'w-full rounded-control border border-line-strong bg-surface text-ink shadow-[inset_0_1px_1px_oklch(0.2_0.02_262/0.04)] transition-[border-color,box-shadow] duration-150 hover:border-ink-4 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/20 aria-[invalid=true]:border-bad aria-[invalid=true]:focus-visible:ring-bad/20 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-ink-3 disabled:hover:border-line-strong'
@@ -52,17 +53,19 @@ export function Checkbox({ className, ...rest }: Omit<ComponentProps<'input'>, '
   return <input type="checkbox" className={cn('size-4 cursor-pointer rounded-[4px]', className)} {...rest} />
 }
 
-export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean }) {
-  return (
+/** `disabledReason` keeps the switch focusable but inert and explains why, like the same option on Button. */
+export function Switch({ checked, onChange, label, disabled, disabledReason }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean; disabledReason?: string }) {
+  const control = (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      onClick={() => onChange(!checked)}
+      aria-disabled={disabledReason ? true : undefined}
+      onClick={() => !disabledReason && onChange(!checked)}
       className={cn(
-        'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60',
+        'relative inline-flex h-6 w-10 shrink-0 items-center rounded-full border transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60',
         checked ? 'border-accent bg-accent' : 'border-line-strong bg-line',
       )}
     >
@@ -74,6 +77,7 @@ export function Switch({ checked, onChange, label, disabled }: { checked: boolea
       />
     </button>
   )
+  return disabledReason ? <Tooltip content={disabledReason}>{control}</Tooltip> : control
 }
 
 interface FieldProps {

@@ -20,6 +20,16 @@ function typeRow(db: DbLike, id: number): AssetTypeRow {
   return row
 }
 
+/**
+ * A list with nothing active in it leaves the forms with nothing to offer: no asset can be added without a type, and nothing can be
+ * issued or returned without a rating. So the last active item can be neither switched off nor deleted.
+ */
+function assertNotLastActive(db: DbLike, table: typeof assetTypes | typeof conditionRatings, item: { id: number; name: string; isActive: boolean }, noun: string) {
+  if (!item.isActive) return
+  const others = db.get<{ n: number }>(sql`select count(*) as n from ${table} where is_active = 1 and id <> ${item.id}`)?.n ?? 0
+  if (others === 0) throw conflict('last_active', `"${item.name}" is the only active ${noun}. Activate or add another first.`)
+}
+
 function assertTypeNameFree(db: DbLike, name: string, exceptId?: number) {
   const dup = db.select({ id: assetTypes.id }).from(assetTypes).where(sql`${assetTypes.name} = ${name} collate nocase`).get()
   if (dup && dup.id !== exceptId) throw conflict('duplicate_name', `An asset type named "${name}" already exists.`, { field: 'name' })
@@ -47,6 +57,7 @@ export function updateAssetType(db: Db, actor: Actor, id: number, input: { name?
       changes.push(`name: ${current.name} → ${input.name}`)
     }
     if (input.isActive !== undefined && input.isActive !== current.isActive) {
+      if (!input.isActive) assertNotLastActive(tx, assetTypes, current, 'asset type')
       patch.isActive = input.isActive
       changes.push(`active: ${current.isActive} → ${input.isActive}`)
     }
@@ -63,6 +74,7 @@ export function deleteAssetType(db: Db, actor: Actor, id: number) {
     if (row.assetCount > 0) {
       throw conflict('in_use', `${row.assetCount} asset(s) use "${row.name}". Deactivate it instead.`)
     }
+    assertNotLastActive(tx, assetTypes, row, 'asset type')
     tx.delete(assetTypes).where(eq(assetTypes.id, id)).run()
     writeAudit(tx, actor, { action: 'delete', entityType: 'assettype', entityId: id, details: `unused type "${row.name}"` })
   })
@@ -122,6 +134,7 @@ export function updateRating(db: Db, actor: Actor, id: number, input: { name?: s
       changes.push(`score: ${current.score} → ${input.score}`)
     }
     if (input.isActive !== undefined && input.isActive !== current.isActive) {
+      if (!input.isActive) assertNotLastActive(tx, conditionRatings, current, 'condition rating')
       patch.isActive = input.isActive
       changes.push(`active: ${current.isActive} → ${input.isActive}`)
     }
@@ -138,6 +151,7 @@ export function deleteRating(db: Db, actor: Actor, id: number) {
     if (row.snapshotCount > 0) {
       throw conflict('in_use', `${row.snapshotCount} condition record(s) use "${row.name}". Deactivate it instead.`)
     }
+    assertNotLastActive(tx, conditionRatings, row, 'condition rating')
     tx.delete(conditionRatings).where(eq(conditionRatings.id, id)).run()
     writeAudit(tx, actor, { action: 'delete', entityType: 'conditionrating', entityId: id, details: `unused rating "${row.name}"` })
   })

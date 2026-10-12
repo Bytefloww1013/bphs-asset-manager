@@ -14,8 +14,12 @@ export const DEFAULT_RATINGS = [
   { name: 'Damaged', score: 10 },
 ]
 
-/** Fill empty reference lists on first run so the forms are usable immediately. */
+/**
+ * Fill the reference lists on first run so the forms are usable immediately. A database with users in it is not new: whatever its
+ * lists hold is what its admins made of them, and an emptied list must not come back to the defaults at the next restart.
+ */
 export function ensureDefaultLists(db: Db) {
+  if ((db.select({ n: count() }).from(users).get()?.n ?? 0) > 0) return
   if ((db.select({ n: count() }).from(assetTypes).get()?.n ?? 0) === 0) {
     db.insert(assetTypes).values(DEFAULT_TYPES.map((name) => ({ name }))).run()
   }

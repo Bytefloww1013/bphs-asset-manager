@@ -4,7 +4,9 @@ import path from 'node:path'
 import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.ts'
-import { assets, auditLog, sessions, users } from '../db/schema.ts'
+import { DEFAULT_RATINGS, DEFAULT_TYPES, ensureDefaultLists } from '../bootstrap.ts'
+import { createDb, runMigrations } from '../db/client.ts'
+import { assetTypes, assets, auditLog, conditionRatings, sessions, users } from '../db/schema.ts'
 import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
 
@@ -645,6 +647,52 @@ describe('lists, users and audit', () => {
     expect(refused.status).toBe(409)
     expect((await t.call('DELETE', `/api/asset-types/${assetTypes[1]!.id}`, { cookie })).status).toBe(204)
     expect((await t.call('POST', '/api/asset-types', { cookie, body: { name: assetTypes[0]!.name.toUpperCase() } })).status).toBe(409)
+  })
+
+  it('keeps at least one rating and one type active, whoever asks', async () => {
+    const t = await setup()
+    const admin = await t.asAdmin()
+    const superAdmin = await t.asSuper()
+    for (const [path, noun] of [['/api/condition-ratings', 'condition rating'], ['/api/asset-types', 'asset type']] as const) {
+      const items = (await t.call('GET', path, { cookie: admin })).data as { id: number; name: string }[]
+      const [last, ...rest] = items
+      for (const item of rest) expect((await t.call('PATCH', `${path}/${item.id}`, { cookie: admin, body: { isActive: false } })).status).toBe(200)
+
+      // The last one stays on, for an Admin and for a Super Admin, and cannot be deleted either although nothing uses it.
+      for (const cookie of [admin, superAdmin]) {
+        const refused = await t.call('PATCH', `${path}/${last!.id}`, { cookie, body: { isActive: false } })
+        expect(refused.status).toBe(409)
+        expect(refused.data).toMatchObject({ error: 'last_active', message: `"${last!.name}" is the only active ${noun}. Activate or add another first.` })
+      }
+      expect((await t.call('DELETE', `${path}/${last!.id}`, { cookie: superAdmin })).data.error).toBe('last_active')
+      const stillActive = ((await t.call('GET', path, { cookie: admin })).data as { id: number; isActive: boolean }[]).filter((item) => item.isActive)
+      expect(stillActive.map((item) => item.id)).toEqual([last!.id])
+      // It can still be renamed, and an inactive one can still be deleted.
+      expect((await t.call('PATCH', `${path}/${last!.id}`, { cookie: admin, body: { name: 'Renamed' } })).status).toBe(200)
+      expect((await t.call('DELETE', `${path}/${rest[0]!.id}`, { cookie: superAdmin })).status).toBe(204)
+
+      // With a second one active, the first can go.
+      expect((await t.call('PATCH', `${path}/${rest[1]!.id}`, { cookie: admin, body: { isActive: true } })).status).toBe(200)
+      expect((await t.call('PATCH', `${path}/${last!.id}`, { cookie: admin, body: { isActive: false } })).status).toBe(200)
+    }
+    const lookups = (await t.call('GET', '/api/lookups', { cookie: admin })).data
+    expect(lookups.conditionRatings).toHaveLength(1)
+    expect(lookups.assetTypes).toHaveLength(1)
+    expect((await t.call('GET', '/api/audit?action=update', { cookie: admin })).data.entries.some((e: { details: string }) => /only active/.test(e.details))).toBe(false)
+  })
+
+  it('fills the lists with the defaults on a new database only, never again once there are users', async () => {
+    const fresh = createDb(':memory:')
+    runMigrations(fresh.db)
+    ensureDefaultLists(fresh.db)
+    expect(fresh.db.select().from(assetTypes).all().map((row) => row.name)).toEqual(DEFAULT_TYPES)
+    expect(fresh.db.select().from(conditionRatings).all()).toHaveLength(DEFAULT_RATINGS.length)
+
+    // A list emptied in a database that is in use stays as its admins left it at the next start.
+    const t = await setup()
+    t.db.delete(assetTypes).run()
+    ensureDefaultLists(t.db)
+    expect(t.db.select().from(assetTypes).all()).toEqual([])
   })
 
   it('gives each rating a score that sets the order, and lets no two share one', async () => {

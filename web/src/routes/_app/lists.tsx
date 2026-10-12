@@ -122,13 +122,19 @@ function AddRow({ kind, placeholder, noun }: { kind: Kind; placeholder: string; 
   )
 }
 
-function DeleteButton({ kind, id, name, inUse, inUseReason }: { kind: Kind; id: number; name: string; inUse: boolean; inUseReason: string }) {
+/** Why the last active item of a list can be neither switched off nor deleted. The server refuses it with the same rule. */
+const onlyActiveReason = (kind: Kind) => `The only active ${kind === 'asset-types' ? 'type' : 'rating'}. Activate or add another first.`
+/** True for the one row that is active when no other row is. */
+const isOnlyActive = <T extends { isActive: boolean }>(info: { row: { original: T }; table: { getCoreRowModel: () => { rows: { original: T }[] } } }) =>
+  info.row.original.isActive && info.table.getCoreRowModel().rows.filter((row) => row.original.isActive).length === 1
+
+function DeleteButton({ kind, id, name, inUse, inUseReason, onlyActive }: { kind: Kind; id: number; name: string; inUse: boolean; inUseReason: string; onlyActive: boolean }) {
   const can = useCan('record.delete')
   const [open, setOpen] = useState(false)
   const remove = useWrite(() => api.delete(`/${kind}/${id}`), { success: `${name} deleted` })
   return (
     <>
-      <IconButton label={`Delete ${name}`} size="sm" variant="danger-ghost" disabledReason={!can ? SUPER_ADMIN_ONLY : inUse ? inUseReason : undefined} onClick={() => setOpen(true)}>
+      <IconButton label={`Delete ${name}`} size="sm" variant="danger-ghost" disabledReason={!can ? SUPER_ADMIN_ONLY : inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined} onClick={() => setOpen(true)}>
         <Trash2 className="size-4" />
       </IconButton>
       <ConfirmDialog open={open} onOpenChange={setOpen} title={`Delete "${name}"?`} description="Nothing references it, so no history is lost. This is written to the audit log." confirmLabel="Delete" tone="danger" onConfirm={() => remove.mutateAsync(undefined)} />
@@ -136,20 +142,20 @@ function DeleteButton({ kind, id, name, inUse, inUseReason }: { kind: Kind; id: 
   )
 }
 
-function ActiveSwitch({ kind, id, name, active }: { kind: Kind; id: number; name: string; active: boolean }) {
+function ActiveSwitch({ kind, id, name, active, onlyActive }: { kind: Kind; id: number; name: string; active: boolean; onlyActive: boolean }) {
   const toggle = useWrite((isActive: boolean) => api.patch(`/${kind}/${id}`, { isActive }))
-  return <Switch label={`${name} is ${active ? 'active' : 'inactive'}`} checked={active} disabled={toggle.isPending} onChange={(next) => toggle.mutate(next)} />
+  return <Switch label={`${name} is ${active ? 'active' : 'inactive'}`} checked={active} disabled={toggle.isPending} disabledReason={onlyActive ? onlyActiveReason(kind) : undefined} onChange={(next) => toggle.mutate(next)} />
 }
 
 const t = columnsFor<AssetTypeRow>()
 const typeColumns = [
   t.accessor('name', { header: 'Name', cell: (info) => <EditableName kind="asset-types" id={info.row.original.id} name={info.getValue()} /> }),
   t.accessor('assetCount', { header: 'Assets', cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue()}</span>, meta: { align: 'right' } }),
-  t.accessor('isActive', { header: 'Active', cell: (info) => <ActiveSwitch kind="asset-types" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} />, enableSorting: false }),
+  t.accessor('isActive', { header: 'Active', cell: (info) => <ActiveSwitch kind="asset-types" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} onlyActive={isOnlyActive(info)} />, enableSorting: false }),
   t.display({
     id: 'actions',
     header: () => <span className="sr-only">Delete</span>,
-    cell: (info) => <DeleteButton kind="asset-types" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.assetCount > 0} inUseReason={`${info.row.original.assetCount} assets use this type. Deactivate it instead.`} />,
+    cell: (info) => <DeleteButton kind="asset-types" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.assetCount > 0} inUseReason={`${info.row.original.assetCount} assets use this type. Deactivate it instead.`} onlyActive={isOnlyActive(info)} />,
     meta: { align: 'right', width: 'w-14', cellClassName: 'max-sm:pl-0' },
   }),
 ]
@@ -265,11 +271,11 @@ const ratingColumns = [
   r.accessor('name', { header: 'Name', enableSorting: false, cell: (info) => <EditableName kind="condition-ratings" id={info.row.original.id} name={info.getValue()} tone={ratingTone(info.row.original.score)} /> }),
   r.accessor('score', { header: 'Score', enableSorting: false, cell: (info) => <EditableScore id={info.row.original.id} name={info.row.original.name} score={info.getValue()} /> }),
   r.accessor('snapshotCount', { header: 'Records', enableSorting: false, cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue().toLocaleString()}</span>, meta: { align: 'right', hideBelow: 'sm' } }),
-  r.accessor('isActive', { header: 'Active', enableSorting: false, cell: (info) => <ActiveSwitch kind="condition-ratings" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} /> }),
+  r.accessor('isActive', { header: 'Active', enableSorting: false, cell: (info) => <ActiveSwitch kind="condition-ratings" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} onlyActive={isOnlyActive(info)} /> }),
   r.display({
     id: 'actions',
     header: () => <span className="sr-only">Delete</span>,
-    cell: (info) => <DeleteButton kind="condition-ratings" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.snapshotCount > 0} inUseReason={`${info.row.original.snapshotCount} condition records use this rating. Deactivate it instead.`} />,
+    cell: (info) => <DeleteButton kind="condition-ratings" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.snapshotCount > 0} inUseReason={`${info.row.original.snapshotCount} condition records use this rating. Deactivate it instead.`} onlyActive={isOnlyActive(info)} />,
     meta: { align: 'right', width: 'w-14', cellClassName: 'max-sm:pl-0' },
   }),
 ]
