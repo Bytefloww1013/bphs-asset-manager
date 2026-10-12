@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CornerDownLeft } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { defaultRating } from '@shared/constants.ts'
+import { nextTag } from '@shared/tags.ts'
 import type { AssetBulkResult, AssetRow, EmployeeRef } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
@@ -13,18 +14,6 @@ import { api, ApiError } from '@/lib/api.ts'
 import { plural } from '@/lib/format.ts'
 import { assetsQuery, lookupsQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
-
-/** The next tag in the register's own pattern (BPHS-0150 -> BPHS-0151), shown as a hint. */
-function nextTag(tags: string[]): string {
-  let best: { prefix: string; n: number; width: number } | null = null
-  for (const tag of tags) {
-    const match = /^(.*?)(\d+)$/.exec(tag)
-    if (!match) continue
-    const n = Number(match[2])
-    if (!best || n > best.n) best = { prefix: match[1]!, n, width: match[2]!.length }
-  }
-  return best ? `${best.prefix}${String(best.n + 1).padStart(best.width, '0')}` : 'BPHS-0001'
-}
 
 /** Rows pasted from a spreadsheet: tag, type, serial, condition, holder. A header row is skipped. */
 function parsePaste(text: string) {
@@ -63,7 +52,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const [problem, setProblem] = useState<Problem | null>(null)
   const [skipped, setSkipped] = useState<AssetBulkResult['errors']>([])
 
-  const suggestion = useMemo(() => nextTag(assets.map((asset) => asset.tag)), [assets])
+  const suggestion = useMemo(() => nextTag(assets), [assets])
   const effectiveType = typeId || String(types[0]?.id ?? '')
   const goodId = defaultRating(ratings)?.id
   const effectiveRating = ratingId || String(goodId ?? '')
