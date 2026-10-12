@@ -83,6 +83,13 @@ export function Combobox<T>({
     if (list && !byPointer) document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: 'nearest' })
   }, [list, listId, active, text])
 
+  // The highlight starts on the chosen item, so that Enter on a list that was only opened keeps the choice instead of taking whatever
+  // is first. A chosen item beyond the part of the list that is shown gets no highlight, and Enter then only closes the list.
+  function openList() {
+    setOpen(true)
+    setActive(value && label === text ? matches.findIndex((item) => getKey(item) === getKey(value)) : 0)
+  }
+
   function select(item: T | null) {
     onChange(item)
     setText(item ? getLabel(item) : '')
@@ -117,7 +124,7 @@ export function Combobox<T>({
             onFocus={(event) => {
               if (value) event.currentTarget.select()
             }}
-            onClick={() => setOpen(true)}
+            onClick={openList}
             onChange={(event) => {
               setText(event.target.value)
               setActive(0)
@@ -127,15 +134,16 @@ export function Combobox<T>({
             onKeyDown={(event) => {
               if (event.key === 'ArrowDown') {
                 event.preventDefault()
-                setOpen(true)
-                setActive((index) => Math.min(index + 1, matches.length - 1))
+                if (open) setActive((index) => Math.min(index + 1, matches.length - 1))
+                else openList()
               } else if (event.key === 'ArrowUp') {
                 event.preventDefault()
                 setActive((index) => Math.max(index - 1, 0))
-              } else if (event.key === 'Enter' && open && matches[active]) {
+              } else if (event.key === 'Enter' && open && (matches[active] || value)) {
                 event.preventDefault()
                 event.stopPropagation()
-                select(matches[active]!)
+                if (matches[active]) select(matches[active]!)
+                else setOpen(false)
               } else if (event.key === 'Tab' && open && !value && text.trim() && matches[active]) {
                 select(matches[active]!)
               } else if (event.key === 'Escape' && open) {
