@@ -1,11 +1,12 @@
 import { eq, sql } from 'drizzle-orm'
-import type { EmployeeCreateInput, EmployeeUpdateInput } from '../../shared/schemas.ts'
+import { employeeCreateSchema, type EmployeeCreateInput, type EmployeeUpdateInput } from '../../shared/schemas.ts'
 import type { ImportColumn, ImportPreview, ImportRow, EmployeeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, users } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { parseCsv } from '../lib/csv.ts'
 import { conflict, notFound } from '../lib/errors.ts'
+import { describeRowProblem } from '../lib/rows.ts'
 import { fullName } from './refs.ts'
 
 interface RawEmployee {
@@ -154,9 +155,28 @@ const COLUMNS = [
 
 const normalise = (header: string) => header.trim().toLowerCase().replace(/[\s-]+/g, '_')
 
+interface Candidate {
+  code: string
+  firstName: string
+  lastName: string
+  department: string
+  jobTitle: string
+}
+
 interface Parsed {
   preview: ImportPreview
-  creates: { code: string; firstName: string; lastName: string; department: string; jobTitle: string }[]
+  creates: Candidate[]
+}
+
+// The CSV header each field comes from, so a problem names the column the person sees in their file.
+const FIELD_COLUMNS = { code: 'employee_id', firstName: 'first_name', lastName: 'last_name', department: 'department', jobTitle: 'job_title' }
+
+/** What stops a row from being created, or null. Empty required cells are named together; the rest must fit Add employee. */
+function rowProblem(record: Candidate): string | null {
+  const lacking = [!record.code && 'employee_id', !record.firstName && 'first_name', !record.lastName && 'last_name'].filter(Boolean)
+  if (lacking.length > 0) return `missing ${lacking.join(', ')}`
+  const checked = employeeCreateSchema.safeParse(record)
+  return checked.success ? null : describeRowProblem(checked.error, FIELD_COLUMNS)
 }
 
 function analyse(db: DbLike, csv: string): Parsed {
@@ -193,14 +213,10 @@ function analyse(db: DbLike, csv: string): Parsed {
       jobTitle: cell(raw, 'job_title'),
     }
     summary.read += 1
-    const lacking = [
-      !record.code && 'employee_id',
-      !record.firstName && 'first_name',
-      !record.lastName && 'last_name',
-    ].filter(Boolean)
-    if (lacking.length > 0) {
+    const problem = rowProblem(record)
+    if (problem) {
       summary.errors += 1
-      rows.push({ row, ...record, result: 'error', message: `Row ${row}: missing ${lacking.join(', ')}` })
+      rows.push({ row, ...record, result: 'error', message: `Row ${row}: ${problem}` })
     } else if (known.has(record.code.toLowerCase())) {
       summary.duplicates += 1
       rows.push({ row, ...record, result: 'duplicate', message: 'Skip: employee_id already exists' })

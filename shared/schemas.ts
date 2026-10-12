@@ -72,6 +72,10 @@ export const assetBulkSchema = z.object({
 })
 export type AssetBulkInput = z.infer<typeof assetBulkSchema>
 
+// Each pasted row is checked on its own, so a bad row is reported without refusing the rest. The tag and serial keep the
+// limits of Add asset; type, condition and holder are looked up by name and need none.
+export const assetBulkRowFields = assetCreateSchema.pick({ tag: true, serial: true })
+
 // ---- Assignments ----------------------------------------------------------------
 export const issueSchema = z.object({
   assetId: id,

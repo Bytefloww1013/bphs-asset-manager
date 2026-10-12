@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
-import type { AssetBulkInput, AssetCreateInput, AssetUpdateInput } from '../../shared/schemas.ts'
+import { assetBulkRowFields, type AssetBulkInput, type AssetCreateInput, type AssetUpdateInput } from '../../shared/schemas.ts'
 import type {
   AssetBulkResult,
   AssetDetail,
@@ -12,6 +12,7 @@ import type { Db, DbLike } from '../db/client.ts'
 import { assetTypes, assets, conditionRatings, conditions, employees } from '../db/schema.ts'
 import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError, conflict, invalid, notFound } from '../lib/errors.ts'
+import { describeRowProblem } from '../lib/rows.ts'
 import { daysBetween } from '../lib/time.ts'
 import { issueInTx } from './assignments.ts'
 import { fullName, requireActiveRating, requireAssessor } from './refs.ts'
@@ -273,10 +274,6 @@ export function createAsset(db: Db, actor: Actor, input: AssetCreateInput): Asse
   return getAssetRow(db, id)
 }
 
-function clean(value: string | undefined): string {
-  return (value ?? '').trim()
-}
-
 /** Paste-from-spreadsheet import. Rows are independent; bad rows are reported by number. */
 export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): AssetBulkResult {
   const types = db.select().from(assetTypes).all()
@@ -291,6 +288,8 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
     const line = index + 1
     const fail = (message: string) => result.errors.push({ row: line, message })
     if (!row.tag) return fail('Missing asset tag.')
+    const fields = assetBulkRowFields.safeParse({ tag: row.tag, serial: row.serial })
+    if (!fields.success) return fail(`${describeRowProblem(fields.error, { tag: 'Asset tag', serial: 'Serial number' })}.`)
     const type = byName(types, row.type)
     if (!type || !type.isActive) return fail(`Unknown asset type "${row.type}".`)
     const rating = row.condition ? byName(ratings, row.condition) : defaultRating
@@ -308,9 +307,9 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
           tx,
           actor,
           {
-            tag: row.tag.toUpperCase(),
+            tag: fields.data.tag,
             typeId: type.id,
-            serial: clean(row.serial) || null,
+            serial: fields.data.serial ?? null,
             conditionRatingId: rating.id,
             holderId,
           },

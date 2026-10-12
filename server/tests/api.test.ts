@@ -224,6 +224,31 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     const assets = (await t.call('GET', '/api/assets', { cookie })).data
     expect(assets.find((a: { tag: string }) => a.tag === 'BPHS-0203').state).toBe('assigned')
   })
+
+  it('holds bulk rows to the limits of Add asset and does not create the ones that break them', async () => {
+    const { t, cookie } = await seed()
+    const res = await t.call('POST', '/api/assets/bulk', {
+      cookie,
+      body: {
+        rows: [
+          { tag: 'T'.repeat(305), type: 'Laptop', serial: 'S'.repeat(500) },
+          { tag: 'BPHS-0301', type: 'Laptop', serial: 'S'.repeat(81) },
+          { tag: 'bphs-0302', type: 'Laptop', serial: 'S'.repeat(80) },
+        ],
+      },
+    })
+    expect(res.status).toBe(200)
+    expect(res.data.created).toBe(1)
+    expect(res.data.errors).toEqual([
+      { row: 1, message: expect.stringMatching(/Asset tag.*40 characters/) },
+      { row: 2, message: expect.stringMatching(/Serial number.*80 characters/) },
+    ])
+    const stored = (await t.call('GET', '/api/assets', { cookie })).data as { tag: string; serial: string | null }[]
+    const tags = stored.map((a) => a.tag)
+    expect(tags).toContain('BPHS-0302')
+    expect(tags).not.toContain('BPHS-0301')
+    expect(stored.every((a) => a.tag.length <= 40 && (a.serial ?? '').length <= 80)).toBe(true)
+  })
 })
 
 describe('employees and CSV import', () => {
@@ -255,6 +280,32 @@ describe('employees and CSV import', () => {
     const res = await t.call('POST', '/api/employees/import/preview', { cookie, body: { csv: 'employee_id,first_name\nE-1,A\n' } })
     expect(res.data.headerError).toMatch(/last_name/)
     expect(res.data.rows).toHaveLength(0)
+  })
+
+  it('reports rows over the limits of Add employee as errors and does not create them', async () => {
+    const t = await setup()
+    const cookie = await t.asAdmin()
+    const csv = [
+      'employee_id,first_name,last_name,department,job_title',
+      `${'E'.repeat(200)},Rosa,Delgado,Intake,Coordinator`,
+      `E-2001,${'R'.repeat(500)},Delgado,Intake,Coordinator`,
+      `E-2002,Wen,Lee,${'D'.repeat(81)},Analyst`,
+      'E-2003,Wen,Lee,Intake,Analyst',
+    ].join('\r\n')
+
+    const preview = await t.call('POST', '/api/employees/import/preview', { cookie, body: { csv } })
+    expect(preview.data.summary).toEqual({ read: 4, create: 1, duplicates: 0, errors: 3 })
+    expect(preview.data.rows.map((r: { result: string }) => r.result)).toEqual(['error', 'error', 'error', 'new'])
+    expect(preview.data.rows[0].message).toMatch(/Row 2.*employee_id.*40 characters/)
+    expect(preview.data.rows[1].message).toMatch(/Row 3.*first_name.*80 characters/)
+    expect(preview.data.rows[2].message).toMatch(/Row 4.*department.*80 characters/)
+
+    const run = await t.call('POST', '/api/employees/import', { cookie, body: { csv } })
+    expect(run.data.created).toBe(1)
+    const codes = (await t.call('GET', '/api/employees', { cookie })).data.map((e: { code: string }) => e.code)
+    expect(codes).toContain('E-2003')
+    expect(codes).not.toContain('E-2001')
+    expect(codes.every((code: string) => code.length <= 40)).toBe(true)
   })
 
   it('archiving is Super-Admin-only and blocked while the employee holds assets', async () => {
