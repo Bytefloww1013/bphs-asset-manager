@@ -1,4 +1,4 @@
-import { useForm } from '@tanstack/react-form'
+import { useForm, useStore } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -42,6 +42,8 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const [serverError, setServerError] = useState<ApiError | null>(null)
   // Set once an entry has gone through and the sheet stays open for the next one.
   const [issued, setIssued] = useState<{ assessorId: number | null } | null>(null)
+  // Assets issued from this sheet. The list shows them as assigned as soon as it refetches, which is our own doing and no reason to warn.
+  const [ours, setOurs] = useState<number[]>([])
   // What the last "Issue & add another" did. A toast would sit over the footer buttons the next entry needs,
   // so while the sheet stays open the confirmation is shown here instead.
   const [confirmation, setConfirmation] = useState<string | null>(null)
@@ -61,6 +63,9 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
     return last && offered(last) ? last : (defaultRating(ratings)?.id ?? null)
   }
 
+  // The sheet starts on the Employee field only when the link's asset is already in the Asset field.
+  const startsWithAsset = preset?.state === 'in_storage'
+
   /**
    * What an entry starts as. It is both the form's default and what it resets to: the form re-syncs
    * itself to its defaults whenever those change, so any other reset value would be undone on the next render.
@@ -76,7 +81,8 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const issue = useWrite(
     async (value: { assetId: number; employeeId: number; conditionRatingId: number; assessedById: number | null; notes: string }) => {
       const row = await api.post<AssignmentRow>('/assignments', value)
-      // Before useWrite refetches the lists, so the sheet never sees the asset as assigned while it is still the preset.
+      // Before useWrite refetches the lists, so the sheet never sees the asset as assigned while it is still the preset or the choice.
+      setOurs((ids) => [...ids, value.assetId])
       if (addAnother.current) setIssued({ assessorId: value.assessedById })
       return row
     },
@@ -125,7 +131,21 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   })
 
   const submitted = form.state.submissionAttempts > 0
-  const blocked = preset && preset.state !== 'in_storage' ? preset : null
+  // What stands in the way is judged on the asset in the field, as the register knows it now: someone else may have issued or
+  // retired it while the sheet was open. An asset the link named but that cannot be issued never gets into the field; it is
+  // explained until another is chosen, and is no reason to refuse the one that is.
+  const chosen = useStore(form.store, (state) => state.values.asset)
+  const latest = chosen ? (assets.find((asset) => asset.id === chosen.id) ?? chosen) : null
+  const blocked = latest && latest.state !== 'in_storage' && !ours.includes(latest.id) ? latest : null
+  const unavailable = !chosen && preset && preset.state !== 'in_storage' ? preset : null
+  const warning = blocked ?? unavailable
+
+  /** Every way of submitting comes through here: both buttons, Enter, Shift+Enter and Ctrl+Enter. */
+  const submit = (another: boolean) => {
+    if (blocked) return
+    addAnother.current = another
+    void form.handleSubmit()
+  }
 
   const footer = (
     <div className="flex w-full flex-wrap items-center justify-end gap-2">
@@ -135,14 +155,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              variant="secondary"
-              disabled={submitting || Boolean(blocked)}
-              onClick={() => {
-                addAnother.current = true
-                void form.handleSubmit()
-              }}
-            >
+            <Button variant="secondary" disabled={submitting || Boolean(blocked)} onClick={() => submit(true)}>
               Issue &amp; add another{' '}
               <Kbd>
                 <ShiftEnterKeys />
@@ -169,17 +182,16 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
         onSubmit={(event) => {
           event.preventDefault()
           event.stopPropagation()
-          void form.handleSubmit()
+          submit(false)
         }}
         onKeyDown={(event) => {
           if (event.key !== 'Enter' || (event.target as HTMLElement).tagName === 'TEXTAREA' && !(event.metaKey || event.ctrlKey)) return
           if (event.shiftKey) {
             event.preventDefault()
-            addAnother.current = true
-            void form.handleSubmit()
+            submit(true)
           } else if (event.metaKey || event.ctrlKey) {
             event.preventDefault()
-            void form.handleSubmit()
+            submit(false)
           }
         }}
       >
@@ -188,10 +200,10 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
             <Alert tone="ok" title={confirmation} />
           </div>
         )}
-        {blocked && (
-          <Alert tone="warn" title={`${blocked.tag} can't be issued`}>
-            It is {stateLabel(blocked.state).toLowerCase()}
-            {blocked.holder ? ` to ${blocked.holder.name}` : ''}. {blocked.state === 'assigned' ? 'Return it first; a handoff is a return followed by an issue.' : 'Reinstate it before issuing.'}
+        {warning && (
+          <Alert tone="warn" title={`${warning.tag} can't be issued`}>
+            It is {stateLabel(warning.state).toLowerCase()}
+            {warning.holder ? ` to ${warning.holder.name}` : ''}. {warning.state === 'assigned' ? 'Return it first; a handoff is a return followed by an issue.' : 'Reinstate it before issuing.'} {unavailable ? 'Or choose another asset below.' : 'Choose another asset to carry on.'}
           </Alert>
         )}
         {serverError && (
@@ -239,7 +251,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
                 )}
                 placeholder="Start typing a tag or serial"
                 emptyText="No matching assets in storage"
-                autoFocus={!preset}
+                autoFocus={!startsWithAsset}
                 inputRef={assetInput}
               />
             </Field>
@@ -267,7 +279,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
                 )}
                 placeholder="Search by name, ID or department"
                 emptyText="No matching employees"
-                autoFocus={Boolean(preset)}
+                autoFocus={startsWithAsset}
               />
             </Field>
           )}
