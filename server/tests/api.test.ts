@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { users } from '../db/schema.ts'
+import { sessions, users } from '../db/schema.ts'
+import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
 
 describe('authentication', () => {
@@ -38,6 +39,32 @@ describe('authentication', () => {
     t.db.update(users).set({ lockedUntil: new Date(Date.now() - 1000) }).where(eq(users.email, 'm.oyelaran@bphs.local')).run()
     expect((await t.signIn('m.oyelaran@bphs.local')).status).toBe(200)
     expect(findUser(t.db, 'm.oyelaran@bphs.local')?.failedLogins).toBe(0)
+  })
+
+  it('counts wrong passwords sent in parallel, so a burst cannot dodge the lock', async () => {
+    const t = await setup()
+    const burst = await Promise.all(Array.from({ length: 10 }, (_, i) => t.signIn('m.oyelaran@bphs.local', `wrong-${i}`)))
+    // Four attempts get a plain 401; the fifth locks the account, and any later one is refused as locked.
+    expect(burst.filter((r) => r.status === 401).length).toBeLessThanOrEqual(4)
+    expect(burst.every((r) => r.status === 401 || r.status === 423)).toBe(true)
+
+    const row = findUser(t.db, 'm.oyelaran@bphs.local')
+    expect(row?.failedLogins).toBeGreaterThanOrEqual(5)
+    expect(row?.lockedUntil).toBeTruthy()
+    expect((await t.signIn('m.oyelaran@bphs.local')).status).toBe(423)
+  })
+
+  it('refuses a correct password that was still being checked when the account locked', async () => {
+    const t = await setup()
+    // login() has read the unlocked row and is hashing; the lock lands before it finishes.
+    const pending = login(t.db, 'm.oyelaran@bphs.local', PASSWORD)
+    t.db
+      .update(users)
+      .set({ failedLogins: 5, lockedUntil: new Date(Date.now() + 15 * 60_000) })
+      .where(eq(users.email, 'm.oyelaran@bphs.local'))
+      .run()
+    await expect(pending).rejects.toMatchObject({ status: 423, code: 'account_locked' })
+    expect(t.db.select().from(sessions).all()).toHaveLength(0)
   })
 
   it('walls off every page until a required password change is done', async () => {
