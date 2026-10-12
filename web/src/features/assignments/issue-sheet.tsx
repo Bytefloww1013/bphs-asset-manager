@@ -53,7 +53,12 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   // The link only presets the first entry. Once something is issued here, the linked asset shows up as
   // assigned because of our own write, which is not a conflict worth warning about.
   const preset = assetId && !issued ? (assets.find((asset) => asset.id === assetId) ?? null) : null
-  const defaultRating = (asset: AssetRow | null) => asset?.condition?.ratingId ?? ratings.find((r) => r.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id ?? null
+  // `ratings` holds only the active ones. An asset's last rating is where the form starts only while it is still one of them: a deactivated one has no chip, so it would count as chosen with nothing to show it.
+  const offered = (ratingId: number | null | undefined) => ratings.some((rating) => rating.id === ratingId)
+  const defaultRating = (asset: AssetRow | null) => {
+    const last = asset?.condition?.ratingId
+    return last && offered(last) ? last : (ratings.find((r) => r.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id ?? null)
+  }
 
   /**
    * What an entry starts as. It is both the form's default and what it resets to: the form re-syncs
@@ -84,7 +89,8 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
         const fields: Record<string, string> = {}
         if (!value.asset) fields.asset = 'Choose the asset to issue.'
         if (!value.employee) fields.employee = 'Choose who is receiving it.'
-        if (!value.ratingId) fields.ratingId = 'Rate its condition.'
+        // Also catches a rating that was deactivated while the sheet was open, which the chips no longer show.
+        if (!offered(value.ratingId)) fields.ratingId = 'Rate its condition.'
         return Object.keys(fields).length ? { fields } : undefined
       },
     },
