@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { PackageCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { AssetRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Kbd, Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
@@ -13,7 +13,7 @@ import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
 import { AssetTagLink, RatingBadge, assetSearchText } from '@/features/common/status.tsx'
 import { formatDate, plural } from '@/lib/format.ts'
-import { assetsQuery } from '@/lib/queries.ts'
+import { assetsQuery, lookupsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/available')({
@@ -62,10 +62,11 @@ const getRowId = (row: AssetRow) => String(row.id)
 
 function AvailablePage() {
   usePageTitle('Available')
-  const { type = 'all' } = Route.useSearch()
+  const { type: linked } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const sheets = useSheetActions()
   const { data = [], isPending } = useQuery(assetsQuery)
+  const { data: lookups } = useQuery(lookupsQuery)
   const [search, setSearch] = useState('')
 
   const stock = useMemo(() => data.filter((asset) => asset.state === 'in_storage'), [data])
@@ -74,6 +75,11 @@ function AvailablePage() {
     for (const asset of stock) counts.set(asset.type, (counts.get(asset.type) ?? 0) + 1)
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [stock])
+  // The Overview links here for every type, including one with nothing free, so a type the register knows gets its tab even at
+  // zero. A name it does not know (a link from before a rename) shows everything instead of an empty list under no tab.
+  const known = linked !== undefined && (data.some((asset) => asset.type === linked) || (lookups?.assetTypes ?? []).some((item) => item.name === linked))
+  const type = known ? linked : 'all'
+  const tabs = type === 'all' || byType.some(([name]) => name === type) ? byType : [...byType, [type, 0] as [string, number]]
   const rows = useMemo(() => (type === 'all' ? stock : stock.filter((asset) => asset.type === type)), [stock, type])
 
   const table = useGrid({ data: rows, columns, getRowId, searchText: assetSearchText, search, resetKey: type, initialSorting: [{ id: 'tag', desc: false }] })
@@ -87,7 +93,7 @@ function AvailablePage() {
             label="Filter by type"
             value={type}
             onChange={(next) => void navigate({ search: { type: next === 'all' ? undefined : next } })}
-            options={[{ value: 'all', label: 'All', count: stock.length }, ...byType.map(([name, count]) => ({ value: name, label: name, count }))]}
+            options={[{ value: 'all', label: 'All', count: stock.length }, ...tabs.map(([name, count]) => ({ value: name, label: name, count }))]}
           />
           <SearchInput className="w-full sm:w-80" aria-label="Search available assets" placeholder="Search tag or serial" value={search} onChange={(event) => setSearch(event.target.value)} />
         </Toolbar>
@@ -105,7 +111,22 @@ function AvailablePage() {
               }
             },
           })}
-          empty={<EmptyState icon={PackageCheck} title="Nothing is available" description="Every asset in service is assigned. Add stock from the Assets page." />}
+          empty={
+            type !== 'all' && stock.length > 0 ? (
+              <EmptyState
+                icon={PackageCheck}
+                title={`No ${type} in storage`}
+                description={`${plural(stock.length, 'asset')} of other types ${stock.length === 1 ? 'is' : 'are'} available.`}
+                action={
+                  <Link to="/available" className={buttonStyles('primary')}>
+                    Show all types
+                  </Link>
+                }
+              />
+            ) : (
+              <EmptyState icon={PackageCheck} title="Nothing is available" description="Every asset in service is assigned. Add stock from the Assets page." />
+            )
+          }
           noMatches={<EmptyState icon={PackageCheck} title="No available assets match" description="Try another type or search." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
         <p className="text-sm text-ink-3">
