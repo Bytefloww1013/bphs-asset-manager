@@ -95,20 +95,26 @@ export function AssetEditSheet({ asset, onSaved, onClose }: { asset: AssetRow; o
   const { data: lookups } = useQuery(lookupsQuery)
   const types = lookups?.assetTypes ?? []
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((body: { tag: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body), { silent: true, success: (row) => `${row.tag} updated` })
+  const save = useWrite((body: { tag?: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body), { silent: true, success: (row) => `${row.tag} updated` })
+  // A tag that was not edited is not sent, so an asset tagged before a rule existed (BPHS/01) can still have its type and serial corrected.
+  const changes = (value: { tag: string; typeId: string; serial: string }) => ({
+    ...(value.tag.trim().toUpperCase() === asset.tag.toUpperCase() ? {} : { tag: value.tag }),
+    typeId: Number(value.typeId),
+    serial: value.serial,
+  })
 
   const form = useForm({
     defaultValues: { tag: asset.tag, typeId: String(asset.typeId), serial: asset.serial ?? '' },
     validators: {
       onSubmit: ({ value }) => {
-        const checked = assetUpdateSchema.safeParse({ tag: value.tag, typeId: Number(value.typeId), serial: value.serial })
+        const checked = assetUpdateSchema.safeParse(changes(value))
         return checked.success ? undefined : { fields: fieldMessages(checked.error) }
       },
     },
     onSubmit: async ({ value }) => {
       setError(null)
       try {
-        const row = await save.mutateAsync({ tag: value.tag, typeId: Number(value.typeId), serial: value.serial })
+        const row = await save.mutateAsync(changes(value))
         onSaved?.(row)
         onClose()
       } catch (e) {

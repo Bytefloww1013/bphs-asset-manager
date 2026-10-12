@@ -4,7 +4,7 @@ import path from 'node:path'
 import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.ts'
-import { auditLog, sessions, users } from '../db/schema.ts'
+import { assets, auditLog, sessions, users } from '../db/schema.ts'
 import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
 
@@ -480,6 +480,48 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(tags).toContain('BPHS-0302')
     expect(tags).not.toContain('BPHS-0301')
     expect(stored.every((a) => a.tag.length <= 40 && (a.serial ?? '').length <= 80)).toBe(true)
+  })
+
+  it('keeps asset tags to characters that work on a label and in an address, wherever the tag comes from', async () => {
+    const { t, cookie, laptop, good, make } = await seed()
+    const create = (tag: string) => t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id } })
+    const characters = 'Asset tag can only contain letters, digits, spaces, hyphens, underscores and dots'
+
+    for (const tag of ['A/B', '50%', 'Q?X#Y', 'TAG\\1', 'É-1']) {
+      const refused = await create(tag)
+      expect(refused.status, tag).toBe(422)
+      expect(refused.data.details.fields).toEqual({ tag: characters })
+    }
+    // "." and ".." can be stored but never opened: a URL treats them as "here" and "one level up".
+    for (const tag of ['.', '..', '...']) expect((await create(tag)).data.details.fields, tag).toEqual({ tag: 'Asset tag cannot be only dots' })
+
+    for (const tag of ['tag with space', 'a_b.c-1', '.5']) {
+      const made = await create(tag)
+      expect(made.status, tag).toBe(201)
+      expect(made.data.tag).toBe(tag.toUpperCase())
+      expect((await t.call('GET', `/api/assets/tag/${encodeURIComponent(made.data.tag)}`, { cookie })).status, tag).toBe(200)
+    }
+
+    // The same rule for a rename and for pasted rows.
+    const asset = await make('BPHS-0500')
+    const rename = await t.call('PATCH', `/api/assets/${asset.id}`, { cookie, body: { tag: 'BPHS/0500' } })
+    expect(rename.status).toBe(422)
+    expect(rename.data.details.fields).toEqual({ tag: characters })
+    const pasted = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows: [{ tag: 'BPHS/0501', type: 'Laptop' }, { tag: '..', type: 'Laptop' }, { tag: 'BPHS-0502', type: 'Laptop' }] } })
+    expect(pasted.data).toEqual({
+      created: 1,
+      errors: [
+        { row: 1, message: `Asset tag: ${characters}.` },
+        { row: 2, message: 'Asset tag: Asset tag cannot be only dots.' },
+      ],
+    })
+
+    // An asset tagged before the rule existed is still found, and can still be edited as long as its tag is left alone.
+    const old = t.db.insert(assets).values({ tag: 'OLD/TAG', typeId: laptop.id }).returning().get()
+    expect((await t.call('GET', '/api/assets/tag/OLD%2FTAG', { cookie })).status).toBe(200)
+    const edited = await t.call('PATCH', `/api/assets/${old.id}`, { cookie, body: { serial: 'SN-1' } })
+    expect(edited.status).toBe(200)
+    expect(edited.data).toMatchObject({ tag: 'OLD/TAG', serial: 'SN-1' })
   })
 
   it('says how many rows a paste may hold in words, not in the validator\'s', async () => {

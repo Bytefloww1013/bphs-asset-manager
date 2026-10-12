@@ -37,11 +37,15 @@ export const passwordChangeSchema = z.object({
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>
 
 // ---- Assets ---------------------------------------------------------------------
+// A tag is typed, printed on a label and used as the address of the asset's page, so it keeps to characters that survive all three.
+// One made only of dots cannot be an address at all: "." and ".." in a URL mean "here" and "one level up".
 export const assetTag = z
   .string()
   .trim()
   .min(1, 'Enter an asset tag')
   .max(40, tooLong('Asset tag', 40))
+  .regex(/^[A-Za-z0-9 ._-]+$/, 'Asset tag can only contain letters, digits, spaces, hyphens, underscores and dots')
+  .refine((value) => !/^\.+$/.test(value), 'Asset tag cannot be only dots')
   .transform((value) => value.toUpperCase())
 
 export const assetCreateSchema = z.object({
