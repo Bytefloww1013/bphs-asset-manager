@@ -3,15 +3,17 @@ import { AUDIT_ACTIONS, ROLES } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 
 const id = z.number().int().positive()
-const optionalText = (max: number) =>
+// A length rule says which field it is about, because the same words are shown under that field in the form.
+const tooLong = (label: string, max: number) => `${label} can be at most ${max} characters`
+const optionalText = (max: number, label: string) =>
   z
     .string()
     .trim()
-    .max(max)
+    .max(max, tooLong(label, max))
     .transform((value) => (value === '' ? null : value))
     .nullable()
     .optional()
-const requiredText = (max: number) => z.string().trim().min(1, 'Required').max(max)
+const requiredText = (max: number, label: string) => z.string().trim().min(1, 'Required').max(max, tooLong(label, max))
 
 export const password = z
   .string()
@@ -35,24 +37,24 @@ export const assetTag = z
   .string()
   .trim()
   .min(1, 'Enter an asset tag')
-  .max(40)
+  .max(40, tooLong('Asset tag', 40))
   .transform((value) => value.toUpperCase())
 
 export const assetCreateSchema = z.object({
   tag: assetTag,
   typeId: id,
-  serial: optionalText(80),
+  serial: optionalText(80, 'Serial number'),
   conditionRatingId: id,
   holderId: id.nullable().optional(),
   assessedById: id.nullable().optional(),
-  notes: optionalText(1000),
+  notes: optionalText(1000, 'Notes'),
 })
 export type AssetCreateInput = z.infer<typeof assetCreateSchema>
 
 export const assetUpdateSchema = z.object({
   tag: assetTag.optional(),
   typeId: id.optional(),
-  serial: optionalText(80),
+  serial: optionalText(80, 'Serial number'),
 })
 export type AssetUpdateInput = z.infer<typeof assetUpdateSchema>
 
@@ -82,14 +84,14 @@ export const issueSchema = z.object({
   employeeId: id,
   conditionRatingId: id,
   assessedById: id.nullable().optional(),
-  notes: optionalText(1000),
+  notes: optionalText(1000, 'Notes'),
 })
 export type IssueInput = z.infer<typeof issueSchema>
 
 export const returnSchema = z.object({
   conditionRatingId: id,
   assessedById: id.nullable().optional(),
-  notes: optionalText(1000),
+  notes: optionalText(1000, 'Notes'),
 })
 export type ReturnInput = z.infer<typeof returnSchema>
 
@@ -100,11 +102,11 @@ export type ReturnBulkInput = z.infer<typeof returnBulkSchema>
 
 // ---- Employees ------------------------------------------------------------------
 export const employeeCreateSchema = z.object({
-  code: requiredText(40),
-  firstName: requiredText(80),
-  lastName: requiredText(80),
-  department: optionalText(80),
-  jobTitle: optionalText(120),
+  code: requiredText(40, 'Employee ID'),
+  firstName: requiredText(80, 'First name'),
+  lastName: requiredText(80, 'Last name'),
+  department: optionalText(80, 'Department'),
+  jobTitle: optionalText(120, 'Job title'),
 })
 export type EmployeeCreateInput = z.infer<typeof employeeCreateSchema>
 
@@ -117,22 +119,22 @@ export const importSchema = z.object({
 export type ImportInput = z.infer<typeof importSchema>
 
 // ---- Lists ------------------------------------------------------------------------
-export const assetTypeCreateSchema = z.object({ name: requiredText(60) })
+export const assetTypeCreateSchema = z.object({ name: requiredText(60, 'Name') })
 export const assetTypeUpdateSchema = z.object({
-  name: requiredText(60).optional(),
+  name: requiredText(60, 'Name').optional(),
   isActive: z.boolean().optional(),
 })
 
-export const ratingCreateSchema = z.object({ name: requiredText(40) })
+export const ratingCreateSchema = z.object({ name: requiredText(40, 'Name') })
 export const ratingUpdateSchema = z.object({
-  name: requiredText(40).optional(),
+  name: requiredText(40, 'Name').optional(),
   isActive: z.boolean().optional(),
 })
 export const ratingOrderSchema = z.object({ ids: z.array(id).min(1) })
 
 // ---- Users ------------------------------------------------------------------------
 export const userCreateSchema = z.object({
-  name: requiredText(120),
+  name: requiredText(120, 'Name'),
   email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address')),
   role: z.enum(ROLES),
   employeeId: id.nullable().optional(),
@@ -140,7 +142,7 @@ export const userCreateSchema = z.object({
 export type UserCreateInput = z.infer<typeof userCreateSchema>
 
 export const userUpdateSchema = z.object({
-  name: requiredText(120).optional(),
+  name: requiredText(120, 'Name').optional(),
   role: z.enum(ROLES).optional(),
   employeeId: id.nullable().optional(),
 })

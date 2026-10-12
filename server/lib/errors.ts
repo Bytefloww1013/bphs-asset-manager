@@ -1,3 +1,10 @@
+/** An error that names one field also carries its message in `fields`, where a failed validation puts every field's. */
+function withFields(message: string, details: unknown): unknown {
+  const named = details as { field?: unknown; fields?: unknown } | null | undefined
+  if (typeof named?.field !== 'string' || named.fields) return details
+  return { ...named, fields: { [named.field]: message } }
+}
+
 export class HttpError extends Error {
   status: number
   code: string
@@ -7,7 +14,7 @@ export class HttpError extends Error {
     super(message)
     this.status = status
     this.code = code
-    this.details = details
+    this.details = withFields(message, details)
   }
 }
 

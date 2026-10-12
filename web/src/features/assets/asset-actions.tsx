@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Eye, Pencil, RotateCcw, Trash2, Archive } from 'lucide-react'
 import { useState } from 'react'
 import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
+import { assetUpdateSchema } from '@shared/schemas.ts'
 import type { AssetRow } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
@@ -12,7 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSheetActions } from '@/features/assignments/open.ts'
 import { useWrite } from '@/features/common/hooks.ts'
 import { api, ApiError } from '@/lib/api.ts'
-import { fieldError } from '@/lib/form.ts'
+import { fieldError, fieldMessages } from '@/lib/form.ts'
 import { lookupsQuery } from '@/lib/queries.ts'
 import { useCan } from '@/lib/session.ts'
 
@@ -97,7 +98,12 @@ export function AssetEditSheet({ asset, onClose }: { asset: AssetRow; onClose: (
 
   const form = useForm({
     defaultValues: { tag: asset.tag, typeId: String(asset.typeId), serial: asset.serial ?? '' },
-    validators: { onSubmit: ({ value }) => (value.tag.trim() ? undefined : { fields: { tag: 'Enter an asset tag.' } }) },
+    validators: {
+      onSubmit: ({ value }) => {
+        const checked = assetUpdateSchema.safeParse({ tag: value.tag, typeId: Number(value.typeId), serial: value.serial })
+        return checked.success ? undefined : { fields: fieldMessages(checked.error) }
+      },
+    },
     onSubmit: async ({ value }) => {
       setError(null)
       try {
@@ -109,6 +115,8 @@ export function AssetEditSheet({ asset, onClose }: { asset: AssetRow; onClose: (
     },
   })
   const submitted = form.state.submissionAttempts > 0
+  // A message about one of the three fields is shown under it; the alert is for anything else the server said.
+  const inline = !!error && (!!error.fields.tag || !!error.fields.typeId || !!error.fields.serial)
 
   return (
     <Sheet
@@ -139,21 +147,21 @@ export function AssetEditSheet({ asset, onClose }: { asset: AssetRow; onClose: (
           void form.handleSubmit()
         }}
       >
-        {error && !error.fields.tag && (
+        {error && !inline && (
           <Alert tone="bad" title="Could not save">
             {error.message}
           </Alert>
         )}
         <form.Field name="tag">
           {(field) => (
-            <Field label="Asset tag" error={(error?.code === 'duplicate_tag' ? error.message : null) ?? fieldError(field, undefined, submitted)}>
+            <Field label="Asset tag" error={fieldError(field, error?.fields, submitted)}>
               <Input mono autoFocus value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
             </Field>
           )}
         </form.Field>
         <form.Field name="typeId">
           {(field) => (
-            <Field label="Type">
+            <Field label="Type" error={fieldError(field, error?.fields, submitted)}>
               <Select value={field.state.value} onChange={(e) => field.handleChange(e.target.value)}>
                 {types.map((type) => (
                   <option key={type.id} value={type.id}>
@@ -167,7 +175,7 @@ export function AssetEditSheet({ asset, onClose }: { asset: AssetRow; onClose: (
         </form.Field>
         <form.Field name="serial">
           {(field) => (
-            <Field label="Serial number" optional>
+            <Field label="Serial number" optional error={fieldError(field, error?.fields, submitted)}>
               <Input mono value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
             </Field>
           )}

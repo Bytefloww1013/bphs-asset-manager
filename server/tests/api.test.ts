@@ -115,6 +115,32 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(dup.status).toBe(409)
   })
 
+  it('names the field and the limit when a value is refused, so a form can show it under that field', async () => {
+    const { t, cookie, laptop, good, make } = await seed()
+    const asset = await make('BPHS-0400')
+    const post = (body: Record<string, unknown>) =>
+      t.call('POST', '/api/assets', { cookie, body: { tag: 'BPHS-0401', typeId: laptop.id, conditionRatingId: good.id, ...body } })
+    const fields = (res: { data: any }) => res.data.details.fields
+
+    const serial = await post({ serial: 'S'.repeat(81) })
+    expect(serial.status).toBe(422)
+    expect(serial.data.message).toBe('Serial number can be at most 80 characters')
+    expect(fields(serial)).toEqual({ serial: 'Serial number can be at most 80 characters' })
+    expect(fields(await post({ tag: 'T'.repeat(41) }))).toEqual({ tag: 'Asset tag can be at most 40 characters' })
+    expect(fields(await post({ notes: 'N'.repeat(1001) }))).toEqual({ notes: 'Notes can be at most 1000 characters' })
+
+    // Rules the schema cannot see name their field in the same place.
+    const duplicate = await post({ tag: 'bphs-0400' })
+    expect(duplicate.status).toBe(409)
+    expect(fields(duplicate)).toEqual({ tag: 'Asset tag BPHS-0400 already exists.' })
+    expect(fields(await post({ typeId: 9999 }))).toEqual({ typeId: 'Choose an active asset type.' })
+
+    // The edit sheet sends tag, type and serial together.
+    const edit = await t.call('PATCH', `/api/assets/${asset.id}`, { cookie, body: { tag: asset.tag, typeId: laptop.id, serial: 'S'.repeat(81) } })
+    expect(edit.status).toBe(422)
+    expect(fields(edit)).toEqual({ serial: 'Serial number can be at most 80 characters' })
+  })
+
   it('issues once, refuses a second holder, and records both condition snapshots', async () => {
     const { t, cookie, good, fair, make } = await seed()
     const asset = await make('BPHS-0141')
@@ -308,6 +334,25 @@ describe('employees and CSV import', () => {
     expect(codes.every((code: string) => code.length <= 40)).toBe(true)
   })
 
+  it('names the field and the limit when an employee value is refused', async () => {
+    const t = await setup()
+    const cookie = await t.asAdmin()
+    const post = (body: Record<string, unknown>) => t.call('POST', '/api/employees', { cookie, body: { code: 'E-9000', firstName: 'Ana', lastName: 'Cole', ...body } })
+    const fields = (res: { data: any }) => res.data.details.fields
+
+    expect(fields(await post({ code: 'E'.repeat(41) }))).toEqual({ code: 'Employee ID can be at most 40 characters' })
+    expect(fields(await post({ firstName: 'A'.repeat(81) }))).toEqual({ firstName: 'First name can be at most 80 characters' })
+    expect(fields(await post({ lastName: 'C'.repeat(81) }))).toEqual({ lastName: 'Last name can be at most 80 characters' })
+    expect(fields(await post({ department: 'D'.repeat(81) }))).toEqual({ department: 'Department can be at most 80 characters' })
+    expect(fields(await post({ jobTitle: 'J'.repeat(121) }))).toEqual({ jobTitle: 'Job title can be at most 120 characters' })
+    expect(fields(await post({ firstName: '  ' }))).toEqual({ firstName: 'Required' })
+
+    expect((await post({})).status).toBe(201)
+    const duplicate = await post({ code: 'e-9000' })
+    expect(duplicate.status).toBe(409)
+    expect(fields(duplicate)).toEqual({ code: 'Employee ID e-9000 already exists.' })
+  })
+
   it('archiving is Super-Admin-only and blocked while the employee holds assets', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
@@ -343,6 +388,22 @@ describe('lists, users and audit', () => {
     const order = await t.call('PUT', '/api/condition-ratings/order', { cookie, body: { ids } })
     expect(order.data.map((r: { id: number }) => r.id)).toEqual(ids)
     expect((await t.lookups(cookie)).conditionRatings.map((r) => r.id)).toEqual(ids)
+  })
+
+  it('names the field and the limit when a name is refused', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const fields = (res: { data: any }) => res.data.details.fields
+    const user = await t.call('POST', '/api/users', { cookie, body: { name: 'N'.repeat(121), email: 'new.person@bphs.local', role: 'admin' } })
+    expect(fields(user)).toEqual({ name: 'Name can be at most 120 characters' })
+    expect(fields(await t.call('POST', '/api/asset-types', { cookie, body: { name: 'T'.repeat(61) } }))).toEqual({ name: 'Name can be at most 60 characters' })
+    expect(fields(await t.call('POST', '/api/condition-ratings', { cookie, body: { name: 'R'.repeat(41) } }))).toEqual({ name: 'Name can be at most 40 characters' })
+
+    const duplicate = await t.call('POST', '/api/asset-types', { cookie, body: { name: 'laptop' } })
+    expect(duplicate.status).toBe(409)
+    expect(fields(duplicate)).toEqual({ name: 'An asset type named "laptop" already exists.' })
+    const email = await t.call('POST', '/api/users', { cookie, body: { name: 'Another Marcus', email: 'M.Oyelaran@bphs.local', role: 'admin' } })
+    expect(fields(email)).toEqual({ email: 'An account for m.oyelaran@bphs.local already exists.' })
   })
 
   it('keeps user management to Super Admins and hands back a one-time password once', async () => {
