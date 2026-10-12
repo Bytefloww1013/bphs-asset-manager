@@ -162,9 +162,10 @@ db.transaction((tx) => {
 
       const roll = rand()
       if (roll < 0.07) {
-        // Retired: last seen in poor shape.
-        const issued = new Date(Math.min(cursor + 20 * DAY, now - 200 * DAY))
-        const returned = new Date(issued.getTime() + 90 * DAY)
+        // Retired: last seen in poor shape. The last assignment starts after everything before it (the asset's arrival or its last
+        // return, both at least 20 days back) and ends before today, however young the asset is.
+        const issued = new Date(cursor + Math.min(20 * DAY, (now - cursor) / 2))
+        const returned = new Date(Math.min(issued.getTime() + 90 * DAY, now - 2 * DAY))
         cycle(pick(people), issued, returned, 'Good', 'Damaged')
         tx.update(assets).set({ status: 'retired' }).where(eq(assets.id, asset.id)).run()
         audit(tx, new Date(returned.getTime() + DAY), priya!, 'update', 'asset', asset.id, `${tag} · status: in_service → retired`)
