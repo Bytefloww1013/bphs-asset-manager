@@ -2,7 +2,7 @@ import { useForm } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { Eye, EyeOff, Lock } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { loginSchema } from '@shared/schemas.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { Button, IconButton } from '@/components/ui/button.tsx'
@@ -23,11 +23,23 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
+/** A password input with a show/hide button. Field hands its id and aria attributes to its direct child, so they are passed on to the input here. */
+function PasswordInput(props: Omit<ComponentProps<'input'>, 'type' | 'className'>) {
+  const [reveal, setReveal] = useState(false)
+  return (
+    <div className="relative">
+      <Input {...props} type={reveal ? 'text' : 'password'} className="pr-10" />
+      <IconButton label={reveal ? 'Hide password' : 'Show password'} size="sm" className="absolute right-0.5 top-0.5" onClick={() => setReveal((on) => !on)}>
+        {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </IconButton>
+    </div>
+  )
+}
+
 function LoginPage() {
   usePageTitle('Sign in')
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [reveal, setReveal] = useState(false)
 
   const login = useMutation({
     mutationFn: (value: { email: string; password: string }) => api.post<{ user: SessionUser }>('/auth/login', value),
@@ -93,24 +105,12 @@ function LoginPage() {
             <form.Field name="password">
               {(field) => (
                 <Field label="Password" error={fieldError(field, undefined, form.state.submissionAttempts > 0)}>
-                  <div className="relative">
-                    <Input
-                      type={reveal ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      className="pr-10"
-                      value={field.state.value}
-                      onChange={(event) => field.handleChange(event.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    <IconButton
-                      label={reveal ? 'Hide password' : 'Show password'}
-                      size="sm"
-                      className="absolute right-0.5 top-0.5"
-                      onClick={() => setReveal((on) => !on)}
-                    >
-                      {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </IconButton>
-                  </div>
+                  <PasswordInput
+                    autoComplete="current-password"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    onBlur={field.handleBlur}
+                  />
                 </Field>
               )}
             </form.Field>
