@@ -13,6 +13,7 @@ import type {
   UserRow,
 } from '@shared/types.ts'
 import { ApiError, api, qs } from './api.ts'
+import { startOfLocalDay } from './format.ts'
 
 export const meQuery = queryOptions({
   queryKey: ['me'],
@@ -78,6 +79,7 @@ export const usersQuery = queryOptions({
 
 export interface AuditParams {
   action?: string
+  /** The first and last day to show, as `YYYY-MM-DD` in the viewer's time zone, the way the date inputs hold them. */
   from?: string
   to?: string
   q?: string
@@ -85,14 +87,21 @@ export interface AuditParams {
   offset: number
 }
 
+/** The server filters by instants. Entries are shown in the viewer's time zone, so their days start where the viewer's do. */
+const auditRange = ({ from, to }: Pick<AuditParams, 'from' | 'to'>) => ({
+  from: from ? startOfLocalDay(from) : undefined,
+  // The last day is shown whole, so the range ends where the next day starts.
+  to: to ? startOfLocalDay(to, 1) : undefined,
+})
+
 export const auditQuery = (params: AuditParams) =>
   queryOptions({
     queryKey: ['audit', params],
-    queryFn: () => api.get<AuditPage>(`/audit${qs({ ...params })}`),
+    queryFn: () => api.get<AuditPage>(`/audit${qs({ ...params, ...auditRange(params) })}`),
     placeholderData: (previous) => previous,
   })
 
-export const auditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => `/api/audit.csv${qs({ ...params })}`
+export const auditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => `/api/audit.csv${qs({ ...params, ...auditRange(params) })}`
 
 /** After any write, refresh everything that could have changed. The data set is small; correctness beats cleverness. */
 export function refreshData(queryClient: QueryClient) {

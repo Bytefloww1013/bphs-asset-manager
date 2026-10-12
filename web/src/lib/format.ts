@@ -9,6 +9,20 @@ export function formatDate(iso: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/**
+ * The reverse of formatDate: the instant a `YYYY-MM-DD` starts at in the viewer's local time, or the start of a later day.
+ * Null if it is not a day on the calendar (2026-02-31).
+ */
+export function startOfLocalDay(date: string, daysAfter = 0): string | null {
+  const start = new Date(`${date}T00:00:00`)
+  // Some browsers read 2026-02-31 as 3 March, so the month and day that come out must be the ones that went in. Not the year: a
+  // date input being typed into passes through 0002, 0020 and 0202 on its way to 2026.
+  if (Number.isNaN(start.getTime()) || `${pad(start.getMonth() + 1)}-${pad(start.getDate())}` !== date.slice(-5)) return null
+  // The next day is found on the calendar rather than by adding 24 hours: the day a clock changes has 23 or 25.
+  start.setDate(start.getDate() + daysAfter)
+  return start.toISOString()
+}
+
 /** 2026-07-27 14:07 */
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'

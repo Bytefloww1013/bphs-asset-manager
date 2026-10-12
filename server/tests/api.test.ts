@@ -4,7 +4,7 @@ import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.ts'
-import { sessions, users } from '../db/schema.ts'
+import { auditLog, sessions, users } from '../db/schema.ts'
 import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
 
@@ -614,6 +614,52 @@ describe('lists, users and audit', () => {
     const csv = await t.app.request('/api/audit.csv', { headers: { cookie } })
     expect(csv.headers.get('content-type')).toMatch(/text\/csv/)
     expect(await csv.text()).toContain('assettype')
+  })
+
+  it('filters the audit log by the instants the viewer asks for, whatever zone the server is in', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const record = (at: string, details: string) =>
+      t.db.insert(auditLog).values({ occurredAt: new Date(at), actor: 'probe', action: 'create', entityType: 'asset', entityId: 1, details }).run()
+    record('2026-10-09T03:59:59.999Z', 'one ms before the 9th starts')
+    record('2026-10-09T04:00:00.000Z', 'the 9th starts')
+    record('2026-10-10T01:30:00.000Z', 'evening of the 9th')
+    record('2026-10-10T03:59:59.999Z', 'the 9th ends')
+    record('2026-10-10T04:00:00.000Z', 'the 10th starts')
+
+    // 9 October in New York: from midnight (04:00 UTC, still summer time) up to, not including, the next midnight.
+    const day = 'from=2026-10-09T04:00:00.000Z&to=2026-10-10T04:00:00.000Z'
+    const expected = ['evening of the 9th', 'the 9th ends', 'the 9th starts']
+    const zone = process.env.TZ
+    try {
+      for (const [name, offset] of [['UTC', 0], ['America/New_York', 240], ['Pacific/Auckland', -780]] as const) {
+        process.env.TZ = name
+        // The server really is in that zone, so the answers below mean something.
+        expect(new Date(2026, 9, 9).getTimezoneOffset()).toBe(offset)
+
+        const page = await t.call('GET', `/api/audit?${day}`, { cookie })
+        expect(page.data.entries.map((e: { details: string }) => e.details).sort(), name).toEqual(expected)
+        expect(page.data.total, name).toBe(3)
+        const csv = await (await t.app.request(`/api/audit.csv?${day}`, { headers: { cookie } })).text()
+        expect(expected.every((details) => csv.includes(details)), name).toBe(true)
+        expect(csv).not.toContain('the 10th starts')
+      }
+    } finally {
+      if (zone === undefined) delete process.env.TZ
+      else process.env.TZ = zone
+    }
+
+    // Either end can be left open, and an offset other than Z is understood: all three of these are midnight at the start of 10 October in UTC.
+    for (const from of ['2026-10-10T00:00:00Z', '2026-10-09T20:00:00-04:00', '2026-10-10T05:30:00%2B05:30']) {
+      const page = await t.call('GET', `/api/audit?from=${from}`, { cookie })
+      expect(page.data.entries.map((e: { details: string }) => e.details).sort(), from).toEqual(['evening of the 9th', 'the 10th starts', 'the 9th ends'])
+    }
+    const to = await t.call('GET', '/api/audit?to=2026-10-09T04:00:00.000Z', { cookie })
+    expect(to.data.entries.map((e: { details: string }) => e.details)).toEqual(['one ms before the 9th starts'])
+
+    // A date without a time is no longer an answer to "when", and says so instead of being read in some zone.
+    expect((await t.call('GET', '/api/audit?from=2026-10-09', { cookie })).status).toBe(422)
+    expect((await t.call('GET', '/api/audit?to=not-a-time', { cookie })).status).toBe(422)
   })
 
   it('summarises the dashboard', async () => {

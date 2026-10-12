@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, Input, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { ActionBadge } from '@/features/common/status.tsx'
-import { formatDateTime } from '@/lib/format.ts'
+import { formatDateTime, startOfLocalDay } from '@/lib/format.ts'
 import { auditCsvUrl, auditQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
@@ -27,7 +27,7 @@ interface AuditSearch {
   page?: number
 }
 
-const isDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+const isDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
 
 export const Route = createFileRoute('/_app/audit')({
   validateSearch: (search: Record<string, unknown>): AuditSearch => ({

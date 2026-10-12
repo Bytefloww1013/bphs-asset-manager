@@ -21,8 +21,8 @@ const toEntry = (row: AuditRaw): AuditEntry => ({ ...row, occurredAt: new Date(r
 function auditWhere(query: Omit<AuditQuery, 'limit' | 'offset'>) {
   const parts = [sql`1 = 1`]
   if (query.action) parts.push(sql`action = ${query.action}`)
-  if (query.from) parts.push(sql`occurred_at >= ${Date.parse(`${query.from}T00:00:00`)}`)
-  if (query.to) parts.push(sql`occurred_at < ${Date.parse(`${query.to}T00:00:00`) + 86_400_000}`)
+  if (query.from) parts.push(sql`occurred_at >= ${Date.parse(query.from)}`)
+  if (query.to) parts.push(sql`occurred_at < ${Date.parse(query.to)}`)
   if (query.q) {
     const like = `%${query.q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
     parts.push(sql`(details like ${like} escape '\\' or actor like ${like} escape '\\' or entity_type like ${like} escape '\\')`)
