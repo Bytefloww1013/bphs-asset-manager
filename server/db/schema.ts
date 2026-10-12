@@ -62,12 +62,21 @@ export const assetTypes = sqliteTable('asset_types', {
   createdAt: createdAt(),
 })
 
-export const conditionRatings = sqliteTable('condition_ratings', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull().unique(),
-  sortOrder: integer('sort_order').notNull(),
-  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-})
+export const conditionRatings = sqliteTable(
+  'condition_ratings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull().unique(),
+    /**
+     * 1 to 100, 100 being as good as new. It is what the rating means: the order of the scale, the colour of its badge,
+     * the default choice and the dashboard's condition watch all come from it, never from the name. The default of 0 is
+     * only there because SQLite needs one to add a NOT NULL column; every row is given a real score.
+     */
+    score: integer('score').notNull().default(0),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  },
+  (t) => [uniqueIndex('uq_condition_ratings_score').on(t.score)],
+)
 
 // ---- Assets ---------------------------------------------------------------------------
 

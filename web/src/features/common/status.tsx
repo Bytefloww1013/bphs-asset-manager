@@ -1,31 +1,29 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
-import type { AuditAction } from '@shared/constants.ts'
+import { ratingBand, type AuditAction, type RatingBand } from '@shared/constants.ts'
 import type { AssetRow, AssetState, EmployeeRef } from '@shared/types.ts'
 import { Badge, type Tone } from '@/components/ui/badge.tsx'
 import { Mono } from '@/components/ui/layout.tsx'
 import { cn } from '@/lib/cn.ts'
 import { formatDays, isOverdue } from '@/lib/format.ts'
+import { ratingsQuery } from '@/lib/queries.ts'
 
-/** Colour follows the rating's meaning; unknown (user-added) ratings stay neutral. */
-export function ratingTone(name: string): Tone {
-  switch (name.trim().toLowerCase()) {
-    case 'new':
-      return 'accent'
-    case 'good':
-      return 'ok'
-    case 'fair':
-      return 'warn'
-    case 'poor':
-    case 'damaged':
-      return 'bad'
-    default:
-      return 'neutral'
-  }
+const bandTone: Record<RatingBand, Tone> = { new: 'accent', good: 'ok', worn: 'warn', attention: 'bad' }
+
+/** Colour follows the rating's score, in fixed bands, so a renamed or added rating is coloured like any other. */
+export const ratingTone = (score: number): Tone => bandTone[ratingBand(score)]
+
+/**
+ * Rows carry a rating's name only, so the badge finds the score in the full list, which includes deactivated ratings.
+ * It is neutral until that list has loaded.
+ */
+export function RatingBadge({ name }: { name: string | null | undefined }) {
+  const { data: ratings } = useQuery(ratingsQuery)
+  if (!name) return <span className="text-ink-3">—</span>
+  const rating = ratings?.find((item) => item.name === name)
+  return <Badge tone={rating ? ratingTone(rating.score) : 'neutral'}>{name}</Badge>
 }
-
-export const RatingBadge = ({ name }: { name: string | null | undefined }) =>
-  name ? <Badge tone={ratingTone(name)}>{name}</Badge> : <span className="text-ink-3">—</span>
 
 const stateMeta: Record<AssetState, { label: string; tone: Tone }> = {
   assigned: { label: 'Assigned', tone: 'accent' },

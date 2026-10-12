@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { CornerDownLeft } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
+import { defaultRating } from '@shared/constants.ts'
 import type { AssetBulkResult, AssetRow, EmployeeRef } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
@@ -64,7 +65,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
 
   const suggestion = useMemo(() => nextTag(assets.map((asset) => asset.tag)), [assets])
   const effectiveType = typeId || String(types[0]?.id ?? '')
-  const goodId = ratings.find((r) => r.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id
+  const goodId = defaultRating(ratings)?.id
   const effectiveRating = ratingId || String(goodId ?? '')
 
   const elsewhere = Object.entries(problem?.fields ?? {}).filter(([name]) => !SHOWN_UNDER_FIELDS.includes(name))

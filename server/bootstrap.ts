@@ -5,8 +5,14 @@ import { config } from './config.ts'
 import { generateOneTimePassword, hashPassword } from './lib/password.ts'
 
 export const DEFAULT_TYPES = ['Laptop', 'Phone', 'Monitor', 'Keyboard', 'Mouse']
-/** Best condition first. */
-export const DEFAULT_RATINGS = ['New', 'Good', 'Fair', 'Poor', 'Damaged']
+/** Best condition first, each with its score out of 100. */
+export const DEFAULT_RATINGS = [
+  { name: 'New', score: 100 },
+  { name: 'Good', score: 80 },
+  { name: 'Fair', score: 60 },
+  { name: 'Poor', score: 30 },
+  { name: 'Damaged', score: 10 },
+]
 
 /** Fill empty reference lists on first run so the forms are usable immediately. */
 export function ensureDefaultLists(db: Db) {
@@ -14,7 +20,7 @@ export function ensureDefaultLists(db: Db) {
     db.insert(assetTypes).values(DEFAULT_TYPES.map((name) => ({ name }))).run()
   }
   if ((db.select({ n: count() }).from(conditionRatings).get()?.n ?? 0) === 0) {
-    db.insert(conditionRatings).values(DEFAULT_RATINGS.map((name, i) => ({ name, sortOrder: i + 1 }))).run()
+    db.insert(conditionRatings).values(DEFAULT_RATINGS).run()
   }
 }
 

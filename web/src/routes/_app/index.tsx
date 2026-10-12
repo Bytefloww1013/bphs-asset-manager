@@ -114,9 +114,9 @@ function Overview() {
 
             <div className="flex min-w-0 flex-col gap-6 xl:col-span-5">
               <Panel>
-                <PanelHeader title="Condition watch" description="Poor or damaged, not yet retired." />
+                <PanelHeader title="Condition watch" description="In a condition that needs attention, not yet retired." />
                 {data.poorCondition.length === 0 ? (
-                  <Quiet icon>Nothing in poor condition.</Quiet>
+                  <Quiet icon>Nothing needs attention.</Quiet>
                 ) : (
                   <ul>
                     {data.poorCondition.map((row) => (

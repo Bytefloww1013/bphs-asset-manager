@@ -27,7 +27,8 @@ export interface AssetTypeRef {
 export interface ConditionRatingRef {
   id: number
   name: string
-  sortOrder: number
+  /** 1 to 100, best first. Drives the order, the colour and the default; shown only on the Lists screen. */
+  score: number
 }
 
 export interface Lookups {
@@ -171,7 +172,7 @@ export interface AssetTypeRow {
 export interface ConditionRatingRow {
   id: number
   name: string
-  sortOrder: number
+  score: number
   isActive: boolean
   snapshotCount: number
 }

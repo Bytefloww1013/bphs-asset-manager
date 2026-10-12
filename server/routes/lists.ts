@@ -4,7 +4,6 @@ import {
   assetTypeUpdateSchema,
   auditQuerySchema,
   ratingCreateSchema,
-  ratingOrderSchema,
   ratingUpdateSchema,
 } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
@@ -17,7 +16,6 @@ import {
   deleteRating,
   listAssetTypes,
   listRatings,
-  reorderRatings,
   updateAssetType,
   updateRating,
 } from '../services/lists.ts'
@@ -41,10 +39,7 @@ export function listRoutes(db: Db) {
 
   app.get('/condition-ratings', (c) => c.json(listRatings(db)))
   app.post('/condition-ratings', json(ratingCreateSchema), (c) =>
-    c.json(createRating(db, c.get('user'), c.req.valid('json').name), 201),
-  )
-  app.put('/condition-ratings/order', json(ratingOrderSchema), (c) =>
-    c.json(reorderRatings(db, c.get('user'), c.req.valid('json').ids)),
+    c.json(createRating(db, c.get('user'), c.req.valid('json')), 201),
   )
   app.patch('/condition-ratings/:id', json(ratingUpdateSchema), (c) =>
     c.json(updateRating(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),

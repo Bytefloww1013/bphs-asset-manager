@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
+import { defaultRating } from '../../shared/constants.ts'
 import { assetBulkRowFields, type AssetBulkInput, type AssetCreateInput, type AssetUpdateInput } from '../../shared/schemas.ts'
 import type {
   AssetBulkResult,
@@ -281,7 +282,7 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
   const people = db.select().from(employees).all().filter((employee) => !employee.archivedAt)
   const byName = <T extends { name: string }>(list: T[], value: string) =>
     list.find((item) => item.name.toLowerCase() === value.toLowerCase())
-  const defaultRating = byName(ratings, 'Good') ?? ratings[Math.floor(ratings.length / 2)]
+  const fallbackRating = defaultRating(ratings)
 
   const result: AssetBulkResult = { created: 0, errors: [] }
   input.rows.forEach((row, index) => {
@@ -292,7 +293,7 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
     if (!fields.success) return fail(`${describeRowProblem(fields.error, { tag: 'Asset tag', serial: 'Serial number' })}.`)
     const type = byName(types, row.type)
     if (!type || !type.isActive) return fail(`Unknown asset type "${row.type}".`)
-    const rating = row.condition ? byName(ratings, row.condition) : defaultRating
+    const rating = row.condition ? byName(ratings, row.condition) : fallbackRating
     if (!rating) return fail(`Unknown condition "${row.condition ?? ''}".`)
     let holderId: number | null = null
     if (row.holder) {

@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { defaultRating } from '@shared/constants.ts'
 import type { AssetRow, AssignmentRow, EmployeeRef } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
@@ -55,9 +56,9 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const preset = assetId && !issued ? (assets.find((asset) => asset.id === assetId) ?? null) : null
   // `ratings` holds only the active ones. An asset's last rating is where the form starts only while it is still one of them: a deactivated one has no chip, so it would count as chosen with nothing to show it.
   const offered = (ratingId: number | null | undefined) => ratings.some((rating) => rating.id === ratingId)
-  const defaultRating = (asset: AssetRow | null) => {
+  const startingRating = (asset: AssetRow | null) => {
     const last = asset?.condition?.ratingId
-    return last && offered(last) ? last : (ratings.find((r) => r.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id ?? null)
+    return last && offered(last) ? last : (defaultRating(ratings)?.id ?? null)
   }
 
   /**
@@ -67,7 +68,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   const startingValues = (asset: AssetRow | null, assessorId: number | null): Values => ({
     asset: asset?.state === 'in_storage' ? asset : null,
     employee: people.find((p) => p.id === employeeId) ?? null,
-    ratingId: defaultRating(asset),
+    ratingId: startingRating(asset),
     assessor: people.find((p) => p.id === assessorId) ?? null,
     notes: '',
   })
@@ -222,7 +223,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
                 value={field.state.value}
                 onChange={(asset) => {
                   field.handleChange(asset)
-                  if (asset) form.setFieldValue('ratingId', defaultRating(asset))
+                  if (asset) form.setFieldValue('ratingId', startingRating(asset))
                 }}
                 getKey={(asset) => asset.id}
                 getLabel={(asset) => asset.tag}
@@ -279,7 +280,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
                 label="Condition rating"
                 value={field.state.value}
                 onChange={field.handleChange}
-                options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.name) }))}
+                options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.score) }))}
               />
             </Field>
           )}

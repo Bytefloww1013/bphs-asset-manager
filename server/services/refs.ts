@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 import type { EmployeeRef, Lookups } from '../../shared/types.ts'
 import type { DbLike } from '../db/client.ts'
 import { assetTypes, conditionRatings, employees } from '../db/schema.ts'
@@ -46,10 +46,10 @@ export function loadLookups(db: DbLike): Lookups {
       .orderBy(asc(assetTypes.name))
       .all(),
     conditionRatings: db
-      .select({ id: conditionRatings.id, name: conditionRatings.name, sortOrder: conditionRatings.sortOrder })
+      .select({ id: conditionRatings.id, name: conditionRatings.name, score: conditionRatings.score })
       .from(conditionRatings)
       .where(eq(conditionRatings.isActive, true))
-      .orderBy(asc(conditionRatings.sortOrder))
+      .orderBy(desc(conditionRatings.score))
       .all(),
     employees: db
       .select()

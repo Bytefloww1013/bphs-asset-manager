@@ -1,9 +1,9 @@
-import { asc, eq, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { AssetTypeRow, ConditionRatingRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { assetTypes, conditionRatings } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
-import { conflict, invalid, notFound } from '../lib/errors.ts'
+import { conflict, notFound } from '../lib/errors.ts'
 
 // ---- Asset types ---------------------------------------------------------------
 
@@ -72,9 +72,9 @@ export function deleteAssetType(db: Db, actor: Actor, id: number) {
 
 export function listRatings(db: DbLike): ConditionRatingRow[] {
   return db.all<ConditionRatingRow>(sql`
-    select r.id as id, r.name as name, r.sort_order as sortOrder, r.is_active as isActive, count(c.id) as snapshotCount
+    select r.id as id, r.name as name, r.score as score, r.is_active as isActive, count(c.id) as snapshotCount
     from condition_ratings r left join conditions c on c.rating_id = r.id
-    group by r.id order by r.sort_order`).map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
+    group by r.id order by r.score desc`).map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
 }
 
 function ratingRow(db: DbLike, id: number): ConditionRatingRow {
@@ -88,18 +88,24 @@ function assertRatingNameFree(db: DbLike, name: string, exceptId?: number) {
   if (dup && dup.id !== exceptId) throw conflict('duplicate_name', `A rating named "${name}" already exists.`, { field: 'name' })
 }
 
-export function createRating(db: Db, actor: Actor, name: string): ConditionRatingRow {
+/** Two ratings with one score would be the same condition under two names, and the scale would have no order between them. */
+function assertRatingScoreFree(db: DbLike, score: number, exceptId?: number) {
+  const dup = db.select({ id: conditionRatings.id, name: conditionRatings.name }).from(conditionRatings).where(eq(conditionRatings.score, score)).get()
+  if (dup && dup.id !== exceptId) throw conflict('duplicate_score', `"${dup.name}" already has the score ${score}. Choose another.`, { field: 'score' })
+}
+
+export function createRating(db: Db, actor: Actor, input: { name: string; score: number }): ConditionRatingRow {
   const id = db.transaction((tx) => {
-    assertRatingNameFree(tx, name)
-    const next = (tx.get<{ n: number | null }>(sql`select max(sort_order) as n from condition_ratings`)?.n ?? 0) + 1
-    const row = tx.insert(conditionRatings).values({ name, sortOrder: next }).returning({ id: conditionRatings.id }).get()
-    writeAudit(tx, actor, { action: 'create', entityType: 'conditionrating', entityId: row.id, details: `${name} · sort_order ${next}` })
+    assertRatingNameFree(tx, input.name)
+    assertRatingScoreFree(tx, input.score)
+    const row = tx.insert(conditionRatings).values(input).returning({ id: conditionRatings.id }).get()
+    writeAudit(tx, actor, { action: 'create', entityType: 'conditionrating', entityId: row.id, details: `${input.name} · score ${input.score}` })
     return row.id
   })
   return ratingRow(db, id)
 }
 
-export function updateRating(db: Db, actor: Actor, id: number, input: { name?: string; isActive?: boolean }): ConditionRatingRow {
+export function updateRating(db: Db, actor: Actor, id: number, input: { name?: string; score?: number; isActive?: boolean }): ConditionRatingRow {
   db.transaction((tx) => {
     const current = tx.select().from(conditionRatings).where(eq(conditionRatings.id, id)).get()
     if (!current) throw notFound('Condition rating')
@@ -110,6 +116,11 @@ export function updateRating(db: Db, actor: Actor, id: number, input: { name?: s
       patch.name = input.name
       changes.push(`name: ${current.name} → ${input.name}`)
     }
+    if (input.score !== undefined && input.score !== current.score) {
+      assertRatingScoreFree(tx, input.score, id)
+      patch.score = input.score
+      changes.push(`score: ${current.score} → ${input.score}`)
+    }
     if (input.isActive !== undefined && input.isActive !== current.isActive) {
       patch.isActive = input.isActive
       changes.push(`active: ${current.isActive} → ${input.isActive}`)
@@ -119,20 +130,6 @@ export function updateRating(db: Db, actor: Actor, id: number, input: { name?: s
     writeAudit(tx, actor, { action: 'update', entityType: 'conditionrating', entityId: id, details: changes.join('; ') })
   })
   return ratingRow(db, id)
-}
-
-/** `ids` must list every rating exactly once, best condition first. */
-export function reorderRatings(db: Db, actor: Actor, ids: number[]): ConditionRatingRow[] {
-  db.transaction((tx) => {
-    const all = tx.select({ id: conditionRatings.id }).from(conditionRatings).orderBy(asc(conditionRatings.sortOrder)).all()
-    const known = new Set(all.map((row) => row.id))
-    if (ids.length !== known.size || !ids.every((id) => known.has(id)) || new Set(ids).size !== ids.length) {
-      throw invalid('The new order must list every rating exactly once.')
-    }
-    ids.forEach((id, index) => tx.update(conditionRatings).set({ sortOrder: index + 1 }).where(eq(conditionRatings.id, id)).run())
-    writeAudit(tx, actor, { action: 'update', entityType: 'conditionrating', entityId: null, details: 'scale reordered' })
-  })
-  return listRatings(db)
 }
 
 export function deleteRating(db: Db, actor: Actor, id: number) {

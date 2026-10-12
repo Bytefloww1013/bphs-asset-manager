@@ -594,7 +594,7 @@ describe('employees and CSV import', () => {
 })
 
 describe('lists, users and audit', () => {
-  it('protects types in use, and keeps the rating order the user sets', async () => {
+  it('protects types in use', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
     const { assetTypes, conditionRatings } = await t.lookups(cookie)
@@ -603,11 +603,74 @@ describe('lists, users and audit', () => {
     expect(refused.status).toBe(409)
     expect((await t.call('DELETE', `/api/asset-types/${assetTypes[1]!.id}`, { cookie })).status).toBe(204)
     expect((await t.call('POST', '/api/asset-types', { cookie, body: { name: assetTypes[0]!.name.toUpperCase() } })).status).toBe(409)
+  })
 
-    const ids = conditionRatings.map((r) => r.id).reverse()
-    const order = await t.call('PUT', '/api/condition-ratings/order', { cookie, body: { ids } })
-    expect(order.data.map((r: { id: number }) => r.id)).toEqual(ids)
-    expect((await t.lookups(cookie)).conditionRatings.map((r) => r.id)).toEqual(ids)
+  it('gives each rating a score that sets the order, and lets no two share one', async () => {
+    const t = await setup()
+    const cookie = await t.asAdmin()
+    const scale = async () => (await t.call('GET', '/api/condition-ratings', { cookie })).data.map((r: { name: string; score: number }) => [r.name, r.score])
+    expect(await scale()).toEqual([['New', 100], ['Good', 80], ['Fair', 60], ['Poor', 30], ['Damaged', 10]])
+    expect((await t.call('GET', '/api/lookups', { cookie })).data.conditionRatings.map((r: { score: number }) => r.score)).toEqual([100, 80, 60, 30, 10])
+
+    // A new rating needs a whole score from 1 to 100 that nothing else has.
+    const add = (body: Record<string, unknown>) => t.call('POST', '/api/condition-ratings', { cookie, body })
+    const fields = (res: { data: any }) => res.data.details.fields
+    expect(fields(await add({ name: 'Worn' }))).toEqual({ score: 'Give the rating a score from 1 to 100.' })
+    for (const score of [0, 101, 45.5]) expect(fields(await add({ name: 'Worn', score })), String(score)).toEqual({ score: 'The score must be a whole number from 1 to 100.' })
+    const taken = await add({ name: 'Worn', score: 60 })
+    expect(taken.status).toBe(409)
+    expect(taken.data.error).toBe('duplicate_score')
+    expect(fields(taken)).toEqual({ score: '"Fair" already has the score 60. Choose another.' })
+    const worn = await add({ name: 'Worn', score: 45 })
+    expect(worn.status).toBe(201)
+    expect(worn.data).toMatchObject({ name: 'Worn', score: 45, isActive: true })
+    expect((await scale()).map(([name]: [string]) => name)).toEqual(['New', 'Good', 'Fair', 'Worn', 'Poor', 'Damaged'])
+
+    // Changing a score moves the rating, is refused when taken (also by a deactivated rating), and is audited.
+    const damaged = (await t.call('GET', '/api/condition-ratings', { cookie })).data.find((r: { name: string }) => r.name === 'Damaged')
+    await t.call('PATCH', `/api/condition-ratings/${damaged.id}`, { cookie, body: { isActive: false } })
+    const clash = await t.call('PATCH', `/api/condition-ratings/${worn.data.id}`, { cookie, body: { score: 10 } })
+    expect(clash.data.error).toBe('duplicate_score')
+    expect((await t.call('PATCH', `/api/condition-ratings/${worn.data.id}`, { cookie, body: { score: 45 } })).status).toBe(200)
+    const moved = await t.call('PATCH', `/api/condition-ratings/${worn.data.id}`, { cookie, body: { score: 90 } })
+    expect(moved.data.score).toBe(90)
+    expect((await scale()).map(([name]: [string]) => name)).toEqual(['New', 'Worn', 'Good', 'Fair', 'Poor', 'Damaged'])
+    expect((await t.call('GET', '/api/lookups', { cookie })).data.conditionRatings.map((r: { name: string }) => r.name)).toEqual(['New', 'Worn', 'Good', 'Fair', 'Poor'])
+    const audit = (await t.call('GET', '/api/audit', { cookie: await t.asSuper() })).data.entries.map((e: { details: string }) => e.details)
+    expect(audit).toContain('score: 45 → 90')
+    expect(audit).toContain('Worn · score 45')
+
+    // The old reorder endpoint is gone.
+    expect((await t.call('PUT', '/api/condition-ratings/order', { cookie, body: { ids: [1] } })).status).toBe(404)
+  })
+
+  it('goes by the score, not the name, for the condition watch and the default rating', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const { assetTypes } = await t.lookups(cookie)
+    const ratings = (await t.call('GET', '/api/condition-ratings', { cookie })).data as { id: number; name: string }[]
+    const id = (name: string) => ratings.find((r) => r.name === name)!.id
+    const make = (tag: string, rating: string) => t.call('POST', '/api/assets', { cookie, body: { tag, typeId: assetTypes[0]!.id, conditionRatingId: id(rating) } })
+    for (const [tag, rating] of [['W-1', 'New'], ['W-2', 'Good'], ['W-3', 'Fair'], ['W-4', 'Poor'], ['W-5', 'Damaged']] as const) await make(tag, rating)
+    const watch = async () => (await t.call('GET', '/api/dashboard', { cookie })).data.poorCondition.map((r: { assetTag: string; rating: string }) => `${r.assetTag} ${r.rating}`).sort()
+    expect(await watch()).toEqual(['W-4 Poor', 'W-5 Damaged'])
+
+    // Renamed: still watched. (This emptied the panel when it went by the names "poor" and "damaged".)
+    await t.call('PATCH', `/api/condition-ratings/${id('Poor')}`, { cookie, body: { name: 'Worn out' } })
+    await t.call('PATCH', `/api/condition-ratings/${id('Damaged')}`, { cookie, body: { name: 'Broken' } })
+    expect(await watch()).toEqual(['W-4 Worn out', 'W-5 Broken'])
+
+    // The line is the score: 50 is off the watch, 49 is on it, whatever the rating is called.
+    await t.call('PATCH', `/api/condition-ratings/${id('Poor')}`, { cookie, body: { score: 50 } })
+    expect(await watch()).toEqual(['W-5 Broken'])
+    await t.call('PATCH', `/api/condition-ratings/${id('Fair')}`, { cookie, body: { score: 49 } })
+    expect(await watch()).toEqual(['W-3 Fair', 'W-5 Broken'])
+
+    // A pasted row with no condition gets the rating closest to 80, even after "Good" is renamed.
+    await t.call('PATCH', `/api/condition-ratings/${id('Good')}`, { cookie, body: { name: 'Fine' } })
+    const pasted = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows: [{ tag: 'W-6', type: assetTypes[0]!.name }] } })
+    expect(pasted.data).toMatchObject({ created: 1, errors: [] })
+    expect((await t.call('GET', '/api/assets/tag/W-6', { cookie })).data.asset.condition.rating).toBe('Fine')
   })
 
   it('names the field and the limit when a name is refused', async () => {
@@ -617,7 +680,7 @@ describe('lists, users and audit', () => {
     const user = await t.call('POST', '/api/users', { cookie, body: { name: 'N'.repeat(121), email: 'new.person@bphs.local', role: 'admin' } })
     expect(fields(user)).toEqual({ name: 'Name can be at most 120 characters' })
     expect(fields(await t.call('POST', '/api/asset-types', { cookie, body: { name: 'T'.repeat(61) } }))).toEqual({ name: 'Name can be at most 60 characters' })
-    expect(fields(await t.call('POST', '/api/condition-ratings', { cookie, body: { name: 'R'.repeat(41) } }))).toEqual({ name: 'Name can be at most 40 characters' })
+    expect(fields(await t.call('POST', '/api/condition-ratings', { cookie, body: { name: 'R'.repeat(41), score: 50 } }))).toEqual({ name: 'Name can be at most 40 characters' })
 
     const duplicate = await t.call('POST', '/api/asset-types', { cookie, body: { name: 'laptop' } })
     expect(duplicate.status).toBe(409)

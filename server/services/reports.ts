@@ -1,8 +1,9 @@
 import { sql } from 'drizzle-orm'
-import { OVERDUE_DAYS } from '../../shared/constants.ts'
+import { OVERDUE_DAYS, RATING_ATTENTION_BELOW, RATING_SCORE_MAX } from '../../shared/constants.ts'
 import type { AuditEntry, AuditPage, DashboardData } from '../../shared/types.ts'
 import type { AuditQuery } from '../../shared/schemas.ts'
 import type { DbLike } from '../db/client.ts'
+import { conditionRatings } from '../db/schema.ts'
 import { listOpenAssignments } from './assignments.ts'
 import { loadAssetRows } from './assets.ts'
 
@@ -78,6 +79,8 @@ export function buildDashboard(db: DbLike): DashboardData {
     holders.set(assignment.employee.id, entry)
   }
 
+  const scores = new Map(db.select({ id: conditionRatings.id, score: conditionRatings.score }).from(conditionRatings).all().map((r) => [r.id, r.score]))
+
   const recent = db
     .all<AuditRaw>(sql`
       select id, occurred_at as occurredAt, actor, action, entity_type as entityType, entity_id as entityId, details
@@ -97,7 +100,7 @@ export function buildDashboard(db: DbLike): DashboardData {
     })),
     topHolders: [...holders.values()].sort((a, b) => b.count - a.count || a.employee.name.localeCompare(b.employee.name)).slice(0, 5),
     poorCondition: rows
-      .filter((row) => row.state !== 'retired' && row.condition && ['poor', 'damaged'].includes(row.condition.rating.toLowerCase()))
+      .filter((row) => row.state !== 'retired' && row.condition && (scores.get(row.condition.ratingId) ?? RATING_SCORE_MAX) < RATING_ATTENTION_BELOW)
       .slice(0, 6)
       .map((row) => ({
         assetId: row.id,

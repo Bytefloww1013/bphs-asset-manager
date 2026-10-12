@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { TrendingDown } from 'lucide-react'
 import { useState } from 'react'
+import { defaultRating } from '@shared/constants.ts'
 import type { AssignmentRow, EmployeeRef, ReturnBulkResult } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
@@ -163,7 +164,7 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
           {(field) => {
             // Read the live field value here: values read in the parent render are stale until it re-renders.
             const chosen = ratings.find((rating) => rating.id === field.state.value)
-            const dropped = Boolean(chosen && issueRating && chosen.sortOrder > issueRating.sortOrder)
+            const dropped = Boolean(chosen && issueRating && chosen.score < issueRating.score)
             return (
             <Field
               label="Return condition rating"
@@ -182,7 +183,7 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
                 label="Return condition rating"
                 value={field.state.value}
                 onChange={field.handleChange}
-                options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.name) }))}
+                options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.score) }))}
               />
             </Field>
             )
@@ -232,7 +233,7 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
 
   const form = useForm({
     defaultValues: {
-      ratingId: ratings.find((rating) => rating.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id ?? null,
+      ratingId: defaultRating(ratings)?.id ?? null,
       assessor: people.find((person) => person.id === user.employeeId) ?? null,
       notes: '',
     } as Values,
@@ -323,7 +324,7 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
                   label="Return condition rating"
                   value={field.state.value}
                   onChange={field.handleChange}
-                  options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.name) }))}
+                  options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.score) }))}
                 />
               </Field>
             )}

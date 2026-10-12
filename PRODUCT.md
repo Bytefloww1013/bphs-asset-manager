@@ -37,7 +37,7 @@ Thirteen screens from the design spec: Log in; Forced password change; Dashboard
 
 Terminology to preserve: Asset, Asset tag (`BPHS-0141`), Assignment, Condition (rating + notes snapshot), Issue, Return, Retire, Archive, Employee, User, Audit Log, Super Admin, Admin, In Service, In storage, Days out.
 
-Rules the UI must express: delete is Super Admin only and only for records with no history; Admin sees delete controls disabled with the reason; Users screen returns 403 for Admin; Audit Log is read-only for everyone; Condition Ratings are ordered by `sort_order` and that order drives the rating scale in Issue and Return.
+Rules the UI must express: delete is Super Admin only and only for records with no history; Admin sees delete controls disabled with the reason; Users screen returns 403 for Admin; Audit Log is read-only for everyone; Condition Ratings each carry a unique `score` from 1 to 100 (100 is as good as new) that sets the order of the rating scale in Issue and Return, the badge colour, the default rating and the overview's condition watch (below 50); the score is shown only on the Lists screen.
 
 Undecided: what "BPHS" expands to; whether bulk Return needs per-asset condition; reporting/export beyond CSV of Active Assignments and Audit Log; email or notification features (none assumed).
 

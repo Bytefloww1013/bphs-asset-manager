@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, ROLES } from './constants.ts'
+import { AUDIT_ACTIONS, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 
 const id = z.number().int().positive()
@@ -129,12 +129,17 @@ export const assetTypeUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-export const ratingCreateSchema = z.object({ name: requiredText(40, 'Name') })
+const ratingScore = z
+  .number({ error: 'Give the rating a score from 1 to 100.' })
+  .int('The score must be a whole number from 1 to 100.')
+  .min(RATING_SCORE_MIN, 'The score must be a whole number from 1 to 100.')
+  .max(RATING_SCORE_MAX, 'The score must be a whole number from 1 to 100.')
+export const ratingCreateSchema = z.object({ name: requiredText(40, 'Name'), score: ratingScore })
 export const ratingUpdateSchema = z.object({
   name: requiredText(40, 'Name').optional(),
+  score: ratingScore.optional(),
   isActive: z.boolean().optional(),
 })
-export const ratingOrderSchema = z.object({ ids: z.array(id).min(1) })
 
 // ---- Users ------------------------------------------------------------------------
 export const userCreateSchema = z.object({
