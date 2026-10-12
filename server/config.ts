@@ -3,21 +3,39 @@ import path from 'node:path'
 const bool = (value: string | undefined, fallback: boolean) =>
   value === undefined ? fallback : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
 
-const int = (value: string | undefined, fallback: number) => {
-  const parsed = Number.parseInt(value ?? '', 10)
-  return Number.isFinite(parsed) ? parsed : fallback
+/** A whole number from the environment. A value that is set but unusable stops the server, rather than quietly becoming something else. */
+function int(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number, max: number) {
+  const value = env[name]?.trim()
+  if (!value) return fallback
+  const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN
+  if (!(parsed >= min && parsed <= max)) throw new Error(`${name} must be a whole number from ${min} to ${max}, but it is "${value}".`)
+  return parsed
 }
 
-export const config = {
-  env: process.env.NODE_ENV ?? 'development',
-  port: int(process.env.PORT, 3000),
-  dataDir: path.resolve(process.env.DATA_DIR ?? './data'),
-  /** Absolute path of the built SPA, served by this process in production. */
-  webDir: path.resolve(process.env.WEB_DIR ?? './dist/web'),
-  cookieSecure: bool(process.env.COOKIE_SECURE, false),
-  sessionIdleHours: int(process.env.SESSION_IDLE_HOURS, 12),
-  bootstrapEmail: (process.env.BOOTSTRAP_ADMIN_EMAIL ?? 'admin@bphs.local').toLowerCase(),
-  bootstrapName: process.env.BOOTSTRAP_ADMIN_NAME ?? 'Super Admin',
-} as const
+export function readConfig(env: NodeJS.ProcessEnv) {
+  return {
+    env: env.NODE_ENV ?? 'development',
+    port: int(env, 'PORT', 3000, 1, 65535),
+    dataDir: path.resolve(env.DATA_DIR ?? './data'),
+    /** Absolute path of the built SPA, served by this process in production. */
+    webDir: path.resolve(env.WEB_DIR ?? './dist/web'),
+    cookieSecure: bool(env.COOKIE_SECURE, false),
+    /** At least an hour: with 0 or less every session would have expired the moment it was made, and nobody could sign in. */
+    sessionIdleHours: int(env, 'SESSION_IDLE_HOURS', 12, 1, 8760),
+    bootstrapEmail: (env.BOOTSTRAP_ADMIN_EMAIL ?? 'admin@bphs.local').toLowerCase(),
+    bootstrapName: env.BOOTSTRAP_ADMIN_NAME ?? 'Super Admin',
+  } as const
+}
+
+function load() {
+  try {
+    return readConfig(process.env)
+  } catch (error) {
+    console.error(`Configuration error: ${(error as Error).message}`)
+    process.exit(1)
+  }
+}
+
+export const config = load()
 
 export const isProduction = config.env === 'production'

@@ -50,7 +50,7 @@ Configuration (environment variables, set in `docker-compose.yml`):
 | `PORT` | `3000` | Port inside the container |
 | `DATA_DIR` | `/data` | Where `bphs.sqlite` lives. Keep it on a local disk, not a network share (SQLite WAL) |
 | `COOKIE_SECURE` | `false` | Set `true` only when users reach the app over HTTPS. On plain HTTP a Secure cookie is never stored and nobody can sign in |
-| `SESSION_IDLE_HOURS` | `12` | Idle time before a session expires |
+| `SESSION_IDLE_HOURS` | `12` | Idle time before a session expires. A whole number of hours, 1 or more; the server will not start with anything else |
 | `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_NAME` | `admin@bphs.local`, `Super Admin` | Used once, when the database has no users |
 
 Put a reverse proxy with TLS in front if you want HTTPS (and then set `COOKIE_SECURE=true`).
