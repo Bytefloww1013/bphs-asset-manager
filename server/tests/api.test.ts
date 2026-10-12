@@ -590,6 +590,28 @@ describe('lists, users and audit', () => {
     expect((await t.call('GET', '/api/auth/me', { cookie })).status).toBe(200)
   })
 
+  it('will not change your own role, even with another Super Admin present', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const promoted = await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { role: 'super_admin' } })
+    expect(promoted.data.role).toBe('super_admin')
+
+    const own = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { role: 'admin' } })
+    expect(own.status).toBe(409)
+    expect(own.data.error).toBe('self_role')
+    expect(findUser(t.db, 'p.raghunathan@bphs.local')?.role).toBe('super_admin')
+
+    // The rest of your own account can still be edited, and sending the role you already have is not a change.
+    const renamed = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { name: 'Priya R.', role: 'super_admin' } })
+    expect(renamed.status).toBe(200)
+    expect(renamed.data.name).toBe('Priya R.')
+
+    // The other Super Admin can still do it.
+    const other = await t.asAdmin()
+    const demoted = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie: other, body: { role: 'admin' } })
+    expect(demoted.data.role).toBe('admin')
+  })
+
   it('will not deactivate yourself or the last Super Admin, and a lock can be cleared', async () => {
     const t = await setup()
     const cookie = await t.asSuper()

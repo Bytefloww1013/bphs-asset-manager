@@ -83,6 +83,7 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
       changes.push(`name: ${current.name} → ${input.name}`)
     }
     if (input.role !== undefined && input.role !== current.role) {
+      if (id === actor.id) throw conflict('self_role', 'You cannot change your own role.')
       if (current.role === 'super_admin' && activeSuperAdmins(tx) <= 1 && current.isActive) {
         throw conflict('last_super_admin', 'There must always be at least one active Super Admin.')
       }
