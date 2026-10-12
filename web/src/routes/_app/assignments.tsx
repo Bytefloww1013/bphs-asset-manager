@@ -85,6 +85,8 @@ function AssignmentsPage() {
   const [returning, setReturning] = useState<AssignmentRow[] | null>(null)
   const table = useGrid({ data, columns, getRowId, searchText, search, selectable: true, initialSorting: [{ id: 'daysOut', desc: true }] })
   const selected = table.getSelectedRowModel().rows.map((row) => row.original)
+  // A search hides rows without unticking them, so say how many of the ticked rows are out of sight.
+  const hidden = selected.length - table.getFilteredSelectedRowModel().rows.length
 
   return (
     <div className="flex flex-col gap-6">
@@ -122,7 +124,7 @@ function AssignmentsPage() {
           <SearchInput className="w-full sm:w-96" aria-label="Search assignments" placeholder="Search tag, employee, department" value={search} onChange={(event) => setSearch(event.target.value)} />
           {selected.length > 0 && (
             <p className="text-sm text-ink-3">
-              {plural(selected.length, 'row')} selected.{' '}
+              {plural(selected.length, 'row')} selected{hidden > 0 && `, ${hidden} hidden by the search`}.{' '}
               <button type="button" className="font-medium text-accent hover:text-accent-hover" onClick={() => table.resetRowSelection()}>
                 Clear
               </button>

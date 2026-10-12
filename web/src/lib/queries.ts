@@ -27,14 +27,12 @@ export const meQuery = queryOptions({
       throw error
     }
   },
-  staleTime: 60_000,
   retry: false,
 })
 
 export const lookupsQuery = queryOptions({
   queryKey: ['lookups'],
   queryFn: () => api.get<Lookups>('/lookups'),
-  staleTime: 5 * 60_000,
 })
 
 export const dashboardQuery = queryOptions({

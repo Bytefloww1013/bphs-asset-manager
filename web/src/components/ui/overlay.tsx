@@ -106,6 +106,8 @@ export function ConfirmDialog({
                 try {
                   await onConfirm()
                   onOpenChange(false)
+                } catch {
+                  // Whoever asked has already reported it (useWrite shows a toast). The dialog stays open so it can be tried again.
                 } finally {
                   setBusy(false)
                 }

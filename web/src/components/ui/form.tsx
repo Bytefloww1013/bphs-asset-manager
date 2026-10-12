@@ -203,7 +203,7 @@ export function Segmented<T extends string | number>({
   )
 }
 
-/** Tab-like filter chips with counts, for narrowing a list in place. */
+/** Filter chips with counts, for narrowing a list in place. One is always pressed. They look like tabs but are toggle buttons: there are no panels behind them. */
 export function FilterTabs<T extends string>({
   value,
   onChange,
@@ -216,15 +216,14 @@ export function FilterTabs<T extends string>({
   label: string
 }) {
   return (
-    <div role="tablist" aria-label={label} className="inline-flex flex-wrap gap-1 rounded-control bg-sunken p-1">
+    <div role="group" aria-label={label} className="inline-flex flex-wrap gap-1 rounded-control bg-sunken p-1">
       {options.map((option) => {
         const selected = option.value === value
         return (
           <button
             key={option.value}
             type="button"
-            role="tab"
-            aria-selected={selected}
+            aria-pressed={selected}
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex h-7 items-center gap-1.5 rounded-[6px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-150',

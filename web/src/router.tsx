@@ -26,6 +26,9 @@ function handleAuthFailure(error: unknown) {
     setSessionEnded(false)
     queryClient.clear()
     void router.navigate({ to: '/password-change' })
+  } else if (error.code === 'forbidden') {
+    // The role was changed while this tab was open. Ask again who this is, so the menus stop offering what the server refuses.
+    void queryClient.invalidateQueries({ queryKey: meQuery.queryKey })
   }
 }
 

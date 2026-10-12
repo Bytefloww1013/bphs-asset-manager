@@ -19,7 +19,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { can } from '@shared/permissions.ts'
 import { ROLE_LABEL } from '@shared/constants.ts'
 import { cn } from '@/lib/cn.ts'
@@ -163,6 +163,13 @@ function UserMenu() {
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const [drawer, setDrawer] = useState(false)
+  // The drawer is only drawn below `lg`. Close it when the window grows past that, or it would stay open, unseen, holding the page.
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1024px)')
+    const close = () => wide.matches && setDrawer(false)
+    wide.addEventListener('change', close)
+    return () => wide.removeEventListener('change', close)
+  }, [])
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[90] focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop">
