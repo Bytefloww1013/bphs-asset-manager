@@ -10,7 +10,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { config } from './config.ts'
 import type { Db } from './db/client.ts'
 import { requirePermission, type Env } from './http.ts'
-import { HttpError } from './lib/errors.ts'
+import { describeError } from './lib/errors.ts'
 import { authenticate } from './middleware.ts'
 import { assetRoutes, assignmentRoutes } from './routes/assets.ts'
 import { authRoutes } from './routes/auth.ts'
@@ -82,19 +82,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
   app.route('/api', api)
 
   app.onError((error, c) => {
-    if (error instanceof HttpError) {
-      return c.json({ error: error.code, message: error.message, details: error.details }, error.status as 400)
-    }
     if (error instanceof HTTPException) return error.getResponse()
-    const code = (error as { code?: string }).code ?? ''
-    if (code === 'SQLITE_CONSTRAINT_UNIQUE' && /assignments\.asset_id/.test(error.message)) {
-      return c.json({ error: 'asset_already_assigned', message: 'This asset is already assigned.' }, 409)
-    }
-    if (code.startsWith('SQLITE_CONSTRAINT')) {
-      return c.json({ error: 'conflict', message: 'That change conflicts with existing records.' }, 409)
-    }
-    console.error(error)
-    return c.json({ error: 'internal_error', message: 'Something went wrong on the server.' }, 500)
+    const problem = describeError(error)
+    if (problem.status >= 500) console.error(error)
+    return c.json({ error: problem.code, message: problem.message, details: problem.details }, problem.status as 400)
   })
 
   app.all('/api/*', (c) => c.json({ error: 'not_found', message: 'Not found.' }, 404))

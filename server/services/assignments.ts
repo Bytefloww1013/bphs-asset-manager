@@ -4,7 +4,7 @@ import type { AssignmentRow, ReturnBulkResult } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { assetTypes, assets, assignments, conditions, employees, users } from '../db/schema.ts'
 import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
-import { HttpError, conflict, notFound } from '../lib/errors.ts'
+import { HttpError, conflict, notFound, rowFailure } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
 import { employeeRef, fullName, assessorFor, requireActiveRating, requireEmployee } from './refs.ts'
 
@@ -186,13 +186,13 @@ export function returnAssignment(db: Db, actor: Actor, id: number, input: Return
 /** Each Assignment is returned on its own so one stale row never blocks the rest. */
 export function returnMany(db: Db, actor: Actor, input: ReturnBulkInput): ReturnBulkResult {
   const result: ReturnBulkResult = { returned: [], failed: [] }
+  const log = { done: false }
   for (const id of input.ids) {
     try {
       db.transaction((tx) => returnInTx(tx, actor, id, input))
       result.returned.push(id)
     } catch (error) {
-      if (error instanceof HttpError) result.failed.push({ id, message: error.message })
-      else throw error
+      result.failed.push({ id, message: rowFailure(error, log) })
     }
   }
   return result

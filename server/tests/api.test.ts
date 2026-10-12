@@ -537,6 +537,49 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(edited.data).toMatchObject({ tag: 'OLD/TAG', serial: 'SN-1' })
   })
 
+  it('reports a row that fails for an unforeseen reason and carries on with the rest of a bulk request', async () => {
+    const { t, cookie, good, make } = await seed()
+    // Two faults the service does not check for: a constraint raised by the database, and an error that is nobody's rule at all.
+    t.sqlite.exec(`
+      create trigger test_refuse before insert on assets when new.tag = 'BOOM-409' begin select raise(abort, 'refused by a trigger'); end;
+      create trigger test_break before insert on assets when new.tag = 'BOOM-500' begin select json('{'); end;`)
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const pasted = await t.call('POST', '/api/assets/bulk', {
+        cookie,
+        body: { rows: ['OK-1', 'BOOM-409', 'BOOM-500', 'BOOM-500', 'OK-2'].map((tag) => ({ tag, type: 'Laptop' })) },
+      })
+      expect(pasted.status).toBe(200)
+      expect(pasted.data).toEqual({
+        created: 2,
+        errors: [
+          { row: 2, message: 'That change conflicts with existing records.' },
+          { row: 3, message: 'Something went wrong on the server.' },
+          { row: 4, message: 'Something went wrong on the server.' },
+        ],
+      })
+      // Our own fault is logged for whoever runs the server, once, however many rows hit it.
+      expect(logged).toHaveBeenCalledTimes(1)
+      const tags = ((await t.call('GET', '/api/assets', { cookie })).data as { tag: string }[]).map((a) => a.tag)
+      expect(tags).toEqual(expect.arrayContaining(['OK-1', 'OK-2']))
+      expect(tags.some((tag) => tag.startsWith('BOOM'))).toBe(false)
+
+      // The same for a bulk return: the middle one cannot be closed, the two around it are.
+      const issued: number[] = []
+      for (const tag of ['R-1', 'R-2', 'R-3']) {
+        const asset = await make(tag)
+        issued.push((await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id } })).data.id)
+      }
+      t.sqlite.exec(`create trigger test_stuck before update on assignments when old.id = ${issued[1]} begin select raise(abort, 'refused by a trigger'); end;`)
+      const returned = await t.call('POST', '/api/assignments/return-bulk', { cookie, body: { ids: issued, conditionRatingId: good.id } })
+      expect(returned.status).toBe(200)
+      expect(returned.data).toEqual({ returned: [issued[0], issued[2]], failed: [{ id: issued[1], message: 'That change conflicts with existing records.' }] })
+      expect(((await t.call('GET', '/api/assignments', { cookie })).data as { id: number }[]).map((a) => a.id)).toEqual([issued[1]])
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
   it('says how many rows a paste may hold in words, not in the validator\'s', async () => {
     const { t, cookie } = await seed()
     const none = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows: [] } })

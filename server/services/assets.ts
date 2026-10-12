@@ -12,7 +12,7 @@ import type {
 import type { Db, DbLike } from '../db/client.ts'
 import { assetTypes, assets, conditionRatings, conditions, employees } from '../db/schema.ts'
 import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
-import { HttpError, conflict, invalid, notFound } from '../lib/errors.ts'
+import { conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { describeRowProblem } from '../lib/rows.ts'
 import { daysBetween } from '../lib/time.ts'
 import { issueInTx } from './assignments.ts'
@@ -285,6 +285,7 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
   const fallbackRating = defaultRating(ratings)
 
   const result: AssetBulkResult = { created: 0, errors: [] }
+  const log = { done: false }
   input.rows.forEach((row, index) => {
     const line = index + 1
     const fail = (message: string) => result.errors.push({ row: line, message })
@@ -319,8 +320,7 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
       )
       result.created += 1
     } catch (error) {
-      if (error instanceof HttpError) fail(error.message)
-      else throw error
+      fail(rowFailure(error, log))
     }
   })
   return result
