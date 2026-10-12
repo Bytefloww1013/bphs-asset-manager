@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
 import { csrf } from 'hono/csrf'
 import { logger } from 'hono/logger'
@@ -21,6 +22,13 @@ export interface AppOptions {
   serveWeb?: boolean
   quiet?: boolean
 }
+
+// The largest thing anyone sends is the 2 MB CSV on the import page, wrapped in JSON; signing in and changing a password send two short strings.
+const MAX_BODY_BYTES = 3 * 1024 * 1024
+const MAX_AUTH_BODY_BYTES = 16 * 1024
+
+const limitBody = (maxSize: number) =>
+  bodyLimit({ maxSize, onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413) })
 
 export function createApp(db: Db, options: AppOptions = {}) {
   const app = new Hono<Env>()
@@ -51,6 +59,9 @@ export function createApp(db: Db, options: AppOptions = {}) {
     await next()
     c.header('Cache-Control', 'no-store')
   })
+  // A body is refused before anything reads it, signed in or not: the smaller limit first, so it answers for the sign-in routes.
+  app.use('/api/auth/*', limitBody(MAX_AUTH_BODY_BYTES))
+  app.use('/api/*', limitBody(MAX_BODY_BYTES))
 
   app.get('/api/health', (c) => c.json({ ok: true }))
   app.route('/api/auth', authRoutes(db))

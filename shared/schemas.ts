@@ -15,19 +15,23 @@ const optionalText = (max: number, label: string) =>
     .optional()
 const requiredText = (max: number, label: string) => z.string().trim().min(1, 'Required').max(max, tooLong(label, max))
 
+// The server hashes whatever it is sent before it can say no, so a password has a ceiling; nobody types anything near it.
+const MAX_PASSWORD = 256
+
 export const password = z
   .string()
+  .max(MAX_PASSWORD, tooLong('Password', MAX_PASSWORD))
   .refine(isStrongPassword, 'Use at least 8 characters with upper and lower case, a number and a special character.')
 
 // ---- Auth ---------------------------------------------------------------------
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1, 'Enter your email'),
-  password: z.string().min(1, 'Enter your password'),
+  password: z.string().min(1, 'Enter your password').max(MAX_PASSWORD, tooLong('Password', MAX_PASSWORD)),
 })
 export type LoginInput = z.infer<typeof loginSchema>
 
 export const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1, 'Enter your current password'),
+  currentPassword: z.string().min(1, 'Enter your current password').max(MAX_PASSWORD, tooLong('Current password', MAX_PASSWORD)),
   newPassword: password,
 })
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>

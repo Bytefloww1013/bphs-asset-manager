@@ -88,6 +88,55 @@ describe('authentication', () => {
     expect(changed.status).toBe(200)
     expect((await t.call('GET', '/api/assets', { cookie })).status).toBe(200)
   })
+
+  it('refuses a password over 256 characters when signing in and when choosing one, without counting it as a wrong guess', async () => {
+    const t = await setup()
+    const tooLong = 'Aa1!' + 'x'.repeat(253)
+    const signIn = await t.signIn('m.oyelaran@bphs.local', tooLong)
+    expect(signIn.status).toBe(422)
+    expect(signIn.data.details.fields).toEqual({ password: 'Password can be at most 256 characters' })
+    expect(findUser(t.db, 'm.oyelaran@bphs.local')?.failedLogins).toBe(0)
+
+    const cookie = await t.asAdmin()
+    const change = (newPassword: string, currentPassword = PASSWORD) =>
+      t.call('POST', '/api/auth/password-change', { cookie, body: { currentPassword, newPassword } })
+    const refused = await change(tooLong)
+    expect(refused.status).toBe(422)
+    expect(refused.data.details.fields.newPassword).toBe('Password can be at most 256 characters')
+    expect((await change('Brand-new-1!', tooLong)).data.details.fields.currentPassword).toBe('Current password can be at most 256 characters')
+
+    // 256 itself is allowed, and works to sign in.
+    const longest = 'Aa1!' + 'x'.repeat(252)
+    expect((await change(longest)).status).toBe(200)
+    expect((await t.signIn('m.oyelaran@bphs.local', longest)).status).toBe(200)
+  })
+})
+
+describe('request limits', () => {
+  it('refuses a body over the limit, and a far smaller one before sign-in', async () => {
+    const t = await setup()
+    const cookie = await t.asAdmin()
+    const post = (url: string, body: string, headers: Record<string, string> = {}) =>
+      t.app.request(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body })
+
+    // Nothing sent to sign in comes near 16 KB.
+    const bloated = await post('/api/auth/login', JSON.stringify({ email: 'm.oyelaran@bphs.local', password: 'x'.repeat(20_000) }))
+    expect(bloated.status).toBe(413)
+    expect(await bloated.json()).toMatchObject({ error: 'payload_too_large' })
+    // A declared length is enough: the body is not read to find out.
+    expect((await post('/api/auth/login', '{}', { 'content-length': String(30 * 1024 * 1024) })).status).toBe(413)
+    expect((await post('/api/auth/login', JSON.stringify({ email: 'm.oyelaran@bphs.local', password: PASSWORD }))).status).toBe(200)
+
+    // Everywhere else the limit leaves room for the 2 MB CSV the import page accepts, and not much more.
+    const header = 'employee_id,first_name,last_name\n'
+    const biggest = JSON.stringify({ csv: `${header}E-1,Rosa,${'D'.repeat(1_900_000)}\n` })
+    expect((await post('/api/employees/import/preview', biggest, { cookie })).status).toBe(200)
+    const tooBig = await post('/api/employees/import/preview', JSON.stringify({ csv: 'a'.repeat(4 * 1024 * 1024) }), { cookie })
+    expect(tooBig.status).toBe(413)
+    expect(((await tooBig.json()) as { message: string }).message).toMatch(/too large/i)
+    // The same before sign-in: refused as too large, not read and answered with a 401.
+    expect((await post('/api/assets', JSON.stringify({ tag: 'x'.repeat(4 * 1024 * 1024) }))).status).toBe(413)
+  })
 })
 
 describe('assets, assignments and the one-active-assignment rule', () => {

@@ -2,6 +2,7 @@ import { useForm } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { Check, KeyRound, X } from 'lucide-react'
+import { z } from 'zod'
 import { checkPassword } from '@shared/password.ts'
 import { passwordChangeSchema } from '@shared/schemas.ts'
 import type { SessionUser } from '@shared/types.ts'
@@ -42,7 +43,7 @@ function PasswordChangePage() {
   const form = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirm: '' },
     validators: {
-      onSubmit: passwordChangeSchema.extend({ confirm: passwordChangeSchema.shape.currentPassword }).refine((v) => v.newPassword === v.confirm, {
+      onSubmit: passwordChangeSchema.extend({ confirm: z.string().min(1, 'Enter the new password again') }).refine((v) => v.newPassword === v.confirm, {
         message: 'The two passwords do not match.',
         path: ['confirm'],
       }),
