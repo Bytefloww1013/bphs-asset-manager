@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, Download, ScrollText } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AUDIT_ACTIONS, type AuditAction } from '@shared/constants.ts'
 import type { AuditEntry } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -16,11 +16,14 @@ import { auditCsvUrl, auditQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
 const PAGE = 50
+// The longest search the server accepts.
+const MAX_SEARCH = 100
 
 interface AuditSearch {
   action?: AuditAction
   from?: string
   to?: string
+  q?: string
   page?: number
 }
 
@@ -31,6 +34,7 @@ export const Route = createFileRoute('/_app/audit')({
     action: AUDIT_ACTIONS.includes(search.action as AuditAction) ? (search.action as AuditAction) : undefined,
     from: isDate(search.from) ? search.from : undefined,
     to: isDate(search.to) ? search.to : undefined,
+    q: typeof search.q === 'string' && search.q.trim() ? search.q.trim().slice(0, MAX_SEARCH) : undefined,
     page: Number(search.page) > 1 ? Math.floor(Number(search.page)) : undefined,
   }),
   component: AuditPage,
@@ -50,21 +54,37 @@ function AuditPage() {
   usePageTitle('Audit log')
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const [q, setQ] = useState('')
-  const [debounced, setDebounced] = useState('')
+  // A new filter starts on the first page. The search lives in the URL with the other filters so that it does too, in the
+  // same step; the box holds what is being typed, and follows the URL only when something else changes it (the Back button).
+  const setFilter = (patch: AuditSearch, replace = false) => void navigate({ search: (prev) => ({ ...prev, ...patch, page: undefined }), replace })
+  const [q, setQ] = useState(search.q ?? '')
+  const typing = useRef(false)
   useEffect(() => {
-    const timer = setTimeout(() => setDebounced(q.trim()), 300)
+    if (!typing.current && (search.q ?? '') !== q.trim()) setQ(search.q ?? '')
+  }, [search.q])
+  useEffect(() => {
+    typing.current = q.trim() !== (search.q ?? '')
+    if (!typing.current) return
+    const timer = setTimeout(() => {
+      typing.current = false
+      setFilter({ q: q.trim() || undefined }, true)
+    }, 300)
     return () => clearTimeout(timer)
   }, [q])
 
   const page = search.page ?? 1
-  const filters = { action: search.action, from: search.from, to: search.to, q: debounced || undefined }
+  const filters = { action: search.action, from: search.from, to: search.to, q: search.q }
   const { data, isPending, isPlaceholderData } = useQuery(auditQuery({ ...filters, limit: PAGE, offset: (page - 1) * PAGE }))
   const table = useGrid({ data: data?.entries ?? [], columns, getRowId, pageSize: PAGE })
 
   const total = data?.total ?? 0
   const pages = Math.max(1, Math.ceil(total / PAGE))
-  const setFilter = (patch: AuditSearch) => void navigate({ search: (prev) => ({ ...prev, ...patch, page: undefined }) })
+  // A link to a page the log does not have (or has no longer) goes to the last one. Only an answer to the current question can
+  // say so: while a new filter loads, the total shown is the previous filter's.
+  const pastTheEnd = !!data && !isPlaceholderData && page > pages
+  useEffect(() => {
+    if (pastTheEnd) void navigate({ search: (prev) => ({ ...prev, page: pages > 1 ? pages : undefined }), replace: true })
+  }, [pastTheEnd, pages])
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,7 +114,7 @@ function AuditPage() {
               To
               <Input type="date" className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
             </label>
-            <SearchInput className="w-full sm:w-64" aria-label="Search the audit log" placeholder="Search details or user" value={q} onChange={(event) => setQ(event.target.value)} />
+            <SearchInput className="w-full sm:w-64" aria-label="Search the audit log" placeholder="Search details or user" maxLength={MAX_SEARCH} value={q} onChange={(event) => setQ(event.target.value)} />
           </div>
         </Toolbar>
         <div className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
@@ -102,10 +122,10 @@ function AuditPage() {
             table={table}
             label="Audit log"
             noun="entries"
-            loading={isPending}
+            loading={isPending || pastTheEnd}
             empty={<EmptyState icon={ScrollText} title="No entries match" description="Widen the date range or clear the filters." />}
             footer={
-              total > 0 ? (
+              total > 0 && !pastTheEnd ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-canvas/60 px-4 py-2.5 text-sm text-ink-3">
                   <p className="tabular-nums" aria-live="polite">
                     {((page - 1) * PAGE + 1).toLocaleString()}–{Math.min(page * PAGE, total).toLocaleString()} of {total.toLocaleString()} entries
