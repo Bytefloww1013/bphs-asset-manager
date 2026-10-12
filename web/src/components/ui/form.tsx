@@ -113,6 +113,8 @@ const segmentTone: Record<Tone, string> = {
   bad: 'border-bad-line bg-bad-soft text-bad',
 }
 
+const isSubmitButton = (element: Element): element is HTMLButtonElement => element instanceof HTMLButtonElement && element.type === 'submit'
+
 /** A radio group drawn as a row of chips. Selection shows a check, so it never relies on colour alone. */
 export function Segmented<T extends string | number>({
   id,
@@ -129,6 +131,8 @@ export function Segmented<T extends string | number>({
   label?: string
   className?: string
 }) {
+  // A value that matches no chip, such as a rating that has since been switched off, leaves nothing selected. Tab must still reach the group.
+  const anySelected = options.some((option) => option.value === value)
   return (
     <div
       id={id}
@@ -136,12 +140,25 @@ export function Segmented<T extends string | number>({
       aria-label={label}
       className={cn('flex flex-wrap gap-1.5', className)}
       onKeyDown={(event) => {
+        if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          // Enter on a native radio button submits its form instead of pressing it, and a chip is a button that would be pressed.
+          // Press the form's default button, as Enter does in a text field, so a disabled or busy one blocks it here too.
+          event.preventDefault()
+          const form = (event.target as HTMLButtonElement).form
+          if (form) Array.from(form.elements).find(isSubmitButton)?.click()
+          return
+        }
         if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(event.key)) return
         event.preventDefault()
-        const index = options.findIndex((option) => option.value === value)
+        // Step from the chip that has focus, which is the selected one or, when none is, the first. Focus then follows the selection.
+        const chips = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role=radio]'))
+        const from = chips.indexOf(event.target as HTMLElement)
         const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1
-        const next = options[(index + step + options.length) % options.length]
-        if (next) onChange(next.value)
+        const to = from < 0 ? (step > 0 ? 0 : options.length - 1) : (from + step + options.length) % options.length
+        const next = options[to]
+        if (!next) return
+        onChange(next.value)
+        chips[to]?.focus()
       }}
     >
       {options.map((option, index) => {
@@ -152,7 +169,7 @@ export function Segmented<T extends string | number>({
             type="button"
             role="radio"
             aria-checked={selected}
-            tabIndex={selected || (value === null && index === 0) ? 0 : -1}
+            tabIndex={selected || (!anySelected && index === 0) ? 0 : -1}
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex h-9 items-center gap-1.5 rounded-control border px-3 text-sm font-medium transition-colors duration-150',
