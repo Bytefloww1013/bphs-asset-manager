@@ -27,7 +27,7 @@ Other scripts:
 | `bun run test` | API integration tests (auth, lockout, one-active-assignment, CSV import, permissions, audit) against an in-memory database |
 | `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
 | `bun run build` | Builds the SPA to `dist/web` |
-| `bun run start` | Production mode: API serves the built SPA from `dist/web` |
+| `bun run start` | Production mode: builds the SPA first, so it is never an older one, then the API serves it from `dist/web` |
 | `bun run db:generate` | Generate a new SQL migration from `server/db/schema.ts` (Drizzle Kit) |
 | `bun run db:backup` | Safe online backup of the SQLite file |
 | `bun run admin <command>` | Break-glass account recovery: `list`, `unlock <email>`, `reset-password <email>` (see the runbook) |

@@ -13,6 +13,7 @@
     "dev:api": "node --watch --env-file-if-exists=.env server/index.ts",
     "dev:web": "vite",
     "build": "vite build",
+    "prestart": "vite build",
     "start": "NODE_ENV=production node --env-file-if-exists=.env server/index.ts",
     "typecheck": "tsc -p web/tsconfig.json && tsc -p server/tsconfig.json",
     "test": "vitest run",
