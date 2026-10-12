@@ -69,8 +69,8 @@ export const assetBulkSchema = z.object({
         holder: z.string().trim().optional(),
       }),
     )
-    .min(1)
-    .max(500),
+    .min(1, 'Paste at least one row')
+    .max(500, 'Paste at most 500 rows at a time'),
 })
 export type AssetBulkInput = z.infer<typeof assetBulkSchema>
 

@@ -275,6 +275,20 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(tags).not.toContain('BPHS-0301')
     expect(stored.every((a) => a.tag.length <= 40 && (a.serial ?? '').length <= 80)).toBe(true)
   })
+
+  it('says how many rows a paste may hold in words, not in the validator\'s', async () => {
+    const { t, cookie } = await seed()
+    const none = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows: [] } })
+    expect(none.status).toBe(422)
+    expect(none.data.message).toBe('Paste at least one row')
+    expect(none.data.details.fields.rows).toBe('Paste at least one row')
+
+    const rows = Array.from({ length: 501 }, (_, i) => ({ tag: `BPHS-${String(i + 1000)}`, type: 'Laptop' }))
+    const many = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows } })
+    expect(many.status).toBe(422)
+    expect(many.data.message).toBe('Paste at most 500 rows at a time')
+    expect(many.data.details.fields.rows).toBe('Paste at most 500 rows at a time')
+  })
 })
 
 describe('employees and CSV import', () => {

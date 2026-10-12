@@ -35,6 +35,15 @@ function parsePaste(text: string) {
   return rows.map(([tag = '', type = '', serial = '', condition = '', holder = '']) => ({ tag, type, serial, condition, holder }))
 }
 
+/** What the server (or this form) refused: a sentence for the alert, and a message per field. */
+interface Problem {
+  message: string
+  fields: Record<string, string>
+}
+
+// The fields of this form that show their own message; anything else the server says goes in the alert.
+const SHOWN_UNDER_FIELDS = ['tag', 'typeId', 'serial', 'conditionRatingId']
+
 export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const user = useUser()
   const toast = useToast()
@@ -50,7 +59,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const [serial, setSerial] = useState('')
   const [ratingId, setRatingId] = useState('')
   const [holder, setHolder] = useState<EmployeeRef | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
   const [skipped, setSkipped] = useState<AssetBulkResult['errors']>([])
 
   const suggestion = useMemo(() => nextTag(assets.map((asset) => asset.tag)), [assets])
@@ -58,14 +67,23 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const goodId = ratings.find((r) => r.name.toLowerCase() === 'good')?.id ?? ratings[0]?.id
   const effectiveRating = ratingId || String(goodId ?? '')
 
+  const elsewhere = Object.entries(problem?.fields ?? {}).filter(([name]) => !SHOWN_UNDER_FIELDS.includes(name))
+  const alert = problem && (Object.keys(problem.fields).length === 0 ? problem.message : elsewhere.map(([, message]) => message).join(' '))
+
   const add = useWrite((body: Record<string, unknown>) => api.post<AssetRow>('/assets', body), { silent: true })
   const bulk = useWrite((rows: ReturnType<typeof parsePaste>) => api.post<AssetBulkResult>('/assets/bulk', { rows }), { silent: true })
 
+  function refuse(e: unknown, fallback: string) {
+    const refused = e instanceof ApiError ? { message: e.message, fields: e.fields } : { message: fallback, fields: {} }
+    setProblem(refused)
+    if (refused.fields.tag) tagRef.current?.focus()
+  }
+
   async function commit() {
-    setError(null)
+    setProblem(null)
     setSkipped([])
     if (!tag.trim()) {
-      setError('Enter an asset tag.')
+      setProblem({ message: 'Enter an asset tag.', fields: { tag: 'Enter an asset tag.' } })
       tagRef.current?.focus()
       return
     }
@@ -85,12 +103,12 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       setHolder(null)
       tagRef.current?.focus()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not add the asset.')
+      refuse(e, 'Could not add the asset.')
     }
   }
 
   async function paste(text: string) {
-    setError(null)
+    setProblem(null)
     const rows = parsePaste(text)
     if (rows.length === 0) return
     try {
@@ -98,7 +116,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       setSkipped(result.errors)
       toast({ tone: result.created ? 'ok' : 'warn', title: result.created ? `Added ${plural(result.created, 'asset')}` : 'Nothing was added', description: result.errors.length ? `${plural(result.errors.length, 'row')} skipped` : undefined })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not add those rows.')
+      refuse(e, 'Could not add those rows.')
     }
   }
 
@@ -118,7 +136,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
           void commit()
         }}
       >
-        <Field label="Asset tag" error={error && !error.startsWith('Could not') ? error : null} className="lg:col-span-2">
+        <Field label="Asset tag" error={problem?.fields.tag} className="lg:col-span-2">
           <Input
             ref={tagRef}
             mono
@@ -135,7 +153,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             }}
           />
         </Field>
-        <Field label="Type" className="lg:col-span-2">
+        <Field label="Type" error={problem?.fields.typeId} className="lg:col-span-2">
           <Select value={effectiveType} onChange={(event) => setTypeId(event.target.value)}>
             {types.map((type) => (
               <option key={type.id} value={type.id}>
@@ -144,10 +162,10 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             ))}
           </Select>
         </Field>
-        <Field label="Serial number" optional className="lg:col-span-2">
+        <Field label="Serial number" optional error={problem?.fields.serial} className="lg:col-span-2">
           <Input mono value={serial} onChange={(event) => setSerial(event.target.value)} autoComplete="off" />
         </Field>
-        <Field label="Condition" className="lg:col-span-2">
+        <Field label="Condition" error={problem?.fields.conditionRatingId} className="lg:col-span-2">
           <Select value={effectiveRating} onChange={(event) => setRatingId(event.target.value)}>
             {ratings.map((rating) => (
               <option key={rating.id} value={rating.id}>
@@ -173,9 +191,9 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
           </Button>
         </div>
       </form>
-      {error?.startsWith('Could not') && (
+      {alert && (
         <Alert tone="bad" className="mt-4">
-          {error}
+          {alert}
         </Alert>
       )}
       {skipped.length > 0 && (
