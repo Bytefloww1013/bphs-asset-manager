@@ -19,36 +19,38 @@ interface AuditRaw {
 
 const toEntry = (row: AuditRaw): AuditEntry => ({ ...row, occurredAt: new Date(row.occurredAt).toISOString() })
 
+/**
+ * Who an entry is shown as acting. Entries record the actor's email. Older ones recorded only the part before the @, which two
+ * accounts can share, and the log cannot be rewritten; those are read with the email of the account they point to.
+ */
+const ACTOR = sql`case when instr(l.actor, '@') = 0 and u.email is not null then u.email else l.actor end`
+const AUDIT_FROM = sql`from audit_log l left join users u on u.id = l.user_id`
+const AUDIT_COLUMNS = sql`l.id as id, l.occurred_at as occurredAt, ${ACTOR} as actor, l.action as action, l.entity_type as entityType, l.entity_id as entityId, l.details as details`
+
 function auditWhere(query: Omit<AuditQuery, 'limit' | 'offset'>) {
   const parts = [sql`1 = 1`]
-  if (query.action) parts.push(sql`action = ${query.action}`)
-  if (query.from) parts.push(sql`occurred_at >= ${Date.parse(query.from)}`)
-  if (query.to) parts.push(sql`occurred_at < ${Date.parse(query.to)}`)
+  if (query.action) parts.push(sql`l.action = ${query.action}`)
+  if (query.from) parts.push(sql`l.occurred_at >= ${Date.parse(query.from)}`)
+  if (query.to) parts.push(sql`l.occurred_at < ${Date.parse(query.to)}`)
   if (query.q) {
     const like = `%${query.q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
-    parts.push(sql`(details like ${like} escape '\\' or actor like ${like} escape '\\' or entity_type like ${like} escape '\\')`)
+    parts.push(sql`(l.details like ${like} escape '\\' or ${ACTOR} like ${like} escape '\\' or l.entity_type like ${like} escape '\\')`)
   }
   return sql.join(parts, sql` and `)
 }
 
 export function listAudit(db: DbLike, query: AuditQuery): AuditPage {
   const where = auditWhere(query)
-  const total = db.get<{ n: number }>(sql`select count(*) as n from audit_log where ${where}`)?.n ?? 0
+  const total = db.get<{ n: number }>(sql`select count(*) as n ${AUDIT_FROM} where ${where}`)?.n ?? 0
   const entries = db
-    .all<AuditRaw>(sql`
-      select id, occurred_at as occurredAt, actor, action, entity_type as entityType, entity_id as entityId, details
-      from audit_log where ${where}
-      order by occurred_at desc, id desc limit ${query.limit} offset ${query.offset}`)
+    .all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} where ${where} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`)
     .map(toEntry)
   return { total, entries }
 }
 
 export function listAuditForExport(db: DbLike, query: Omit<AuditQuery, 'limit' | 'offset'>): AuditEntry[] {
   return db
-    .all<AuditRaw>(sql`
-      select id, occurred_at as occurredAt, actor, action, entity_type as entityType, entity_id as entityId, details
-      from audit_log where ${auditWhere(query)}
-      order by occurred_at desc, id desc limit 50000`)
+    .all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} where ${auditWhere(query)} order by l.occurred_at desc, l.id desc limit 50000`)
     .map(toEntry)
 }
 
@@ -81,11 +83,7 @@ export function buildDashboard(db: DbLike): DashboardData {
 
   const scores = new Map(db.select({ id: conditionRatings.id, score: conditionRatings.score }).from(conditionRatings).all().map((r) => [r.id, r.score]))
 
-  const recent = db
-    .all<AuditRaw>(sql`
-      select id, occurred_at as occurredAt, actor, action, entity_type as entityType, entity_id as entityId, details
-      from audit_log order by occurred_at desc, id desc limit 8`)
-    .map(toEntry)
+  const recent = db.all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} order by l.occurred_at desc, l.id desc limit 8`).map(toEntry)
 
   return {
     totals,

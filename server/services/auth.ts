@@ -5,12 +5,11 @@ import type { SessionUser } from '../../shared/types.ts'
 import { config } from '../config.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { auditLog, sessions, users } from '../db/schema.ts'
-import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
+import { writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError } from '../lib/errors.ts'
 import { hashPassword, verifyDecoy, verifyPassword } from '../lib/password.ts'
 
 export interface AuthUser extends Actor {
-  email: string
   mustChangePassword: boolean
 }
 
@@ -33,7 +32,6 @@ function toAuthUser(row: typeof users.$inferSelect): AuthUser {
     id: row.id,
     name: row.name,
     email: row.email,
-    label: actorLabel(row.email),
     role: row.role as Role,
     employeeId: row.employeeId,
     mustChangePassword: row.mustChangePassword,
@@ -175,6 +173,6 @@ export async function changePassword(
   db.transaction((tx) => {
     tx.update(users).set({ passwordHash, mustChangePassword: false }).where(eq(users.id, user.id)).run()
     deleteUserSessions(tx, user.id, keepToken)
-    writeAudit(tx, user, { action: 'update', entityType: 'user', entityId: user.id, details: 'password changed' })
+    writeAudit(tx, user, { action: 'update', entityType: 'user', entityId: user.id, details: `${row.email} · password changed` })
   })
 }

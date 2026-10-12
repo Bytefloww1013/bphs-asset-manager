@@ -55,7 +55,7 @@ if (command === 'list') {
   const user = findUser(db, emailArg)
   db.transaction((tx) => {
     tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
-    audit(tx, user.id, 'locked_until cleared via server CLI')
+    audit(tx, user.id, `${user.email} · locked_until cleared via server CLI`)
   })
   console.log(`Unlocked ${user.email}.`)
 } else if (command === 'reset-password') {
@@ -65,7 +65,7 @@ if (command === 'list') {
   db.transaction((tx) => {
     tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
     deleteUserSessions(tx, user.id)
-    audit(tx, user.id, 'password reset via server CLI · must change on next login')
+    audit(tx, user.id, `${user.email} · password reset via server CLI · must change on next login`)
   })
   console.log(`Password reset for ${user.email}.`)
   console.log(`  one-time password: ${oneTimePassword}   (they must change it at the next sign-in)`)

@@ -3,7 +3,7 @@ import type { IssueInput, ReturnBulkInput, ReturnInput } from '../../shared/sche
 import type { AssignmentRow, ReturnBulkResult } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { assetTypes, assets, assignments, conditions, employees, users } from '../db/schema.ts'
-import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
+import { writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError, conflict, notFound, rowFailure } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
 import { employeeRef, fullName, assessorFor, requireActiveRating, requireEmployee } from './refs.ts'
@@ -47,7 +47,7 @@ function toRow(row: OpenRow, now: Date): AssignmentRow {
     issuedAt: issuedAt.toISOString(),
     issueRating: row.issueRating,
     daysOut: daysBetween(issuedAt, now),
-    issuedBy: actorLabel(row.issuedByEmail),
+    issuedBy: row.issuedByEmail,
   }
 }
 
@@ -144,11 +144,11 @@ export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input
       : undefined
     // Not always a colleague a moment ago: it can be the same person in another tab, or a sheet left open since yesterday.
     const byYou = closer?.id === actor.id
-    const who = byYou ? ' by you' : closer ? ` by ${actorLabel(closer.email)}` : ''
+    const who = byYou ? ' by you' : closer ? ` by ${closer.email}` : ''
     throw new HttpError(409, 'already_returned', `${asset.tag} has already been returned${who}.`, {
       assignmentId: assignment.id,
       returnedAt: assignment.returnedAt.toISOString(),
-      returnedBy: closer ? actorLabel(closer.email) : null,
+      returnedBy: closer?.email ?? null,
       returnedByYou: byYou,
     })
   }

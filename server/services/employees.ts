@@ -107,7 +107,7 @@ export function updateEmployee(db: Db, actor: Actor, id: number, input: Employee
     track('jobTitle', 'job_title')
     if (changes.length === 0) return
     tx.update(employees).set(patch).where(eq(employees.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'employee', entityId: id, details: changes.join('; ') })
+    writeAudit(tx, actor, { action: 'update', entityType: 'employee', entityId: id, details: `employee_id=${patch.code ?? current.code} · ${changes.join('; ')}` })
   })
   return getEmployee(db, id)
 }

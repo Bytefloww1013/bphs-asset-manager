@@ -7,6 +7,7 @@ import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { generateOneTimePassword, hashPassword } from '../lib/password.ts'
 import { deleteUserSessions } from './auth.ts'
+import { fullName } from './refs.ts'
 
 function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
   const locked = row.lockedUntil !== null && row.lockedUntil > now
@@ -46,6 +47,12 @@ function assertEmployee(db: DbLike, id: number | null | undefined) {
   if (!db.select({ id: employees.id }).from(employees).where(eq(employees.id, id)).get()) {
     throw invalid('Choose an existing employee to link.', { field: 'employeeId' })
   }
+}
+
+/** An employee as the audit log names one: ID and name, or "none". */
+function employeeLabel(db: DbLike, id: number | null) {
+  const row = id == null ? undefined : db.select().from(employees).where(eq(employees.id, id)).get()
+  return row ? `${row.code} ${fullName(row.firstName, row.lastName)}` : 'none'
 }
 
 /** A new account starts with a one-time password and must change it on first login. */
@@ -93,11 +100,11 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
     if (input.employeeId !== undefined && (input.employeeId ?? null) !== current.employeeId) {
       assertEmployee(tx, input.employeeId)
       patch.employeeId = input.employeeId ?? null
-      changes.push('linked employee changed')
+      changes.push(`linked employee: ${employeeLabel(tx, current.employeeId)} → ${employeeLabel(tx, patch.employeeId)}`)
     }
     if (changes.length === 0) return
     tx.update(users).set(patch).where(eq(users.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: changes.join('; ') })
+    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${current.email} · ${changes.join('; ')}` })
   })
   return toRow(requireUser(db, id))
 }
@@ -112,19 +119,19 @@ export async function resetPassword(db: Db, actor: Actor, id: number): Promise<U
   const oneTimePassword = generateOneTimePassword()
   const passwordHash = await hashPassword(oneTimePassword)
   db.transaction((tx) => {
-    requireUser(tx, id)
+    const target = requireUser(tx, id)
     tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, id)).run()
     deleteUserSessions(tx, id)
-    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: 'password reset · must change on next login' })
+    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${target.email} · password reset · must change on next login` })
   })
   return { user: toRow(requireUser(db, id)), oneTimePassword }
 }
 
 export function clearLock(db: Db, actor: Actor, id: number): UserRow {
   db.transaction((tx) => {
-    requireUser(tx, id)
+    const target = requireUser(tx, id)
     tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: 'locked_until cleared' })
+    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${target.email} · locked_until cleared` })
   })
   return toRow(requireUser(db, id))
 }
@@ -141,7 +148,7 @@ export function setActive(db: Db, actor: Actor, id: number, active: boolean): Us
       deleteUserSessions(tx, id)
     }
     tx.update(users).set({ isActive: active }).where(and(eq(users.id, id))).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: active ? 'reactivated' : 'deactivated' })
+    writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${current.email} · ${active ? 'reactivated' : 'deactivated'}` })
   })
   return toRow(requireUser(db, id))
 }

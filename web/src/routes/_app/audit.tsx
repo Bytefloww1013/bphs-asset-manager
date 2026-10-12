@@ -64,8 +64,9 @@ const columns = [
   }),
   c.accessor('actor', { header: 'User', cell: (info) => <span className="font-medium">{info.getValue()}</span>, enableSorting: false, meta: { hideBelow: 'sm', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
   c.accessor('action', { header: 'Action', cell: (info) => <ActionBadge action={info.getValue()} />, enableSorting: false, meta: { cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
-  c.accessor(recordOf, { id: 'entity', header: 'Record', cell: (info) => <Mono className="text-ink-2">{info.getValue()}</Mono>, enableSorting: false, meta: { hideBelow: 'md', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
-  c.accessor('details', { header: 'Details', cell: (info) => <span className="block max-w-[34rem] truncate text-ink-2" title={info.getValue()}>{info.getValue() || '—'}</span>, enableSorting: false, meta: { hideBelow: 'lg' } }),
+  c.accessor(recordOf, { id: 'entity', header: 'Record', cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>, enableSorting: false, meta: { hideBelow: 'md', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
+  // Wrapped, not cut short: an entry names the record and each old and new value, and the log is where that is read.
+  c.accessor('details', { header: 'Details', cell: (info) => <span className="block max-w-[44rem] leading-5 text-ink-2 [overflow-wrap:anywhere]">{info.getValue() || '—'}</span>, enableSorting: false, meta: { hideBelow: 'lg' } }),
 ]
 const getRowId = (row: AuditEntry) => String(row.id)
 

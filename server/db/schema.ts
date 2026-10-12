@@ -154,7 +154,7 @@ export const auditLog = sqliteTable(
     id: integer('id').primaryKey({ autoIncrement: true }),
     occurredAt: ms('occurred_at').notNull(),
     userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
-    /** Snapshot of the actor's short name so history survives renames and deactivation. */
+    /** Snapshot of the actor's email so history survives renames and deactivation. Entries from before October 2026 hold only the part before the @. */
     actor: text('actor').notNull(),
     action: text('action').$type<AuditAction>().notNull(),
     entityType: text('entity_type').notNull(),

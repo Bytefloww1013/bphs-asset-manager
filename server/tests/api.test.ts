@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.ts'
 import { DEFAULT_RATINGS, DEFAULT_TYPES, ensureDefaultLists } from '../bootstrap.ts'
 import { createDb, runMigrations } from '../db/client.ts'
-import { assetTypes, assets, auditLog, conditionRatings, sessions, users } from '../db/schema.ts'
+import { assetTypes, assets, auditLog, conditionRatings, employees, sessions, users } from '../db/schema.ts'
 import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
 
@@ -393,18 +393,18 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     const late = await t.call('POST', `/api/assignments/${issued.data.id}/return`, { cookie, body: { conditionRatingId: good.id } })
     expect(late.status).toBe(409)
     expect(late.data.error).toBe('already_returned')
-    expect(late.data.message).toBe('BPHS-0141 has already been returned by m.oyelaran.')
-    expect(late.data.details).toMatchObject({ returnedBy: 'm.oyelaran', returnedByYou: false })
+    expect(late.data.message).toBe('BPHS-0141 has already been returned by m.oyelaran@bphs.local.')
+    expect(late.data.details).toMatchObject({ returnedBy: 'm.oyelaran@bphs.local', returnedByYou: false })
     expect(Date.parse(late.data.details.returnedAt)).toBeLessThanOrEqual(Date.now())
 
     // The same person again, from another tab say: it was not "another user".
     const again = await t.call('POST', `/api/assignments/${issued.data.id}/return`, { cookie: other, body: { conditionRatingId: good.id } })
     expect(again.status).toBe(409)
     expect(again.data.message).toBe('BPHS-0141 has already been returned by you.')
-    expect(again.data.details).toMatchObject({ returnedBy: 'm.oyelaran', returnedByYou: true })
+    expect(again.data.details).toMatchObject({ returnedBy: 'm.oyelaran@bphs.local', returnedByYou: true })
     // A bulk return passes the same sentence on for the row it could not close.
     const bulk = await t.call('POST', '/api/assignments/return-bulk', { cookie, body: { ids: [issued.data.id], conditionRatingId: good.id } })
-    expect(bulk.data).toEqual({ returned: [], failed: [{ id: issued.data.id, message: 'BPHS-0141 has already been returned by m.oyelaran.' }] })
+    expect(bulk.data).toEqual({ returned: [], failed: [{ id: issued.data.id, message: 'BPHS-0141 has already been returned by m.oyelaran@bphs.local.' }] })
   })
 
   it('the database itself refuses two open assignments for one asset', async () => {
@@ -781,7 +781,7 @@ describe('lists, users and audit', () => {
     expect((await scale()).map(([name]: [string]) => name)).toEqual(['New', 'Worn', 'Good', 'Fair', 'Poor', 'Damaged'])
     expect((await t.call('GET', '/api/lookups', { cookie })).data.conditionRatings.map((r: { name: string }) => r.name)).toEqual(['New', 'Worn', 'Good', 'Fair', 'Poor'])
     const audit = (await t.call('GET', '/api/audit', { cookie: await t.asSuper() })).data.entries.map((e: { details: string }) => e.details)
-    expect(audit).toContain('score: 45 → 90')
+    expect(audit).toContain('Worn · score: 45 → 90')
     expect(audit).toContain('Worn · score 45')
 
     // The old reorder endpoint is gone.
@@ -904,6 +904,71 @@ describe('lists, users and audit', () => {
     const off = await t.call('POST', `/api/users/${t.adminUser.id}/deactivate`, { cookie })
     expect(off.data.state).toBe('deactivated')
     expect((await t.signIn('m.oyelaran@bphs.local')).status).toBe(401)
+  })
+
+  it('records who acted by email and names the record and its old and new values in each entry', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const entries = async (query = '') => (await t.call('GET', `/api/audit${query}`, { cookie })).data.entries as { actor: string; action: string; entityType: string; details: string }[]
+    const latest = async () => (await entries())[0]!
+
+    // Two accounts whose emails share the part before the @ are two actors.
+    const one = await t.call('POST', '/api/users', { cookie, body: { name: 'Pat One', email: 'pat@a.example', role: 'admin' } })
+    const two = await t.call('POST', '/api/users', { cookie, body: { name: 'Pat Two', email: 'pat@b.example', role: 'admin' } })
+    for (const made of [one, two]) {
+      const signedIn = await t.signIn(made.data.user.email, made.data.oneTimePassword)
+      expect((await t.call('POST', '/api/auth/password-change', { cookie: signedIn.cookie, body: { currentPassword: made.data.oneTimePassword, newPassword: 'Brand-new-1!' } })).status).toBe(200)
+      expect((await t.call('POST', '/api/asset-types', { cookie: signedIn.cookie, body: { name: `Type of ${made.data.user.name}` } })).status).toBe(201)
+    }
+    const types = await entries('?q=Type%20of')
+    expect(types.map((e) => `${e.actor} added ${e.details}`).sort()).toEqual(['pat@a.example added Type of Pat One', 'pat@b.example added Type of Pat Two'])
+    expect((await entries('?q=pat%40a.example')).every((e) => e.actor === 'pat@a.example' || e.details.includes('pat@a.example'))).toBe(true)
+    expect((await t.call('GET', '/api/audit.csv?q=Type%20of%20Pat%20Two', { cookie })).data).toContain('pat@b.example,create,assettype')
+
+    // Changes to an account say which account, and what it was linked to before and after.
+    const other = t.db.insert(employees).values({ code: 'E-2000', firstName: 'Lee', lastName: 'Okoro' }).returning().get()
+    const patId = one.data.user.id
+    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { name: 'Pat First', role: 'super_admin', employeeId: other.id } })
+    expect(await latest()).toMatchObject({ actor: 'p.raghunathan@bphs.local', details: 'pat@a.example · name: Pat One → Pat First; role: admin → super_admin; linked employee: none → E-2000 Lee Okoro' })
+    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { employeeId: t.person.id } })
+    expect((await latest()).details).toBe('pat@a.example · linked employee: E-2000 Lee Okoro → E-1042 Priya Raghunathan')
+    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { employeeId: null } })
+    expect((await latest()).details).toBe('pat@a.example · linked employee: E-1042 Priya Raghunathan → none')
+    await t.call('POST', `/api/users/${patId}/reset-password`, { cookie })
+    expect((await latest()).details).toBe('pat@a.example · password reset · must change on next login')
+    await t.call('POST', `/api/users/${patId}/clear-lock`, { cookie })
+    expect((await latest()).details).toBe('pat@a.example · locked_until cleared')
+    await t.call('POST', `/api/users/${patId}/deactivate`, { cookie })
+    expect((await latest()).details).toBe('pat@a.example · deactivated')
+    await t.call('POST', `/api/users/${patId}/reactivate`, { cookie })
+    expect((await latest()).details).toBe('pat@a.example · reactivated')
+    expect((await entries('?q=password%20changed')).map((e) => e.details).sort()).toEqual(['pat@a.example · password changed', 'pat@b.example · password changed'])
+
+    // So do changes to an employee and to the two lists.
+    await t.call('PATCH', `/api/employees/${other.id}`, { cookie, body: { code: 'E-2001', department: 'Ops' } })
+    expect((await latest()).details).toBe('employee_id=E-2001 · employee_id: E-2000 → E-2001; department: — → Ops')
+    const { assetTypes: typeList, conditionRatings: ratingList } = await t.lookups(cookie)
+    await t.call('PATCH', `/api/asset-types/${typeList[0]!.id}`, { cookie, body: { isActive: false } })
+    expect((await latest()).details).toBe(`${typeList[0]!.name} · active: true → false`)
+    await t.call('PATCH', `/api/condition-ratings/${ratingList[0]!.id}`, { cookie, body: { name: 'Mint' } })
+    expect((await latest()).details).toBe(`Mint · name: ${ratingList[0]!.name} → Mint`)
+
+    // An entry written before emails were recorded holds only the part before the @. The log cannot be rewritten, so it is read
+    // with the email of the account it points to; an entry with no account behind it is read as it was written.
+    t.db.insert(auditLog).values({ occurredAt: new Date(), userId: t.adminUser.id, actor: 'm.oyelaran', action: 'create', entityType: 'asset', entityId: 1, details: 'an old entry' }).run()
+    t.db.insert(auditLog).values({ occurredAt: new Date(), userId: null, actor: 'server-cli', action: 'update', entityType: 'user', entityId: 1, details: 'an old entry from the server' }).run()
+    expect((await entries('?q=an%20old%20entry')).map((e) => e.actor).sort()).toEqual(['m.oyelaran@bphs.local', 'server-cli'])
+    expect((await entries('?q=oyelaran%40bphs')).map((e) => e.details)).toContain('an old entry')
+    expect(t.sqlite.prepare("select actor from audit_log where details = 'an old entry'").get()).toEqual({ actor: 'm.oyelaran' })
+    expect((await t.call('GET', '/api/dashboard', { cookie })).data.recent.find((e: { details: string }) => e.details === 'an old entry').actor).toBe('m.oyelaran@bphs.local')
+
+    // The same email is shown wherever a person is named for what they did.
+    const { conditionRatings } = await t.lookups(cookie)
+    const asset = (await t.call('POST', '/api/assets', { cookie, body: { tag: 'WHO-1', typeId: typeList[1]!.id, conditionRatingId: conditionRatings[0]!.id, holderId: t.person.id } })).data
+    expect((await t.call('GET', '/api/assignments', { cookie })).data[0].issuedBy).toBe('p.raghunathan@bphs.local')
+    const detail = (await t.call('GET', `/api/assets/tag/${asset.tag}`, { cookie })).data
+    expect(detail.history[0].issuedBy).toBe('p.raghunathan@bphs.local')
+    expect(detail.conditions[0].recordedBy).toBe('p.raghunathan@bphs.local')
   })
 
   it('the audit log is append-only at the database level', async () => {

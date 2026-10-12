@@ -121,7 +121,7 @@ const FLEET: [string, number, string, string][] = [
 
 const actors = [priya!, marcus!]
 const audit = (d: DbLike, at: Date, who: (typeof actors)[number], action: 'create' | 'issue' | 'return' | 'update', entityType: string, entityId: number, details: string) =>
-  d.insert(auditLog).values({ occurredAt: at, userId: who.id, actor: who.email.split('@')[0]!, action, entityType, entityId, details }).run()
+  d.insert(auditLog).values({ occurredAt: at, userId: who.id, actor: who.email, action, entityType, entityId, details }).run()
 
 const serial = (prefix: string) => `${prefix}${int(1000, 9999)}${String.fromCharCode(65 + int(0, 25))}${String.fromCharCode(65 + int(0, 25))}${int(10, 99)}`
 

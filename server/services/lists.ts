@@ -63,7 +63,7 @@ export function updateAssetType(db: Db, actor: Actor, id: number, input: { name?
     }
     if (changes.length === 0) return
     tx.update(assetTypes).set(patch).where(eq(assetTypes.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'assettype', entityId: id, details: changes.join('; ') })
+    writeAudit(tx, actor, { action: 'update', entityType: 'assettype', entityId: id, details: `${patch.name ?? current.name} · ${changes.join('; ')}` })
   })
   return typeRow(db, id)
 }
@@ -140,7 +140,7 @@ export function updateRating(db: Db, actor: Actor, id: number, input: { name?: s
     }
     if (changes.length === 0) return
     tx.update(conditionRatings).set(patch).where(eq(conditionRatings.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'conditionrating', entityId: id, details: changes.join('; ') })
+    writeAudit(tx, actor, { action: 'update', entityType: 'conditionrating', entityId: id, details: `${patch.name ?? current.name} · ${changes.join('; ')}` })
   })
   return ratingRow(db, id)
 }

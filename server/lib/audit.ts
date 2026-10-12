@@ -2,17 +2,13 @@ import type { AuditAction } from '../../shared/constants.ts'
 import type { DbLike } from '../db/client.ts'
 import { auditLog } from '../db/schema.ts'
 
-/** Who is doing something. `label` is the short name written to the audit log. */
+/** Who is doing something. Their email is what the audit log records: it is unique, and the part before the @ is not. */
 export interface Actor {
   id: number
-  label: string
+  email: string
   name: string
   role: 'admin' | 'super_admin'
   employeeId: number | null
-}
-
-export function actorLabel(email: string): string {
-  return email.split('@')[0] ?? email
 }
 
 export interface AuditInput {
@@ -29,7 +25,7 @@ export function writeAudit(db: DbLike, actor: Actor, entry: AuditInput) {
     .values({
       occurredAt: entry.at ?? new Date(),
       userId: actor.id,
-      actor: actor.label,
+      actor: actor.email,
       action: entry.action,
       entityType: entry.entityType,
       entityId: entry.entityId,

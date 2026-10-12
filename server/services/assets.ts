@@ -11,7 +11,7 @@ import type {
 } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { assetTypes, assets, conditionRatings, conditions, employees } from '../db/schema.ts'
-import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
+import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { describeRowProblem } from '../lib/rows.ts'
 import { daysBetween } from '../lib/time.ts'
@@ -174,8 +174,8 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
         returnedAt: returnedAt ? returnedAt.toISOString() : null,
         issueRating: row.issueRating,
         returnRating: row.returnRating,
-        issuedBy: actorLabel(row.issuedBy),
-        returnedBy: row.returnedBy ? actorLabel(row.returnedBy) : null,
+        issuedBy: row.issuedBy,
+        returnedBy: row.returnedBy,
         daysHeld: daysBetween(issuedAt, returnedAt ?? now),
       }
     })
@@ -207,7 +207,7 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
         rating: row.rating,
         notes: row.notes,
         assessedBy: row.first && row.last ? fullName(row.first, row.last) : null,
-        recordedBy: actorLabel(row.recordedBy),
+        recordedBy: row.recordedBy,
         recordedAt: new Date(row.recordedAt).toISOString(),
         assignmentId: row.assignmentId,
       }),
