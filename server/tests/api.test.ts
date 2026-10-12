@@ -705,9 +705,31 @@ describe('lists, users and audit', () => {
     await t.call('POST', '/api/asset-types', { cookie, body: { name: 'Dock' } })
     expect(() => t.sqlite.prepare("update audit_log set details = 'tampered'").run()).toThrow(/append-only/)
     expect(() => t.sqlite.prepare('delete from audit_log').run()).toThrow(/append-only/)
+
+    // Nor can an entry be renumbered, handed to someone else, or swapped for a new one under the same id.
+    const first = t.sqlite.prepare('select * from audit_log order by id limit 1').get() as { id: number; user_id: number; details: string }
+    const refused = [
+      `update audit_log set id = 999999 where id = ${first.id}`,
+      `update audit_log set user_id = ${t.adminUser.id} where id = ${first.id}`,
+      `update or replace audit_log set details = 'tampered' where id = ${first.id}`,
+      `insert or replace into audit_log (id, occurred_at, actor, action, entity_type, details) values (${first.id}, 0, 'x', 'create', 'x', 'swapped')`,
+      `replace into audit_log (id, occurred_at, actor, action, entity_type, details) values (${first.id}, 0, 'x', 'create', 'x', 'swapped')`,
+      `insert into audit_log (id, occurred_at, actor, action, entity_type, details) values (${first.id}, 0, 'x', 'create', 'x', 'swapped')`,
+    ]
+    for (const statement of refused) expect(() => t.sqlite.prepare(statement).run(), statement).toThrow(/append-only|UNIQUE/)
+    expect(t.sqlite.prepare('select * from audit_log where id = ?').get(first.id)).toEqual(first)
+
+    // Still let through: new entries, and (below) the foreign key clearing user_id when that user is deleted.
+    const before = (t.sqlite.prepare('select count(*) as n from audit_log').get() as { n: number }).n
+    await t.call('POST', '/api/asset-types', { cookie, body: { name: 'Cable' } })
+    expect((t.sqlite.prepare('select count(*) as n from audit_log').get() as { n: number }).n).toBe(before + 1)
     const csv = await t.app.request('/api/audit.csv', { headers: { cookie } })
     expect(csv.headers.get('content-type')).toMatch(/text\/csv/)
     expect(await csv.text()).toContain('assettype')
+
+    t.sqlite.prepare('delete from sessions').run()
+    t.sqlite.prepare('delete from users where id = ?').run(t.superUser.id)
+    expect(t.sqlite.prepare('select user_id, details from audit_log where id = ?').get(first.id)).toEqual({ user_id: null, details: first.details })
   })
 
   it('filters the audit log by the instants the viewer asks for, whatever zone the server is in', async () => {
