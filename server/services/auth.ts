@@ -51,8 +51,11 @@ export function createSession(db: DbLike, userId: number, now = new Date()) {
   return { token, expiresAt }
 }
 
-/** Resolve a cookie token to its user, sliding the expiry forward. Null if unknown, expired or deactivated. */
-export function findSession(db: DbLike, token: string, now = new Date()): AuthUser | null {
+/**
+ * Resolve a cookie token to its user, sliding the expiry forward. Null if unknown, expired or deactivated.
+ * `extendedTo` is the new expiry when this lookup moved it, which the cookie in the browser has to follow.
+ */
+export function findSession(db: DbLike, token: string, now = new Date()): { user: AuthUser; extendedTo: Date | null } | null {
   const id = sha256(token)
   const row = db
     .select({ session: sessions, user: users })
@@ -61,10 +64,12 @@ export function findSession(db: DbLike, token: string, now = new Date()): AuthUs
     .where(and(eq(sessions.id, id), gt(sessions.expiresAt, now), eq(users.isActive, true)))
     .get()
   if (!row) return null
+  let extendedTo: Date | null = null
   if (now.getTime() - row.session.lastSeenAt.getTime() > 5 * MINUTE) {
-    db.update(sessions).set({ lastSeenAt: now, expiresAt: sessionExpiry(now) }).where(eq(sessions.id, id)).run()
+    extendedTo = sessionExpiry(now)
+    db.update(sessions).set({ lastSeenAt: now, expiresAt: extendedTo }).where(eq(sessions.id, id)).run()
   }
-  return toAuthUser(row.user)
+  return { user: toAuthUser(row.user), extendedTo }
 }
 
 export function deleteSession(db: DbLike, token: string) {

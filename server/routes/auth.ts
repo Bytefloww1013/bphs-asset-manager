@@ -1,11 +1,10 @@
 import { Hono } from 'hono'
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { deleteCookie, getCookie } from 'hono/cookie'
 import { loginSchema, passwordChangeSchema } from '../../shared/schemas.ts'
-import { config } from '../config.ts'
 import type { Db } from '../db/client.ts'
 import { json, type Env } from '../http.ts'
 import { changePassword, deleteSession, login, toSessionUser } from '../services/auth.ts'
-import { COOKIE, authenticate } from '../middleware.ts'
+import { COOKIE, authenticate, setSessionCookie } from '../middleware.ts'
 
 export function authRoutes(db: Db) {
   const app = new Hono<Env>()
@@ -13,13 +12,7 @@ export function authRoutes(db: Db) {
   app.post('/login', json(loginSchema), async (c) => {
     const { email, password } = c.req.valid('json')
     const result = await login(db, email, password)
-    setCookie(c, COOKIE, result.token, {
-      httpOnly: true,
-      sameSite: 'Lax',
-      secure: config.cookieSecure,
-      path: '/',
-      expires: result.expiresAt,
-    })
+    setSessionCookie(c, result.token, result.expiresAt)
     return c.json({ user: toSessionUser(result.user) })
   })
 

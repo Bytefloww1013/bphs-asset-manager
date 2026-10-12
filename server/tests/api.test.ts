@@ -2,11 +2,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.ts'
 import { sessions, users } from '../db/schema.ts'
 import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
+
+/** When a Set-Cookie header says the cookie expires. */
+const cookieExpiry = (header: string | null) => new Date(/expires=([^;]+)/i.exec(header ?? '')?.[1] ?? NaN)
 
 describe('authentication', () => {
   it('signs in, sets an httpOnly cookie, and rejects bad credentials', async () => {
@@ -91,6 +94,41 @@ describe('authentication', () => {
     })
     expect(changed.status).toBe(200)
     expect((await t.call('GET', '/api/assets', { cookie })).status).toBe(200)
+  })
+
+  it('moves the cookie forward whenever the server moves the session, so an active person is not signed out', async () => {
+    const t = await setup()
+    const signedIn = await t.signIn('m.oyelaran@bphs.local')
+    const issued = cookieExpiry(signedIn.headers.get('set-cookie'))
+    expect(issued.getTime()).toBeGreaterThan(Date.now())
+
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      // Three hours of work later, past the five minutes after which a request slides the session.
+      vi.setSystemTime(Date.now() + 3 * 3_600_000)
+      const slid = await t.call('GET', '/api/auth/me', { cookie: signedIn.cookie })
+      expect(slid.status).toBe(200)
+      const reissued = slid.headers.get('set-cookie')
+      expect(reissued).toContain(signedIn.cookie)
+      expect(reissued).toMatch(/HttpOnly/i)
+      expect(reissued).toMatch(/SameSite=Lax/i)
+      // The browser's expiry is the server's, and it has moved by the three hours.
+      const row = t.db.select().from(sessions).get()!
+      expect(cookieExpiry(reissued).getTime()).toBe(Math.floor(row.expiresAt.getTime() / 1000) * 1000)
+      expect(cookieExpiry(reissued).getTime() - issued.getTime()).toBeGreaterThanOrEqual(3 * 3_600_000 - 1000)
+
+      // Nothing moved on the next request, so there is nothing to send.
+      expect((await t.call('GET', '/api/auth/me', { cookie: signedIn.cookie })).headers.get('set-cookie')).toBeNull()
+
+      // The session moves whatever the answer is, including a refusal.
+      t.db.update(users).set({ mustChangePassword: true }).where(eq(users.email, 'm.oyelaran@bphs.local')).run()
+      vi.setSystemTime(Date.now() + 10 * 60_000)
+      const refused = await t.call('GET', '/api/assets', { cookie: signedIn.cookie })
+      expect(refused.status).toBe(403)
+      expect(refused.headers.get('set-cookie')).toContain(signedIn.cookie)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('refuses a password over 256 characters when signing in and when choosing one, without counting it as a wrong guess', async () => {
