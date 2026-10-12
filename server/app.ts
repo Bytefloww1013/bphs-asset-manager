@@ -18,8 +18,10 @@ import { listRoutes, reportRoutes } from './routes/lists.ts'
 import { employeeRoutes, userRoutes } from './routes/people.ts'
 
 export interface AppOptions {
-  /** Serve the built SPA from config.webDir (production). */
+  /** Serve the built SPA (production). */
   serveWeb?: boolean
+  /** Where the built SPA is. Defaults to config.webDir; tests point it at a folder of their own. */
+  webDir?: string
   quiet?: boolean
 }
 
@@ -97,23 +99,28 @@ export function createApp(db: Db, options: AppOptions = {}) {
 
   app.all('/api/*', (c) => c.json({ error: 'not_found', message: 'Not found.' }, 404))
 
-  if (options.serveWeb) mountWeb(app)
+  if (options.serveWeb) mountWeb(app, options.webDir ?? config.webDir)
   return app
 }
 
-function mountWeb(app: Hono<Env>) {
-  const root = path.relative(process.cwd(), config.webDir) || '.'
-  if (!fs.existsSync(path.join(config.webDir, 'index.html'))) {
-    console.warn(`No built web app at ${config.webDir}. Run "bun run build" first.`)
+function mountWeb(app: Hono<Env>, webDir: string) {
+  const root = path.relative(process.cwd(), webDir) || '.'
+  if (!fs.existsSync(path.join(webDir, 'index.html'))) {
+    console.warn(`No built web app at ${webDir}. Run "bun run build" first.`)
     return
   }
-  // Built files are content-hashed, so they can be cached forever; the shell must always be revalidated.
+  // Built files are content-hashed, so a file that was found can be cached forever; the shell must always be revalidated,
+  // and the answer for a file that is not there must not be kept at all.
   app.use('*', async (c, next) => {
     await next()
     if (c.req.path.startsWith('/api/')) return
-    c.header('Cache-Control', c.req.path.startsWith('/static/') ? 'public, max-age=31536000, immutable' : 'no-cache')
+    const built = c.req.path.startsWith('/static/')
+    c.header('Cache-Control', !built ? 'no-cache' : c.res.ok ? 'public, max-age=31536000, immutable' : 'no-store')
   })
   app.use('*', serveStatic({ root }))
+  // A built file that is gone (a tab still running the previous build asks for one after an upgrade) is a 404; the shell would be
+  // HTML with a 200 where a script was asked for.
+  app.all('/static/*', (c) => c.text('Not found', 404))
   // Client-side routes: always answer with the shell and let the router decide.
   app.get('*', serveStatic({ path: path.join(root, 'index.html') }))
 }

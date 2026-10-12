@@ -1,5 +1,9 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
+import { createApp } from '../app.ts'
 import { sessions, users } from '../db/schema.ts'
 import { login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
@@ -136,6 +140,49 @@ describe('request limits', () => {
     expect(((await tooBig.json()) as { message: string }).message).toMatch(/too large/i)
     // The same before sign-in: refused as too large, not read and answered with a 401.
     expect((await post('/api/assets', JSON.stringify({ tag: 'x'.repeat(4 * 1024 * 1024) }))).status).toBe(413)
+  })
+})
+
+describe('serving the built web app', () => {
+  function build() {
+    const webDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bphs-web-'))
+    fs.mkdirSync(path.join(webDir, 'static'))
+    fs.writeFileSync(path.join(webDir, 'index.html'), '<!doctype html><title>shell</title>')
+    fs.writeFileSync(path.join(webDir, 'static', 'app-abc123.js'), 'export {}')
+    return webDir
+  }
+
+  it('caches a built file for a year, but never answers a missing one with the shell', async () => {
+    const t = await setup()
+    const webDir = build()
+    try {
+      const app = createApp(t.db, { quiet: true, serveWeb: true, webDir })
+
+      const chunk = await app.request('/static/app-abc123.js')
+      expect(chunk.status).toBe(200)
+      expect(chunk.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+
+      // A tab still running the previous build asks for a chunk that the new build does not have.
+      const gone = await app.request('/static/does-not-exist-abc123.js')
+      expect(gone.status).toBe(404)
+      expect(gone.headers.get('content-type')).not.toMatch(/html/)
+      expect(gone.headers.get('cache-control')).toBe('no-store')
+      expect((await app.request('/static/')).status).toBe(404)
+
+      // Routes of the app are the shell, checked again every time.
+      const route = await app.request('/assets/BPHS-0001')
+      expect(route.status).toBe(200)
+      expect(await route.text()).toContain('shell')
+      expect(route.headers.get('cache-control')).toBe('no-cache')
+      expect((await app.request('/')).headers.get('cache-control')).toBe('no-cache')
+
+      // A path of the API that does not exist is JSON, not the shell.
+      const api = await app.request('/api/nothing-here', { headers: { cookie: await t.asSuper() } })
+      expect(api.status).toBe(404)
+      expect(await api.json()).toMatchObject({ error: 'not_found' })
+    } finally {
+      fs.rmSync(webDir, { recursive: true, force: true })
+    }
   })
 })
 
