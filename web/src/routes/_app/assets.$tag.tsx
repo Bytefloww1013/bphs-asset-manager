@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
-import { AssetStateBadge, DaysOut, RatingBadge, Stacked } from '@/features/common/status.tsx'
+import { AssetStateBadge, DaysOut, RatingBadge, Stacked, stateLabel } from '@/features/common/status.tsx'
 import { ApiError } from '@/lib/api.ts'
 import { formatDate, formatDateTime, formatDays, plural } from '@/lib/format.ts'
 import { assetDetailQuery } from '@/lib/queries.ts'
@@ -118,7 +118,7 @@ function AssetDetailPage() {
 
       <Panel>
         <dl className="grid divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-          <Fact label="Current holder">{asset.holder ? <><span>{asset.holder.name}</span> <Mono className="text-ink-3">{asset.holder.code}</Mono></> : <span className="text-ink-3">In storage</span>}</Fact>
+          <Fact label="Current holder">{asset.holder ? <><span>{asset.holder.name}</span> <Mono className="text-ink-3">{asset.holder.code}</Mono></> : <span className="text-ink-3">{stateLabel(asset.state)}</span>}</Fact>
           <Fact label="Department">{asset.holder?.department ?? <span className="text-ink-3">—</span>}</Fact>
           <Fact label="Days out">{asset.daysOut === null ? <span className="text-ink-3">—</span> : <DaysOut days={asset.daysOut} className="justify-start" />}</Fact>
           <Fact label="Latest condition">
