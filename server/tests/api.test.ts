@@ -312,6 +312,24 @@ describe('lists, users and audit', () => {
     expect(JSON.stringify((await t.call('GET', '/api/users', { cookie })).data)).not.toContain(created.data.oneTimePassword)
   })
 
+  it('will not reset your own password, which would end your session before the one-time password is shown', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const own = await t.call('POST', `/api/users/${t.superUser.id}/reset-password`, { cookie })
+    expect(own.status).toBe(409)
+    expect(own.data.error).toBe('self_reset')
+    // Refused outright: the session is still valid and the password has not changed.
+    expect((await t.call('GET', '/api/auth/me', { cookie })).status).toBe(200)
+    expect((await t.signIn('p.raghunathan@bphs.local')).status).toBe(200)
+    expect(findUser(t.db, 'p.raghunathan@bphs.local')?.mustChangePassword).toBe(false)
+
+    // Someone else's reset still works, and leaves the caller signed in.
+    const other = await t.call('POST', `/api/users/${t.adminUser.id}/reset-password`, { cookie })
+    expect(other.status).toBe(200)
+    expect(other.data.oneTimePassword).toBeTruthy()
+    expect((await t.call('GET', '/api/auth/me', { cookie })).status).toBe(200)
+  })
+
   it('will not deactivate yourself or the last Super Admin, and a lock can be cleared', async () => {
     const t = await setup()
     const cookie = await t.asSuper()

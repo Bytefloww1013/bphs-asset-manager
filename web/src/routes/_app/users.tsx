@@ -112,7 +112,13 @@ function StateBadge({ user }: { user: UserRow }) {
 function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: UserWithPassword) => void }) {
   const me = useUser()
   const [confirm, setConfirm] = useState<'reset' | 'deactivate' | null>(null)
-  const reset = useWrite(() => api.post<UserWithPassword>(`/users/${user.id}/reset-password`), { onSuccess: (result) => onSecret(result) })
+  const reset = useWrite(async () => {
+    const result = await api.post<UserWithPassword>(`/users/${user.id}/reset-password`)
+    // Handed over before useWrite refetches the lists: a password that is shown only once must not wait on a refetch.
+    setConfirm(null)
+    onSecret(result)
+    return result
+  })
   const unlock = useWrite(() => api.post(`/users/${user.id}/clear-lock`), { success: `Lock cleared for ${user.name}` })
   const deactivate = useWrite(() => api.post(`/users/${user.id}/deactivate`), { success: `${user.name} deactivated` })
   const reactivate = useWrite(() => api.post(`/users/${user.id}/reactivate`), { success: `${user.name} reactivated` })
@@ -120,7 +126,7 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
   const isMe = user.id === me.id
 
   const items: MenuItem[] = [
-    { label: 'Reset password', icon: KeyRound, onSelect: () => setConfirm('reset') },
+    { label: 'Reset password', icon: KeyRound, onSelect: () => setConfirm('reset'), disabledReason: isMe ? 'Use "Change password" in your user menu.' : undefined },
     { label: 'Clear lock', icon: LockOpen, onSelect: () => unlock.mutate(undefined), disabledReason: user.state === 'locked' || user.failedLogins > 0 ? undefined : 'This account is not locked.' },
     user.role === 'admin'
       ? { label: 'Make Super Admin', icon: ShieldCheck, onSelect: () => changeRole.mutate('super_admin') }

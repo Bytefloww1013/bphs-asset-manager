@@ -106,6 +106,8 @@ function activeSuperAdmins(db: DbLike): number {
 }
 
 export async function resetPassword(db: Db, actor: Actor, id: number): Promise<UserWithPassword> {
+  // A reset ends every session of the target, so resetting yourself would sign you out before the one-time password is read.
+  if (id === actor.id) throw conflict('self_reset', 'You cannot reset your own password. Use Change password in your user menu.')
   const oneTimePassword = generateOneTimePassword()
   const passwordHash = await hashPassword(oneTimePassword)
   db.transaction((tx) => {
