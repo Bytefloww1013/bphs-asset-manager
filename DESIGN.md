@@ -267,7 +267,7 @@ Record White panel with a Sunken header band, Caption headers in Ink Three, 56px
 Left rail on Slate Rail. Items are 36px, Label weight, Ink Two with an Ink Three icon. The active item becomes a Record White pill with a hairline ring and a cobalt icon. Locked destinations (Users for an Admin) stay in the list with a lock icon and screen-reader text.
 
 ### Sheets and dialogs
-Issue, Return and edit forms open as a right-hand sheet (480px, full-width on phones) so the table stays visible behind a 35% ink scrim. The header carries title and one-line consequence, the body scrolls, and the footer is pinned on a Paper band with the primary action last. Focus lands on the first field of the task, not on Close. Centred dialogs are reserved for confirmations and the one-time password.
+Issue, Return and edit forms open as a right-hand sheet (480px, full-width on phones) so the table stays visible behind a 35% ink scrim. The header carries title and one-line consequence, the body scrolls, and the footer is pinned on a Paper band with the primary action last. Focus lands on the first field of the task, not on Close. Centred dialogs are reserved for confirmations, the one-time password, and signing in again when a session ends. The last two must be answered, so Escape and a click outside do not close them.
 
 ### Quick-add panel
 A Record White panel above the register with labelled fields in one row. Enter adds; pasting spreadsheet rows into the first field adds many and lists any skipped rows by number. Replaces the spec's table-row entry line so labels stay visible and fields are real inputs.
