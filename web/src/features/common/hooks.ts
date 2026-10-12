@@ -21,6 +21,8 @@ export function useWrite<TData, TVars>(
       await options.onSuccess?.(data, vars, ...rest)
     },
     onError: (error) => {
+      // A conflict means the page is behind what the server holds: show what is there now.
+      if (error instanceof ApiError && error.status === 409) void refreshData(queryClient)
       if (options.silent) return
       if (error instanceof ApiError && (error.status === 401 || error.code === 'password_change_required')) return
       toast({ tone: 'bad', title: 'That did not go through', description: error.message })

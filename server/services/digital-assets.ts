@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
-import type { DigitalAssetCreateInput, DigitalAssetUpdateInput, DigitalIssueInput } from '../../shared/schemas.ts'
+import type { DigitalAssetCreateInput, DigitalAssetUpdateInput, DigitalIssueInput, DigitalUnassignInput } from '../../shared/schemas.ts'
 import type { DigitalAssetDetail, DigitalAssetRow, DigitalHistoryRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { digitalAssetTypes, digitalAssets, digitalAssignments } from '../db/schema.ts'
@@ -217,11 +217,15 @@ export function issueDigitalAsset(db: Db, actor: Actor, id: number, input: Digit
   return getDigitalAsset(db, id)
 }
 
-export function unassignDigitalAsset(db: Db, actor: Actor, id: number): DigitalAssetRow {
+export function unassignDigitalAsset(db: Db, actor: Actor, id: number, input: DigitalUnassignInput): DigitalAssetRow {
   db.transaction((tx) => {
     const current = getDigitalAsset(tx, id)
     if (!current.employee || current.assignmentId === null) {
       throw conflict('not_assigned', `${current.code} is not issued to anyone.`)
+    }
+    // The seat was unassigned and issued again since the person asking last looked: what they confirmed is not what is there.
+    if (current.assignmentId !== input.assignmentId) {
+      throw conflict('assignment_changed', `${current.code} is now issued to ${current.employee.name}. Nothing was unassigned.`)
     }
     const now = new Date()
     tx.update(digitalAssignments)

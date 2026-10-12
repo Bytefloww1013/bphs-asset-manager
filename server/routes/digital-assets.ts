@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { digitalAssetCreateSchema, digitalAssetUpdateSchema, digitalIssueSchema } from '../../shared/schemas.ts'
+import { digitalAssetCreateSchema, digitalAssetUpdateSchema, digitalIssueSchema, digitalUnassignSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, requirePermission, type Env } from '../http.ts'
 import {
@@ -25,7 +25,9 @@ export function digitalAssetRoutes(db: Db) {
   app.post('/:id/issue', json(digitalIssueSchema), (c) =>
     c.json(issueDigitalAsset(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
   )
-  app.post('/:id/unassign', (c) => c.json(unassignDigitalAsset(db, c.get('user'), intParam(c, 'id'))))
+  app.post('/:id/unassign', json(digitalUnassignSchema), (c) =>
+    c.json(unassignDigitalAsset(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
+  )
   app.post('/:id/deactivate', (c) => c.json(setDigitalAssetStatus(db, c.get('user'), intParam(c, 'id'), 'inactive')))
   app.post('/:id/reactivate', (c) => c.json(setDigitalAssetStatus(db, c.get('user'), intParam(c, 'id'), 'in_service')))
   app.delete('/:id', requirePermission('record.delete'), (c) => {

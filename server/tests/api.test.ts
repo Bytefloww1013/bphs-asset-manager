@@ -1531,6 +1531,39 @@ describe('programs, and assets a program holds', () => {
 })
 
 describe('digital assets and digital asset types', () => {
+  /** Unassign the way the page does: naming the assignment the seat has right now (or one that cannot exist, when it has none). */
+  async function unassign(t: Awaited<ReturnType<typeof setup>>, id: number, cookie: string) {
+    const { asset } = (await t.call('GET', `/api/digital-assets/${id}`, { cookie })).data as { asset: { assignmentId: number | null } }
+    return t.call('POST', `/api/digital-assets/${id}/unassign`, { cookie, body: { assignmentId: asset.assignmentId ?? 999_999 } })
+  }
+
+  it('refuses an unassign that was confirmed against an earlier holder', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const typeId = ((await t.call('GET', '/api/lookups', { cookie })).data.digitalAssetTypes as { id: number }[])[0]!.id
+    const person = async (code: string, firstName: string, lastName: string) =>
+      (await t.call('POST', '/api/employees', { cookie, body: { code, firstName, lastName } })).data as { id: number }
+    const marcus = await person('E-9001', 'Marcus', 'Stale')
+    const priya = await person('E-9002', 'Priya', 'Newer')
+    const seat = (await t.call('POST', '/api/digital-assets', { cookie, body: { typeId, account: 'stale.tab@bphs.org', employeeId: marcus.id } })).data
+    const path = `/api/digital-assets/${seat.id}`
+
+    // Tab A opens the confirmation for Marcus. Tab B unassigns him and issues the seat to Priya.
+    const stale = { assignmentId: seat.assignmentId as number }
+    expect((await t.call('POST', `${path}/unassign`, { cookie, body: stale })).status).toBe(200)
+    const reissued = (await t.call('POST', `${path}/issue`, { cookie, body: { employeeId: priya.id } })).data
+
+    // Tab A confirms: Priya keeps the seat.
+    const late = await t.call('POST', `${path}/unassign`, { cookie, body: stale })
+    expect(late.status).toBe(409)
+    expect(late.data).toMatchObject({ error: 'assignment_changed', message: `${seat.code} is now issued to Priya Newer. Nothing was unassigned.` })
+    expect((await t.call('GET', path, { cookie })).data.asset).toMatchObject({ state: 'active', assignmentId: reissued.assignmentId, employee: { id: priya.id } })
+
+    // The seat alone is not enough to say whose assignment ends.
+    expect((await t.call('POST', `${path}/unassign`, { cookie })).status).toBeGreaterThanOrEqual(400)
+    expect((await t.call('GET', path, { cookie })).data.asset.employee).toMatchObject({ id: priya.id })
+  })
+
   async function seed() {
     const t = await setup()
     const cookie = await t.asSuper()
@@ -1614,9 +1647,9 @@ describe('digital assets and digital asset types', () => {
       t.sqlite.prepare('insert into digital_assignments (digital_asset_id, employee_id, issued_at, issued_by_id) values (?, ?, 1, ?)').run(free.id, t.person.id, t.superUser.id),
     ).toThrow(/UNIQUE/)
 
-    const unassigned = await t.call('POST', `/api/digital-assets/${free.id}/unassign`, { cookie })
+    const unassigned = await unassign(t, free.id, cookie)
     expect(unassigned.data).toMatchObject({ state: 'not_issued', employee: null, issuedAt: null, hasHistory: true })
-    expect((await t.call('POST', `/api/digital-assets/${free.id}/unassign`, { cookie })).data).toMatchObject({ error: 'not_assigned', message: 'DA-00002 is not issued to anyone.' })
+    expect((await unassign(t, free.id, cookie)).data).toMatchObject({ error: 'not_assigned', message: 'DA-00002 is not issued to anyone.' })
 
     const log = await audit()
     expect(log.filter((e) => e.entityType === 'digitalasset').map((e) => `${e.action} ${e.details}`)).toEqual([
@@ -1637,7 +1670,7 @@ describe('digital assets and digital asset types', () => {
     expect(held.status).toBe(409)
     expect(held.data).toMatchObject({ error: 'asset_assigned', message: 'DA-00001 is issued to Ana Lima. Unassign it first.' })
 
-    await t.call('POST', `/api/digital-assets/${seat.id}/unassign`, { cookie })
+    await unassign(t, seat.id, cookie)
     expect((await t.call('POST', `/api/digital-assets/${seat.id}/deactivate`, { cookie })).data).toMatchObject({ status: 'inactive', state: 'inactive' })
 
     const refused = await t.call('POST', `/api/digital-assets/${seat.id}/issue`, { cookie, body: { employeeId: ana.id } })
@@ -1663,7 +1696,7 @@ describe('digital assets and digital asset types', () => {
 
     const earlier = '2026-03-02T12:00:00.000Z'
     expect((await issue({ employeeId: ana.id, issuedAt: earlier })).data).toMatchObject({ state: 'active', issuedAt: earlier })
-    await t.call('POST', `/api/digital-assets/${seat.id}/unassign`, { cookie: admin })
+    await unassign(t, seat.id, admin)
 
     // The next holder cannot be dated to before the last one gave it up.
     const overlap = await issue({ employeeId: ben.id, issuedAt: earlier })
@@ -1699,7 +1732,7 @@ describe('digital assets and digital asset types', () => {
     const mistake = (await make('mistake@bphs.org')).data
 
     expect((await t.call('DELETE', `/api/digital-assets/${mistake.id}`, { cookie: admin })).status).toBe(403)
-    await t.call('POST', `/api/digital-assets/${used.id}/unassign`, { cookie })
+    await unassign(t, used.id, cookie)
     const kept = await t.call('DELETE', `/api/digital-assets/${used.id}`, { cookie })
     expect(kept.status).toBe(409)
     expect(kept.data).toMatchObject({ error: 'has_history', message: 'DA-00001 has assignment history. Mark it inactive instead; history is never deleted.' })
@@ -1721,7 +1754,7 @@ describe('digital assets and digital asset types', () => {
     expect(remove.status).toBe(409)
     expect(remove.data).toMatchObject({ error: 'has_history', message: 'Ana Lima cannot be deleted. Has assignment history. Archive instead; history is never deleted.' })
 
-    await t.call('POST', `/api/digital-assets/${seat.id}/unassign`, { cookie })
+    await unassign(t, seat.id, cookie)
     expect(await row()).toMatchObject({ digitalHeld: 0, hasHistory: true })
     // The history still names them, so they can be archived now but never deleted.
     expect((await t.call('DELETE', `/api/employees/${ana.id}`, { cookie })).status).toBe(409)

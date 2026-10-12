@@ -163,6 +163,10 @@ export const digitalIssueSchema = z.object({
 })
 export type DigitalIssueInput = z.infer<typeof digitalIssueSchema>
 
+// Names the assignment the person was looking at, not just the seat: by the time they confirm, the seat may be with someone else.
+export const digitalUnassignSchema = z.object({ assignmentId: id })
+export type DigitalUnassignInput = z.infer<typeof digitalUnassignSchema>
+
 // ---- Programs -------------------------------------------------------------------
 export const programCreateSchema = z.object({
   code: requiredText(40, 'Program ID'),

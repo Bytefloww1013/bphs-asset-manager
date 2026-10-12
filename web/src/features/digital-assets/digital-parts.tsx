@@ -147,7 +147,7 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
   const canDelete = useCan('record.delete')
   const [sheet, setSheet] = useState<'issue' | 'edit' | 'detail' | null>(null)
   const [confirm, setConfirm] = useState<'unassign' | 'deactivate' | 'delete' | null>(null)
-  const unassign = useWrite(() => api.post(`/digital-assets/${asset.id}/unassign`), { success: `${asset.code} unassigned` })
+  const unassign = useWrite((assignmentId: number | null) => api.post(`/digital-assets/${asset.id}/unassign`, { assignmentId }), { success: `${asset.code} unassigned` })
   const deactivate = useWrite(() => api.post(`/digital-assets/${asset.id}/deactivate`), { success: `${asset.code} marked inactive` })
   const reactivate = useWrite(() => api.post(`/digital-assets/${asset.id}/reactivate`), { success: `${asset.code} reactivated` })
   const remove = useWrite(() => api.delete(`/digital-assets/${asset.id}`), { success: `${asset.code} deleted` })
@@ -194,7 +194,7 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
         title={`Unassign ${asset.code}?`}
         description={`${asset.type} is taken back from ${asset.employee?.name ?? 'its holder'} and becomes Not Issued. The assignment stays in its history.`}
         confirmLabel="Unassign"
-        onConfirm={() => unassign.mutateAsync(undefined)}
+        onConfirm={() => unassign.mutateAsync(asset.assignmentId)}
       />
       <ConfirmDialog
         open={confirm === 'deactivate'}
