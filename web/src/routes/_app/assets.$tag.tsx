@@ -68,7 +68,7 @@ function AssetDetailPage() {
   const navigate = useNavigate()
   const sheets = useSheetActions()
   usePageTitle(tag.toUpperCase())
-  const table = useGrid({ data: data?.history ?? [], columns: historyColumns, getRowId: historyId, pageSize: 50 })
+  const table = useGrid({ data: data?.history ?? [], columns: historyColumns, getRowId: historyId, pageSize: 50, resetKey: tag })
   if (!data) return null
   const { asset, history, conditions } = data
 

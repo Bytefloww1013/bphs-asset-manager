@@ -51,7 +51,7 @@ function EmployeesPage() {
 
   const active = data.filter((e) => e.state === 'active').length
   const rows = useMemo(() => (show === 'all' ? data : data.filter((e) => e.state === (show === 'active' ? 'active' : 'archived'))), [data, show])
-  const table = useGrid({ data: rows, columns, getRowId, searchText, search, initialSorting: [{ id: 'name', desc: false }] })
+  const table = useGrid({ data: rows, columns, getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'name', desc: false }] })
 
   return (
     <div className="flex flex-col gap-6">

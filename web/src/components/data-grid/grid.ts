@@ -67,6 +67,8 @@ export interface GridOptions<TData extends RowData> {
   pageSize?: number
   initialSorting?: SortingState
   selectable?: boolean
+  /** Whatever narrows or replaces `data` before the grid sees it (a filter tab, an uploaded file). Like `search`, a change returns to the first page. */
+  resetKey?: unknown
 }
 
 export function useGrid<TData extends RowData>({
@@ -78,10 +80,21 @@ export function useGrid<TData extends RowData>({
   pageSize = 25,
   initialSorting = [],
   selectable = false,
+  resetKey,
 }: GridOptions<TData>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
+
+  const toPage = (pageIndex: number) => setPagination((old) => (old.pageIndex === pageIndex ? old : { ...old, pageIndex }))
+
+  // `data` is a new array after every edit and every refetch, so the table must not go back to the first page whenever
+  // it changes. Only what the viewer chose does: a new search, filter or sort starts again at the first page.
+  const [seen, setSeen] = useState({ search, resetKey })
+  if (seen.search !== search || !Object.is(seen.resetKey, resetKey)) {
+    setSeen({ search, resetKey })
+    toPage(0)
+  }
 
   const globalFilterFn = useMemo(
     () =>
@@ -98,13 +111,17 @@ export function useGrid<TData extends RowData>({
     [searchText],
   )
 
-  return useTable({
+  const table = useTable({
     features: gridFeatures,
     columns,
     data,
     getRowId,
     state: { sorting, rowSelection, pagination, globalFilter: search },
-    onSortingChange: setSorting,
+    autoResetPageIndex: false,
+    onSortingChange: (updater) => {
+      setSorting(updater)
+      toPage(0)
+    },
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     enableRowSelection: selectable,
@@ -112,4 +129,10 @@ export function useGrid<TData extends RowData>({
     getColumnCanGlobalFilter: () => true,
     globalFilterFn: globalFilterFn as never,
   })
+
+  // Rows that went away (a return, a delete, someone else's change) can leave the page past the end: stop on the last one.
+  const lastPage = Math.max(0, table.getPageCount() - 1)
+  if (pagination.pageIndex > lastPage) toPage(lastPage)
+
+  return table
 }

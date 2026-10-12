@@ -49,7 +49,7 @@ function ImportPage() {
 
   const check = useMutation({ mutationFn: (csv: string) => api.post<ImportPreview>('/employees/import/preview', { csv }), onSuccess: setPreview })
   const run = useWrite((csv: string) => api.post<ImportPreview>('/employees/import', { csv }), { onSuccess: (result) => setDone(result) })
-  const table = useGrid({ data: (done ?? preview)?.rows ?? [], columns, getRowId, pageSize: 50 })
+  const table = useGrid({ data: (done ?? preview)?.rows ?? [], columns, getRowId, pageSize: 50, resetKey: done ?? preview })
 
   async function choose(chosen: File | undefined) {
     if (!chosen) return

@@ -76,7 +76,7 @@ function AvailablePage() {
   }, [stock])
   const rows = useMemo(() => (type === 'all' ? stock : stock.filter((asset) => asset.type === type)), [stock, type])
 
-  const table = useGrid({ data: rows, columns, getRowId, searchText: assetSearchText, search, initialSorting: [{ id: 'tag', desc: false }] })
+  const table = useGrid({ data: rows, columns, getRowId, searchText: assetSearchText, search, resetKey: type, initialSorting: [{ id: 'tag', desc: false }] })
 
   return (
     <div className="flex flex-col gap-6">
