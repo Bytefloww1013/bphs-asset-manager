@@ -48,36 +48,59 @@ function UsersPage() {
   return <UsersTable />
 }
 
-function copyText(text: string): boolean {
+/** The old copy command. It is the only way on plain HTTP, where browsers do not offer the async clipboard. */
+function copyWithCommand(text: string): boolean {
+  const focused = document.activeElement
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  // Inside the open dialog when there is one: a dialog keeps focus within itself, and the command copies the focused selection.
+  const host = (focused instanceof HTMLElement && focused.closest('[role=dialog], [role=alertdialog]')) || document.body
+  host.append(area)
+  try {
+    area.select()
+    return document.execCommand('copy')
+  } finally {
+    area.remove()
+    if (focused instanceof HTMLElement) focused.focus()
+  }
+}
+
+/** True once the text is on the clipboard, so the caller never reports a copy that did not happen. */
+async function copyText(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard && window.isSecureContext) {
-      void navigator.clipboard.writeText(text)
+      await navigator.clipboard.writeText(text)
       return true
     }
-    // Plain-HTTP office deployments have no async clipboard, so fall back to the old way.
-    const area = document.createElement('textarea')
-    area.value = text
-    area.setAttribute('readonly', '')
-    area.style.position = 'fixed'
-    area.style.opacity = '0'
-    document.body.append(area)
-    area.select()
-    const ok = document.execCommand('copy')
-    area.remove()
-    return ok
+  } catch {
+    // Refused, for example because the browser withheld permission. The old command may still work.
+  }
+  try {
+    return copyWithCommand(text)
   } catch {
     return false
   }
 }
 
-/** Shown exactly once after an account is created or a password is reset. */
+/**
+ * Shown exactly once after an account is created or a password is reset. The password cannot be shown again, so only the button
+ * closes this: Escape and a click outside, which close every other dialog, are easy to do by accident.
+ */
 function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClose: () => void }) {
   const toast = useToast()
   return (
-    <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
+    <Dialog.Root open>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ink/35" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 animate-pop-in rounded-panel border border-line bg-surface p-6 shadow-pop outline-none">
+        <Dialog.Content
+          role="alertdialog"
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 animate-pop-in rounded-panel border border-line bg-surface p-6 shadow-pop outline-none"
+        >
           <Dialog.Title className="text-lg font-semibold tracking-[-0.01em]">One-time password for {result.user.name}</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-5 text-ink-2">
             Give this to them in person or over a channel you trust. It is shown only now, and they must choose a new password the first time they sign in.
@@ -86,7 +109,7 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
             <code className="min-w-0 flex-1 select-all truncate font-mono text-lg font-medium tracking-wide">{result.oneTimePassword}</code>
             <Button
               icon={<Copy className="size-4" />}
-              onClick={() => toast(copyText(result.oneTimePassword) ? { title: 'Password copied' } : { tone: 'warn', title: 'Could not copy', description: 'Select the password and press Ctrl+C.' })}
+              onClick={async () => toast((await copyText(result.oneTimePassword)) ? { title: 'Password copied' } : { tone: 'warn', title: 'Could not copy', description: 'Select the password and press Ctrl+C.' })}
             >
               Copy
             </Button>
