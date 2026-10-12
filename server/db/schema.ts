@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import type { AssetStatus, AuditAction, ConditionKind, Role } from '../../shared/constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, Role } from '../../shared/constants.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
 const createdAt = () => ms('created_at').notNull().default(sql`(unixepoch() * 1000)`)
@@ -168,6 +168,60 @@ export const conditions = sqliteTable(
     recordedAt: ms('recorded_at').notNull(),
   },
   (t) => [index('ix_conditions_asset').on(t.assetId), index('ix_conditions_rating').on(t.ratingId)],
+)
+
+// ---- Digital assets ------------------------------------------------------------------
+// A licence or an account, one row per seat that can be given to one employee. Only what names the seat is kept: never a password or key.
+
+export const digitalAssetTypes = sqliteTable('digital_asset_types', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: createdAt(),
+})
+
+export const digitalAssets = sqliteTable(
+  'digital_assets',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** DA-00001, made from the row's own id, which is never handed out twice. */
+    code: text('code').notNull().unique(),
+    typeId: integer('type_id')
+      .notNull()
+      .references(() => digitalAssetTypes.id, { onDelete: 'restrict' }),
+    /** The License/Account: an email address or a licence reference. */
+    account: text('account').notNull(),
+    status: text('status').$type<DigitalAssetStatus>().notNull().default('in_service'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('ix_digital_assets_type').on(t.typeId)],
+)
+
+export const digitalAssignments = sqliteTable(
+  'digital_assignments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    digitalAssetId: integer('digital_asset_id')
+      .notNull()
+      .references(() => digitalAssets.id, { onDelete: 'restrict' }),
+    employeeId: integer('employee_id')
+      .notNull()
+      .references(() => employees.id, { onDelete: 'restrict' }),
+    issuedAt: ms('issued_at').notNull(),
+    returnedAt: ms('returned_at'),
+    issuedById: integer('issued_by_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    returnedById: integer('returned_by_id').references(() => users.id, { onDelete: 'restrict' }),
+  },
+  (t) => [
+    // One open assignment per seat, enforced by the database as well as the app.
+    uniqueIndex('uq_digital_assignments_one_open_per_asset')
+      .on(t.digitalAssetId)
+      .where(sql`${t.returnedAt} is null`),
+    index('ix_digital_assignments_employee').on(t.employeeId),
+    index('ix_digital_assignments_asset').on(t.digitalAssetId),
+  ],
 )
 
 // ---- Audit ------------------------------------------------------------------------------

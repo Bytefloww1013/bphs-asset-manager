@@ -17,6 +17,10 @@ export type ConditionKind = (typeof CONDITION_KINDS)[number]
 export const ASSET_STATUSES = ['in_service', 'retired'] as const
 export type AssetStatus = (typeof ASSET_STATUSES)[number]
 
+/** A digital asset is in service or set aside by hand. Whether it is issued is read from its assignments. */
+export const DIGITAL_ASSET_STATUSES = ['in_service', 'inactive'] as const
+export type DigitalAssetStatus = (typeof DIGITAL_ASSET_STATUSES)[number]
+
 /** A condition rating's score runs from 1 to 100; 100 is as good as new. */
 export const RATING_SCORE_MIN = 1
 export const RATING_SCORE_MAX = 100

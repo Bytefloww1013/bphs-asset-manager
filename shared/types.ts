@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, Role } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, Role } from './constants.ts'
 
 // ---- Auth ---------------------------------------------------------------
 export interface SessionUser {
@@ -44,6 +44,7 @@ export interface Lookups {
   employees: EmployeeRef[]
   /** Active programs only. */
   programs: ProgramRef[]
+  digitalAssetTypes: AssetTypeRef[]
 }
 
 // ---- Assets -------------------------------------------------------------
@@ -114,6 +115,42 @@ export interface AssetBulkResult {
   errors: { row: number; message: string }[]
 }
 
+// ---- Digital assets -------------------------------------------------------
+/** Active: issued to someone. Not issued: free to issue. Inactive: set aside by hand, and not issuable until reactivated. */
+export type DigitalAssetState = 'active' | 'not_issued' | 'inactive'
+
+export interface DigitalAssetRow {
+  id: number
+  /** The Asset ID, DA-00001: generated, never typed and never reused. */
+  code: string
+  typeId: number
+  type: string
+  /** The License/Account. */
+  account: string
+  status: DigitalAssetStatus
+  state: DigitalAssetState
+  employee: EmployeeRef | null
+  assignmentId: number | null
+  issuedAt: string | null
+  createdAt: string
+  /** True once it has ever been issued. */
+  hasHistory: boolean
+}
+
+export interface DigitalHistoryRow {
+  id: number
+  employee: EmployeeRef
+  issuedAt: string
+  returnedAt: string | null
+  issuedBy: string
+  returnedBy: string | null
+}
+
+export interface DigitalAssetDetail {
+  asset: DigitalAssetRow
+  history: DigitalHistoryRow[]
+}
+
 // ---- Assignments ----------------------------------------------------------
 export interface AssignmentRow {
   id: number
@@ -145,6 +182,8 @@ export interface EmployeeRow {
   jobTitle: string | null
   state: 'active' | 'archived'
   assetsHeld: number
+  /** Digital assets issued to them now. Like a physical asset, each one keeps them from being archived. */
+  digitalHeld: number
   hasHistory: boolean
   /** Why this employee cannot be deleted, as a sentence, or null when they can be. */
   deleteBlocked: string | null
@@ -200,6 +239,9 @@ export interface AssetTypeRow {
   isActive: boolean
   assetCount: number
 }
+
+/** A digital asset type, with how many digital assets use it. */
+export type DigitalAssetTypeRow = AssetTypeRow
 
 export interface ConditionRatingRow {
   id: number

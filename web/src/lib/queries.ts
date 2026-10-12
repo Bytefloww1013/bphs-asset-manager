@@ -7,6 +7,9 @@ import type {
   AuditPage,
   ConditionRatingRow,
   DashboardData,
+  DigitalAssetDetail,
+  DigitalAssetRow,
+  DigitalAssetTypeRow,
   EmployeeRow,
   Lookups,
   ProgramRow,
@@ -70,6 +73,22 @@ export const programsQuery = queryOptions({
 export const assetTypesQuery = queryOptions({
   queryKey: ['asset-types'],
   queryFn: () => api.get<AssetTypeRow[]>('/asset-types'),
+})
+
+export const digitalAssetsQuery = queryOptions({
+  queryKey: ['digital-assets'],
+  queryFn: () => api.get<DigitalAssetRow[]>('/digital-assets'),
+})
+
+export const digitalAssetDetailQuery = (id: number) =>
+  queryOptions({
+    queryKey: ['digital-asset', id],
+    queryFn: () => api.get<DigitalAssetDetail>(`/digital-assets/${id}`),
+  })
+
+export const digitalAssetTypesQuery = queryOptions({
+  queryKey: ['digital-asset-types'],
+  queryFn: () => api.get<DigitalAssetTypeRow[]>('/digital-asset-types'),
 })
 
 export const ratingsQuery = queryOptions({

@@ -15,15 +15,16 @@ import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { ratingTone } from '@/features/common/status.tsx'
 import { api, ApiError } from '@/lib/api.ts'
-import { assetTypesQuery, ratingsQuery } from '@/lib/queries.ts'
+import { assetTypesQuery, digitalAssetTypesQuery, ratingsQuery } from '@/lib/queries.ts'
 import { useCan, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/lists')({
-  loader: ({ context }) => Promise.all([context.queryClient.ensureQueryData(assetTypesQuery), context.queryClient.ensureQueryData(ratingsQuery)]),
+  loader: ({ context }) => Promise.all([context.queryClient.ensureQueryData(assetTypesQuery), context.queryClient.ensureQueryData(digitalAssetTypesQuery), context.queryClient.ensureQueryData(ratingsQuery)]),
   component: ListsPage,
 })
 
-type Kind = 'asset-types' | 'condition-ratings'
+type TypeKind = 'asset-types' | 'digital-asset-types'
+type Kind = TypeKind | 'condition-ratings'
 
 /** Click the pencil to rename in place; Enter saves, Esc cancels. */
 function EditableName({ kind, id, name, tone }: { kind: Kind; id: number; name: string; tone?: ReturnType<typeof ratingTone> }) {
@@ -123,7 +124,7 @@ function AddRow({ kind, placeholder, noun }: { kind: Kind; placeholder: string; 
 }
 
 /** Why the last active item of a list can be neither switched off nor deleted. The server refuses it with the same rule. */
-const onlyActiveReason = (kind: Kind) => `The only active ${kind === 'asset-types' ? 'type' : 'rating'}. Activate or add another first.`
+const onlyActiveReason = (kind: Kind) => `The only active ${kind === 'condition-ratings' ? 'rating' : 'type'}. Activate or add another first.`
 /** True for the one row that is active when no other row is. */
 const isOnlyActive = <T extends { isActive: boolean }>(info: { row: { original: T }; table: { getCoreRowModel: () => { rows: { original: T }[] } } }) =>
   info.row.original.isActive && info.table.getCoreRowModel().rows.filter((row) => row.original.isActive).length === 1
@@ -148,17 +149,20 @@ function ActiveSwitch({ kind, id, name, active, onlyActive }: { kind: Kind; id: 
 }
 
 const t = columnsFor<AssetTypeRow>()
-const typeColumns = [
-  t.accessor('name', { header: 'Name', cell: (info) => <EditableName kind="asset-types" id={info.row.original.id} name={info.getValue()} /> }),
-  t.accessor('assetCount', { header: 'Physical assets', cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue()}</span>, meta: { align: 'right' } }),
-  t.accessor('isActive', { header: 'Active', cell: (info) => <ActiveSwitch kind="asset-types" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} onlyActive={isOnlyActive(info)} />, enableSorting: false }),
+/** Physical and digital asset types are the same kind of list, so they share their columns. */
+const typeColumns = (kind: TypeKind, counted: string) => [
+  t.accessor('name', { header: 'Name', cell: (info) => <EditableName kind={kind} id={info.row.original.id} name={info.getValue()} /> }),
+  t.accessor('assetCount', { header: counted, cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue()}</span>, meta: { align: 'right' } }),
+  t.accessor('isActive', { header: 'Active', cell: (info) => <ActiveSwitch kind={kind} id={info.row.original.id} name={info.row.original.name} active={info.getValue()} onlyActive={isOnlyActive(info)} />, enableSorting: false }),
   t.display({
     id: 'actions',
     header: () => <span className="sr-only">Delete</span>,
-    cell: (info) => <DeleteButton kind="asset-types" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.assetCount > 0} inUseReason={`${info.row.original.assetCount} assets use this type. Deactivate it instead.`} onlyActive={isOnlyActive(info)} />,
+    cell: (info) => <DeleteButton kind={kind} id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.assetCount > 0} inUseReason={`${info.row.original.assetCount} ${kind === 'asset-types' ? 'assets' : 'digital assets'} use this type. Deactivate it instead.`} onlyActive={isOnlyActive(info)} />,
     meta: { align: 'right', width: 'w-14', cellClassName: 'max-sm:pl-0' },
   }),
 ]
+const physicalTypeColumns = typeColumns('asset-types', 'Physical assets')
+const digitalTypeColumns = typeColumns('digital-asset-types', 'Digital assets')
 
 /** Click the pencil to change the score in place; Enter saves, Esc cancels. The table re-sorts itself, best first. */
 function EditableScore({ id, name, score }: { id: number; name: string; score: number }) {
@@ -284,18 +288,27 @@ function ListsPage() {
   usePageTitle('Lists')
   const { data: types = [] } = useQuery(assetTypesQuery)
   const { data: ratings = [] } = useQuery(ratingsQuery)
-  const typeTable = useGrid({ data: types, columns: typeColumns, getRowId: (row) => String(row.id), pageSize: 100 })
+  const { data: digitalTypes = [] } = useQuery(digitalAssetTypesQuery)
+  const typeTable = useGrid({ data: types, columns: physicalTypeColumns, getRowId: (row) => String(row.id), pageSize: 100 })
+  const digitalTypeTable = useGrid({ data: digitalTypes, columns: digitalTypeColumns, getRowId: (row) => String(row.id), pageSize: 100 })
   const ratingTable = useGrid({ data: ratings, columns: ratingColumns, getRowId: (row) => String(row.id), pageSize: 100 })
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Lists" description="The choices offered when adding physical assets and recording condition. Deactivate instead of deleting anything that is in use." />
+      <PageHeader title="Lists" description="The choices offered when adding physical and digital assets and recording condition. Deactivate instead of deleting anything that is in use." />
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
-        <Panel className="overflow-hidden">
-          <PanelHeader title="Physical asset types" description={`${types.length} types, ${types.filter((x) => x.isActive).length} active`} />
-          <AddRow kind="asset-types" placeholder="New type name" noun="Type" />
-          <DataGrid table={typeTable} label="Physical asset types" noun="types" empty={null} className="rounded-none border-0 border-t shadow-none" />
-        </Panel>
+        <div className="flex min-w-0 flex-col gap-6">
+          <Panel className="overflow-hidden">
+            <PanelHeader title="Physical asset types" description={`${types.length} types, ${types.filter((x) => x.isActive).length} active`} />
+            <AddRow kind="asset-types" placeholder="New type name" noun="Type" />
+            <DataGrid table={typeTable} label="Physical asset types" noun="types" empty={null} className="rounded-none border-0 border-t shadow-none" />
+          </Panel>
+          <Panel className="overflow-hidden">
+            <PanelHeader title="Digital asset types" description={`${digitalTypes.length} types, ${digitalTypes.filter((x) => x.isActive).length} active`} />
+            <AddRow kind="digital-asset-types" placeholder="New digital type name" noun="Digital type" />
+            <DataGrid table={digitalTypeTable} label="Digital asset types" noun="types" empty={null} className="rounded-none border-0 border-t shadow-none" />
+          </Panel>
+        </div>
         <Panel className="overflow-hidden">
           <PanelHeader title="Condition ratings" description="Best first. This order is the scale shown when issuing and returning." />
           <div className="flex flex-col gap-1.5 px-5 pb-4 text-sm leading-5 text-ink-2">

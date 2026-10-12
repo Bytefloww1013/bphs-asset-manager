@@ -20,13 +20,15 @@ interface RawEmployee {
   createdAt: number
   held: number
   total: number
+  digitalHeld: number
+  digitalTotal: number
   assessed: number
   account: string | null
 }
 
 /** Deleting is only for a record entered by mistake: anything that points at the employee keeps them. */
 function deleteBlocked(row: RawEmployee): { code: string; reason: string } | null {
-  if (row.total > 0) return { code: 'has_history', reason: 'Has assignment history. Archive instead; history is never deleted.' }
+  if (row.total > 0 || row.digitalTotal > 0) return { code: 'has_history', reason: 'Has assignment history. Archive instead; history is never deleted.' }
   if (row.assessed > 0) {
     return { code: 'has_history', reason: `Assessed the condition on ${row.assessed} ${row.assessed === 1 ? 'record' : 'records'}. Archive instead; history is never deleted.` }
   }
@@ -45,7 +47,8 @@ function toRow(row: RawEmployee): EmployeeRow {
     jobTitle: row.jobTitle,
     state: row.archivedAt ? 'archived' : 'active',
     assetsHeld: row.held,
-    hasHistory: row.total > 0,
+    digitalHeld: row.digitalHeld,
+    hasHistory: row.total > 0 || row.digitalTotal > 0,
     deleteBlocked: deleteBlocked(row)?.reason ?? null,
     createdAt: new Date(row.createdAt).toISOString(),
   }
@@ -58,6 +61,8 @@ const listRaw = (db: DbLike, id?: number) =>
              e.department as department, e.job_title as jobTitle, e.archived_at as archivedAt, e.created_at as createdAt,
              coalesce(sum(case when a.id is not null and a.returned_at is null then 1 else 0 end), 0) as held,
              count(a.id) as total,
+             (select count(*) from digital_assignments d where d.employee_id = e.id and d.returned_at is null) as digitalHeld,
+             (select count(*) from digital_assignments d where d.employee_id = e.id) as digitalTotal,
              (select count(*) from conditions c where c.assessed_by_id = e.id) as assessed,
              (select min(u.email) from users u where u.employee_id = e.id) as account
       from employees e left join assignments a on a.employee_id = e.id
@@ -135,6 +140,9 @@ export function setEmployeeArchived(db: Db, actor: Actor, id: number, archived: 
     if ((current.state === 'archived') === archived) return
     if (archived && current.assetsHeld > 0) {
       throw conflict('holds_assets', `${current.name} still holds ${current.assetsHeld} asset(s). Return them before archiving.`)
+    }
+    if (archived && current.digitalHeld > 0) {
+      throw conflict('holds_assets', `${current.name} still has ${current.digitalHeld} digital asset(s). Unassign them before archiving.`)
     }
     tx.update(employees).set({ archivedAt: archived ? new Date() : null }).where(eq(employees.id, id)).run()
     writeAudit(tx, actor, {

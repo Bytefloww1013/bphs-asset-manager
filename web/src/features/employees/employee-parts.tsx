@@ -1,18 +1,22 @@
 import { useForm } from '@tanstack/react-form'
+import { useQuery } from '@tanstack/react-query'
 
-import { Archive, ArchiveRestore, CornerDownLeft, Pencil, Send, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, CornerDownLeft, PackageSearch, Pencil, Send, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import type { EmployeeRow } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
 import { Field, Input } from '@/components/ui/form.tsx'
-import { Panel } from '@/components/ui/layout.tsx'
+import { Mono, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overlay.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
 import { useWrite } from '@/features/common/hooks.ts'
+import { AssetTagLink } from '@/features/common/status.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
+import { formatDate, plural } from '@/lib/format.ts'
+import { assetsQuery, digitalAssetsQuery } from '@/lib/queries.ts'
 import { useCan } from '@/lib/session.ts'
 
 interface Body {
@@ -100,12 +104,14 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   const canArchive = useCan('employee.archive')
   const canDelete = useCan('record.delete')
   const [editing, setEditing] = useState(false)
+  const [holdings, setHoldings] = useState(false)
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null)
   const archive = useWrite(() => api.post(`/employees/${employee.id}/archive`), { success: `${employee.name} archived` })
   const restore = useWrite(() => api.post(`/employees/${employee.id}/restore`), { success: `${employee.name} restored` })
   const remove = useWrite(() => api.delete(`/employees/${employee.id}`), { success: `${employee.name} deleted` })
 
   const items: MenuItem[] = [
+    { label: 'What they hold', icon: PackageSearch, onSelect: () => setHoldings(true) },
     { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true) },
     employee.state === 'archived'
       ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => restore.mutate(undefined), disabledReason: canArchive ? undefined : SUPER_ADMIN_ONLY }
@@ -113,7 +119,13 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
           label: 'Archive',
           icon: Archive,
           onSelect: () => setConfirm('archive'),
-          disabledReason: !canArchive ? SUPER_ADMIN_ONLY : employee.assetsHeld > 0 ? `Holds ${employee.assetsHeld} asset${employee.assetsHeld === 1 ? '' : 's'}. Return them first.` : undefined,
+          disabledReason: !canArchive
+            ? SUPER_ADMIN_ONLY
+            : employee.assetsHeld > 0
+              ? `Holds ${employee.assetsHeld} asset${employee.assetsHeld === 1 ? '' : 's'}. Return them first.`
+              : employee.digitalHeld > 0
+                ? `Holds ${plural(employee.digitalHeld, 'digital asset')}. Unassign them first.`
+                : undefined,
         },
     {
       label: 'Delete',
@@ -132,6 +144,7 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
       </Button>
       <Menu label={`More actions for ${employee.name}`} items={items} />
       {editing && <EmployeeEditSheet employee={employee} onClose={() => setEditing(false)} />}
+      {holdings && <EmployeeHoldingsSheet employee={employee} onClose={() => setHoldings(false)} />}
       <ConfirmDialog
         open={confirm === 'archive'}
         onOpenChange={(open) => !open && setConfirm(null)}
@@ -234,3 +247,63 @@ export function EmployeeEditSheet({ employee, onClose }: { employee: EmployeeRow
   )
 }
 
+
+/** Everything an employee has out, physical and digital, so offboarding shows all there is to reclaim. */
+function EmployeeHoldingsSheet({ employee, onClose }: { employee: EmployeeRow; onClose: () => void }) {
+  const { data: assets, isPending: assetsPending } = useQuery(assetsQuery)
+  const { data: seats, isPending: seatsPending } = useQuery(digitalAssetsQuery)
+  const physical = (assets ?? []).filter((asset) => asset.holder?.id === employee.id)
+  const digital = (seats ?? []).filter((seat) => seat.employee?.id === employee.id)
+  const nothing = !assetsPending && !seatsPending && physical.length + digital.length === 0
+
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={`What ${employee.name} holds`}
+      description={nothing ? 'Nothing is out with them.' : 'Return or unassign each of these before archiving them.'}
+      footer={<Button onClick={onClose}>Close</Button>}
+    >
+      <div className="flex flex-col gap-6">
+        <section aria-labelledby="held-physical">
+          <h3 id="held-physical" className="text-sm font-semibold">
+            Physical assets <span className="font-normal text-ink-3">{assetsPending ? '' : physical.length}</span>
+          </h3>
+          {physical.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-3">{assetsPending ? 'Loading…' : 'None.'}</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-line rounded-control border border-line">
+              {physical.map((asset) => (
+                <li key={asset.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <AssetTagLink tag={asset.tag} />
+                  <span className="min-w-0 truncate text-ink-2">{asset.type}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section aria-labelledby="held-digital">
+          <h3 id="held-digital" className="text-sm font-semibold">
+            Digital assets <span className="font-normal text-ink-3">{seatsPending ? '' : digital.length}</span>
+          </h3>
+          {digital.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-3">{seatsPending ? 'Loading…' : 'None.'}</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-line rounded-control border border-line">
+              {digital.map((seat) => (
+                <li key={seat.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 text-sm">
+                  <Mono className="font-medium">{seat.code}</Mono>
+                  <span className="min-w-0">
+                    <span className="block truncate">{seat.type}</span>
+                    <span className="block truncate text-xs text-ink-3">{seat.account}</span>
+                  </span>
+                  <span className="text-xs text-ink-3">since {formatDate(seat.issuedAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    </Sheet>
+  )
+}

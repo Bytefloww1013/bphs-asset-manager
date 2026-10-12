@@ -1,7 +1,7 @@
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import type { EmployeeRef, Lookups, ProgramRef } from '../../shared/types.ts'
 import type { DbLike } from '../db/client.ts'
-import { assetTypes, conditionRatings, employees, programs } from '../db/schema.ts'
+import { assetTypes, conditionRatings, digitalAssetTypes, employees, programs } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 
@@ -73,6 +73,12 @@ export function loadLookups(db: DbLike): Lookups {
       .from(programs)
       .where(eq(programs.isActive, true))
       .orderBy(sql`${programs.name} collate nocase`)
+      .all(),
+    digitalAssetTypes: db
+      .select({ id: digitalAssetTypes.id, name: digitalAssetTypes.name })
+      .from(digitalAssetTypes)
+      .where(eq(digitalAssetTypes.isActive, true))
+      .orderBy(asc(digitalAssetTypes.name))
       .all(),
   }
 }

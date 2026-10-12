@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAssignmentsRouteImport } from './routes/_app/assignments'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAvailableRouteImport } from './routes/_app/available'
+import { Route as AppDigitalAssetsRouteImport } from './routes/_app/digital-assets'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppProgramsRouteImport } from './routes/_app/programs'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
@@ -56,6 +57,11 @@ const AppAuditRoute = AppAuditRouteImport.update({
 const AppAvailableRoute = AppAvailableRouteImport.update({
   id: '/available',
   path: '/available',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDigitalAssetsRoute = AppDigitalAssetsRouteImport.update({
+  id: '/digital-assets',
+  path: '/digital-assets',
   getParentRoute: () => AppRoute,
 } as any)
 const AppListsRoute = AppListsRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/assignments': typeof AppAssignmentsRoute
   '/audit': typeof AppAuditRoute
   '/available': typeof AppAvailableRoute
+  '/digital-assets': typeof AppDigitalAssetsRoute
   '/lists': typeof AppListsRoute
   '/programs': typeof AppProgramsRoute
   '/users': typeof AppUsersRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/assignments': typeof AppAssignmentsRoute
   '/audit': typeof AppAuditRoute
   '/available': typeof AppAvailableRoute
+  '/digital-assets': typeof AppDigitalAssetsRoute
   '/lists': typeof AppListsRoute
   '/programs': typeof AppProgramsRoute
   '/users': typeof AppUsersRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/_app/assignments': typeof AppAssignmentsRoute
   '/_app/audit': typeof AppAuditRoute
   '/_app/available': typeof AppAvailableRoute
+  '/_app/digital-assets': typeof AppDigitalAssetsRoute
   '/_app/lists': typeof AppListsRoute
   '/_app/programs': typeof AppProgramsRoute
   '/_app/users': typeof AppUsersRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/assignments'
     | '/audit'
     | '/available'
+    | '/digital-assets'
     | '/lists'
     | '/programs'
     | '/users'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/assignments'
     | '/audit'
     | '/available'
+    | '/digital-assets'
     | '/lists'
     | '/programs'
     | '/users'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/_app/assignments'
     | '/_app/audit'
     | '/_app/available'
+    | '/_app/digital-assets'
     | '/_app/lists'
     | '/_app/programs'
     | '/_app/users'
@@ -247,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAvailableRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/digital-assets': {
+      id: '/_app/digital-assets'
+      path: '/digital-assets'
+      fullPath: '/digital-assets'
+      preLoaderRoute: typeof AppDigitalAssetsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/lists': {
       id: '/_app/lists'
       path: '/lists'
@@ -303,6 +322,7 @@ interface AppRouteChildren {
   AppAssignmentsRoute: typeof AppAssignmentsRoute
   AppAuditRoute: typeof AppAuditRoute
   AppAvailableRoute: typeof AppAvailableRoute
+  AppDigitalAssetsRoute: typeof AppDigitalAssetsRoute
   AppListsRoute: typeof AppListsRoute
   AppProgramsRoute: typeof AppProgramsRoute
   AppUsersRoute: typeof AppUsersRoute
@@ -317,6 +337,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAssignmentsRoute: AppAssignmentsRoute,
   AppAuditRoute: AppAuditRoute,
   AppAvailableRoute: AppAvailableRoute,
+  AppDigitalAssetsRoute: AppDigitalAssetsRoute,
   AppListsRoute: AppListsRoute,
   AppProgramsRoute: AppProgramsRoute,
   AppUsersRoute: AppUsersRoute,

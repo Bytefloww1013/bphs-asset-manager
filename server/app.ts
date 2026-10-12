@@ -16,6 +16,7 @@ import { assetRoutes, assignmentRoutes } from './routes/assets.ts'
 import { authRoutes } from './routes/auth.ts'
 import { listRoutes, reportRoutes } from './routes/lists.ts'
 import { employeeRoutes, userRoutes } from './routes/people.ts'
+import { digitalAssetRoutes } from './routes/digital-assets.ts'
 import { programRoutes } from './routes/programs.ts'
 
 export interface AppOptions {
@@ -77,6 +78,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/assignments', assignmentRoutes(db))
   api.route('/employees', employeeRoutes(db))
   api.route('/programs', programRoutes(db))
+  api.route('/digital-assets', digitalAssetRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requirePermission('users.manage'))
   api.use('/users', requirePermission('users.manage'))

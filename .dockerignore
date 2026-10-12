@@ -7,6 +7,7 @@ qa-shots
 .env.local
 .impeccable
 .claude
+.codegraph
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

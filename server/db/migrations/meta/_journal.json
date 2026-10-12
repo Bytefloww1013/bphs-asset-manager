@@ -43,6 +43,13 @@
       "when": 1791832830407,
       "tag": "0005_programs",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791834297887,
+      "tag": "0006_digital_assets",
+      "breakpoints": true
     }
   ]
 }

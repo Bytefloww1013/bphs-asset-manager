@@ -11,12 +11,16 @@ import type { Db } from '../db/client.ts'
 import { intParam, json, query, requirePermission, type Env } from '../http.ts'
 import {
   createAssetType,
+  createDigitalAssetType,
   createRating,
   deleteAssetType,
+  deleteDigitalAssetType,
   deleteRating,
   listAssetTypes,
+  listDigitalAssetTypes,
   listRatings,
   updateAssetType,
+  updateDigitalAssetType,
   updateRating,
 } from '../services/lists.ts'
 import { loadLookups } from '../services/refs.ts'
@@ -34,6 +38,18 @@ export function listRoutes(db: Db) {
   )
   app.delete('/asset-types/:id', requirePermission('record.delete'), (c) => {
     deleteAssetType(db, c.get('user'), intParam(c, 'id'))
+    return c.body(null, 204)
+  })
+
+  app.get('/digital-asset-types', (c) => c.json(listDigitalAssetTypes(db)))
+  app.post('/digital-asset-types', json(assetTypeCreateSchema), (c) =>
+    c.json(createDigitalAssetType(db, c.get('user'), c.req.valid('json').name), 201),
+  )
+  app.patch('/digital-asset-types/:id', json(assetTypeUpdateSchema), (c) =>
+    c.json(updateDigitalAssetType(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
+  )
+  app.delete('/digital-asset-types/:id', requirePermission('record.delete'), (c) => {
+    deleteDigitalAssetType(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
 
