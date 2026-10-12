@@ -35,6 +35,6 @@ export default defineConfig({
     emptyOutDir: true,
     // Hashed files live under /static so they never collide with the /assets pages of the app.
     assetsDir: 'static',
-    sourcemap: true,
+    sourcemap: false,
   },
 })
