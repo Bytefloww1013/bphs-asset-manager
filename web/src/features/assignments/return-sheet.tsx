@@ -30,6 +30,18 @@ export function ReturnSheet() {
 
 type Values = { ratingId: number | null; assessor: EmployeeRef | null; notes: string }
 
+/**
+ * What to say when the assignment turned out to be closed already. Only sometimes is that a colleague a moment ago: it can be the
+ * same person in another tab, or a sheet that was left open since yesterday, so the words follow who closed it and when.
+ */
+function alreadyReturned(assignmentId: number, details: { returnedBy?: string | null; returnedByYou?: boolean; returnedAt?: string } = {}) {
+  const justNow = !!details.returnedAt && Date.now() - new Date(details.returnedAt).getTime() < 2 * 60_000
+  const title = details.returnedByYou ? 'You have already returned this asset' : justNow ? 'This asset was just returned by someone else' : 'This asset has already been returned'
+  const who = details.returnedByYou ? 'You' : (details.returnedBy ?? 'Someone')
+  const when = details.returnedAt ? ` at ${formatDateTime(details.returnedAt)}, ${formatRelative(details.returnedAt)}` : ''
+  return { title, body: `${who} closed assignment #${assignmentId}${when}. Nothing was recorded this time. Reload to see the current list.` }
+}
+
 function Facts({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-control border border-line bg-canvas px-4 py-3.5">
@@ -133,9 +145,8 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
         }}
       >
         {conflict && (
-          <Alert tone="bad" title="This asset was just returned by another user">
-            {conflict.details?.returnedBy ?? 'Someone'} closed assignment #{assignmentId}
-            {conflict.details?.returnedAt ? ` at ${formatDateTime(conflict.details.returnedAt)}, ${formatRelative(conflict.details.returnedAt)}` : ''}. Reload before recording another condition; the one-active-assignment rule is enforced in the database too.
+          <Alert tone="bad" title={alreadyReturned(assignmentId, conflict.details).title}>
+            {alreadyReturned(assignmentId, conflict.details).body}
           </Alert>
         )}
         {gone && (

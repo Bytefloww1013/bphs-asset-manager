@@ -393,7 +393,18 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     const late = await t.call('POST', `/api/assignments/${issued.data.id}/return`, { cookie, body: { conditionRatingId: good.id } })
     expect(late.status).toBe(409)
     expect(late.data.error).toBe('already_returned')
-    expect(late.data.details.returnedBy).toBe('m.oyelaran')
+    expect(late.data.message).toBe('BPHS-0141 has already been returned by m.oyelaran.')
+    expect(late.data.details).toMatchObject({ returnedBy: 'm.oyelaran', returnedByYou: false })
+    expect(Date.parse(late.data.details.returnedAt)).toBeLessThanOrEqual(Date.now())
+
+    // The same person again, from another tab say: it was not "another user".
+    const again = await t.call('POST', `/api/assignments/${issued.data.id}/return`, { cookie: other, body: { conditionRatingId: good.id } })
+    expect(again.status).toBe(409)
+    expect(again.data.message).toBe('BPHS-0141 has already been returned by you.')
+    expect(again.data.details).toMatchObject({ returnedBy: 'm.oyelaran', returnedByYou: true })
+    // A bulk return passes the same sentence on for the row it could not close.
+    const bulk = await t.call('POST', '/api/assignments/return-bulk', { cookie, body: { ids: [issued.data.id], conditionRatingId: good.id } })
+    expect(bulk.data).toEqual({ returned: [], failed: [{ id: issued.data.id, message: 'BPHS-0141 has already been returned by m.oyelaran.' }] })
   })
 
   it('the database itself refuses two open assignments for one asset', async () => {

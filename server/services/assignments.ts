@@ -140,18 +140,17 @@ export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input
 
   if (assignment.returnedAt) {
     const closer = assignment.returnedById
-      ? tx.select({ email: users.email }).from(users).where(eq(users.id, assignment.returnedById)).get()
+      ? tx.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, assignment.returnedById)).get()
       : undefined
-    throw new HttpError(
-      409,
-      'already_returned',
-      `${asset.tag} was just returned by another user.`,
-      {
-        assignmentId: assignment.id,
-        returnedAt: assignment.returnedAt.toISOString(),
-        returnedBy: closer ? actorLabel(closer.email) : null,
-      },
-    )
+    // Not always a colleague a moment ago: it can be the same person in another tab, or a sheet left open since yesterday.
+    const byYou = closer?.id === actor.id
+    const who = byYou ? ' by you' : closer ? ` by ${actorLabel(closer.email)}` : ''
+    throw new HttpError(409, 'already_returned', `${asset.tag} has already been returned${who}.`, {
+      assignmentId: assignment.id,
+      returnedAt: assignment.returnedAt.toISOString(),
+      returnedBy: closer ? actorLabel(closer.email) : null,
+      returnedByYou: byYou,
+    })
   }
 
   const rating = requireActiveRating(tx, input.conditionRatingId)
