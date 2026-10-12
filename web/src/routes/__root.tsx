@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
 import { Compass, TriangleAlert } from 'lucide-react'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -13,8 +13,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         title="That page doesn't exist"
         description="The link may be out of date, or the record may have been removed."
         action={
-          <Link to="/">
-            <Button variant="primary">Go to overview</Button>
+          <Link to="/" className={buttonStyles('primary')}>
+            Go to overview
           </Link>
         }
       />

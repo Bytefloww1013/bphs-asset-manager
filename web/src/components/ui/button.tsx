@@ -27,7 +27,7 @@ const sizes: Record<ButtonSize, string> = {
   lg: 'h-10 gap-2 px-4 text-md',
 }
 
-/** Class names for anything that should look like a button, such as a download link. */
+/** Class names for a link that should look like a button, such as a download or a router Link. Do not put a Button inside a link: that is two interactive elements, and two tab stops, for one action. */
 export const buttonStyles = (variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', className?: string) => cn(base, variants[variant], sizes[size], className)
 
 export interface ButtonProps extends ComponentProps<'button'> {

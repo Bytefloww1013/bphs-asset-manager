@@ -6,7 +6,7 @@ import type { EmployeeRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
 import { Badge } from '@/components/ui/badge.tsx'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
@@ -59,8 +59,9 @@ function EmployeesPage() {
         title="Employees"
         description="Everyone who can hold equipment. An employee with assignment history is archived, never deleted."
         actions={
-          <Link to="/employees/import">
-            <Button icon={<Upload className="size-4" />}>Import CSV</Button>
+          <Link to="/employees/import" className={buttonStyles()}>
+            <Upload className="size-4" aria-hidden />
+            Import CSV
           </Link>
         }
       />
@@ -85,7 +86,7 @@ function EmployeesPage() {
           noun="employees"
           loading={isPending}
           rowClassName={(row) => (row.original.id === flash ? 'animate-row-flash' : undefined)}
-          empty={<EmptyState icon={Users} title="No employees yet" description="Add one above, or import your HR export as a CSV." action={<Link to="/employees/import"><Button variant="primary">Import CSV</Button></Link>} />}
+          empty={<EmptyState icon={Users} title="No employees yet" description="Add one above, or import your HR export as a CSV." action={<Link to="/employees/import" className={buttonStyles('primary')}>Import CSV</Link>} />}
           noMatches={<EmptyState icon={Users} title="No employees match" description="Try a different name or ID." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
       </div>

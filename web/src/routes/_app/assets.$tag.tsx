@@ -6,7 +6,7 @@ import type { ConditionEntry, HistoryRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
 import { Badge } from '@/components/ui/badge.tsx'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
@@ -25,8 +25,8 @@ export const Route = createFileRoute('/_app/assets/$tag')({
       title={error instanceof ApiError && error.status === 404 ? 'No asset with that tag' : 'Could not load this asset'}
       description={error instanceof Error ? error.message : undefined}
       action={
-        <Link to="/assets">
-          <Button variant="primary">Back to assets</Button>
+        <Link to="/assets" className={buttonStyles('primary')}>
+          Back to assets
         </Link>
       }
     />

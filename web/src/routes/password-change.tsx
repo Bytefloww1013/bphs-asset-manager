@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { checkPassword } from '@shared/password.ts'
 import { passwordChangeSchema } from '@shared/schemas.ts'
 import type { SessionUser } from '@shared/types.ts'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Input } from '@/components/ui/form.tsx'
 import { Wordmark } from '@/components/ui/logo.tsx'
@@ -128,10 +128,8 @@ function PasswordChangePage() {
               </form.Field>
               <div className="mt-1 flex gap-2">
                 {!forced && (
-                  <Link to="/" className="contents">
-                    <Button variant="secondary" size="lg" className="flex-1">
-                      Cancel
-                    </Button>
+                  <Link to="/" className={buttonStyles('secondary', 'lg', 'flex-1')}>
+                    Cancel
                   </Link>
                 )}
                 <Button type="submit" variant="primary" size="lg" loading={change.isPending} className="flex-1">

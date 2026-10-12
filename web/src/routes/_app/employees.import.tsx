@@ -6,7 +6,7 @@ import type { ImportPreview, ImportRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
 import { Badge } from '@/components/ui/badge.tsx'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert, EmptyState } from '@/components/ui/feedback.tsx'
 import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
@@ -169,7 +169,7 @@ function ImportPage() {
 
         <div className="flex min-w-0 flex-col gap-4">
           {done && (
-            <Alert tone="ok" title={`Imported ${plural(done.created ?? 0, 'new employee')}`} action={<Link to="/employees"><Button size="sm">View employees</Button></Link>}>
+            <Alert tone="ok" title={`Imported ${plural(done.created ?? 0, 'new employee')}`} action={<Link to="/employees" className={buttonStyles('secondary', 'sm')}>View employees</Link>}>
               Skipped {plural(done.summary.duplicates, 'duplicate')}. {plural(done.summary.errors, 'row')} had errors and were left out.
             </Alert>
           )}

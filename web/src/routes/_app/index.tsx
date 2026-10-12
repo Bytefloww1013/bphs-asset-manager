@@ -3,7 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowRight, CheckCircle2, Plus, Send } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { OVERDUE_DAYS } from '@shared/constants.ts'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Skeleton } from '@/components/ui/feedback.tsx'
 import { Mono, PageHeader, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
@@ -30,8 +30,9 @@ function Overview() {
         description="Where the equipment is, and what needs a decision."
         actions={
           <>
-            <Link to="/assets">
-              <Button icon={<Plus className="size-4" />}>Add asset</Button>
+            <Link to="/assets" className={buttonStyles()}>
+              <Plus className="size-4" aria-hidden />
+              Add asset
             </Link>
             <Button variant="primary" icon={<Send className="size-4" />} onClick={() => sheets.issue()}>
               Issue asset

@@ -5,7 +5,7 @@ import { useState } from 'react'
 import type { AssignmentRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
-import { Button } from '@/components/ui/button.tsx'
+import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Checkbox, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
@@ -30,10 +30,8 @@ function RowActions({ row }: { row: AssignmentRow }) {
       <Button size="sm" onClick={() => sheets.returnAsset(row.id)}>
         Return
       </Button>
-      <Link to="/assets/$tag" params={{ tag: row.assetTag }} className="hidden md:block">
-        <Button size="sm" variant="ghost">
-          History
-        </Button>
+      <Link to="/assets/$tag" params={{ tag: row.assetTag }} className={buttonStyles('ghost', 'sm', 'hidden md:inline-flex')}>
+        History
       </Link>
     </div>
   )
@@ -134,7 +132,7 @@ function AssignmentsPage() {
           label="Active assignments"
           noun="assignments"
           loading={isPending}
-          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When an asset is issued to someone it shows up here until it is returned." action={<Link to="/available"><Button variant="primary">See available assets</Button></Link>} />}
+          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When an asset is issued to someone it shows up here until it is returned." action={<Link to="/available" className={buttonStyles('primary')}>See available assets</Link>} />}
           noMatches={<EmptyState icon={ClipboardList} title="No assignments match" description="Try a different name or tag." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
       </div>
