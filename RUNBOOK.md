@@ -198,7 +198,7 @@ Expect a short gap (seconds) while the container is recreated. Sessions live in 
 The container speaks plain HTTP. If you put a TLS-terminating proxy in front (recommended whenever people sign in over anything but a trusted office LAN):
 
 1. In `docker-compose.yml` set `COOKIE_SECURE: 'true'`, and publish the port to the proxy only: `'127.0.0.1:8080:3000'`. Then `docker compose up -d`. People may need to sign in again.
-2. The proxy must pass the `Host` header through and set `X-Forwarded-Proto`.
+2. The proxy needs no special headers. The app does not read `Host` or any `X-Forwarded-*` header: whether the cookie is marked Secure depends on `COOKIE_SECURE` alone, which is why step 1 is not optional.
 3. Raise the proxy's request-size limit for the CSV employee import. The API accepts up to 2 MB, and nginx's default of 1 MB would reject larger files with a 413.
 
 Sketch for nginx (adapt names and certificate paths; **not tested here**):
@@ -212,8 +212,6 @@ server {
   client_max_body_size 3m;
   location / {
     proxy_pass http://127.0.0.1:8080;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
   }
 }
 ```
