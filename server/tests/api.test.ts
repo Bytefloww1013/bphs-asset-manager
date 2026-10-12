@@ -692,6 +692,30 @@ describe('employees and CSV import', () => {
 })
 
 describe('lists, users and audit', () => {
+  it('answers a write with the same row the lists show, when other rows have history of their own', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const { assetTypes, conditionRatings } = await t.lookups(cookie)
+    const body = (tag: string, holderId: number | null) => ({ tag, typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id, holderId })
+    const first = (await t.call('POST', '/api/assets', { cookie, body: body('ROW-1', t.person.id) })).data
+    await t.call('POST', `/api/assignments/${first.assignmentId}/return`, { cookie, body: { conditionRatingId: conditionRatings[1]!.id, notes: 'scuffed' } })
+    await t.call('POST', '/api/assets', { cookie, body: body('ROW-2', t.person.id) })
+    await t.call('POST', '/api/assets', { cookie, body: body('ROW-3', null) })
+
+    const { daysOut: _a, ...changed } = (await t.call('PATCH', `/api/assets/${first.id}`, { cookie, body: { serial: 'SN-77' } })).data
+    const { daysOut: _b, ...listed } = (await t.call('GET', '/api/assets', { cookie })).data.find((row: { id: number }) => row.id === first.id)
+    expect(changed).toEqual(listed)
+    expect(changed).toMatchObject({ state: 'in_storage', hasHistory: true, condition: { rating: conditionRatings[1]!.name, notes: 'scuffed' } })
+    expect(changed.lastReturnedAt).not.toBeNull()
+
+    const type = (await t.call('PATCH', `/api/asset-types/${assetTypes[0]!.id}`, { cookie, body: { name: 'Renamed' } })).data
+    expect(type).toEqual((await t.call('GET', '/api/asset-types', { cookie })).data.find((row: { id: number }) => row.id === type.id))
+    expect(type.assetCount).toBe(3)
+    const rating = (await t.call('PATCH', `/api/condition-ratings/${conditionRatings[1]!.id}`, { cookie, body: { name: 'Worn' } })).data
+    expect(rating).toEqual((await t.call('GET', '/api/condition-ratings', { cookie })).data.find((row: { id: number }) => row.id === rating.id))
+    expect(rating.snapshotCount).toBe(1)
+  })
+
   it('protects types in use', async () => {
     const t = await setup()
     const cookie = await t.asSuper()

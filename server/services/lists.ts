@@ -7,15 +7,16 @@ import { conflict, notFound } from '../lib/errors.ts'
 
 // ---- Asset types ---------------------------------------------------------------
 
-export function listAssetTypes(db: DbLike): AssetTypeRow[] {
+export function listAssetTypes(db: DbLike, id?: number): AssetTypeRow[] {
   return db.all<AssetTypeRow>(sql`
     select t.id as id, t.name as name, t.is_active as isActive, count(a.id) as assetCount
     from asset_types t left join assets a on a.type_id = t.id
+    ${id ? sql`where t.id = ${id}` : sql``}
     group by t.id order by t.is_active desc, t.name collate nocase`).map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
 }
 
 function typeRow(db: DbLike, id: number): AssetTypeRow {
-  const row = listAssetTypes(db).find((item) => item.id === id)
+  const row = listAssetTypes(db, id)[0]
   if (!row) throw notFound('Asset type')
   return row
 }
@@ -82,15 +83,16 @@ export function deleteAssetType(db: Db, actor: Actor, id: number) {
 
 // ---- Condition ratings ---------------------------------------------------------------
 
-export function listRatings(db: DbLike): ConditionRatingRow[] {
+export function listRatings(db: DbLike, id?: number): ConditionRatingRow[] {
   return db.all<ConditionRatingRow>(sql`
     select r.id as id, r.name as name, r.score as score, r.is_active as isActive, count(c.id) as snapshotCount
     from condition_ratings r left join conditions c on c.rating_id = r.id
+    ${id ? sql`where r.id = ${id}` : sql``}
     group by r.id order by r.score desc`).map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
 }
 
 function ratingRow(db: DbLike, id: number): ConditionRatingRow {
-  const row = listRatings(db).find((item) => item.id === id)
+  const row = listRatings(db, id)[0]
   if (!row) throw notFound('Condition rating')
   return row
 }

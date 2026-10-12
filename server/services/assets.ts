@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, type SQL } from 'drizzle-orm'
 import { defaultRating } from '../../shared/constants.ts'
 import { assetBulkRowFields, type AssetBulkInput, type AssetCreateInput, type AssetUpdateInput } from '../../shared/schemas.ts'
 import type {
@@ -59,6 +59,9 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
     from assets s join asset_types t on t.id = s.type_id ${where}
     order by s.tag collate nocase`)
   if (base.length === 0) return []
+  // Asked for one asset, read only its rows below instead of every asset's.
+  const one = only ? base[0]!.id : null
+  const forOne = (column: SQL, word: 'and' | 'where') => (one === null ? sql`` : sql`${sql.raw(word)} ${column} = ${one}`)
 
   const open = new Map(
     db
@@ -66,7 +69,7 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
         select a.asset_id as assetId, a.id as assignmentId, a.issued_at as issuedAt,
                e.id as eId, e.code as eCode, e.first_name as eFirst, e.last_name as eLast, e.department as eDept
         from assignments a join employees e on e.id = a.employee_id
-        where a.returned_at is null`)
+        where a.returned_at is null ${forOne(sql`a.asset_id`, 'and')}`)
       .map((row) => [row.assetId, row]),
   )
   const latest = new Map(
@@ -74,19 +77,19 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
       .all<LatestCondition>(sql`
         select c.asset_id as assetId, c.rating_id as ratingId, r.name as rating, c.notes as notes, c.recorded_at as recordedAt
         from conditions c join condition_ratings r on r.id = c.rating_id
-        where c.id in (select max(id) from conditions group by asset_id)`)
+        where c.id in (select max(id) from conditions ${forOne(sql`asset_id`, 'where')} group by asset_id)`)
       .map((row) => [row.assetId, row]),
   )
   const returned = new Map(
     db
       .all<{ assetId: number; at: number }>(
-        sql`select asset_id as assetId, max(returned_at) as at from assignments where returned_at is not null group by asset_id`,
+        sql`select asset_id as assetId, max(returned_at) as at from assignments where returned_at is not null ${forOne(sql`asset_id`, 'and')} group by asset_id`,
       )
       .map((row) => [row.assetId, row.at]),
   )
   const counts = new Map(
     db
-      .all<{ assetId: number; n: number }>(sql`select asset_id as assetId, count(*) as n from assignments group by asset_id`)
+      .all<{ assetId: number; n: number }>(sql`select asset_id as assetId, count(*) as n from assignments ${forOne(sql`asset_id`, 'where')} group by asset_id`)
       .map((row) => [row.assetId, row.n]),
   )
 
