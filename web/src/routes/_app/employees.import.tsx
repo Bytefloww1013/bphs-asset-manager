@@ -42,21 +42,34 @@ const getRowId = (row: ImportRow) => String(row.row)
 function ImportPage() {
   usePageTitle('Import employees')
   const input = useRef<HTMLInputElement>(null)
+  // Counts the files chosen, so a file that is still being read, or waiting for its preview, when another is chosen is dropped.
+  const latest = useRef(0)
   const [file, setFile] = useState<{ name: string; size: number; csv: string } | null>(null)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [dragging, setDragging] = useState(false)
   const [done, setDone] = useState<ImportPreview | null>(null)
 
-  const check = useMutation({ mutationFn: (csv: string) => api.post<ImportPreview>('/employees/import/preview', { csv }), onSuccess: setPreview })
+  const check = useMutation({ mutationFn: (csv: string) => api.post<ImportPreview>('/employees/import/preview', { csv }) })
   const run = useWrite((csv: string) => api.post<ImportPreview>('/employees/import', { csv }), { onSuccess: (result) => setDone(result) })
   const table = useGrid({ data: (done ?? preview)?.rows ?? [], columns, getRowId, pageSize: 50, resetKey: done ?? preview })
 
   async function choose(chosen: File | undefined) {
     if (!chosen) return
+    const mine = ++latest.current
+    // Import sends the file chosen last, so rows read from an earlier one must not stay on offer while this one is read, or if it cannot be.
     setDone(null)
+    setPreview(null)
+    check.reset()
     const csv = await chosen.text()
+    // An input that still holds a file does not fire change when that file is chosen again, which is what fixing a header means.
+    if (input.current) input.current.value = ''
+    if (mine !== latest.current) return
     setFile({ name: chosen.name, size: chosen.size, csv })
-    check.mutate(csv)
+    check.mutate(csv, {
+      onSuccess: (result) => {
+        if (mine === latest.current) setPreview(result)
+      },
+    })
   }
 
   const columnsInfo = (done ?? preview)?.columns ?? [
