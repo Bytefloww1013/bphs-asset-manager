@@ -17,12 +17,13 @@ import { startOfLocalDay } from './format.ts'
 
 export const meQuery = queryOptions({
   queryKey: ['me'],
-  queryFn: async (): Promise<SessionUser | null> => {
+  queryFn: async ({ client }): Promise<SessionUser | null> => {
     try {
       return (await api.get<{ user: SessionUser }>('/auth/me')).user
     } catch (error) {
-      // Signed out, or signed in but must change the password first (the API still answers /auth/me then).
-      if (error instanceof ApiError && error.status === 401) return null
+      // Signed out: nobody. But a tab that was signed in keeps who it was, as an error, so the page stays up while it asks for the
+      // password again (handleAuthFailure in router.tsx). The API still answers /auth/me for a user who must change their password.
+      if (error instanceof ApiError && error.status === 401 && !client.getQueryData(['me'])) return null
       throw error
     }
   },

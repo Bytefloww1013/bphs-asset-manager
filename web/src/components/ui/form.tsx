@@ -1,13 +1,27 @@
-import { Check, ChevronDown, Search } from 'lucide-react'
-import { cloneElement, isValidElement, useId, type ComponentProps, type ReactElement, type ReactNode } from 'react'
+import { Check, ChevronDown, Eye, EyeOff, Search } from 'lucide-react'
+import { cloneElement, isValidElement, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react'
 import { cn } from '@/lib/cn.ts'
 import type { Tone } from './badge.tsx'
+import { IconButton } from './button.tsx'
 
 const control =
   'w-full rounded-control border border-line-strong bg-surface text-ink shadow-[inset_0_1px_1px_oklch(0.2_0.02_262/0.04)] transition-[border-color,box-shadow] duration-150 hover:border-ink-4 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/20 aria-[invalid=true]:border-bad aria-[invalid=true]:focus-visible:ring-bad/20 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-ink-3 disabled:hover:border-line-strong'
 
 export function Input({ className, mono, ...rest }: ComponentProps<'input'> & { mono?: boolean }) {
   return <input className={cn(control, 'h-9 px-3 text-sm', mono && 'font-mono text-[0.8125rem]', className)} {...rest} />
+}
+
+/** A password input with a show/hide button. Field hands its id and aria attributes to its direct child, so they are passed on to the input here. */
+export function PasswordInput(props: Omit<ComponentProps<'input'>, 'type' | 'className'>) {
+  const [reveal, setReveal] = useState(false)
+  return (
+    <div className="relative">
+      <Input {...props} type={reveal ? 'text' : 'password'} className="pr-10" />
+      <IconButton label={reveal ? 'Hide password' : 'Show password'} size="sm" className="absolute right-0.5 top-0.5" onClick={() => setReveal((on) => !on)}>
+        {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </IconButton>
+    </div>
+  )
 }
 
 export function SearchInput({ className, ...rest }: Omit<ComponentProps<'input'>, 'type'>) {

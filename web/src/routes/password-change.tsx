@@ -14,12 +14,12 @@ import { cn } from '@/lib/cn.ts'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { meQuery, refreshData } from '@/lib/queries.ts'
-import { useUser, usePageTitle } from '@/lib/session.ts'
+import { returnPath, useUser, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/password-change')({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const user = await context.queryClient.ensureQueryData(meQuery)
-    if (!user) throw redirect({ to: '/login' })
+    if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(location.href) } })
   },
   component: PasswordChangePage,
 })

@@ -3,6 +3,7 @@ import { AppShell } from '@/components/shell/app-shell.tsx'
 import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
 import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
 import { lookupsQuery, meQuery } from '@/lib/queries.ts'
+import { returnPath } from '@/lib/session.ts'
 
 export interface SheetSearch {
   /** Open the Issue sheet for this asset id, or 'new' to pick one. */
@@ -24,9 +25,9 @@ export const Route = createFileRoute('/_app')({
     return: toId(search.return),
     employee: toId(search.employee),
   }),
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const user = await context.queryClient.ensureQueryData(meQuery)
-    if (!user) throw redirect({ to: '/login' })
+    if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(location.href) } })
     if (user.mustChangePassword) throw redirect({ to: '/password-change' })
   },
   // Pickers in the Issue and Return sheets need these; fetch once, up front.

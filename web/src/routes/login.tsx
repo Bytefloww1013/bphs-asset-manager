@@ -1,51 +1,40 @@
 import { useForm } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
-import { Eye, EyeOff, Lock } from 'lucide-react'
-import { useState, type ComponentProps } from 'react'
+import { Lock } from 'lucide-react'
 import { loginSchema } from '@shared/schemas.ts'
 import type { SessionUser } from '@shared/types.ts'
-import { Button, IconButton } from '@/components/ui/button.tsx'
+import { Button } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
-import { Field, Input } from '@/components/ui/form.tsx'
+import { Field, Input, PasswordInput } from '@/components/ui/form.tsx'
 import { Wordmark } from '@/components/ui/logo.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { meQuery } from '@/lib/queries.ts'
 import { formatTime } from '@/lib/format.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { returnPath, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: async ({ context }) => {
+  // Where the user was when they were sent here, so signing in takes them back to it.
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({ redirect: returnPath(search.redirect) }),
+  beforeLoad: async ({ context, search }) => {
     const user = await context.queryClient.ensureQueryData(meQuery)
-    if (user) throw redirect({ to: user.mustChangePassword ? '/password-change' : '/' })
+    if (user) throw user.mustChangePassword ? redirect({ to: '/password-change' }) : redirect({ href: search.redirect ?? '/' })
   },
   component: LoginPage,
 })
-
-/** A password input with a show/hide button. Field hands its id and aria attributes to its direct child, so they are passed on to the input here. */
-function PasswordInput(props: Omit<ComponentProps<'input'>, 'type' | 'className'>) {
-  const [reveal, setReveal] = useState(false)
-  return (
-    <div className="relative">
-      <Input {...props} type={reveal ? 'text' : 'password'} className="pr-10" />
-      <IconButton label={reveal ? 'Hide password' : 'Show password'} size="sm" className="absolute right-0.5 top-0.5" onClick={() => setReveal((on) => !on)}>
-        {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-      </IconButton>
-    </div>
-  )
-}
 
 function LoginPage() {
   usePageTitle('Sign in')
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { redirect: cameFrom } = Route.useSearch()
 
   const login = useMutation({
     mutationFn: (value: { email: string; password: string }) => api.post<{ user: SessionUser }>('/auth/login', value),
     onSuccess: async ({ user }) => {
       queryClient.setQueryData(meQuery.queryKey, user)
-      await router.navigate({ to: user.mustChangePassword ? '/password-change' : '/' })
+      await (user.mustChangePassword ? router.navigate({ to: '/password-change' }) : router.navigate({ href: cameFrom ?? '/' }))
     },
   })
 

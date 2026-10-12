@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createRoot } from 'react-dom/client'
 import { ToastProvider } from './components/ui/feedback.tsx'
 import { TooltipProvider } from './components/ui/tooltip.tsx'
+import { SignInAgain } from './features/auth/sign-in-again.tsx'
 import { queryClient, router } from './router.tsx'
 import './styles.css'
 
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
       <TooltipProvider>
         <ToastProvider>
           <RouterProvider router={router} />
+          <SignInAgain />
         </ToastProvider>
       </TooltipProvider>
     </QueryClientProvider>

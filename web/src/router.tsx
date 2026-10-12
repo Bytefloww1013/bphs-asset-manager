@@ -1,16 +1,29 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
 import { ApiError } from './lib/api.ts'
+import { meQuery } from './lib/queries.ts'
+import { returnPath, setSessionEnded } from './lib/session.ts'
 import { routeTree } from './routeTree.gen'
 
-/** A signed-out or expired session sends the user to the right screen, whatever call noticed it first. */
+/**
+ * A signed-out or expired session is dealt with here, whatever call noticed it first. Inside the app the user is asked for their
+ * password over the page they are on (SignInAgain), so a half-filled form survives; anywhere else they go to the sign-in page,
+ * which brings them back afterwards.
+ */
 function handleAuthFailure(error: unknown) {
   if (!(error instanceof ApiError)) return
-  const here = router.state.location.pathname
-  if (error.status === 401 && here !== '/login') {
+  const { location, matches } = router.state
+  if (error.status === 401 && location.pathname !== '/login') {
+    if (queryClient.getQueryData(meQuery.queryKey) && matches.some((match) => match.routeId === '/_app')) {
+      setSessionEnded(true)
+      // Only what is on screen stays in memory while nobody is signed in.
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'me' && query.getObserversCount() === 0 })
+      return
+    }
     queryClient.clear()
-    void router.navigate({ to: '/login' })
-  } else if (error.code === 'password_change_required' && here !== '/password-change') {
+    void router.navigate({ to: '/login', search: { redirect: returnPath(location.href) } })
+  } else if (error.code === 'password_change_required' && location.pathname !== '/password-change') {
+    setSessionEnded(false)
     queryClient.clear()
     void router.navigate({ to: '/password-change' })
   }
