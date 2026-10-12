@@ -24,7 +24,7 @@ Other scripts:
 
 | Script | What it does |
 | --- | --- |
-| `bun run test` | API integration tests (auth, lockout, one-active-assignment, CSV import, permissions, audit) against an in-memory database |
+| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit) against an in-memory database |
 | `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
 | `bun run build` | Builds the SPA to `dist/web` |
 | `bun run start` | Production mode: builds the SPA first, so it is never an older one, then the API serves it from `dist/web` |
@@ -65,7 +65,7 @@ This uses SQLite's backup API, so it is safe while the app is running. `scripts/
 
 ## What it does
 
-Thirteen screens, all built:
+Sixteen screens, all built:
 
 | Screen | Route |
 | --- | --- |
@@ -78,9 +78,11 @@ Thirteen screens, all built:
 | Available assets, with an `I` shortcut to issue | `/available` |
 | Issue an asset (sheet) | any page, `?issue=<assetId>` or `?issue=new` |
 | Return an asset (sheet, with the race-conflict state) | any page, `?return=<assignmentId>` |
+| Digital Assets: license and account seats, one per row, issued to employees | `/digital-assets` |
 | Employees with quick-add | `/employees` |
-| Import employees from CSV (preview, then commit) | `/employees/import` |
-| Lists: asset types and condition ratings | `/lists` |
+| Programs, which can hold physical assets the way an employee does | `/programs` |
+| Lists: asset types, digital asset types and condition ratings | `/lists` |
+| Import/Export: employees and programs in from CSV or Excel (map columns, preview, then commit); every list out as CSV or Excel | `/import-export` |
 | Audit log (filter, search, CSV export) | `/audit` |
 | Users (Super Admin only) | `/users` |
 
@@ -91,6 +93,9 @@ Thirteen screens, all built:
 - Assets and people with history are retired or archived, never deleted. Delete is Super Admin only and only for records with no history.
 - The audit log is append-only. SQLite triggers reject any `UPDATE` or `DELETE` on it.
 - Five wrong passwords lock an account for 15 minutes. New and reset accounts get a one-time password and must change it before any other page works (the API refuses everything else until then).
+- A physical asset is held by exactly one employee or one program, never both and never neither, in the app **and** by a `CHECK` constraint in the database.
+- A digital asset gets its Asset ID from the system (`DA-0001`, never typed, edited or reused), is issued to employees only, and reads Active while someone has it. Its License/Account field names a seat and refuses anything that labels itself a password, key or token: no credential is stored.
+- An import only adds employees and programs. It never changes an existing record and never issues anything; a row whose ID already exists is skipped, so running the same file twice is safe. Each record created gets its own audit entry.
 - Roles: **Admin** adds and changes records. **Super Admin** can also delete, archive employees and manage accounts.
 
 ## Project layout
@@ -99,7 +104,7 @@ Thirteen screens, all built:
 server/            Hono API: app.ts, routes/, services/ (business rules), db/ (Drizzle schema + SQL migrations), tests/
                    plus the command-line tools backup.ts, admin.ts and seed.ts
 scripts/           backup-offbox.sh (scheduled, checked backups to the host)
-shared/            Types, Zod schemas, password rules and permissions used by both sides
+shared/            Types, Zod schemas, password rules, permissions, the importable record types and the CSV reader and writer, used by both sides
 web/src/           React app: routes/ (file-based), components/ui (kit), components/data-grid (TanStack Table), features/
 dist/web/          Built SPA (generated)
 ```
@@ -122,4 +127,6 @@ The design was reworked for legibility and comfort, not just restyled:
 - Bulk return applies one condition to every selected asset.
 - No dark theme yet (the tokens are semantic, so it is additive).
 - Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).
-- The audit log export caps at 50,000 rows per download.
+- The audit log export caps at 50,000 rows per download, and is CSV only.
+- Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
+- An import takes one file of at most 2,000 rows and 5 MB, reads the first sheet of a workbook, and does not read the old `.xls` format.

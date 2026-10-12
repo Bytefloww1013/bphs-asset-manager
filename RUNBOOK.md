@@ -199,7 +199,8 @@ The container speaks plain HTTP. If you put a TLS-terminating proxy in front (re
 
 1. In `docker-compose.yml` set `COOKIE_SECURE: 'true'`, and publish the port to the proxy only: `'127.0.0.1:8080:3000'`. Then `docker compose up -d`. People may need to sign in again.
 2. The proxy needs no special headers. The app does not read `Host` or any `X-Forwarded-*` header: whether the cookie is marked Secure depends on `COOKIE_SECURE` alone, which is why step 1 is not optional.
-3. Raise the proxy's request-size limit for the CSV employee import. The API accepts up to 2 MB, and nginx's default of 1 MB would reject larger files with a 413.
+3. Raise the proxy's request-size limit for imports. The Import/Export page reads the file in the browser and sends its rows as JSON; the API accepts up to 4 MB, and nginx's default of 1 MB would reject a large import with a 413.
+4. Do not let the proxy replace the app's `Content-Security-Policy` header. If you must set your own, keep `worker-src 'self' blob:` (see section 10), or large Excel files will stop importing and exporting.
 
 Sketch for nginx (adapt names and certificate paths; **not tested here**):
 
@@ -209,7 +210,7 @@ server {
   server_name assets.example.com;
   ssl_certificate     /etc/ssl/assets.crt;
   ssl_certificate_key /etc/ssl/assets.key;
-  client_max_body_size 3m;
+  client_max_body_size 4m;
   location / {
     proxy_pass http://127.0.0.1:8080;
   }
@@ -228,7 +229,9 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Container shows `unhealthy` or keeps restarting | `docker compose logs --tail 100 assets`. Most common: the `/data` volume is not writable by the `node` user (if you replaced the named volume with a bind mount, `chown 1000:1000` the folder), or the database file is corrupt (restore, section 5) |
 | `database is locked` errors, or odd write failures | `DATA_DIR` is on a network share. SQLite in WAL mode needs a local disk |
 | Port 8080 already in use | Change the left number in `ports:` in `docker-compose.yml`, then `docker compose up -d` |
-| CSV import fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8), or the file is over 2 MB. Split the file |
+| Import fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8). Raise it to 4 MB |
+| Import refuses the file before any preview | Over 2,000 rows or 5 MB (split it), the old `.xls` format (save as `.xlsx` or `.csv`), or no header in the first row. Only the first sheet of a workbook is read |
+| A large Excel file never finishes reading, or an Excel export never downloads | Something is overriding the page's `Content-Security-Policy` and blocking `worker-src blob:` (a proxy or a browser policy; section 8). CSV import and export do not need it |
 | Audit log export is cut short | Exports cap at 50,000 rows per download. Narrow the filters and export in pieces |
 | Disk filling up | `docker system df`, then `du` the volume. Logs rotate by themselves, in-volume backups are pruned after 7 days by the backup script (if you do not run the script, delete old files in `/data/backups`), and `/data/pre-restore-*` folders are yours to delete |
 | Server reboot, app not back | `docker compose ps`. If Docker itself did not start, fix that first. If the container was stopped on purpose earlier, `docker compose start assets` |
@@ -251,6 +254,8 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 - **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), and hashed session tokens. Keep them owner-only and out of shared folders.
 - **Passwords** are stored as scrypt hashes; sessions as hashes in the database, so a copy of the database does not hand over working sessions.
 - **No outbound calls.** The app needs no internet access, and sends nothing anywhere.
+- **Imported files stay in the browser.** A `.csv` or `.xlsx` chosen on Import/Export is opened by the page, and only its rows are sent, as JSON, to be validated again by the server. The server never opens a workbook. Reading and writing Excel files of any size zips in a Web Worker the page starts from a `blob:` URL, so the Content-Security-Policy carries `worker-src 'self' blob:`. Scripts are still limited to the app's own (`script-src 'self'`), and only a script the page already runs can create such a URL.
+- **No credentials in digital assets.** The License/Account field refuses values that label themselves a password, key or token. That catches the obvious cases; it cannot recognise a bare secret, so tell staff the field is for naming a seat.
 - **Secrets.** There are no API keys or secrets to rotate. The only sensitive value in the config is the one-time bootstrap password in the first-run log.
 
 ## 11. What has been verified
@@ -261,6 +266,7 @@ Checked by running them against a real container and scratch Docker volumes whil
 - Online backup (`server/backup.ts`) producing a single self-contained file, and the off-box script: success, wrong container name (exits 1, no file left), integrity check, host-side pruning, owner-only permissions.
 - Restore into a volume holding a damaged database with stale `-wal`/`-shm` files: old files moved aside, backup loaded, `integrity_check` ok, accounts listed.
 - Account recovery commands, including audit entries and exit codes (automated tests in `server/tests/admin-cli.test.ts`).
+- Import/Export in a real browser (headless Firefox) against the production build, Oct 12 2026: a `.csv` with other header names, a hand-mapped file, a 1.6 MB `.xlsx` of 2,000 rows (read in a Web Worker under the app's Content-Security-Policy) and a programs `.xlsx`, each previewed and imported; the refusals (2,001 rows, `.xls`, a file that is not a workbook, a header with nothing under it); every export as CSV and as Excel, the Employees workbook of over 2,000 rows zipped in a worker. The Excel files were checked for the right name, type and zip signature only; none was opened in Excel itself.
 - Graceful shutdown on SIGTERM (exit 0), log rotation settings (accepted by `docker compose config`), and that the cookie is `HttpOnly; Secure; SameSite=Lax` when `COOKIE_SECURE=true`.
 
 **Not exercised**, so check them the first time you use them:
