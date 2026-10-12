@@ -3,7 +3,7 @@
  * while the app is serving requests (unlike copying the file, which can miss the WAL).
  *
  *   bun run db:backup                      # data/backups/bphs-<timestamp>.sqlite
- *   bun run db:backup /path/to/file        # explicit destination
+ *   bun run db:backup /path/to/file        # explicit destination (must not exist yet)
  *   docker compose exec assets node server/backup.ts
  */
 import fs from 'node:fs'
@@ -17,8 +17,14 @@ if (!fs.existsSync(source)) {
   process.exit(1)
 }
 
-const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
+// Named to the millisecond, so two backups in the same second do not land on one file.
+const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace('.', '-').replace('Z', '')
 const destination = path.resolve(process.argv[2] ?? path.join(config.dataDir, 'backups', `bphs-${stamp}.sqlite`))
+// SQLite's backup would write over an existing file without a word; an earlier backup is never replaced.
+if (fs.existsSync(destination)) {
+  console.error(`${destination} already exists. Choose another name, or remove it first.`)
+  process.exit(1)
+}
 fs.mkdirSync(path.dirname(destination), { recursive: true })
 
 const db = new Database(source, { readonly: true })

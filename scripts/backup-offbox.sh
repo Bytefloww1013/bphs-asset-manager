@@ -13,26 +13,33 @@ DEST=${DEST:-/srv/backups/bphs}
 KEEP_DAYS=${KEEP_DAYS:-30}
 
 mkdir -p "$DEST"
-file="$DEST/bphs-$(date -u +%Y%m%d-%H%M%S).sqlite"
+name="bphs-$(date -u +%Y%m%d-%H%M%S).sqlite"
+inside="/data/backups/$name"   # the copy in the container's volume
+file="$DEST/$name"             # the copy on the host
 
-# 1. Take the backup inside the container (SQLite backup API) and find the file it wrote.
-docker exec "$CONTAINER" node server/backup.ts > /dev/null
-latest=$(docker exec "$CONTAINER" sh -c 'ls -t /data/backups/bphs-*.sqlite | head -1')
+# Housekeeping: a week of copies stays in the volume, KEEP_DAYS on the host. It runs after a
+# failed backup too, so a run of bad nights cannot fill the disk.
+prune() {
+  docker exec "$CONTAINER" find /data/backups -name 'bphs-*.sqlite*' -mtime +7 -delete || true
+  find "$DEST" -name 'bphs-*.sqlite*' -mtime +"$KEEP_DAYS" -delete || true
+}
 
-# 2. Refuse to ship a damaged copy.
+# 1. Take the backup inside the container (SQLite backup API), under a name chosen here, so
+#    the file checked and copied below is this run's and not whichever happens to be newest.
+docker exec "$CONTAINER" node server/backup.ts "$inside" > /dev/null
+
+# 2. Refuse to ship a damaged copy, and do not leave it in the volume looking like a backup.
 docker exec "$CONTAINER" node -e "
   const db = new (require('better-sqlite3'))(process.argv[1], { readonly: true })
-  process.exit(db.pragma('integrity_check', { simple: true }) === 'ok' ? 0 : 1)" "$latest" \
-  || { echo "integrity_check failed for $latest" >&2; exit 1; }
+  process.exit(db.pragma('integrity_check', { simple: true }) === 'ok' ? 0 : 1)" "$inside" \
+  || { echo "integrity_check failed for $inside; removed it" >&2; docker exec "$CONTAINER" rm -f "$inside" || true; prune; exit 1; }
 
 # 3. Stream it to the host. Streaming avoids bind-mount permission problems, and the
 #    .partial name means a half-written file is never mistaken for a backup.
-docker exec "$CONTAINER" cat "$latest" > "$file.partial"
-[ -s "$file.partial" ] || { echo "copied backup is empty" >&2; rm -f "$file.partial"; exit 1; }
+docker exec "$CONTAINER" cat "$inside" > "$file.partial"
+[ -s "$file.partial" ] || { echo "copied backup is empty" >&2; rm -f "$file.partial"; prune; exit 1; }
 mv "$file.partial" "$file"
 
-# 4. Housekeeping: a week of copies stays in the volume, KEEP_DAYS on the host.
-docker exec "$CONTAINER" find /data/backups -name 'bphs-*.sqlite*' -mtime +7 -delete
-find "$DEST" -name 'bphs-*.sqlite*' -mtime +"$KEEP_DAYS" -delete
+prune
 
 echo "backup ok: $file ($(stat -c %s "$file") bytes)"

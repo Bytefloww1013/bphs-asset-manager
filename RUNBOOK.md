@@ -67,13 +67,13 @@ Everything the system knows is in `/data/bphs.sqlite`. Back up that, and nothing
 docker compose exec assets node server/backup.ts
 ```
 
-This uses SQLite's backup API, so it is safe while people are working. It writes `/data/backups/bphs-<timestamp>.sqlite`, a single self-contained file.
+This uses SQLite's backup API, so it is safe while people are working. It writes `/data/backups/bphs-<timestamp>.sqlite`, a single self-contained file. It never writes over an existing file.
 
 A backup **inside the volume does not protect you** from losing the volume (disk failure, `docker volume rm`, a bad `docker compose down -v`). It needs to be copied off the machine.
 
 ### 4.2 Scheduled, off-box (recommended)
 
-`scripts/backup-offbox.sh` takes a backup, runs SQLite's `integrity_check` on it, streams it to a folder on the host, and tidies up old copies. A failed check or an empty copy stops the script with a non-zero exit, so nothing damaged is kept as a "good" backup.
+`scripts/backup-offbox.sh` takes a backup, runs SQLite's `integrity_check` on it, streams it to a folder on the host, and tidies up old copies. A failed check or an empty copy stops the script with a non-zero exit, and a copy that fails the check is removed from the volume, so nothing damaged is kept as a "good" backup. Old copies are tidied up after a failed run too.
 
 Try it once by hand:
 
