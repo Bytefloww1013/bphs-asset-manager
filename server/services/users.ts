@@ -44,9 +44,10 @@ function assertEmailFree(db: DbLike, email: string, exceptId?: number) {
 
 function assertEmployee(db: DbLike, id: number | null | undefined) {
   if (id == null) return
-  if (!db.select({ id: employees.id }).from(employees).where(eq(employees.id, id)).get()) {
-    throw invalid('Choose an existing employee to link.', { field: 'employeeId' })
-  }
+  const employee = db.select({ id: employees.id, archivedAt: employees.archivedAt }).from(employees).where(eq(employees.id, id)).get()
+  if (!employee) throw invalid('Choose an existing employee to link.', { field: 'employeeId' })
+  // The pickers do not offer archived employees, and an account linked to one would record them as the assessor on what it issues.
+  if (employee.archivedAt) throw invalid('That employee is archived. Restore them first, or choose someone else.', { field: 'employeeId' })
 }
 
 /** An employee as the audit log names one: ID and name, or "none". */

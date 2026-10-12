@@ -130,6 +130,8 @@ export interface EmployeeRow {
   state: 'active' | 'archived'
   assetsHeld: number
   hasHistory: boolean
+  /** Why this employee cannot be deleted, as a sentence, or null when they can be. */
+  deleteBlocked: string | null
   createdAt: string
 }
 

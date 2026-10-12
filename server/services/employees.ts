@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { employeeCreateSchema, type EmployeeCreateInput, type EmployeeUpdateInput } from '../../shared/schemas.ts'
 import type { ImportColumn, ImportPreview, ImportRow, EmployeeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { employees, users } from '../db/schema.ts'
+import { employees } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { parseCsv } from '../lib/csv.ts'
 import { conflict, notFound } from '../lib/errors.ts'
@@ -20,6 +20,18 @@ interface RawEmployee {
   createdAt: number
   held: number
   total: number
+  assessed: number
+  account: string | null
+}
+
+/** Deleting is only for a record entered by mistake: anything that points at the employee keeps them. */
+function deleteBlocked(row: RawEmployee): { code: string; reason: string } | null {
+  if (row.total > 0) return { code: 'has_history', reason: 'Has assignment history. Archive instead; history is never deleted.' }
+  if (row.assessed > 0) {
+    return { code: 'has_history', reason: `Assessed the condition on ${row.assessed} ${row.assessed === 1 ? 'record' : 'records'}. Archive instead; history is never deleted.` }
+  }
+  if (row.account) return { code: 'linked_user', reason: `Linked to the account ${row.account}. Unlink it on Users first.` }
+  return null
 }
 
 function toRow(row: RawEmployee): EmployeeRow {
@@ -34,22 +46,27 @@ function toRow(row: RawEmployee): EmployeeRow {
     state: row.archivedAt ? 'archived' : 'active',
     assetsHeld: row.held,
     hasHistory: row.total > 0,
+    deleteBlocked: deleteBlocked(row)?.reason ?? null,
     createdAt: new Date(row.createdAt).toISOString(),
   }
 }
 
-export function listEmployees(db: DbLike, id?: number): EmployeeRow[] {
-  return db
+const listRaw = (db: DbLike, id?: number) =>
+  db
     .all<RawEmployee>(sql`
       select e.id as id, e.code as code, e.first_name as firstName, e.last_name as lastName,
              e.department as department, e.job_title as jobTitle, e.archived_at as archivedAt, e.created_at as createdAt,
              coalesce(sum(case when a.id is not null and a.returned_at is null then 1 else 0 end), 0) as held,
-             count(a.id) as total
+             count(a.id) as total,
+             (select count(*) from conditions c where c.assessed_by_id = e.id) as assessed,
+             (select min(u.email) from users u where u.employee_id = e.id) as account
       from employees e left join assignments a on a.employee_id = e.id
       ${id ? sql`where e.id = ${id}` : sql``}
       group by e.id
       order by e.last_name collate nocase, e.first_name collate nocase`)
-    .map(toRow)
+
+export function listEmployees(db: DbLike, id?: number): EmployeeRow[] {
+  return listRaw(db, id).map(toRow)
 }
 
 function getEmployee(db: DbLike, id: number): EmployeeRow {
@@ -132,12 +149,11 @@ export function setEmployeeArchived(db: Db, actor: Actor, id: number, archived: 
 
 export function deleteEmployee(db: Db, actor: Actor, id: number) {
   db.transaction((tx) => {
-    const current = getEmployee(tx, id)
-    const linkedUser = tx.select({ id: users.id }).from(users).where(eq(users.employeeId, id)).get()
-    const assessed = tx.get<{ n: number }>(sql`select count(*) as n from conditions where assessed_by_id = ${id}`)
-    if (current.hasHistory || linkedUser || (assessed?.n ?? 0) > 0) {
-      throw conflict('has_history', `${current.name} has history. Archive them instead; history is never deleted.`)
-    }
+    const raw = listRaw(tx, id)[0]
+    if (!raw) throw notFound('Employee')
+    const current = toRow(raw)
+    const blocked = deleteBlocked(raw)
+    if (blocked) throw conflict(blocked.code, `${current.name} cannot be deleted. ${blocked.reason}`)
     tx.delete(employees).where(eq(employees.id, id)).run()
     writeAudit(tx, actor, { action: 'delete', entityType: 'employee', entityId: id, details: `employee_id=${current.code}` })
   })

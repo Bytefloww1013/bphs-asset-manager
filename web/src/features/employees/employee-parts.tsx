@@ -121,7 +121,7 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: !canDelete ? SUPER_ADMIN_ONLY : employee.hasHistory ? 'Has assignment history. Archive instead; history is never deleted.' : undefined,
+      disabledReason: !canDelete ? SUPER_ADMIN_ONLY : (employee.deleteBlocked ?? undefined),
     },
   ]
 

@@ -689,6 +689,55 @@ describe('employees and CSV import', () => {
     expect((await t.call('POST', `/api/employees/${t.person.id}/archive`, { cookie })).data.state).toBe('archived')
     expect((await t.call('DELETE', `/api/employees/${t.person.id}`, { cookie })).status).toBe(409)
   })
+
+  it('says why an employee cannot be deleted, in the list and when refusing', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const { assetTypes, conditionRatings } = await t.lookups(cookie)
+    const add = async (code: string, lastName: string) => (await t.call('POST', '/api/employees', { cookie, body: { code, firstName: 'Test', lastName } })).data
+    const holder = await add('E-1', 'Holder')
+    const assessor = await add('E-2', 'Assessor')
+    const spare = await add('E-3', 'Spare')
+    expect(spare.deleteBlocked).toBeNull()
+    await t.call('POST', '/api/assets', {
+      cookie,
+      body: { tag: 'DEL-1', typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id, holderId: holder.id, assessedById: assessor.id },
+    })
+
+    const rows = (await t.call('GET', '/api/employees', { cookie })).data as { id: number; deleteBlocked: string | null }[]
+    const reason = (id: number) => rows.find((row) => row.id === id)!.deleteBlocked
+    expect(reason(holder.id)).toBe('Has assignment history. Archive instead; history is never deleted.')
+    expect(reason(assessor.id)).toBe('Assessed the condition on 1 record. Archive instead; history is never deleted.')
+    expect(reason(t.person.id)).toBe('Linked to the account p.raghunathan@bphs.local. Unlink it on Users first.')
+    expect(reason(spare.id)).toBeNull()
+
+    const refuse = async (id: number) => (await t.call('DELETE', `/api/employees/${id}`, { cookie })).data
+    expect(await refuse(assessor.id)).toMatchObject({ error: 'has_history', message: 'Test Assessor cannot be deleted. Assessed the condition on 1 record. Archive instead; history is never deleted.' })
+    expect(await refuse(t.person.id)).toMatchObject({ error: 'linked_user', message: expect.stringContaining('Linked to the account p.raghunathan@bphs.local') })
+    expect((await t.call('DELETE', `/api/employees/${spare.id}`, { cookie })).status).toBe(204)
+
+    // Unlinked, the same employee can go.
+    await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { employeeId: null } })
+    expect((await t.call('DELETE', `/api/employees/${t.person.id}`, { cookie })).status).toBe(204)
+  })
+
+  it('does not link an account to an archived employee', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const gone = (await t.call('POST', '/api/employees', { cookie, body: { code: 'E-9', firstName: 'Left', lastName: 'Already' } })).data
+    await t.call('POST', `/api/employees/${gone.id}/archive`, { cookie })
+    const message = 'That employee is archived. Restore them first, or choose someone else.'
+    const linked = await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: gone.id } })
+    expect(linked.status).toBe(422)
+    expect(linked.data).toMatchObject({ message, details: { field: 'employeeId' } })
+    const created = await t.call('POST', '/api/users', { cookie, body: { name: 'New Person', email: 'new@bphs.local', role: 'admin', employeeId: gone.id } })
+    expect(created.status).toBe(422)
+    // An account already linked keeps working on its other fields after its employee is archived.
+    await t.call('POST', `/api/employees/${gone.id}/restore`, { cookie })
+    expect((await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: gone.id } })).status).toBe(200)
+    await t.call('POST', `/api/employees/${gone.id}/archive`, { cookie })
+    expect((await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { name: 'Mo Oyelaran', employeeId: gone.id } })).data.name).toBe('Mo Oyelaran')
+  })
 })
 
 describe('lists, users and audit', () => {
