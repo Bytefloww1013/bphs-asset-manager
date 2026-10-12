@@ -4,7 +4,7 @@ import { LOCK_MINUTES, LOCK_THRESHOLD, type Role } from '../../shared/constants.
 import type { SessionUser } from '../../shared/types.ts'
 import { config } from '../config.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { sessions, users } from '../db/schema.ts'
+import { auditLog, sessions, users } from '../db/schema.ts'
 import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError } from '../lib/errors.ts'
 import { hashPassword, verifyDecoy, verifyPassword } from '../lib/password.ts'
@@ -110,19 +110,38 @@ export async function login(db: Db, email: string, password: string, now = new D
   // here on: the count and the lock are decided in one UPDATE, and a correct password is checked against fresh state.
   if (!correct) {
     const lockUntil = new Date(now.getTime() + LOCK_MINUTES * MINUTE)
-    const after = db
-      .update(users)
-      .set({
-        failedLogins: sql`${users.failedLogins} + 1`,
-        // An existing lock stands; otherwise this attempt locks the account if it is the one that reaches the limit.
-        lockedUntil: sql`case
-          when ${users.lockedUntil} > ${now.getTime()} then ${users.lockedUntil}
-          when ${users.failedLogins} + 1 >= ${LOCK_THRESHOLD} then ${lockUntil.getTime()}
-          else ${users.lockedUntil} end`,
-      })
-      .where(eq(users.id, row.id))
-      .returning({ lockedUntil: users.lockedUntil })
-      .get()
+    const after = db.transaction((tx) => {
+      const before = tx.select({ lockedUntil: users.lockedUntil }).from(users).where(eq(users.id, row.id)).get()
+      const updated = tx
+        .update(users)
+        .set({
+          failedLogins: sql`${users.failedLogins} + 1`,
+          // An existing lock stands; otherwise this attempt locks the account if it is the one that reaches the limit.
+          lockedUntil: sql`case
+            when ${users.lockedUntil} > ${now.getTime()} then ${users.lockedUntil}
+            when ${users.failedLogins} + 1 >= ${LOCK_THRESHOLD} then ${lockUntil.getTime()}
+            else ${users.lockedUntil} end`,
+        })
+        .where(eq(users.id, row.id))
+        .returning({ lockedUntil: users.lockedUntil })
+        .get()
+      // Only the attempt that sets the lock is logged. Nobody is signed in, so the entry has no user behind it.
+      const wasLocked = !!before?.lockedUntil && before.lockedUntil > now
+      if (!wasLocked && updated?.lockedUntil && updated.lockedUntil > now) {
+        tx.insert(auditLog)
+          .values({
+            occurredAt: now,
+            userId: null,
+            actor: 'sign-in',
+            action: 'lock',
+            entityType: 'user',
+            entityId: row.id,
+            details: `${row.email} · locked for ${LOCK_MINUTES} minutes after ${LOCK_THRESHOLD} incorrect passwords`,
+          })
+          .run()
+      }
+      return updated
+    })
     if (after?.lockedUntil && after.lockedUntil > now) throw LOCKED(after.lockedUntil)
     throw INVALID()
   }

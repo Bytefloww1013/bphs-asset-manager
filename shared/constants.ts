@@ -6,7 +6,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   super_admin: 'Super Admin',
 }
 
-export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import'] as const
+export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import', 'lock'] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
 
 export const CONDITION_KINDS = ['intake', 'issue', 'return'] as const

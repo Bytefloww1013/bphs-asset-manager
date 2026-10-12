@@ -82,5 +82,5 @@ export function assetSearchText(asset: AssetRow): string {
 
 export { Mono }
 
-const actionTone: Record<AuditAction, Tone> = { issue: 'accent', return: 'ok', create: 'accent', update: 'warn', delete: 'bad', import: 'neutral' }
+const actionTone: Record<AuditAction, Tone> = { issue: 'accent', return: 'ok', create: 'accent', update: 'warn', delete: 'bad', import: 'neutral', lock: 'bad' }
 export const ActionBadge = ({ action }: { action: AuditAction }) => <Badge tone={actionTone[action]}>{action}</Badge>

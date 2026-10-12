@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.ts'
 import { auditLog, sessions, users } from '../db/schema.ts'
@@ -59,6 +59,32 @@ describe('authentication', () => {
     expect(row?.failedLogins).toBeGreaterThanOrEqual(5)
     expect(row?.lockedUntil).toBeTruthy()
     expect((await t.signIn('m.oyelaran@bphs.local')).status).toBe(423)
+  })
+
+  it('writes one audit entry when an account locks, and none for the attempts before or after', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const locks = async () => (await t.call('GET', '/api/audit?action=lock', { cookie })).data.entries
+
+    for (let i = 0; i < 4; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
+    await t.signIn('nobody@bphs.local', 'wrong')
+    expect(await locks()).toEqual([])
+
+    expect((await t.signIn('m.oyelaran@bphs.local', 'wrong')).status).toBe(423)
+    for (let i = 0; i < 3; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
+    const entries = await locks()
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      actor: 'sign-in',
+      action: 'lock',
+      entityType: 'user',
+      entityId: t.adminUser.id,
+      details: 'm.oyelaran@bphs.local · locked for 15 minutes after 5 incorrect passwords',
+    })
+
+    // A burst of parallel attempts on another account still logs its lock once.
+    await Promise.all(Array.from({ length: 10 }, (_, i) => t.signIn('p.raghunathan@bphs.local', `wrong-${i}`)))
+    expect(t.db.all(sql`select id from audit_log where action = 'lock'`)).toHaveLength(2)
   })
 
   it('refuses a correct password that was still being checked when the account locked', async () => {
