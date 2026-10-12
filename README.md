@@ -112,7 +112,7 @@ The design was reworked for legibility and comfort, not just restyled:
 
 - Larger type (14px body, 12px floor), 36px controls, 56px rows, horizontal rules only, and measured contrast (the spec's greys were 1.7-2.6:1). Fully responsive down to a phone.
 - The spec's Dashboard combined a metrics rail and the asset grid. Here **Overview** answers "what needs a decision" and **Assets** is the register.
-- The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once.
+- The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once, after showing them for a last look.
 - Issue and Return open as right-hand sheets rather than centred modals, and are still linkable.
 - The design-time "viewing as" toggle is gone: the role comes from the signed-in account, and unavailable actions are shown disabled with the reason.
 

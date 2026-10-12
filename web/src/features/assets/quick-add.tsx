@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { CornerDownLeft } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultRating } from '@shared/constants.ts'
 import { nextTag } from '@shared/tags.ts'
 import type { AssetBulkResult, AssetRow, EmployeeRef } from '@shared/types.ts'
@@ -51,6 +51,12 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const [holder, setHolder] = useState<EmployeeRef | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
   const [skipped, setSkipped] = useState<AssetBulkResult['errors']>([])
+  // Pasted rows wait here to be looked over. Nothing is written until they are confirmed: there is no undo for an asset.
+  const [pasted, setPasted] = useState<ReturnType<typeof parsePaste> | null>(null)
+  const confirmRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (pasted) confirmRef.current?.focus()
+  }, [pasted])
 
   const suggestion = useMemo(() => nextTag(assets), [assets])
   const effectiveType = typeId || String(types[0]?.id ?? '')
@@ -97,12 +103,25 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
     }
   }
 
-  async function paste(text: string) {
-    setProblem(null)
+  function paste(text: string) {
     const rows = parsePaste(text)
     if (rows.length === 0) return
+    setProblem(null)
+    setSkipped([])
+    setPasted(rows)
+  }
+
+  function discardPasted() {
+    setPasted(null)
+    tagRef.current?.focus()
+  }
+
+  async function addPasted(rows: ReturnType<typeof parsePaste>) {
+    setProblem(null)
     try {
       const result = await bulk.mutateAsync(rows)
+      setPasted(null)
+      tagRef.current?.focus()
       setSkipped(result.errors)
       toast({ tone: result.created ? 'ok' : 'warn', title: result.created ? `Added ${plural(result.created, 'asset')}` : 'Nothing was added', description: result.errors.length ? `${plural(result.errors.length, 'row')} skipped` : undefined })
     } catch (e) {
@@ -115,7 +134,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-md font-semibold">Quick add</h2>
         <p className="text-sm text-ink-3">
-          Enter adds the asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial, condition, holder).
+          Enter adds the asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial, condition, holder); you see them before they are added.
         </p>
       </div>
       <form
@@ -138,7 +157,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
               const text = event.clipboardData.getData('text')
               if (/[\t\n]/.test(text.trim())) {
                 event.preventDefault()
-                void paste(text)
+                paste(text)
               }
             }}
           />
@@ -181,6 +200,44 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
           </Button>
         </div>
       </form>
+      {pasted && (
+        <section aria-label="Pasted rows" className="mt-4 rounded-control border border-line bg-sunken p-4">
+          <h3 className="text-sm font-semibold text-ink">Add {plural(pasted.length, 'pasted row')}?</h3>
+          <p className="mt-1 text-sm text-ink-3">Nothing has been added yet. A blank condition means {defaultRating(ratings)?.name ?? 'the default'}; a blank holder means storage.</p>
+          <div className="mt-3 max-h-56 overflow-auto rounded-control border border-line bg-surface">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-ink-3">
+                <tr>
+                  {['Asset tag', 'Type', 'Serial number', 'Condition', 'Issue to'].map((heading) => (
+                    <th key={heading} scope="col" className="sticky top-0 whitespace-nowrap bg-surface px-3 py-2 font-medium">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pasted.map((row, index) => (
+                  <tr key={index} className="border-t border-line">
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[0.8125rem]">{row.tag}</td>
+                    <td className="px-3 py-1.5">{row.type}</td>
+                    <td className="px-3 py-1.5 font-mono text-[0.8125rem]">{row.serial}</td>
+                    <td className="px-3 py-1.5">{row.condition}</td>
+                    <td className="px-3 py-1.5">{row.holder}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={discardPasted} disabled={bulk.isPending}>
+              Discard
+            </Button>
+            <Button ref={confirmRef} variant="primary" loading={bulk.isPending} onClick={() => void addPasted(pasted)}>
+              Add {plural(pasted.length, 'asset')}
+            </Button>
+          </div>
+        </section>
+      )}
       {alert && (
         <Alert tone="bad" className="mt-4">
           {alert}
