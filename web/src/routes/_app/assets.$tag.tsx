@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, ScrollText } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -65,6 +65,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 function AssetDetailPage() {
   const { tag } = Route.useParams()
   const { data } = useQuery(assetDetailQuery(tag))
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const sheets = useSheetActions()
   usePageTitle(tag.toUpperCase())
@@ -100,7 +101,17 @@ function AssetDetailPage() {
                 Issue
               </Button>
             )}
-            <AssetRowActions asset={asset} hidePrimary onDeleted={() => void navigate({ to: '/assets' })} />
+            <AssetRowActions
+              asset={asset}
+              hidePrimary
+              onDeleted={() => void navigate({ to: '/assets' })}
+              // The address is the tag, so a rename has to move it. `replace` keeps Back from landing on a tag that no longer exists, and
+              // once nothing shows the old tag's page it leaves the cache too: the route loader would hand a later visit that stale copy.
+              onSaved={(row) => {
+                if (row.tag.toUpperCase() === tag.toUpperCase()) return
+                void navigate({ to: '/assets/$tag', params: { tag: row.tag }, replace: true }).then(() => queryClient.removeQueries({ queryKey: assetDetailQuery(tag).queryKey }))
+              }}
+            />
           </div>
         </div>
       </div>

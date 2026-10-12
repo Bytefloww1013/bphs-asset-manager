@@ -18,7 +18,7 @@ import { lookupsQuery } from '@/lib/queries.ts'
 import { useCan } from '@/lib/session.ts'
 
 /** The row's main action plus an overflow menu; owns the edit sheet and confirmation dialogs. */
-export function AssetRowActions({ asset, onDeleted, hidePrimary }: { asset: AssetRow; onDeleted?: () => void; hidePrimary?: boolean }) {
+export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { asset: AssetRow; onDeleted?: () => void; onSaved?: (row: AssetRow) => void; hidePrimary?: boolean }) {
   const sheets = useSheetActions()
   const navigate = useNavigate()
   const canDelete = useCan('record.delete')
@@ -68,7 +68,7 @@ export function AssetRowActions({ asset, onDeleted, hidePrimary }: { asset: Asse
         ))}
       <Menu label={`More actions for ${asset.tag}`} items={items} />
 
-      {editing && <AssetEditSheet asset={asset} onClose={() => setEditing(false)} />}
+      {editing && <AssetEditSheet asset={asset} onSaved={onSaved} onClose={() => setEditing(false)} />}
       <ConfirmDialog
         open={confirm === 'retire'}
         onOpenChange={(open) => !open && setConfirm(null)}
@@ -90,11 +90,12 @@ export function AssetRowActions({ asset, onDeleted, hidePrimary }: { asset: Asse
   )
 }
 
-export function AssetEditSheet({ asset, onClose }: { asset: AssetRow; onClose: () => void }) {
+/** `onSaved` gets the row as the server stored it, so a caller can follow a renamed tag. */
+export function AssetEditSheet({ asset, onSaved, onClose }: { asset: AssetRow; onSaved?: (row: AssetRow) => void; onClose: () => void }) {
   const { data: lookups } = useQuery(lookupsQuery)
   const types = lookups?.assetTypes ?? []
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((body: { tag: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body), { silent: true, success: `${asset.tag} updated` })
+  const save = useWrite((body: { tag: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body), { silent: true, success: (row) => `${row.tag} updated` })
 
   const form = useForm({
     defaultValues: { tag: asset.tag, typeId: String(asset.typeId), serial: asset.serial ?? '' },
@@ -107,7 +108,8 @@ export function AssetEditSheet({ asset, onClose }: { asset: AssetRow; onClose: (
     onSubmit: async ({ value }) => {
       setError(null)
       try {
-        await save.mutateAsync({ tag: value.tag, typeId: Number(value.typeId), serial: value.serial })
+        const row = await save.mutateAsync({ tag: value.tag, typeId: Number(value.typeId), serial: value.serial })
+        onSaved?.(row)
         onClose()
       } catch (e) {
         if (e instanceof ApiError) setError(e)
