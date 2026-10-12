@@ -134,7 +134,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-md font-semibold">Quick add</h2>
         <p className="text-sm text-ink-3">
-          Enter adds the asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial, condition, holder); you see them before they are added.
+          Enter adds the physical asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial, condition, holder); you see them before they are added.
         </p>
       </div>
       <form

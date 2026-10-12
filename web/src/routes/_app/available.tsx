@@ -86,7 +86,7 @@ function AvailablePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Available" description={`${plural(stock.length, 'asset')} in storage: in service, with no active assignment.`} />
+      <PageHeader title="Available" description={`${plural(stock.length, 'physical asset')} in storage: in service, with no active assignment.`} />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
@@ -95,11 +95,11 @@ function AvailablePage() {
             onChange={(next) => void navigate({ search: { type: next === 'all' ? undefined : next } })}
             options={[{ value: 'all', label: 'All', count: stock.length }, ...tabs.map(([name, count]) => ({ value: name, label: name, count }))]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search available assets" placeholder="Search tag or serial" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput className="w-full sm:w-80" aria-label="Search available physical assets" placeholder="Search tag or serial" value={search} onChange={(event) => setSearch(event.target.value)} />
         </Toolbar>
         <DataGrid
           table={table}
-          label="Available assets"
+          label="Available physical assets"
           noun="assets"
           loading={isPending}
           rowProps={(row) => ({
@@ -124,7 +124,7 @@ function AvailablePage() {
                 }
               />
             ) : (
-              <EmptyState icon={PackageCheck} title="Nothing is available" description="Every asset in service is assigned. Add stock from the Assets page." />
+              <EmptyState icon={PackageCheck} title="Nothing is available" description="Every asset in service is assigned. Add stock from the Physical Assets page." />
             )
           }
           noMatches={<EmptyState icon={PackageCheck} title="No available assets match" description="Try another type or search." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}

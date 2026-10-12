@@ -92,7 +92,7 @@ function AssignmentsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Assignments"
-        description={`${plural(data.length, 'asset')} currently out. A handoff is a return then an issue: two assignments, two condition records.`}
+        description={`${plural(data.length, 'physical asset')} currently out. A handoff is a return then an issue: two assignments, two condition records.`}
         actions={
           <>
             <Button
@@ -136,7 +136,7 @@ function AssignmentsPage() {
           label="Active assignments"
           noun="assignments"
           loading={isPending}
-          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When an asset is issued to someone it shows up here until it is returned." action={<Link to="/available" className={buttonStyles('primary')}>See available assets</Link>} />}
+          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When a physical asset is issued to someone it shows up here until it is returned." action={<Link to="/available" className={buttonStyles('primary')}>See available assets</Link>} />}
           noMatches={<EmptyState icon={ClipboardList} title="No assignments match" description="Try a different name or tag." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
       </div>

@@ -127,7 +127,7 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
   )
 
   return (
-    <Sheet open onOpenChange={(next) => !next && onClose()} title="Return an asset" description="Closes the assignment and keeps it as history." footer={footer}>
+    <Sheet open onOpenChange={(next) => !next && onClose()} title="Return a physical asset" description="Closes the assignment and keeps it as history." footer={footer}>
       <form
         id="return-form"
         noValidate

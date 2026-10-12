@@ -72,7 +72,7 @@ Thirteen screens, all built:
 | Sign in | `/login` |
 | Forced password change | `/password-change` |
 | Overview (inventory, out the longest, condition watch, free stock, activity) | `/` |
-| Assets register with quick-add and spreadsheet paste | `/assets` |
+| Physical Assets register with quick-add and spreadsheet paste | `/assets` |
 | Asset detail with assignment and condition history | `/assets/BPHS-0102` |
 | Active assignments with bulk return | `/assignments` |
 | Available assets, with an `I` shortcut to issue | `/available` |
@@ -111,7 +111,7 @@ Node runs the server TypeScript directly (type stripping), so there is no server
 The design was reworked for legibility and comfort, not just restyled:
 
 - Larger type (14px body, 12px floor), 36px controls, 56px rows, horizontal rules only, and measured contrast (the spec's greys were 1.7-2.6:1). Fully responsive down to a phone.
-- The spec's Dashboard combined a metrics rail and the asset grid. Here **Overview** answers "what needs a decision" and **Assets** is the register.
+- The spec's Dashboard combined a metrics rail and the asset grid. Here **Overview** answers "what needs a decision" and **Physical Assets** is the register.
 - The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once, after showing them for a last look.
 - Issue and Return open as right-hand sheets rather than centred modals, and are still linkable.
 - The design-time "viewing as" toggle is gone: the role comes from the signed-in account, and unavailable actions are shown disabled with the reason.

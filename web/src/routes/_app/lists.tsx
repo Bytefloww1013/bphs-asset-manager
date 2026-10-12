@@ -150,7 +150,7 @@ function ActiveSwitch({ kind, id, name, active, onlyActive }: { kind: Kind; id: 
 const t = columnsFor<AssetTypeRow>()
 const typeColumns = [
   t.accessor('name', { header: 'Name', cell: (info) => <EditableName kind="asset-types" id={info.row.original.id} name={info.getValue()} /> }),
-  t.accessor('assetCount', { header: 'Assets', cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue()}</span>, meta: { align: 'right' } }),
+  t.accessor('assetCount', { header: 'Physical assets', cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue()}</span>, meta: { align: 'right' } }),
   t.accessor('isActive', { header: 'Active', cell: (info) => <ActiveSwitch kind="asset-types" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} onlyActive={isOnlyActive(info)} />, enableSorting: false }),
   t.display({
     id: 'actions',
@@ -289,12 +289,12 @@ function ListsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Lists" description="The choices offered when adding assets and recording condition. Deactivate instead of deleting anything that is in use." />
+      <PageHeader title="Lists" description="The choices offered when adding physical assets and recording condition. Deactivate instead of deleting anything that is in use." />
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
         <Panel className="overflow-hidden">
-          <PanelHeader title="Asset types" description={`${types.length} types, ${types.filter((x) => x.isActive).length} active`} />
+          <PanelHeader title="Physical asset types" description={`${types.length} types, ${types.filter((x) => x.isActive).length} active`} />
           <AddRow kind="asset-types" placeholder="New type name" noun="Type" />
-          <DataGrid table={typeTable} label="Asset types" noun="types" empty={null} className="rounded-none border-0 border-t shadow-none" />
+          <DataGrid table={typeTable} label="Physical asset types" noun="types" empty={null} className="rounded-none border-0 border-t shadow-none" />
         </Panel>
         <Panel className="overflow-hidden">
           <PanelHeader title="Condition ratings" description="Best first. This order is the scale shown when issuing and returning." />

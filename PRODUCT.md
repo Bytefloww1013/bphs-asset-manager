@@ -35,7 +35,7 @@ Not a generic ITAM suite. It encodes BPHS's own rules: one active Assignment per
 
 Thirteen screens from the design spec: Log in; Forced password change; Dashboard; Active Assignments; Available Assets; Issue an Asset; Return an Asset (with race-conflict state); Employees; Import Employees from CSV; Asset detail with Assignment and Condition history; Lists (Asset Types, Condition Ratings); Audit Log; Users.
 
-Terminology to preserve: Asset, Asset tag (`BPHS-0141`), Assignment, Condition (rating + notes snapshot), Issue, Return, Retire, Archive, Employee, User, Audit Log, Super Admin, Admin, In Service, In storage, Days out.
+Terminology to preserve: Physical Asset (what the screens call the hardware register; "Asset" in older notes means the same thing), Asset tag (`BPHS-0141`), Assignment, Condition (rating + notes snapshot), Issue, Return, Retire, Archive, Employee, User, Audit Log, Super Admin, Admin, In Service, In storage, Days out.
 
 Rules the UI must express: delete is Super Admin only and only for records with no history; Admin sees delete controls disabled with the reason; Users screen returns 403 for Admin; Audit Log is read-only for everyone; each of the two lists keeps at least one active entry, so the last active Asset Type or Condition Rating can be neither deactivated nor deleted; Condition Ratings each carry a unique `score` from 1 to 100 (100 is as good as new) that sets the order of the rating scale in Issue and Return, the badge colour, the default rating and the overview's condition watch (below 50); the score is shown only on the Lists screen.
 

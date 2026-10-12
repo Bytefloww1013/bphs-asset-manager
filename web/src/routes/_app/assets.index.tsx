@@ -55,7 +55,7 @@ const columns = [
 const getRowId = (row: AssetRow) => String(row.id)
 
 function AssetsPage() {
-  usePageTitle('Assets')
+  usePageTitle('Physical Assets')
   const { state = 'all' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(assetsQuery)
@@ -84,7 +84,7 @@ function AssetsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Assets"
+        title="Physical Assets"
         description="Every device on the register, with its current holder and latest condition."
         actions={
           <Button
@@ -92,7 +92,7 @@ function AssetsPage() {
             disabled={data.length === 0}
             onClick={() =>
               downloadCsv(
-                'assets.csv',
+                'physical-assets.csv',
                 ['Asset tag', 'Type', 'Serial', 'Status', 'Assigned to', 'Employee ID', 'Department', 'Condition', 'Days out', 'Created'],
                 data.map((a) => [a.tag, a.type, a.serial, stateLabel(a.state), a.holder?.name, a.holder?.code, a.holder?.department, a.condition?.rating, a.daysOut, formatDate(a.createdAt)]),
               )
@@ -118,16 +118,16 @@ function AssetsPage() {
               { value: 'retired', label: 'Retired', count: counts.retired },
             ]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search assets" placeholder="Search tag, serial, person, department" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput className="w-full sm:w-80" aria-label="Search physical assets" placeholder="Search tag, serial, person, department" value={search} onChange={(event) => setSearch(event.target.value)} />
         </Toolbar>
         <DataGrid
           table={table}
-          label="Assets"
+          label="Physical assets"
           noun="assets"
           loading={isPending}
           rowClassName={(row) => (row.original.id === flash ? 'animate-row-flash' : undefined)}
-          empty={<EmptyState icon={Laptop} title="No assets yet" description="Add the first one above, or paste rows copied from a spreadsheet." />}
-          noMatches={<EmptyState icon={Laptop} title="No assets match" description="Try a different search, or switch the status filter." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
+          empty={<EmptyState icon={Laptop} title="No physical assets yet" description="Add the first one above, or paste rows copied from a spreadsheet." />}
+          noMatches={<EmptyState icon={Laptop} title="No physical assets match" description="Try a different search, or switch the status filter." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
       </div>
     </div>

@@ -51,7 +51,7 @@ function useNav(): { heading: string; items: NavEntry[] }[] {
     {
       heading: 'Records',
       items: [
-        { to: '/assets', label: 'Assets', icon: Laptop },
+        { to: '/assets', label: 'Physical Assets', icon: Laptop },
         { to: '/employees', label: 'Employees', icon: Users },
       ],
     },

@@ -28,7 +28,7 @@ const columns = [
   c.accessor('name', { header: 'Employee', cell: (info) => <Stacked primary={<span className="font-medium">{info.getValue()}</span>} secondary={info.row.original.jobTitle} /> }),
   c.accessor('code', { header: 'Employee ID', cell: (info) => <Mono className="text-ink-2">{info.getValue()}</Mono>, meta: { hideBelow: 'sm' } }),
   c.accessor((row) => row.department ?? '', { id: 'department', header: 'Department', cell: (info) => info.getValue() || <span className="text-ink-3">—</span>, meta: { hideBelow: 'md' } }),
-  c.accessor('assetsHeld', { header: 'Assets held', cell: (info) => (info.getValue() ? <span className="font-medium">{info.getValue()}</span> : <span className="text-ink-3">0</span>), meta: { align: 'right', hideBelow: 'sm' } }),
+  c.accessor('assetsHeld', { header: 'Physical assets held', cell: (info) => (info.getValue() ? <span className="font-medium">{info.getValue()}</span> : <span className="text-ink-3">0</span>), meta: { align: 'right', hideBelow: 'sm' } }),
   c.accessor('state', { header: 'Status', cell: (info) => <Badge tone={info.getValue() === 'active' ? 'ok' : 'neutral'}>{info.getValue() === 'active' ? 'Active' : 'Archived'}</Badge>, meta: { hideBelow: 'lg' } }),
   c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <EmployeeRowActions employee={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } }),
 ]

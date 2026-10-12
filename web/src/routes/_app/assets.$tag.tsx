@@ -22,11 +22,11 @@ export const Route = createFileRoute('/_app/assets/$tag')({
   errorComponent: ({ error }) => (
     <EmptyState
       icon={ScrollText}
-      title={error instanceof ApiError && error.status === 404 ? 'No asset with that tag' : 'Could not load this asset'}
+      title={error instanceof ApiError && error.status === 404 ? 'No physical asset with that tag' : 'Could not load this asset'}
       description={error instanceof Error ? error.message : undefined}
       action={
         <Link to="/assets" className={buttonStyles('primary')}>
-          Back to assets
+          Back to physical assets
         </Link>
       }
     />
@@ -77,7 +77,7 @@ function AssetDetailPage() {
     <div className="flex flex-col gap-6">
       <div>
         <Link to="/assets" className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
-          <ChevronLeft className="size-4" aria-hidden /> Assets
+          <ChevronLeft className="size-4" aria-hidden /> Physical Assets
         </Link>
         <div className="mt-3 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">

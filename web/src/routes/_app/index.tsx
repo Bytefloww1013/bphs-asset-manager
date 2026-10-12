@@ -32,10 +32,10 @@ function Overview() {
           <>
             <Link to="/assets" className={buttonStyles()}>
               <Plus className="size-4" aria-hidden />
-              Add asset
+              Add physical asset
             </Link>
             <Button variant="primary" icon={<Send className="size-4" />} onClick={() => sheets.issue()}>
-              Issue asset
+              Issue physical asset
             </Button>
           </>
         }
@@ -54,7 +54,7 @@ function Overview() {
                   title="Out the longest"
                   description={
                     data.overdueCount > 0
-                      ? `${plural(data.overdueCount, 'asset')} out for more than a year.`
+                      ? `${plural(data.overdueCount, 'physical asset')} out for more than a year.`
                       : `Nothing has been out for more than ${OVERDUE_DAYS} days.`
                   }
                   actions={
@@ -203,7 +203,7 @@ function Inventory({ totals, typeCount }: { totals: { total: number; assigned: n
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-md font-semibold">Inventory</h2>
         <p className="text-sm text-ink-3">
-          {plural(totals.total, 'asset')} across {plural(typeCount, 'type')}
+          {plural(totals.total, 'physical asset')} across {plural(typeCount, 'type')}
         </p>
       </div>
       <div className="mt-4 flex h-3 gap-0.5 overflow-hidden rounded-full bg-sunken" role="img" aria-label={parts.map((p) => `${p.count} ${p.label.toLowerCase()}`).join(', ')}>

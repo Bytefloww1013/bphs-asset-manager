@@ -174,7 +174,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
   )
 
   return (
-    <Sheet open onOpenChange={(next) => !next && onClose()} title="Issue an asset" description="Creates one assignment, one condition record and one audit entry." footer={footer}>
+    <Sheet open onOpenChange={(next) => !next && onClose()} title="Issue a physical asset" description="Creates one assignment, one condition record and one audit entry." footer={footer}>
       <form
         id="issue-form"
         noValidate
@@ -215,7 +215,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
         <form.Field name="asset">
           {(field) => (
             <Field
-              label="Asset"
+              label="Physical asset"
               error={fieldError(field, undefined, submitted)}
               hint={
                 field.state.value ? (
@@ -250,7 +250,7 @@ function IssueForm({ assetId, employeeId, onClose }: { assetId: number | null; e
                   </span>
                 )}
                 placeholder="Start typing a tag or serial"
-                emptyText="No matching assets in storage"
+                emptyText="No matching physical assets in storage"
                 autoFocus={!startsWithAsset}
                 inputRef={assetInput}
               />

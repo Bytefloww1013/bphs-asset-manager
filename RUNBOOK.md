@@ -131,7 +131,7 @@ curl -fsS http://localhost:8080/api/health
 docker compose exec assets node server/admin.ts list     # the accounts you expect
 ```
 
-Sign in and look at the Assets and Audit log screens to confirm the data is from the time you expected.
+Sign in and look at the Physical Assets and Audit log screens to confirm the data is from the time you expected.
 
 If it was the wrong backup, repeat from step 1 with another file. The database you replaced is in `/data/pre-restore-<timestamp>/` inside the volume; delete those folders once you are sure.
 
