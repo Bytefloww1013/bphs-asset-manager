@@ -14,7 +14,7 @@ Requires [Bun](https://bun.sh) 1.3 or newer (package manager and script runner) 
 
 ```bash
 bun install
-bun run db:seed        # optional: synthetic demo data (employees, 116 assets, history, 5 users)
+bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, history, 5 users)
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
@@ -94,7 +94,7 @@ Sixteen screens, all built:
 - The audit log is append-only. SQLite triggers reject any `UPDATE` or `DELETE` on it.
 - Five wrong passwords lock an account for 15 minutes. New and reset accounts get a one-time password and must change it before any other page works (the API refuses everything else until then).
 - A physical asset is held by exactly one employee or one program, never both and never neither, in the app **and** by a `CHECK` constraint in the database.
-- A digital asset gets its Asset ID from the system (`DA-0001`, never typed, edited or reused), is issued to employees only, and reads Active while someone has it. Its License/Account field names a seat and refuses anything that labels itself a password, key or token: no credential is stored.
+- A digital asset gets its Asset ID from the system (`DA-00001`, never typed, edited or reused), is issued to employees only, and reads Active while someone has it. Its License/Account field names a seat and refuses anything that labels itself a password, key or token: no credential is stored.
 - An import only adds employees and programs. It never changes an existing record and never issues anything; a row whose ID already exists is skipped, so running the same file twice is safe. Each record created gets its own audit entry.
 - Roles: **Admin** adds and changes records. **Super Admin** can also delete, archive employees and manage accounts.
 

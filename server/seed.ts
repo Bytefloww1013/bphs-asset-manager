@@ -1,5 +1,5 @@
 /**
- * Development seed: synthetic employees, assets, history and users modelled on the design spec.
+ * Development seed: synthetic employees, programs, physical and digital assets, history and users modelled on the design spec.
  * Every name and serial here is made up. Never run against production data.
  *
  *   bun run db:seed            # fills an empty database
@@ -11,7 +11,20 @@ import { eq } from 'drizzle-orm'
 import { ensureDefaultLists } from './bootstrap.ts'
 import { config, isProduction } from './config.ts'
 import { createDb, runMigrations, type DbLike } from './db/client.ts'
-import { assetTypes, assets, assignments, auditLog, conditionRatings, conditions, employees, users } from './db/schema.ts'
+import {
+  assetTypes,
+  assets,
+  assignments,
+  auditLog,
+  conditionRatings,
+  conditions,
+  digitalAssetTypes,
+  digitalAssets,
+  digitalAssignments,
+  employees,
+  programs,
+  users,
+} from './db/schema.ts'
 import { hashPassword } from './lib/password.ts'
 
 if (isProduction) {
@@ -120,8 +133,30 @@ const FLEET: [string, number, string, string][] = [
 ]
 
 const actors = [priya!, marcus!]
+
+const PROGRAMS: [string, string, string | null, boolean][] = [
+  // Program ID, name, address, active
+  ['PRG-100', 'Harbour House Residential', '14 Harbour Road', true],
+  ['PRG-110', 'Maple Court Residential', '220 Maple Court', true],
+  ['PRG-200', 'Downtown Intake Centre', '5 King Street, Suite 300', true],
+  ['PRG-310', 'Youth Outreach', '88 Mill Lane', true],
+  ['PRG-400', 'Day Program', null, true],
+  ['PRG-090', 'Northside Drop-in', '41 Alder Avenue', false],
+]
+
+/** Digital asset type, how many seats, and what a seat's License/Account looks like. */
+const SEATS: [string, number, (n: number, holder?: { firstName: string; lastName: string }) => string][] = [
+  ['Microsoft 365', 12, (n, h) => (h ? `${h.firstName[0]}.${h.lastName}@bphs.example`.toLowerCase() : `spare${n}@bphs.example`)],
+  ['Adobe Acrobat Pro', 5, (n) => `Team licence, seat ${n}`],
+  ['Client records system', 8, (n, h) => (h ? `${h.firstName[0]}${h.lastName}`.toLowerCase().replace(/[^a-z]/g, '') : `unassigned-${n}`)],
+  ['Zoom', 4, (n) => `Licensed host ${n}`],
+  ['Accounting software', 3, (n) => `Named user ${n}`],
+]
 const audit = (d: DbLike, at: Date, who: (typeof actors)[number], action: 'create' | 'issue' | 'return' | 'update', entityType: string, entityId: number, details: string) =>
   d.insert(auditLog).values({ occurredAt: at, userId: who.id, actor: who.email, action, entityType, entityId, details }).run()
+
+/** Physical assets left in service with nobody holding them, and when each last came back. */
+const shelf: { id: number; tag: string; since: number }[] = []
 
 const serial = (prefix: string) => `${prefix}${int(1000, 9999)}${String.fromCharCode(65 + int(0, 25))}${String.fromCharCode(65 + int(0, 25))}${int(10, 99)}`
 
@@ -174,11 +209,79 @@ db.transaction((tx) => {
         const out = longest ? int(380, 800) : int(8, 360)
         const issued = new Date(Math.max(now - out * DAY, cursor + DAY))
         cycle(pick(active), issued, null, pick(['New', 'Good', 'Good']))
-      }
+      } else shelf.push({ id: asset.id, tag, since: cursor })
     }
   }
 })
 
-console.log(`Seeded ${people.length} employees, ${tagNumber} assets and 5 users into ${file}`)
+// Programs, some of them holding equipment off the shelf. Done after the fleet so the fleet comes out the same as it always has.
+let programCount = 0
+let seatCount = 0
+db.transaction((tx) => {
+  const sites = PROGRAMS.map(([code, name, address, isActive], i) => {
+    const createdAt = daysAgo(700 - i * 40)
+    const program = tx.insert(programs).values({ code, name, address, isActive, createdAt }).returning().get()
+    audit(tx, createdAt, priya!, 'create', 'program', program.id, `program_id=${code} · ${name}`)
+    programCount += 1
+    return program
+  })
+  const open = sites.filter((p) => p.isActive)
+  const closed = sites.find((p) => !p.isActive)!
+  const hold = (item: (typeof shelf)[number], program: (typeof sites)[number], issuedAt: Date, returnedAt: Date | null) => {
+    const issuer = pick(actors)
+    const a = tx.insert(assignments).values({ assetId: item.id, programId: program.id, issuedAt, returnedAt, issuedById: issuer.id, returnedById: returnedAt ? issuer.id : null }).returning().get()
+    tx.insert(conditions).values({ assetId: item.id, assignmentId: a.id, kind: 'issue', ratingId: ratings.Good!, assessedById: priya!.employeeId, recordedById: issuer.id, recordedAt: issuedAt }).run()
+    audit(tx, issuedAt, issuer, 'issue', 'assignment', a.id, `${item.tag} → program ${program.code} · Good`)
+    if (!returnedAt) return
+    tx.insert(conditions).values({ assetId: item.id, assignmentId: a.id, kind: 'return', ratingId: ratings.Fair!, assessedById: marcus!.employeeId, recordedById: issuer.id, recordedAt: returnedAt }).run()
+    audit(tx, returnedAt, issuer, 'return', 'assignment', a.id, `${item.tag} ← program ${program.code} · Fair`)
+  }
+  // The closed program held one device and gave it back, which is why it was deactivated and not deleted.
+  const first = shelf.shift()
+  if (first) {
+    const issued = new Date(first.since + (now - first.since) / 3)
+    const returned = new Date(first.since + ((now - first.since) * 2) / 3)
+    hold(first, closed, issued, returned)
+    audit(tx, new Date(returned.getTime() + 3_600_000), priya!, 'update', 'program', closed.id, `program_id=${closed.code} · deactivated`)
+  }
+  for (const item of shelf.splice(0, 12)) hold(item, pick(open), new Date(item.since + (now - item.since) * (0.2 + rand() * 0.7)), null)
+
+  // Digital assets: one row per seat, most of them with someone.
+  let holderIndex = 0
+  for (const [typeName, count, account] of SEATS) {
+    const createdAt = daysAgo(int(200, 600))
+    const type = tx.insert(digitalAssetTypes).values({ name: typeName, createdAt }).returning().get()
+    audit(tx, createdAt, priya!, 'create', 'digitalassettype', type.id, typeName)
+    for (let n = 1; n <= count; n++) {
+      const addedAt = new Date(createdAt.getTime() + int(1, 30) * DAY)
+      const who = pick(actors)
+      const roll = rand()
+      const holder = roll < 0.72 ? active[holderIndex++ % active.length]! : undefined
+      const seat = tx.insert(digitalAssets).values({ code: `pending-${typeName}-${n}`, typeId: type.id, account: account(n, holder), status: roll > 0.93 ? 'inactive' : 'in_service', createdAt: addedAt }).returning().get()
+      const code = `DA-${String(seat.id).padStart(5, '0')}`
+      tx.update(digitalAssets).set({ code }).where(eq(digitalAssets.id, seat.id)).run()
+      audit(tx, addedAt, who, 'create', 'digitalasset', seat.id, `${code} · ${typeName} · ${seat.account}`)
+      seatCount += 1
+      let from = addedAt.getTime() + DAY
+      if (rand() < 0.3) {
+        // Someone had this seat before and gave it up.
+        const earlier = pick(people)
+        const issuedAt = new Date(from + int(1, 20) * DAY)
+        const returnedAt = new Date(issuedAt.getTime() + int(20, 90) * DAY)
+        tx.insert(digitalAssignments).values({ digitalAssetId: seat.id, employeeId: earlier.id, issuedAt, returnedAt, issuedById: who.id, returnedById: who.id }).run()
+        audit(tx, issuedAt, who, 'issue', 'digitalasset', seat.id, `${code} → ${earlier.code} · ${typeName}`)
+        audit(tx, returnedAt, who, 'return', 'digitalasset', seat.id, `${code} ← ${earlier.code} · ${typeName}`)
+        from = returnedAt.getTime()
+      }
+      if (seat.status === 'inactive') audit(tx, new Date(from + (now - from) / 2), who, 'update', 'digitalasset', seat.id, `${code} · marked inactive`)
+      if (!holder) continue
+      const issuedAt = new Date(from + (now - from) * (0.1 + rand() * 0.8))
+      tx.insert(digitalAssignments).values({ digitalAssetId: seat.id, employeeId: holder.id, issuedAt, issuedById: who.id }).run()
+      audit(tx, issuedAt, who, 'issue', 'digitalasset', seat.id, `${code} → ${holder.code} · ${typeName}`)
+    }
+  }
+})
+
+console.log(`Seeded ${people.length} employees, ${programCount} programs, ${tagNumber} physical assets, ${seatCount} digital assets and 5 users into ${file}`)
 console.log(`Sign in as p.raghunathan@bphs.local (Super Admin) or m.oyelaran@bphs.local (Admin), password: ${PASSWORD}`)
 sqlite.close()
