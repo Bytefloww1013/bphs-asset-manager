@@ -15,7 +15,7 @@ import { HttpError, conflict, invalid, notFound } from '../lib/errors.ts'
 import { describeRowProblem } from '../lib/rows.ts'
 import { daysBetween } from '../lib/time.ts'
 import { issueInTx } from './assignments.ts'
-import { fullName, requireActiveRating, requireAssessor } from './refs.ts'
+import { assessorFor, fullName, requireActiveRating } from './refs.ts'
 
 interface AssetBase {
   id: number
@@ -259,7 +259,7 @@ function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date
         assetId: asset.id,
         kind: 'intake',
         ratingId: rating.id,
-        assessedById: requireAssessor(tx, input.assessedById ?? actor.employeeId),
+        assessedById: assessorFor(tx, input.assessedById, actor),
         notes: input.notes ?? null,
         recordedById: actor.id,
         recordedAt: now,

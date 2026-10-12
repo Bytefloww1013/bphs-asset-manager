@@ -306,6 +306,52 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(detail.data.asset.condition.rating).toBe('Fair')
   })
 
+  it('records nobody as the assessor when the field is sent empty, and the signed-in user only when it is not sent', async () => {
+    const { t, cookie, laptop, good } = await seed()
+    const assessors = async (tag: string) =>
+      (await t.call('GET', `/api/assets/tag/${tag}`, { cookie })).data.conditions.map((c: { kind: string; assessedBy: string | null }) => [c.kind, c.assessedBy])
+    const create = (tag: string, extra: Record<string, unknown>) =>
+      t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id, ...extra } })
+
+    // Not sent: the signed-in user's own employee, at intake, issue and return.
+    const own = (await create('BPHS-0160', {})).data
+    const ownIssue = await t.call('POST', '/api/assignments', { cookie, body: { assetId: own.id, employeeId: t.person.id, conditionRatingId: good.id } })
+    await t.call('POST', `/api/assignments/${ownIssue.data.id}/return`, { cookie, body: { conditionRatingId: good.id } })
+    expect((await assessors('BPHS-0160')).sort()).toEqual([
+      ['intake', 'Priya Raghunathan'],
+      ['issue', 'Priya Raghunathan'],
+      ['return', 'Priya Raghunathan'],
+    ])
+
+    // Sent empty: nobody, at each of the three.
+    const none = (await create('BPHS-0161', { assessedById: null })).data
+    const noneIssue = await t.call('POST', '/api/assignments', {
+      cookie,
+      body: { assetId: none.id, employeeId: t.person.id, conditionRatingId: good.id, assessedById: null },
+    })
+    expect(noneIssue.status).toBe(201)
+    const noneReturn = await t.call('POST', `/api/assignments/${noneIssue.data.id}/return`, { cookie, body: { conditionRatingId: good.id, assessedById: null } })
+    expect(noneReturn.status).toBe(204)
+    expect((await assessors('BPHS-0161')).sort()).toEqual([
+      ['intake', null],
+      ['issue', null],
+      ['return', null],
+    ])
+
+    // A bulk return and an asset created already issued follow the same rule.
+    const issuedNow = await create('BPHS-0162', { assessedById: null, holderId: t.person.id })
+    expect(issuedNow.status).toBe(201)
+    const open = (await t.call('GET', '/api/assignments', { cookie })).data.find((a: { assetTag: string }) => a.assetTag === 'BPHS-0162')
+    const bulk = await t.call('POST', '/api/assignments/return-bulk', { cookie, body: { ids: [open.id], conditionRatingId: good.id, assessedById: null } })
+    expect(bulk.data.returned).toEqual([open.id])
+    expect((await assessors('BPHS-0162')).every(([, who]: [string, string | null]) => who === null)).toBe(true)
+
+    // An unknown employee is still refused.
+    const unknown = await create('BPHS-0163', { assessedById: 9999 })
+    expect(unknown.status).toBe(422)
+    expect(unknown.data.details.fields).toEqual({ assessedById: 'Choose who assessed the condition.' })
+  })
+
   it('reports who already returned an assignment (the race-conflict case)', async () => {
     const { t, cookie, good, make } = await seed()
     const asset = await make('BPHS-0141')

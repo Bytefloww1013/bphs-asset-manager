@@ -6,7 +6,7 @@ import { assetTypes, assets, assignments, conditions, employees, users } from '.
 import { actorLabel, writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError, conflict, notFound } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
-import { employeeRef, fullName, requireActiveRating, requireAssessor, requireEmployee } from './refs.ts'
+import { employeeRef, fullName, assessorFor, requireActiveRating, requireEmployee } from './refs.ts'
 
 interface OpenRow {
   id: number
@@ -80,7 +80,7 @@ export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new
     throw conflict('employee_archived', `${fullName(employee.firstName, employee.lastName)} is archived.`)
   }
   const rating = requireActiveRating(tx, input.conditionRatingId)
-  const assessedById = requireAssessor(tx, input.assessedById ?? actor.employeeId)
+  const assessedById = assessorFor(tx, input.assessedById, actor)
 
   const open = tx
     .select({ id: assignments.id, first: employees.firstName, last: employees.lastName })
@@ -155,7 +155,7 @@ export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input
   }
 
   const rating = requireActiveRating(tx, input.conditionRatingId)
-  const assessedById = requireAssessor(tx, input.assessedById ?? actor.employeeId)
+  const assessedById = assessorFor(tx, input.assessedById, actor)
 
   tx.update(assignments).set({ returnedAt: now, returnedById: actor.id }).where(eq(assignments.id, assignment.id)).run()
   tx.insert(conditions)
