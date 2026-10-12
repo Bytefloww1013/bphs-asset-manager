@@ -56,22 +56,32 @@ export function Combobox<T>({
   const [text, setText] = useState(value ? getLabel(value) : '')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
+  const [list, setList] = useState<HTMLUListElement | null>(null)
+  const pointerMoved = useRef(false)
+  const pointerAt = useRef('')
 
   // Follow the selected value when the parent changes it (reset, prefill).
   const label = value ? getLabel(value) : ''
   useEffect(() => setText(label), [label])
 
-  const matches = useMemo(() => {
+  const found = useMemo(() => {
     const query = text.trim().toLowerCase()
-    if (!query || (value && label === text)) return items.slice(0, MAX_RESULTS)
+    if (!query || (value && label === text)) return items
     const words = query.split(/\s+/)
-    return items
-      .filter((item) => {
-        const haystack = `${getLabel(item)} ${getSearch?.(item) ?? ''}`.toLowerCase()
-        return words.every((word) => haystack.includes(word))
-      })
-      .slice(0, MAX_RESULTS)
+    return items.filter((item) => {
+      const haystack = `${getLabel(item)} ${getSearch?.(item) ?? ''}`.toLowerCase()
+      return words.every((word) => haystack.includes(word))
+    })
   }, [items, text, value, label, getLabel, getSearch])
+  const matches = useMemo(() => found.slice(0, MAX_RESULTS), [found])
+
+  // Keys, typing and opening move the highlight, so the list scrolls to keep it in view. The pointer moves it too, but its option is then under the
+  // pointer already, and scrolling would fight the wheel.
+  useEffect(() => {
+    const byPointer = pointerMoved.current
+    pointerMoved.current = false
+    if (list && !byPointer) document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: 'nearest' })
+  }, [list, listId, active, text])
 
   function select(item: T | null) {
     onChange(item)
@@ -165,9 +175,9 @@ export function Combobox<T>({
           onInteractOutside={(event) => {
             if (event.target === inputRef.current) event.preventDefault()
           }}
-          className="z-[60] max-h-72 w-[var(--radix-popover-trigger-width)] min-w-56 animate-pop-in overflow-y-auto rounded-panel border border-line bg-surface p-1.5 shadow-pop"
+          className="z-[60] flex max-h-72 w-[var(--radix-popover-trigger-width)] min-w-56 animate-pop-in flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-pop"
         >
-          <ul id={listId} role="listbox" className="flex flex-col">
+          <ul ref={setList} id={listId} role="listbox" className="flex scroll-py-1.5 flex-col overflow-y-auto p-1.5">
             {matches.length === 0 && <li className="px-2.5 py-2 text-sm text-ink-3">{emptyText}</li>}
             {matches.map((item, index) => (
               <li
@@ -175,7 +185,16 @@ export function Combobox<T>({
                 id={`${listId}-${index}`}
                 role="option"
                 aria-selected={index === active}
-                onMouseMove={() => setActive(index)}
+                onMouseMove={(event) => {
+                  // A list that scrolls under a resting pointer makes some browsers send a mousemove from the pointer's own spot.
+                  // Only a pointer that has moved takes the highlight.
+                  const at = `${event.clientX},${event.clientY}`
+                  if (at === pointerAt.current) return
+                  pointerAt.current = at
+                  if (index === active) return
+                  pointerMoved.current = true
+                  setActive(index)
+                }}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => select(item)}
                 className={cn('cursor-pointer rounded-[6px] px-2.5 py-1.5 text-sm text-ink', index === active && 'bg-accent-soft')}
@@ -184,6 +203,11 @@ export function Combobox<T>({
               </li>
             ))}
           </ul>
+          {found.length > matches.length && (
+            <p onMouseDown={(event) => event.preventDefault()} className="shrink-0 border-t border-line px-3 py-1.5 text-xs text-ink-3">
+              Showing the first {matches.length} of {found.length.toLocaleString()}. Type to narrow the list.
+            </p>
+          )}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
