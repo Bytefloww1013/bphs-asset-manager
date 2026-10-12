@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
+import Database from 'better-sqlite3'
 import { createApp } from '../app.ts'
 import { DEFAULT_RATINGS, DEFAULT_TYPES, ensureDefaultLists } from '../bootstrap.ts'
 import { createDb, runMigrations } from '../db/client.ts'
@@ -63,7 +64,7 @@ describe('authentication', () => {
     expect((await t.signIn('m.oyelaran@bphs.local')).status).toBe(423)
   })
 
-  it('writes one audit entry when an account locks, and none for the attempts before or after', async () => {
+  it('writes one lock entry when an account locks, and none for the attempts before or after', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
     const locks = async () => (await t.call('GET', '/api/audit?action=lock', { cookie })).data.entries
@@ -1003,10 +1004,11 @@ describe('lists, users and audit', () => {
     const patId = one.data.user.id
     await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { name: 'Pat First', role: 'super_admin', employeeId: other.id } })
     expect(await latest()).toMatchObject({ actor: 'p.raghunathan@bphs.local', details: 'pat@a.example · name: Pat One → Pat First; role: admin → super_admin; linked employee: none → E-2000 Lee Okoro' })
-    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { employeeId: t.person.id } })
-    expect((await latest()).details).toBe('pat@a.example · linked employee: E-2000 Lee Okoro → E-1042 Priya Raghunathan')
+    const third = t.db.insert(employees).values({ code: 'E-2002', firstName: 'Ana', lastName: 'Reyes' }).returning().get()
+    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { employeeId: third.id } })
+    expect((await latest()).details).toBe('pat@a.example · linked employee: E-2000 Lee Okoro → E-2002 Ana Reyes')
     await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { employeeId: null } })
-    expect((await latest()).details).toBe('pat@a.example · linked employee: E-1042 Priya Raghunathan → none')
+    expect((await latest()).details).toBe('pat@a.example · linked employee: E-2002 Ana Reyes → none')
     await t.call('POST', `/api/users/${patId}/reset-password`, { cookie })
     expect((await latest()).details).toBe('pat@a.example · password reset · must change on next login')
     await t.call('POST', `/api/users/${patId}/clear-lock`, { cookie })
@@ -1125,7 +1127,9 @@ describe('lists, users and audit', () => {
     // Either end can be left open, and an offset other than Z is understood: all three of these are midnight at the start of 10 October in UTC.
     for (const from of ['2026-10-10T00:00:00Z', '2026-10-09T20:00:00-04:00', '2026-10-10T05:30:00%2B05:30']) {
       const page = await t.call('GET', `/api/audit?from=${from}`, { cookie })
-      expect(page.data.entries.map((e: { details: string }) => e.details).sort(), from).toEqual(['evening of the 9th', 'the 10th starts', 'the 9th ends'])
+      // The sign-in at the top of this test is in the log as well, and it is later than all of these.
+      const probes = page.data.entries.filter((e: { actor: string }) => e.actor === 'probe')
+      expect(probes.map((e: { details: string }) => e.details).sort(), from).toEqual(['evening of the 9th', 'the 10th starts', 'the 9th ends'])
     }
     const to = await t.call('GET', '/api/audit?to=2026-10-09T04:00:00.000Z', { cookie })
     expect(to.data.entries.map((e: { details: string }) => e.details)).toEqual(['one ms before the 9th starts'])
@@ -1150,5 +1154,86 @@ describe('lists, users and audit', () => {
     expect(data.topHolders[0].count).toBe(1)
     expect(data.poorCondition[0].assetTag).toBe('D-2')
     expect(data.recent.length).toBeGreaterThan(0)
+  })
+})
+
+describe('sign-ins in the audit log, and one account per employee', () => {
+  it('records each sign-in and each failed sign-in, with the reason', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const entries = async (action: string) =>
+      ((await t.call('GET', `/api/audit?action=${action}`, { cookie })).data.entries as { actor: string; entityId: number | null; details: string }[]).reverse()
+
+    expect(await entries('sign_in')).toEqual([expect.objectContaining({ actor: 'p.raghunathan@bphs.local', entityId: t.superUser.id, details: 'p.raghunathan@bphs.local · signed in' })])
+    expect(await entries('sign_in_failed')).toEqual([])
+
+    await t.signIn('  Nobody@BPHS.local ', 'wrong')
+    for (let i = 0; i < 6; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
+    await t.signIn('m.oyelaran@bphs.local')
+    t.db.update(users).set({ isActive: false, lockedUntil: null }).where(eq(users.id, t.adminUser.id)).run()
+    await t.signIn('m.oyelaran@bphs.local')
+    await t.signIn(`${'x'.repeat(400)}@bphs.local`, 'wrong')
+
+    const failed = await entries('sign_in_failed')
+    expect(failed.every((e) => e.actor === 'sign-in')).toBe(true)
+    expect(failed.slice(0, 9).map((e) => [e.entityId, e.details])).toEqual([
+      [null, 'nobody@bphs.local · no such account'],
+      ...[1, 2, 3, 4, 5].map((n) => [t.adminUser.id, `m.oyelaran@bphs.local · incorrect password (${n} of 5)`]),
+      [t.adminUser.id, 'm.oyelaran@bphs.local · account is locked'],
+      // The right password does not get past a lock, and that attempt is on record too.
+      [t.adminUser.id, 'm.oyelaran@bphs.local · account is locked'],
+      [t.adminUser.id, 'm.oyelaran@bphs.local · account is deactivated'],
+    ])
+    // What was typed as the email is cut to the length of the longest address before it is stored.
+    expect(failed[9]!.details).toBe(`${'x'.repeat(254)} · no such account`)
+    // The lock keeps its own entry, and a password is never part of any entry.
+    expect(await entries('lock')).toHaveLength(1)
+    expect(JSON.stringify(t.db.select().from(auditLog).all())).not.toMatch(/wrong|Demo-pass/)
+    expect(await entries('sign_in')).toHaveLength(1)
+  })
+
+  it('refuses to link an employee who already has an account', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const refused = { status: 409, data: { error: 'employee_linked', message: 'Priya Raghunathan is already linked to the account p.raghunathan@bphs.local. Unlink that account first.', details: { field: 'employeeId' } } }
+
+    expect(await t.call('POST', '/api/users', { cookie, body: { name: 'Second Priya', email: 'second@bphs.local', role: 'admin', employeeId: t.person.id } })).toMatchObject(refused)
+    expect(findUser(t.db, 'second@bphs.local')).toBeUndefined()
+    expect(await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: t.person.id } })).toMatchObject(refused)
+    // Sending the link an account already has changes nothing and is not refused.
+    expect((await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { employeeId: t.person.id } })).status).toBe(200)
+
+    // Once the first account lets go, the second may take the employee.
+    expect((await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { employeeId: null } })).status).toBe(200)
+    expect((await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: t.person.id } })).data.employeeId).toBe(t.person.id)
+    // The database holds the rule as well, and any number of accounts may be linked to nobody.
+    expect(() => t.sqlite.prepare('update users set employee_id = ? where id = ?').run(t.person.id, t.superUser.id)).toThrow(/UNIQUE/)
+    expect((await t.call('POST', '/api/users', { cookie, body: { name: 'No Link', email: 'nolink@bphs.local', role: 'admin' } })).status).toBe(201)
+  })
+
+  it('on upgrade, leaves a shared employee with one account and says which accounts were unlinked', () => {
+    const folder = path.join(import.meta.dirname, '../db/migrations')
+    const statements = (file: string) => fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint')
+    const files = fs.readdirSync(folder).filter((file) => file.endsWith('.sql')).sort()
+    const last = files.findIndex((file) => file.startsWith('0004_'))
+    const sqlite = new Database(':memory:')
+    for (const file of files.slice(0, last)) for (const statement of statements(file)) sqlite.exec(statement)
+
+    sqlite.exec(`
+      insert into employees (id, code, first_name, last_name) values (1, 'E-1', 'Sam', 'Shared'), (2, 'E-2', 'Olu', 'Alone');
+      insert into users (id, name, email, password_hash, role, employee_id, is_active) values
+        (1, 'Old Off', 'off@x.example', 'x', 'admin', 1, 0),
+        (2, 'Kept', 'kept@x.example', 'x', 'admin', 1, 1),
+        (3, 'Later', 'later@x.example', 'x', 'admin', 1, 1),
+        (4, 'Alone', 'alone@x.example', 'x', 'admin', 2, 1),
+        (5, 'None', 'none@x.example', 'x', 'admin', null, 1);`)
+    for (const statement of statements(files[last]!)) sqlite.exec(statement)
+
+    expect(sqlite.prepare('select id, employee_id as e from users order by id').all()).toEqual([{ id: 1, e: null }, { id: 2, e: 1 }, { id: 3, e: null }, { id: 4, e: 2 }, { id: 5, e: null }])
+    expect(sqlite.prepare('select actor, action, entity_id as id, details from audit_log order by entity_id').all()).toEqual([
+      { actor: 'migration', action: 'update', id: 1, details: 'off@x.example · linked employee: E-1 Sam Shared → none (an employee may be linked to one account only)' },
+      { actor: 'migration', action: 'update', id: 3, details: 'later@x.example · linked employee: E-1 Sam Shared → none (an employee may be linked to one account only)' },
+    ])
+    sqlite.close()
   })
 })

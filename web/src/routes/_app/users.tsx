@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Copy, KeyRound, Lock, LockOpen, ShieldCheck, ShieldOff, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
+import { Copy, KeyRound, Lock, LockOpen, ShieldCheck, ShieldOff, Unlink, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
 import { ROLE_LABEL, type Role } from '@shared/constants.ts'
 import type { UserRow, UserWithPassword } from '@shared/types.ts'
@@ -148,6 +148,7 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
   const deactivate = useWrite(() => api.post(`/users/${user.id}/deactivate`), { success: `${user.name} deactivated` })
   const reactivate = useWrite(() => api.post(`/users/${user.id}/reactivate`), { success: `${user.name} reactivated` })
   const changeRole = useWrite((role: Role) => api.patch(`/users/${user.id}`, { role }), { success: `${user.name} is now ${ROLE_LABEL[user.role === 'admin' ? 'super_admin' : 'admin']}` })
+  const unlink = useWrite(() => api.patch(`/users/${user.id}`, { employeeId: null }), { success: `${user.name} is no longer linked to an employee` })
   const isMe = user.id === me.id
 
   const items: MenuItem[] = [
@@ -156,6 +157,7 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
     user.role === 'admin'
       ? { label: 'Make Super Admin', icon: ShieldCheck, onSelect: () => changeRole.mutate('super_admin') }
       : { label: 'Make Admin', icon: ShieldOff, onSelect: () => changeRole.mutate('admin'), disabledReason: isMe ? 'You cannot change your own role.' : undefined },
+    { label: 'Unlink employee', icon: Unlink, onSelect: () => unlink.mutate(undefined), disabledReason: user.employeeId == null ? 'This account is not linked to an employee.' : undefined },
     user.state === 'deactivated'
       ? { label: 'Reactivate', icon: UserRoundCheck, onSelect: () => reactivate.mutate(undefined), separatorBefore: true }
       : { label: 'Deactivate', icon: UserRoundX, tone: 'danger', separatorBefore: true, onSelect: () => setConfirm('deactivate'), disabledReason: isMe ? 'You cannot deactivate your own account.' : undefined },
@@ -237,7 +239,10 @@ function UsersTable() {
 
 function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (result: UserWithPassword) => void }) {
   const { data: lookups } = useQuery(lookupsQuery)
-  const people = lookups?.employees ?? []
+  const { data: accounts = [] } = useQuery(usersQuery)
+  // An employee may be linked to one account only, so those who already have one are not offered.
+  const linked = new Set(accounts.map((account) => account.employeeId))
+  const people = (lookups?.employees ?? []).filter((person) => !linked.has(person.id))
   const [error, setError] = useState<ApiError | null>(null)
   const create = useWrite((body: { name: string; email: string; role: Role; employeeId: number | null }) => api.post<UserWithPassword>('/users', body), { silent: true })
 
@@ -329,7 +334,7 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
         </form.Field>
         <form.Field name="employee">
           {(field) => (
-            <Field label="Linked employee" optional hint="Fills in “Assessed by” for them when issuing and returning.">
+            <Field label="Linked employee" optional hint="Fills in “Assessed by” for them when issuing and returning. An employee can be linked to one account only.">
               <Combobox items={people} value={field.state.value} onChange={field.handleChange} getKey={(p) => p.id} getLabel={(p) => `${p.name} · ${p.code}`} getSearch={(p) => p.department ?? ''} placeholder="Search employees" />
             </Field>
           )}

@@ -23,20 +23,25 @@ export const employees = sqliteTable(
   (t) => [index('ix_employees_name').on(t.lastName, t.firstName)],
 )
 
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  role: text('role').$type<Role>().notNull(),
-  employeeId: integer('employee_id').references(() => employees.id, { onDelete: 'restrict' }),
-  mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(true),
-  failedLogins: integer('failed_logins').notNull().default(0),
-  lockedUntil: ms('locked_until'),
-  lastLoginAt: ms('last_login_at'),
-  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-  createdAt: createdAt(),
-})
+export const users = sqliteTable(
+  'users',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash').notNull(),
+    role: text('role').$type<Role>().notNull(),
+    employeeId: integer('employee_id').references(() => employees.id, { onDelete: 'restrict' }),
+    mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(true),
+    failedLogins: integer('failed_logins').notNull().default(0),
+    lockedUntil: ms('locked_until'),
+    lastLoginAt: ms('last_login_at'),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  /** One account per employee at most; any number of accounts may be linked to nobody. */
+  (t) => [uniqueIndex('uq_users_employee').on(t.employeeId)],
+)
 
 export const sessions = sqliteTable(
   'sessions',

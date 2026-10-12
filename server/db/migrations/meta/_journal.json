@@ -29,6 +29,13 @@
       "when": 1791820494989,
       "tag": "0003_rating_score",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791827343762,
+      "tag": "0004_one_account_per_employee",
+      "breakpoints": true
     }
   ]
 }

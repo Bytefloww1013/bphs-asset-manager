@@ -44,8 +44,13 @@ function assertEmailFree(db: DbLike, email: string, exceptId?: number) {
 
 function assertEmployee(db: DbLike, id: number | null | undefined) {
   if (id == null) return
-  const employee = db.select({ id: employees.id, archivedAt: employees.archivedAt }).from(employees).where(eq(employees.id, id)).get()
+  const employee = db.select().from(employees).where(eq(employees.id, id)).get()
   if (!employee) throw invalid('Choose an existing employee to link.', { field: 'employeeId' })
+  // An employee is one person, and so is an account. Only called when the link changes, so the account found is another one.
+  const taken = db.select({ email: users.email }).from(users).where(eq(users.employeeId, id)).get()
+  if (taken) {
+    throw conflict('employee_linked', `${fullName(employee.firstName, employee.lastName)} is already linked to the account ${taken.email}. Unlink that account first.`, { field: 'employeeId' })
+  }
   // The pickers do not offer archived employees, and an account linked to one would record them as the assessor on what it issues.
   if (employee.archivedAt) throw invalid('That employee is archived. Restore them first, or choose someone else.', { field: 'employeeId' })
 }

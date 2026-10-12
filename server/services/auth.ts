@@ -91,14 +91,29 @@ const LOCKED = (until: Date) =>
     lockedUntil: until.toISOString(),
   })
 
+/** The longest email address there can be; what was typed is cut to this before it is logged. */
+const MAX_LOGGED_EMAIL = 254
+
+/** A failed sign-in has no user behind it, so the entry names the account it was aimed at, if there is one. */
+function auditFailedSignIn(db: DbLike, now: Date, userId: number | null, email: string, why: string) {
+  db.insert(auditLog)
+    .values({ occurredAt: now, userId: null, actor: 'sign-in', action: 'sign_in_failed', entityType: 'user', entityId: userId, details: `${email.slice(0, MAX_LOGGED_EMAIL)} · ${why}` })
+    .run()
+}
+
 export async function login(db: Db, email: string, password: string, now = new Date()) {
-  const row = db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).get()
+  email = email.trim().toLowerCase()
+  const row = db.select().from(users).where(eq(users.email, email)).get()
   if (!row || !row.isActive) {
     await verifyDecoy(password)
+    auditFailedSignIn(db, now, row?.id ?? null, email, row ? 'account is deactivated' : 'no such account')
     throw INVALID()
   }
 
-  if (row.lockedUntil && row.lockedUntil > now) throw LOCKED(row.lockedUntil)
+  if (row.lockedUntil && row.lockedUntil > now) {
+    auditFailedSignIn(db, now, row.id, row.email, 'account is locked')
+    throw LOCKED(row.lockedUntil)
+  }
   // A lock that has run out starts the count again.
   if (row.lockedUntil) db.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, row.id)).run()
 
@@ -121,10 +136,11 @@ export async function login(db: Db, email: string, password: string, now = new D
             else ${users.lockedUntil} end`,
         })
         .where(eq(users.id, row.id))
-        .returning({ lockedUntil: users.lockedUntil })
+        .returning({ lockedUntil: users.lockedUntil, failedLogins: users.failedLogins })
         .get()
-      // Only the attempt that sets the lock is logged. Nobody is signed in, so the entry has no user behind it.
       const wasLocked = !!before?.lockedUntil && before.lockedUntil > now
+      auditFailedSignIn(tx, now, row.id, row.email, wasLocked ? 'account is locked' : `incorrect password (${Math.min(updated?.failedLogins ?? 1, LOCK_THRESHOLD)} of ${LOCK_THRESHOLD})`)
+      // The attempt that sets the lock gets an entry of its own as well.
       if (!wasLocked && updated?.lockedUntil && updated.lockedUntil > now) {
         tx.insert(auditLog)
           .values({
@@ -145,12 +161,22 @@ export async function login(db: Db, email: string, password: string, now = new D
   }
 
   const current = db.select().from(users).where(eq(users.id, row.id)).get()
-  if (!current || !current.isActive) throw INVALID()
-  if (current.lockedUntil && current.lockedUntil > now) throw LOCKED(current.lockedUntil)
+  if (!current || !current.isActive) {
+    auditFailedSignIn(db, now, row.id, row.email, 'account is deactivated')
+    throw INVALID()
+  }
+  if (current.lockedUntil && current.lockedUntil > now) {
+    auditFailedSignIn(db, now, row.id, row.email, 'account is locked')
+    throw LOCKED(current.lockedUntil)
+  }
 
-  db.update(users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: now }).where(eq(users.id, row.id)).run()
-  const session = createSession(db, row.id, now)
-  return { user: toAuthUser({ ...current, failedLogins: 0, lockedUntil: null }), ...session }
+  const user = toAuthUser({ ...current, failedLogins: 0, lockedUntil: null })
+  const session = db.transaction((tx) => {
+    tx.update(users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: now }).where(eq(users.id, row.id)).run()
+    writeAudit(tx, user, { action: 'sign_in', entityType: 'user', entityId: row.id, details: `${row.email} · signed in`, at: now })
+    return createSession(tx, row.id, now)
+  })
+  return { user, ...session }
 }
 
 export async function changePassword(

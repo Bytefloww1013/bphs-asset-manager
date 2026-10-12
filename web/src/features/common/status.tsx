@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
-import { ratingBand, type AuditAction, type RatingBand } from '@shared/constants.ts'
+import { auditActionLabel, ratingBand, type AuditAction, type RatingBand } from '@shared/constants.ts'
 import type { AssetRow, AssetState, EmployeeRef } from '@shared/types.ts'
 import { Badge, type Tone } from '@/components/ui/badge.tsx'
 import { Mono } from '@/components/ui/layout.tsx'
@@ -80,5 +80,5 @@ export function assetSearchText(asset: AssetRow): string {
 
 export { Mono }
 
-const actionTone: Record<AuditAction, Tone> = { issue: 'accent', return: 'ok', create: 'accent', update: 'warn', delete: 'bad', import: 'neutral', lock: 'bad' }
-export const ActionBadge = ({ action }: { action: AuditAction }) => <Badge tone={actionTone[action]}>{action}</Badge>
+const actionTone: Record<AuditAction, Tone> = { issue: 'accent', return: 'ok', create: 'accent', update: 'warn', delete: 'bad', import: 'neutral', lock: 'bad', sign_in: 'neutral', sign_in_failed: 'warn' }
+export const ActionBadge = ({ action }: { action: AuditAction }) => <Badge tone={actionTone[action]}>{auditActionLabel(action)}</Badge>

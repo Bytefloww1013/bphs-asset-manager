@@ -6,8 +6,10 @@ export const ROLE_LABEL: Record<Role, string> = {
   super_admin: 'Super Admin',
 }
 
-export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import', 'lock'] as const
+export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import', 'lock', 'sign_in', 'sign_in_failed'] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
+/** An action as the Audit Log shows it: "sign in failed" for sign_in_failed. */
+export const auditActionLabel = (action: AuditAction) => action.replaceAll('_', ' ')
 
 export const CONDITION_KINDS = ['intake', 'issue', 'return'] as const
 export type ConditionKind = (typeof CONDITION_KINDS)[number]

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, Download, ScrollText } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { AUDIT_ACTIONS, type AuditAction } from '@shared/constants.ts'
+import { AUDIT_ACTIONS, auditActionLabel, type AuditAction } from '@shared/constants.ts'
 import type { AuditEntry } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
@@ -123,7 +123,7 @@ function AuditPage() {
             label="Filter by action"
             value={search.action ?? 'all'}
             onChange={(next) => setFilter({ action: next === 'all' ? undefined : (next as AuditAction) })}
-            options={[{ value: 'all', label: 'All' }, ...AUDIT_ACTIONS.map((action) => ({ value: action, label: action }))]}
+            options={[{ value: 'all', label: 'All' }, ...AUDIT_ACTIONS.map((action) => ({ value: action, label: auditActionLabel(action) }))]}
           />
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2 text-sm text-ink-3">
@@ -166,7 +166,7 @@ function AuditPage() {
             }
           />
         </div>
-        <p className="text-sm text-ink-3">A delete that was blocked because the record has history writes no entry. Only actions that succeeded appear here.</p>
+        <p className="text-sm text-ink-3">A delete that was blocked because the record has history writes no entry. Apart from failed sign-ins, only actions that succeeded appear here.</p>
       </div>
     </div>
   )
