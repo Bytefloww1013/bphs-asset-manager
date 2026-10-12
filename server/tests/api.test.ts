@@ -597,7 +597,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
 
 describe('employees and CSV import', () => {
   const CSV =
-    '﻿employee_id,first_name,last_name,department,job_title\r\nE-1402,Rosa,Delgado,Intake,Coordinator\r\nE-1042,Priya,Raghunathan,IT,Analyst\r\n,Kerry,Milton,Finance,\r\nE-1403,"Zhao, Wen",Lee,IT,"Help ""desk"""\r\n'
+    '\uFEFFemployee_id,first_name,last_name,department,job_title\r\nE-1402,Rosa,Delgado,Intake,Coordinator\r\nE-1042,Priya,Raghunathan,IT,Analyst\r\n,Kerry,Milton,Finance,\r\nE-1403,"Zhao, Wen",Lee,IT,"Help ""desk"""\r\n'
 
   it('previews, imports once, skips duplicates and logs one entry per created employee', async () => {
     const t = await setup()
@@ -969,6 +969,18 @@ describe('lists, users and audit', () => {
     const detail = (await t.call('GET', `/api/assets/tag/${asset.tag}`, { cookie })).data
     expect(detail.history[0].issuedBy).toBe('p.raghunathan@bphs.local')
     expect(detail.conditions[0].recordedBy).toBe('p.raghunathan@bphs.local')
+  })
+
+  it('starts the audit CSV with the byte-order mark Excel needs, and keeps a cell from being read as a formula', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    await t.call('POST', '/api/asset-types', { cookie, body: { name: '=SUM(A1:A9)' } })
+    const res = await t.app.request('/api/audit.csv', { headers: { cookie } })
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    const text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
+    expect(text.slice(1)).toMatch(/^occurred_at,user,action,entity_type,entity_id,details\r\n/)
+    expect(text).toContain(",'=SUM(A1:A9)\r\n")
   })
 
   it('the audit log is append-only at the database level', async () => {

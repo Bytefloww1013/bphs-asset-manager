@@ -6,9 +6,9 @@ import {
   ratingCreateSchema,
   ratingUpdateSchema,
 } from '../../shared/schemas.ts'
+import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, query, requirePermission, type Env } from '../http.ts'
-import { toCsv } from '../lib/csv.ts'
 import {
   createAssetType,
   createRating,
@@ -64,7 +64,7 @@ export function reportRoutes(db: Db) {
       ['occurred_at', 'user', 'action', 'entity_type', 'entity_id', 'details'],
       entries.map((e) => [e.occurredAt, e.actor, e.action, e.entityType, e.entityId, e.details]),
     )
-    return c.body('﻿' + csv, 200, {
+    return c.body(CSV_BOM + csv, 200, {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': 'attachment; filename="audit-log.csv"',
     })
