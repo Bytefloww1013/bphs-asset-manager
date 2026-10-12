@@ -74,7 +74,6 @@ describe('server/admin.ts (break-glass recovery)', () => {
     expect(row?.failedLogins).toBe(0)
     expect(db.select().from(auditLog).all().map((e) => e.details)).toEqual([
       expect.stringContaining('password reset via server CLI'),
-      'admin@bphs.local · incorrect password (1 of 5)',
       'admin@bphs.local · signed in',
     ])
     sqlite.close()

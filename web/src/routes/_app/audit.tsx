@@ -166,7 +166,7 @@ function AuditPage() {
             }
           />
         </div>
-        <p className="text-sm text-ink-3">A delete that was blocked because the record has history writes no entry. Apart from failed sign-ins, only actions that succeeded appear here.</p>
+        <p className="text-sm text-ink-3">A delete that was blocked because the record has history writes no entry, and neither does a failed sign-in, except the one that locks the account. Otherwise only actions that succeeded appear here.</p>
       </div>
     </div>
   )

@@ -1158,38 +1158,30 @@ describe('lists, users and audit', () => {
 })
 
 describe('sign-ins in the audit log, and one account per employee', () => {
-  it('records each sign-in and each failed sign-in, with the reason', async () => {
+  it('records each sign-in, and of the failed attempts only the one that locks the account', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
-    const entries = async (action: string) =>
-      ((await t.call('GET', `/api/audit?action=${action}`, { cookie })).data.entries as { actor: string; entityId: number | null; details: string }[]).reverse()
+    const entries = async (query = '') =>
+      ((await t.call('GET', `/api/audit${query}`, { cookie })).data.entries as { actor: string; action: string; entityId: number | null; details: string }[]).reverse()
 
-    expect(await entries('sign_in')).toEqual([expect.objectContaining({ actor: 'p.raghunathan@bphs.local', entityId: t.superUser.id, details: 'p.raghunathan@bphs.local · signed in' })])
-    expect(await entries('sign_in_failed')).toEqual([])
+    expect(await entries('?action=sign_in')).toEqual([expect.objectContaining({ actor: 'p.raghunathan@bphs.local', entityId: t.superUser.id, details: 'p.raghunathan@bphs.local · signed in' })])
 
-    await t.signIn('  Nobody@BPHS.local ', 'wrong')
-    for (let i = 0; i < 6; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
+    // Unknown accounts and the attempts before the limit leave nothing behind.
+    await t.signIn('nobody@bphs.local', 'wrong')
+    for (let i = 0; i < 4; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
+    expect(await entries()).toHaveLength(1)
+
+    // The fifth reaches the limit and is logged; attempts on the locked or deactivated account after it are not.
+    await t.signIn('m.oyelaran@bphs.local', 'wrong')
+    await t.signIn('m.oyelaran@bphs.local', 'wrong')
     await t.signIn('m.oyelaran@bphs.local')
     t.db.update(users).set({ isActive: false, lockedUntil: null }).where(eq(users.id, t.adminUser.id)).run()
     await t.signIn('m.oyelaran@bphs.local')
-    await t.signIn(`${'x'.repeat(400)}@bphs.local`, 'wrong')
-
-    const failed = await entries('sign_in_failed')
-    expect(failed.every((e) => e.actor === 'sign-in')).toBe(true)
-    expect(failed.slice(0, 9).map((e) => [e.entityId, e.details])).toEqual([
-      [null, 'nobody@bphs.local · no such account'],
-      ...[1, 2, 3, 4, 5].map((n) => [t.adminUser.id, `m.oyelaran@bphs.local · incorrect password (${n} of 5)`]),
-      [t.adminUser.id, 'm.oyelaran@bphs.local · account is locked'],
-      // The right password does not get past a lock, and that attempt is on record too.
-      [t.adminUser.id, 'm.oyelaran@bphs.local · account is locked'],
-      [t.adminUser.id, 'm.oyelaran@bphs.local · account is deactivated'],
+    expect((await entries()).map((e) => [e.action, e.actor, e.details])).toEqual([
+      ['sign_in', 'p.raghunathan@bphs.local', 'p.raghunathan@bphs.local · signed in'],
+      ['lock', 'sign-in', 'm.oyelaran@bphs.local · locked for 15 minutes after 5 incorrect passwords'],
     ])
-    // What was typed as the email is cut to the length of the longest address before it is stored.
-    expect(failed[9]!.details).toBe(`${'x'.repeat(254)} · no such account`)
-    // The lock keeps its own entry, and a password is never part of any entry.
-    expect(await entries('lock')).toHaveLength(1)
-    expect(JSON.stringify(t.db.select().from(auditLog).all())).not.toMatch(/wrong|Demo-pass/)
-    expect(await entries('sign_in')).toHaveLength(1)
+    expect((await t.call('GET', '/api/audit?action=sign_in_failed', { cookie })).status).toBe(422)
   })
 
   it('refuses to link an employee who already has an account', async () => {
