@@ -226,6 +226,7 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
   const people = lookups?.employees ?? []
   const ratings = lookups?.conditionRatings ?? []
   const [result, setResult] = useState<ReturnBulkResult | null>(null)
+  const [serverError, setServerError] = useState<ApiError | null>(null)
 
   const give = useWrite((value: { ids: number[]; conditionRatingId: number; assessedById: number | null; notes: string }) => api.post<ReturnBulkResult>('/assignments/return-bulk', value), { silent: true })
 
@@ -237,11 +238,16 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
     } as Values,
     validators: { onSubmit: ({ value }) => (value.ratingId ? undefined : { fields: { ratingId: 'Rate their condition.' } }) },
     onSubmit: async ({ value }) => {
-      const res = await give.mutateAsync({ ids: rows.map((row) => row.id), conditionRatingId: value.ratingId!, assessedById: value.assessor?.id ?? null, notes: value.notes })
-      if (res.failed.length === 0) {
-        toast({ title: `${plural(res.returned.length, 'asset')} returned` })
-        onClose(res.returned)
-      } else setResult(res)
+      setServerError(null)
+      try {
+        const res = await give.mutateAsync({ ids: rows.map((row) => row.id), conditionRatingId: value.ratingId!, assessedById: value.assessor?.id ?? null, notes: value.notes })
+        if (res.failed.length === 0) {
+          toast({ title: `${plural(res.returned.length, 'asset')} returned` })
+          onClose(res.returned)
+        } else setResult(res)
+      } catch (error) {
+        if (error instanceof ApiError) setServerError(error)
+      }
     },
   })
 
@@ -297,6 +303,11 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
             void form.handleSubmit()
           }}
         >
+          {serverError && (
+            <Alert tone="bad" title={`Could not return ${rows.length === 1 ? 'this asset' : 'these assets'}`}>
+              {serverError.message}
+            </Alert>
+          )}
           <ul className="max-h-40 divide-y divide-line overflow-y-auto rounded-control border border-line bg-canvas text-sm">
             {rows.map((row) => (
               <li key={row.id} className="flex items-center justify-between gap-3 px-3.5 py-2">
