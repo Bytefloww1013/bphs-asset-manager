@@ -1,7 +1,7 @@
 import type { ReactTable } from '@tanstack/react-table'
 import type { Row, RowData } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown } from 'lucide-react'
-import type { HTMLAttributes, ReactNode } from 'react'
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from '@/lib/cn.ts'
 import { IconButton } from '../ui/button.tsx'
 import { Skeleton } from '../ui/feedback.tsx'
@@ -34,6 +34,28 @@ interface DataGridProps<TData extends RowData> {
   className?: string
 }
 
+// A pinned column stays at the right edge of a table that is wider than its panel. Only then does it need a background of its own,
+// the row's (--row-bg), and a short fade so what scrolls under it does not end at a hard line.
+const pinned =
+  "sticky right-0 group-data-[overflowing]/grid:bg-(--row-bg) group-data-[overflowing]/grid:before:absolute group-data-[overflowing]/grid:before:inset-y-0 group-data-[overflowing]/grid:before:-left-4 group-data-[overflowing]/grid:before:w-4 group-data-[overflowing]/grid:before:bg-linear-to-r group-data-[overflowing]/grid:before:from-transparent group-data-[overflowing]/grid:before:to-(--row-bg)"
+
+/** Whether the table is wider than the panel it scrolls in. It can become so when the window narrows or when the rows change. */
+function useOverflowing() {
+  const scroller = useRef<HTMLDivElement>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  useEffect(() => {
+    const element = scroller.current
+    if (!element) return
+    const measure = () => setOverflowing(element.scrollWidth > element.clientWidth + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    return () => observer.disconnect()
+  }, [])
+  return { scroller, overflowing }
+}
+
 /** Presentational shell over a TanStack Table instance: sortable headers, calm rows, pagination. */
 export function DataGrid<TData extends RowData>({ table, label, noun, loading, empty, noMatches, rowClassName, rowProps, footer, className }: DataGridProps<TData>) {
   const rows = table.getRowModel().rows
@@ -43,14 +65,15 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
   const pageCount = table.getPageCount()
   const from = total === 0 ? 0 : pageIndex * pageSize + 1
   const to = Math.min(total, (pageIndex + 1) * pageSize)
+  const { scroller, overflowing } = useOverflowing()
 
   return (
     <div className={cn('overflow-hidden rounded-panel border border-line bg-surface shadow-panel', className)}>
-      <div className="relative overflow-x-auto">
+      <div ref={scroller} data-overflowing={overflowing || undefined} className="group/grid relative overflow-x-auto">
         <table className="w-full border-collapse text-sm" aria-label={label} aria-busy={loading || undefined}>
           <thead>
             {table.getHeaderGroups().map((group) => (
-              <tr key={group.id} className="border-b border-line bg-sunken/70">
+              <tr key={group.id} className="border-b border-line bg-sunken/70 [--row-bg:color-mix(in_oklab,var(--color-sunken)_70%,var(--color-surface))]">
                 {group.headers.map((header) => {
                   const meta = header.column.columnDef.meta
                   const sorted = header.column.getIsSorted()
@@ -66,6 +89,7 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
                         meta?.align === 'center' && 'text-center',
                         meta?.hideBelow && hide[meta.hideBelow],
                         meta?.width,
+                        meta?.pinned && pinned,
                       )}
                     >
                       {header.isPlaceholder ? null : sortable ? (
@@ -114,6 +138,8 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
                     {...rowProps?.(row)}
                     className={cn(
                       'border-b border-line transition-colors last:border-0 hover:bg-canvas focus-visible:bg-canvas data-[selected]:bg-accent-soft/70',
+                      // The same backgrounds as solid colours, for a pinned cell to paint itself with.
+                      '[--row-bg:var(--color-surface)] hover:[--row-bg:var(--color-canvas)] focus-visible:[--row-bg:var(--color-canvas)] data-[selected]:[--row-bg:color-mix(in_oklab,var(--color-accent-soft)_70%,var(--color-surface))]',
                       rowClassName?.(row),
                     )}
                   >
@@ -127,6 +153,7 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
                             meta?.align === 'right' && 'text-right tabular-nums',
                             meta?.align === 'center' && 'text-center',
                             meta?.hideBelow && hide[meta.hideBelow],
+                            meta?.pinned && pinned,
                             meta?.cellClassName,
                           )}
                         >

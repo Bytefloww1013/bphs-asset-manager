@@ -52,6 +52,8 @@ declare module '@tanstack/react-table' {
     hideBelow?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
     /** Width hint for the column, e.g. 'w-40'. */
     width?: string
+    /** Keep this column at the right edge when the table is wider than its panel, so a row's actions never scroll out of reach. */
+    pinned?: boolean
     /** Cell padding/typography overrides. */
     cellClassName?: string
   }

@@ -50,7 +50,7 @@ const columns = [
   c.accessor((row) => row.holder?.name ?? '', { id: 'holder', header: 'Assigned to', cell: (info) => <PersonCell person={info.row.original.holder} />, meta: { hideBelow: 'md' } }),
   c.accessor((row) => row.condition?.rating ?? '', { id: 'condition', header: 'Condition', cell: (info) => <RatingBadge name={info.row.original.condition?.rating} />, meta: { hideBelow: 'lg' } }),
   c.accessor((row) => row.daysOut ?? -1, { id: 'days', header: 'Days out', cell: (info) => <DaysOut days={info.row.original.daysOut} />, meta: { align: 'right', hideBelow: 'xl' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AssetRowActions asset={info.row.original} />, meta: { align: 'right', width: 'w-48' } }),
+  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AssetRowActions asset={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } }),
 ]
 const getRowId = (row: AssetRow) => String(row.id)
 

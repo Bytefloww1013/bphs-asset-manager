@@ -30,7 +30,7 @@ const columns = [
   c.accessor((row) => row.department ?? '', { id: 'department', header: 'Department', cell: (info) => info.getValue() || <span className="text-ink-3">—</span>, meta: { hideBelow: 'md' } }),
   c.accessor('assetsHeld', { header: 'Assets held', cell: (info) => (info.getValue() ? <span className="font-medium">{info.getValue()}</span> : <span className="text-ink-3">0</span>), meta: { align: 'right', hideBelow: 'sm' } }),
   c.accessor('state', { header: 'Status', cell: (info) => <Badge tone={info.getValue() === 'active' ? 'ok' : 'neutral'}>{info.getValue() === 'active' ? 'Active' : 'Archived'}</Badge>, meta: { hideBelow: 'lg' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <EmployeeRowActions employee={info.row.original} />, meta: { align: 'right', width: 'w-48' } }),
+  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <EmployeeRowActions employee={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } }),
 ]
 const getRowId = (row: EmployeeRow) => String(row.id)
 const searchText = (row: EmployeeRow) => [row.name, row.code, row.department, row.jobTitle].filter(Boolean).join(' ')

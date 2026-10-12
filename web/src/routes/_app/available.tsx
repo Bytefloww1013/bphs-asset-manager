@@ -30,7 +30,7 @@ function AvailableActions({ asset }: { asset: AssetRow }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Button size="sm" variant="primary" aria-keyshortcuts="I" onClick={() => sheets.issue(asset.id)}>
-        Issue <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none">I</Kbd>
+        Issue <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none max-sm:hidden">I</Kbd>
       </Button>
       <AssetRowActions asset={asset} hidePrimary />
     </div>
@@ -56,7 +56,7 @@ const columns = [
     cell: (info) => (info.row.original.lastReturnedAt ? <Mono className="text-ink-2">{formatDate(info.row.original.lastReturnedAt)}</Mono> : <span className="text-ink-3">Never issued</span>),
     meta: { hideBelow: 'lg' },
   }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AvailableActions asset={info.row.original} />, meta: { align: 'right', width: 'w-52' } }),
+  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AvailableActions asset={info.row.original} />, meta: { align: 'right', width: 'md:w-52', pinned: true } }),
 ]
 const getRowId = (row: AssetRow) => String(row.id)
 

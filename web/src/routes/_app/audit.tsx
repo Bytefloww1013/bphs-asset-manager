@@ -41,11 +41,30 @@ export const Route = createFileRoute('/_app/audit')({
 })
 
 const c = columnsFor<AuditEntry>()
+const recordOf = (row: AuditEntry) => `${row.entityType}${row.entityId ? ` #${row.entityId}` : ''}`
 const columns = [
-  c.accessor('occurredAt', { header: 'Occurred at', cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{formatDateTime(info.getValue())}</Mono>, enableSorting: false }),
-  c.accessor('actor', { header: 'User', cell: (info) => <span className="font-medium">{info.getValue()}</span>, enableSorting: false, meta: { hideBelow: 'sm' } }),
-  c.accessor('action', { header: 'Action', cell: (info) => <ActionBadge action={info.getValue()} />, enableSorting: false }),
-  c.accessor((row) => `${row.entityType}${row.entityId ? ` #${row.entityId}` : ''}`, { id: 'entity', header: 'Record', cell: (info) => <Mono className="text-ink-2">{info.getValue()}</Mono>, enableSorting: false, meta: { hideBelow: 'md' } }),
+  c.accessor('occurredAt', {
+    header: 'Occurred at',
+    // The User, Record and Details columns each drop out below a width. Whatever has dropped out is shown under the time, so an
+    // entry can be read in full on any screen.
+    cell: (info) => {
+      const entry = info.row.original
+      return (
+        <div className="leading-5">
+          <Mono className="whitespace-nowrap text-ink-2">{formatDateTime(info.getValue())}</Mono>
+          <div className="text-xs text-ink-3 md:hidden">
+            <span className="font-medium text-ink-2 sm:hidden">{entry.actor} · </span>
+            <Mono className="text-xs">{recordOf(entry)}</Mono>
+          </div>
+          {entry.details && <div className="text-xs text-ink-2 [overflow-wrap:anywhere] lg:hidden">{entry.details}</div>}
+        </div>
+      )
+    },
+    enableSorting: false,
+  }),
+  c.accessor('actor', { header: 'User', cell: (info) => <span className="font-medium">{info.getValue()}</span>, enableSorting: false, meta: { hideBelow: 'sm', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
+  c.accessor('action', { header: 'Action', cell: (info) => <ActionBadge action={info.getValue()} />, enableSorting: false, meta: { cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
+  c.accessor(recordOf, { id: 'entity', header: 'Record', cell: (info) => <Mono className="text-ink-2">{info.getValue()}</Mono>, enableSorting: false, meta: { hideBelow: 'md', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
   c.accessor('details', { header: 'Details', cell: (info) => <span className="block max-w-[34rem] truncate text-ink-2" title={info.getValue()}>{info.getValue() || '—'}</span>, enableSorting: false, meta: { hideBelow: 'lg' } }),
 ]
 const getRowId = (row: AuditEntry) => String(row.id)

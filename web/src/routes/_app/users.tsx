@@ -126,6 +126,8 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
   )
 }
 
+const RoleBadge = ({ role }: { role: Role }) => <Badge tone={role === 'super_admin' ? 'accent' : 'neutral'}>{ROLE_LABEL[role]}</Badge>
+
 function StateBadge({ user }: { user: UserRow }) {
   if (user.state === 'locked') return <Badge tone="warn">Locked until {user.lockedUntil ? formatTime(user.lockedUntil) : ''}</Badge>
   if (user.state === 'deactivated') return <Badge tone="neutral">Deactivated</Badge>
@@ -190,13 +192,25 @@ function UsersTable() {
   const [secret, setSecret] = useState<UserWithPassword | null>(null)
 
   const [columns] = useState(() => [
-    c.accessor('name', { header: 'User', cell: (info) => <Stacked primary={<span className="font-medium">{info.getValue()}</span>} secondary={<Mono>{info.row.original.email}</Mono>} /> }),
-    c.accessor('role', { header: 'Role', cell: (info) => <Badge tone={info.getValue() === 'super_admin' ? 'accent' : 'neutral'}>{ROLE_LABEL[info.getValue()]}</Badge>, meta: { hideBelow: 'sm' } }),
-    c.accessor('state', { header: 'Status', cell: (info) => <StateBadge user={info.row.original} /> }),
+    c.accessor('name', {
+      header: 'User',
+      cell: (info) => (
+        <div className="min-w-0 leading-5">
+          <Stacked primary={<span className="font-medium">{info.getValue()}</span>} secondary={<Mono>{info.row.original.email}</Mono>} />
+          {/* On a phone the Role and Status columns do not fit, so both are shown here. */}
+          <div className="mt-1 flex flex-wrap gap-1.5 sm:hidden">
+            <RoleBadge role={info.row.original.role} />
+            <StateBadge user={info.row.original} />
+          </div>
+        </div>
+      ),
+    }),
+    c.accessor('role', { header: 'Role', cell: (info) => <RoleBadge role={info.getValue()} />, meta: { hideBelow: 'sm' } }),
+    c.accessor('state', { header: 'Status', cell: (info) => <StateBadge user={info.row.original} />, meta: { hideBelow: 'sm' } }),
     c.accessor('failedLogins', { header: 'Failed logins', cell: (info) => <span className={info.getValue() >= 3 ? 'font-semibold text-warn' : 'text-ink-2'}>{info.getValue()}</span>, meta: { align: 'right', hideBelow: 'lg' } }),
     c.accessor('mustChangePassword', { header: 'Password', cell: (info) => (info.getValue() ? <Badge tone="warn">Must change</Badge> : <span className="text-ink-3">Set</span>), meta: { hideBelow: 'lg' } }),
     c.accessor((row) => row.lastLoginAt ?? '', { id: 'lastLogin', header: 'Last sign-in', cell: (info) => (info.row.original.lastLoginAt ? <span title={formatDateTime(info.row.original.lastLoginAt)}>{formatRelative(info.row.original.lastLoginAt)}</span> : <span className="text-ink-3">Never</span>), meta: { hideBelow: 'md' } }),
-    c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <UserActions user={info.row.original} onSecret={setSecret} />, meta: { align: 'right', width: 'w-16' } }),
+    c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <UserActions user={info.row.original} onSecret={setSecret} />, meta: { align: 'right', width: 'w-16', pinned: true } }),
   ])
   const table = useGrid({ data, columns, getRowId: (row) => String(row.id), initialSorting: [{ id: 'name', desc: false }] })
   const locked = data.filter((u) => u.state === 'locked').length

@@ -62,6 +62,8 @@ const columns = [
           <>
             {info.row.original.assetType}
             <span className="md:hidden"> · {info.row.original.employee.name}</span>
+            {/* On a phone there is no room for a Days out column beside Return, so the figure goes under the holder. */}
+            <DaysOut days={info.row.original.daysOut} className="flex justify-start sm:hidden" />
           </>
         }
       />
@@ -70,8 +72,8 @@ const columns = [
   c.accessor((row) => row.employee.name, { id: 'employee', header: 'Employee', cell: (info) => <Stacked primary={info.row.original.employee.name} secondary={[info.row.original.employee.code, info.row.original.employee.department].filter(Boolean).join(' · ')} />, meta: { hideBelow: 'md' } }),
   c.accessor('issuedAt', { header: 'Issued', cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>, meta: { hideBelow: 'md' } }),
   c.accessor((row) => row.issueRating ?? '', { id: 'issueRating', header: 'Condition at issue', cell: (info) => <RatingBadge name={info.row.original.issueRating} />, meta: { hideBelow: 'lg' } }),
-  c.accessor('daysOut', { header: 'Days out', cell: (info) => <DaysOut days={info.getValue()} />, meta: { align: 'right' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <RowActions row={info.row.original} />, meta: { align: 'right', width: 'w-44' } }),
+  c.accessor('daysOut', { header: 'Days out', cell: (info) => <DaysOut days={info.getValue()} />, meta: { align: 'right', hideBelow: 'sm' } }),
+  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <RowActions row={info.row.original} />, meta: { align: 'right', width: 'md:w-44', pinned: true } }),
 ]
 const getRowId = (row: AssignmentRow) => String(row.id)
 const searchText = (row: AssignmentRow) => [row.assetTag, row.assetType, row.employee.name, row.employee.code, row.employee.department, row.issueRating].filter(Boolean).join(' ')

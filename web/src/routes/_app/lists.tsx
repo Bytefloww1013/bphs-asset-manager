@@ -150,7 +150,7 @@ const typeColumns = [
     id: 'actions',
     header: () => <span className="sr-only">Delete</span>,
     cell: (info) => <DeleteButton kind="asset-types" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.assetCount > 0} inUseReason={`${info.row.original.assetCount} assets use this type. Deactivate it instead.`} />,
-    meta: { align: 'right', width: 'w-14' },
+    meta: { align: 'right', width: 'w-14', cellClassName: 'max-sm:pl-0' },
   }),
 ]
 
@@ -264,13 +264,13 @@ const r = columnsFor<ConditionRatingRow>()
 const ratingColumns = [
   r.accessor('name', { header: 'Name', enableSorting: false, cell: (info) => <EditableName kind="condition-ratings" id={info.row.original.id} name={info.getValue()} tone={ratingTone(info.row.original.score)} /> }),
   r.accessor('score', { header: 'Score', enableSorting: false, cell: (info) => <EditableScore id={info.row.original.id} name={info.row.original.name} score={info.getValue()} /> }),
-  r.accessor('snapshotCount', { header: 'Records', enableSorting: false, cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue().toLocaleString()}</span>, meta: { align: 'right' } }),
+  r.accessor('snapshotCount', { header: 'Records', enableSorting: false, cell: (info) => <span className={info.getValue() ? 'font-medium' : 'text-ink-3'}>{info.getValue().toLocaleString()}</span>, meta: { align: 'right', hideBelow: 'sm' } }),
   r.accessor('isActive', { header: 'Active', enableSorting: false, cell: (info) => <ActiveSwitch kind="condition-ratings" id={info.row.original.id} name={info.row.original.name} active={info.getValue()} /> }),
   r.display({
     id: 'actions',
     header: () => <span className="sr-only">Delete</span>,
     cell: (info) => <DeleteButton kind="condition-ratings" id={info.row.original.id} name={info.row.original.name} inUse={info.row.original.snapshotCount > 0} inUseReason={`${info.row.original.snapshotCount} condition records use this rating. Deactivate it instead.`} />,
-    meta: { align: 'right', width: 'w-14' },
+    meta: { align: 'right', width: 'w-14', cellClassName: 'max-sm:pl-0' },
   }),
 ]
 
