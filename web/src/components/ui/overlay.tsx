@@ -148,6 +148,10 @@ export function Menu({ label, items, trigger }: { label: string; items: MenuItem
           align="end"
           sideOffset={6}
           collisionPadding={12}
+          // An item that opens a sheet or a dialog has already put focus inside it. Handing focus back to the trigger would leave it behind the overlay.
+          onCloseAutoFocus={(event) => {
+            if (document.querySelector('[role=dialog], [role=alertdialog]')) event.preventDefault()
+          }}
           className="z-[60] min-w-52 max-w-72 animate-pop-in rounded-panel border border-line bg-surface p-1.5 shadow-pop"
         >
           {items.map((item) => (

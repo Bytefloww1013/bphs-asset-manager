@@ -76,6 +76,8 @@ export function buildDashboard(db: DbLike): DashboardData {
 
   const holders = new Map<number, DashboardData['topHolders'][number]>()
   for (const assignment of open) {
+    // Top holders are people; an asset a program holds is counted in the totals only.
+    if (!assignment.employee) continue
     const entry = holders.get(assignment.employee.id) ?? { employee: assignment.employee, count: 0 }
     entry.count += 1
     holders.set(assignment.employee.id, entry)
@@ -94,6 +96,7 @@ export function buildDashboard(db: DbLike): DashboardData {
       assetTag: a.assetTag,
       assetType: a.assetType,
       employee: a.employee,
+      program: a.program,
       daysOut: a.daysOut,
     })),
     topHolders: [...holders.values()].sort((a, b) => b.count - a.count || a.employee.name.localeCompare(b.employee.name)).slice(0, 5),
@@ -105,7 +108,7 @@ export function buildDashboard(db: DbLike): DashboardData {
         assetTag: row.tag,
         assetType: row.type,
         rating: row.condition!.rating,
-        holder: row.holder ? row.holder.name : null,
+        holder: (row.holder ?? row.program)?.name ?? null,
       })),
     recent,
   }

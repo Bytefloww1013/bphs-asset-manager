@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import type { AssetStatus, AuditAction, ConditionKind, Role } from '../../shared/constants.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
@@ -58,6 +58,24 @@ export const sessions = sqliteTable(
   (t) => [index('ix_sessions_user').on(t.userId)],
 )
 
+// ---- Programs ------------------------------------------------------------------
+
+/** A program can hold assets, the same way an employee does. */
+export const programs = sqliteTable(
+  'programs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** The Program ID people type. Unique whatever the letter case, which the index below holds. */
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    address: text('address'),
+    /** A program that has held an asset is deactivated, never deleted. */
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('uq_programs_code').on(sql`${t.code} collate nocase`), index('ix_programs_name').on(t.name)],
+)
+
 // ---- Reference lists --------------------------------------------------------------
 
 export const assetTypes = sqliteTable('asset_types', {
@@ -107,9 +125,9 @@ export const assignments = sqliteTable(
     assetId: integer('asset_id')
       .notNull()
       .references(() => assets.id, { onDelete: 'restrict' }),
-    employeeId: integer('employee_id')
-      .notNull()
-      .references(() => employees.id, { onDelete: 'restrict' }),
+    /** The holder is an employee or a program, never both and never neither; the check below holds that. */
+    employeeId: integer('employee_id').references(() => employees.id, { onDelete: 'restrict' }),
+    programId: integer('program_id').references(() => programs.id, { onDelete: 'restrict' }),
     issuedAt: ms('issued_at').notNull(),
     returnedAt: ms('returned_at'),
     issuedById: integer('issued_by_id')
@@ -123,7 +141,9 @@ export const assignments = sqliteTable(
       .on(t.assetId)
       .where(sql`${t.returnedAt} is null`),
     index('ix_assignments_employee').on(t.employeeId),
+    index('ix_assignments_program').on(t.programId),
     index('ix_assignments_asset').on(t.assetId),
+    check('ck_assignments_one_holder', sql`(${t.employeeId} is null) <> (${t.programId} is null)`),
   ],
 )
 

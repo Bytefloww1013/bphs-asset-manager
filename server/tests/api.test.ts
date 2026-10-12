@@ -1229,3 +1229,231 @@ describe('sign-ins in the audit log, and one account per employee', () => {
     sqlite.close()
   })
 })
+
+describe('programs, and assets a program holds', () => {
+  async function seed() {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    const { assetTypes, conditionRatings } = await t.lookups(cookie)
+    const laptop = assetTypes.find((x) => x.name === 'Laptop')!
+    const good = conditionRatings.find((x) => x.name === 'Good')!
+    const fair = conditionRatings.find((x) => x.name === 'Fair')!
+    const make = async (tag: string, extra: Record<string, unknown> = {}) =>
+      await t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id, ...extra } })
+    const program = async (code: string, name: string, address?: string) => (await t.call('POST', '/api/programs', { cookie, body: { code, name, address } })).data
+    return { t, cookie, laptop, good, fair, make, program }
+  }
+
+  it('adds, edits and lists programs, and keeps the Program ID unique whatever the letter case', async () => {
+    const { t, cookie, program } = await seed()
+    const created = await t.call('POST', '/api/programs', { cookie, body: { code: ' P-100 ', name: 'Outreach North', address: '12 Mill Lane' } })
+    expect(created.status).toBe(201)
+    expect(created.data).toMatchObject({ code: 'P-100', name: 'Outreach North', address: '12 Mill Lane', isActive: true, assetsHeld: 0, hasHistory: false, deleteBlocked: null })
+    await program('P-200', 'After School')
+
+    const duplicate = await t.call('POST', '/api/programs', { cookie, body: { code: 'p-100', name: 'Another' } })
+    expect(duplicate.status).toBe(409)
+    expect(duplicate.data).toMatchObject({ error: 'duplicate_program', message: 'Program ID p-100 already exists.', details: { fields: { code: 'Program ID p-100 already exists.' } } })
+    // The database holds the rule as well.
+    expect(() => t.sqlite.prepare("insert into programs (code, name) values ('p-100', 'Direct')").run()).toThrow(/UNIQUE/)
+
+    const missing = await t.call('POST', '/api/programs', { cookie, body: { code: '', name: 'N'.repeat(121) } })
+    expect(missing.status).toBe(422)
+    expect(missing.data.details.fields).toEqual({ code: 'Required', name: 'Program name can be at most 120 characters' })
+
+    // An edit may change the case of its own ID, clear the address, and not take another program's ID.
+    const edited = await t.call('PATCH', `/api/programs/${created.data.id}`, { cookie, body: { code: 'p-100', name: 'Outreach North', address: '' } })
+    expect(edited.data).toMatchObject({ code: 'p-100', address: null })
+    expect((await t.call('PATCH', `/api/programs/${created.data.id}`, { cookie, body: { code: 'P-200' } })).status).toBe(409)
+    expect((await t.call('PATCH', '/api/programs/9999', { cookie, body: { name: 'Nobody' } })).status).toBe(404)
+
+    const list = (await t.call('GET', '/api/programs', { cookie })).data
+    expect(list.map((p: { name: string }) => p.name)).toEqual(['After School', 'Outreach North'])
+    expect((await t.call('GET', '/api/lookups', { cookie })).data.programs).toEqual([
+      { id: list[0].id, code: 'P-200', name: 'After School' },
+      { id: created.data.id, code: 'p-100', name: 'Outreach North' },
+    ])
+
+    const audit = (await t.call('GET', '/api/audit?q=program', { cookie })).data.entries.map((e: { action: string; entityType: string; details: string }) => [e.action, e.entityType, e.details])
+    expect(audit).toEqual([
+      ['update', 'program', 'program_id=p-100 · program_id: P-100 → p-100; address: 12 Mill Lane → —'],
+      ['create', 'program', 'program_id=P-200 · After School'],
+      ['create', 'program', 'program_id=P-100 · Outreach North'],
+    ])
+  })
+
+  it('assigns an asset to a program like issuing it to a person, and returns it the same way', async () => {
+    const { t, cookie, good, fair, make, program } = await seed()
+    const outreach = await program('P-100', 'Outreach North')
+    const asset = (await make('BPHS-0141')).data
+
+    const issued = await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, programId: outreach.id, conditionRatingId: good.id } })
+    expect(issued.status).toBe(201)
+    expect(issued.data).toMatchObject({ assetTag: 'BPHS-0141', employee: null, program: { id: outreach.id, code: 'P-100', name: 'Outreach North' }, issueRating: 'Good' })
+
+    // It has left storage and shows among the open assignments, with the program as its holder.
+    const row = (await t.call('GET', '/api/assets', { cookie })).data[0]
+    expect(row).toMatchObject({ state: 'assigned', holder: null, program: { code: 'P-100' }, assignmentId: issued.data.id })
+    expect((await t.call('GET', '/api/assignments', { cookie })).data).toHaveLength(1)
+    expect((await t.call('GET', '/api/programs', { cookie })).data[0]).toMatchObject({ assetsHeld: 1, hasHistory: true })
+
+    // To move it to a person it is returned first.
+    const toPerson = await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id } })
+    expect(toPerson.status).toBe(409)
+    expect(toPerson.data).toMatchObject({ error: 'asset_already_assigned', message: 'BPHS-0141 is already assigned to Outreach North.' })
+    expect((await t.call('POST', `/api/assets/${asset.id}/retire`, { cookie })).data.message).toBe('BPHS-0141 is assigned to Outreach North. Return it before retiring.')
+
+    expect((await t.call('POST', `/api/assignments/${issued.data.id}/return`, { cookie, body: { conditionRatingId: fair.id } })).status).toBe(204)
+    const detail = (await t.call('GET', '/api/assets/tag/BPHS-0141', { cookie })).data
+    expect(detail.asset).toMatchObject({ state: 'in_storage', holder: null, program: null })
+    expect(detail.history).toEqual([expect.objectContaining({ employee: null, program: { id: outreach.id, code: 'P-100', name: 'Outreach North' }, issueRating: 'Good', returnRating: 'Fair' })])
+    expect(detail.conditions.map((c: { kind: string }) => c.kind)).toEqual(['return', 'issue', 'intake'])
+    expect((await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id } })).status).toBe(201)
+
+    const audit = (await t.call('GET', '/api/audit?q=BPHS-0141', { cookie })).data.entries.map((e: { action: string; details: string }) => [e.action, e.details])
+    expect(audit.slice(1)).toEqual([
+      ['return', 'BPHS-0141 ← program P-100 · Fair'],
+      ['issue', 'BPHS-0141 → program P-100 · Good'],
+      ['create', 'BPHS-0141 · Laptop'],
+    ])
+  })
+
+  it('wants exactly one holder: an employee or a program, not both and not neither', async () => {
+    const { t, cookie, good, make, program } = await seed()
+    const outreach = await program('P-100', 'Outreach North')
+    const asset = (await make('BPHS-0141')).data
+    const issue = (body: Record<string, unknown>) => t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, conditionRatingId: good.id, ...body } })
+
+    const both = await issue({ employeeId: t.person.id, programId: outreach.id })
+    expect(both.status).toBe(422)
+    expect(both.data.details.fields).toEqual({ programId: 'Choose an employee or a program, not both' })
+    const neither = await issue({})
+    expect(neither.status).toBe(422)
+    expect(neither.data.details.fields).toEqual({ employeeId: 'Choose an employee or a program' })
+    expect((await issue({ employeeId: null, programId: null })).status).toBe(422)
+    expect((await issue({ programId: 9999 })).status).toBe(404)
+    expect((await t.call('GET', '/api/assignments', { cookie })).data).toEqual([])
+
+    // A new asset may start with one holder or none.
+    const twoHolders = await make('BPHS-0142', { holderId: t.person.id, programId: outreach.id })
+    expect(twoHolders.status).toBe(422)
+    expect(twoHolders.data.details.fields).toEqual({ programId: 'Choose an employee or a program, not both' })
+    const started = await make('BPHS-0143', { programId: outreach.id })
+    expect(started.status).toBe(201)
+    expect(started.data).toMatchObject({ state: 'assigned', holder: null, program: { code: 'P-100' } })
+
+    // The database refuses both shapes itself, whatever the app let through.
+    const insert = t.sqlite.prepare('insert into assignments (asset_id, employee_id, program_id, issued_at, issued_by_id) values (?, ?, ?, ?, ?)')
+    expect(() => insert.run(asset.id, t.person.id, outreach.id, Date.now(), t.superUser.id)).toThrow(/CHECK/)
+    expect(() => insert.run(asset.id, null, null, Date.now(), t.superUser.id)).toThrow(/CHECK/)
+    expect(() => t.sqlite.prepare('update assignments set employee_id = ? where program_id is not null').run(t.person.id)).toThrow(/CHECK/)
+  })
+
+  it('deactivates a program that has held assets instead of deleting it, and only once it holds none', async () => {
+    const { t, cookie, good, make, program } = await seed()
+    const admin = await t.asAdmin()
+    const outreach = await program('P-100', 'Outreach North')
+    const mistake = await program('P-999', 'Typo')
+    const asset = (await make('BPHS-0141', { programId: outreach.id })).data
+
+    const holding = await t.call('POST', `/api/programs/${outreach.id}/deactivate`, { cookie })
+    expect(holding.status).toBe(409)
+    expect(holding.data).toMatchObject({ error: 'holds_assets', message: 'Outreach North still holds 1 asset(s). Return them before deactivating.' })
+
+    await t.call('POST', '/api/assignments/return-bulk', { cookie, body: { ids: [asset.assignmentId], conditionRatingId: good.id } })
+    const kept = await t.call('DELETE', `/api/programs/${outreach.id}`, { cookie })
+    expect(kept.status).toBe(409)
+    expect(kept.data).toMatchObject({ error: 'has_history', message: 'Outreach North cannot be deleted. Has assignment history. Deactivate instead; history is never deleted.' })
+    expect((await t.call('GET', '/api/programs', { cookie })).data.find((p: { id: number }) => p.id === outreach.id).deleteBlocked).toBe('Has assignment history. Deactivate instead; history is never deleted.')
+
+    const off = await t.call('POST', `/api/programs/${outreach.id}/deactivate`, { cookie: admin })
+    expect(off.data).toMatchObject({ isActive: false, assetsHeld: 0, hasHistory: true })
+    // A deactivated program is offered to nobody and refused if asked for; its history still names it.
+    expect((await t.call('GET', '/api/lookups', { cookie })).data.programs.map((p: { code: string }) => p.code)).toEqual(['P-999'])
+    const refused = await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, programId: outreach.id, conditionRatingId: good.id } })
+    expect(refused.data).toMatchObject({ error: 'program_inactive', message: 'Outreach North is deactivated.' })
+    expect((await t.call('GET', '/api/assets/tag/BPHS-0141', { cookie })).data.history[0].program.name).toBe('Outreach North')
+    expect((await t.call('POST', `/api/programs/${outreach.id}/reactivate`, { cookie: admin })).data.isActive).toBe(true)
+
+    // Deleting is for a program entered by mistake, and for a Super Admin.
+    expect((await t.call('DELETE', `/api/programs/${mistake.id}`, { cookie: admin })).status).toBe(403)
+    expect((await t.call('DELETE', `/api/programs/${mistake.id}`, { cookie })).status).toBe(204)
+    expect((await t.call('GET', '/api/programs', { cookie })).data.map((p: { code: string }) => p.code)).toEqual(['P-100'])
+  })
+
+  it('counts an asset a program holds as assigned on the dashboard, and keeps top holders to people', async () => {
+    const { t, cookie, make, program } = await seed()
+    const outreach = await program('P-100', 'Outreach North')
+    await make('D-1', { programId: outreach.id })
+    await make('D-2', { holderId: t.person.id })
+    await make('D-3')
+    const { data } = await t.call('GET', '/api/dashboard', { cookie })
+    expect(data.totals).toEqual({ total: 3, assigned: 2, inStorage: 1, retired: 0 })
+    expect(data.topHolders).toEqual([{ employee: expect.objectContaining({ id: t.person.id }), count: 1 }])
+    expect(data.longestOut.map((row: { assetTag: string; employee: unknown; program: { name: string } | null }) => [row.assetTag, row.employee === null, row.program?.name ?? null])).toEqual([
+      ['D-1', true, 'Outreach North'],
+      ['D-2', false, null],
+    ])
+  })
+
+  it('on upgrade, rebuilds the assignments table around the rows it already has', () => {
+    const folder = path.join(import.meta.dirname, '../db/migrations')
+    const statements = (file: string) => fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint')
+    const files = fs.readdirSync(folder).filter((file) => file.endsWith('.sql')).sort()
+    const last = files.findIndex((file) => file.startsWith('0005_'))
+    const sqlite = new Database(':memory:')
+    sqlite.pragma('foreign_keys = ON')
+    for (const file of files.slice(0, last)) for (const statement of statements(file)) sqlite.exec(statement)
+
+    sqlite.exec(`
+      insert into employees (id, code, first_name, last_name) values (1, 'E-1', 'Sam', 'First'), (2, 'E-2', 'Olu', 'Second');
+      insert into users (id, name, email, password_hash, role) values (1, 'Admin', 'admin@x.example', 'x', 'admin');
+      insert into asset_types (id, name) values (1, 'Laptop');
+      insert into condition_ratings (id, name, score) values (1, 'Good', 80), (2, 'Fair', 60);
+      insert into assets (id, tag, type_id) values (1, 'A-1', 1), (2, 'A-2', 1), (3, 'A-3', 1);
+      insert into assignments (id, asset_id, employee_id, issued_at, returned_at, issued_by_id, returned_by_id) values
+        (3, 1, 1, 1000, 2000, 1, 1),
+        (4, 1, 2, 3000, null, 1, null),
+        (9, 2, 1, 4000, 5000, 1, 1);
+      insert into conditions (id, asset_id, assignment_id, kind, rating_id, assessed_by_id, notes, recorded_by_id, recorded_at) values
+        (1, 1, null, 'intake', 1, null, null, 1, 500),
+        (2, 1, 3, 'issue', 1, 1, null, 1, 1000),
+        (3, 1, 3, 'return', 2, 2, 'Scuffed lid', 1, 2000),
+        (4, 1, 4, 'issue', 2, null, null, 1, 3000),
+        (8, 2, 9, 'issue', 1, null, null, 1, 4000),
+        (11, 2, 9, 'return', 1, null, null, 1, 5000);
+      -- Rows that were deleted since: the counters are ahead of the highest id left.
+      update sqlite_sequence set seq = 12 where name = 'assignments';
+      update sqlite_sequence set seq = 15 where name = 'conditions';`)
+    const assignmentsBefore = sqlite.prepare('select * from assignments order by id').all()
+    const conditionsBefore = sqlite.prepare('select * from conditions order by id').all()
+
+    // The migrator runs a migration inside one transaction with foreign keys on, so the test does too.
+    sqlite.exec('begin')
+    for (const statement of statements(files[last]!)) sqlite.exec(statement)
+    sqlite.exec('commit')
+
+    expect(sqlite.prepare('select * from assignments order by id').all()).toEqual(assignmentsBefore.map((row) => ({ ...(row as object), program_id: null })))
+    expect(sqlite.prepare('select id, asset_id, employee_id, program_id, issued_at, returned_at, issued_by_id, returned_by_id from assignments where id = 4').get()).toEqual({
+      id: 4, asset_id: 1, employee_id: 2, program_id: null, issued_at: 3000, returned_at: null, issued_by_id: 1, returned_by_id: null,
+    })
+    expect(sqlite.prepare('select * from conditions order by id').all()).toEqual(conditionsBefore)
+    expect(sqlite.pragma('foreign_key_check')).toEqual([])
+    expect(sqlite.prepare("select name from sqlite_master where name like '\\_\\_%' escape '\\'").all()).toEqual([])
+
+    // The rules the old tables held still hold: one open assignment per asset, and history that cannot be pulled out from under a condition.
+    const insert = sqlite.prepare('insert into assignments (asset_id, employee_id, program_id, issued_at, issued_by_id) values (?, ?, ?, ?, ?)')
+    expect(() => insert.run(1, 1, null, 6000, 1)).toThrow(/UNIQUE/)
+    expect(() => sqlite.prepare('delete from assignments where id = 3').run()).toThrow(/FOREIGN KEY/)
+    expect(() => sqlite.prepare("insert into conditions (asset_id, assignment_id, kind, rating_id, recorded_by_id, recorded_at) values (1, 999, 'issue', 1, 1, 1)").run()).toThrow(/FOREIGN KEY/)
+    // And the new ones are there: a program can hold an asset, and ids carry on from where they stopped.
+    sqlite.exec("insert into programs (id, code, name) values (1, 'P-100', 'Outreach North')")
+    expect(() => insert.run(3, 1, 1, 6000, 1)).toThrow(/CHECK/)
+    expect(insert.run(3, null, 1, 6000, 1).lastInsertRowid).toBe(13)
+    expect(sqlite.prepare("insert into conditions (asset_id, assignment_id, kind, rating_id, recorded_by_id, recorded_at) values (3, 13, 'issue', 1, 1, 6000)").run().lastInsertRowid).toBe(16)
+    // Deleting an asset still takes its condition records with it, once nothing else holds it.
+    sqlite.exec('insert into assets (id, tag, type_id) values (4, \'A-4\', 1); insert into conditions (asset_id, kind, rating_id, recorded_by_id, recorded_at) values (4, \'intake\', 1, 1, 1); delete from assets where id = 4')
+    expect(sqlite.prepare('select count(*) as n from conditions where asset_id = 4').get()).toEqual({ n: 0 })
+    sqlite.close()
+  })
+})

@@ -19,6 +19,13 @@ export interface EmployeeRef {
   department: string | null
 }
 
+export interface ProgramRef {
+  id: number
+  /** The Program ID. */
+  code: string
+  name: string
+}
+
 export interface AssetTypeRef {
   id: number
   name: string
@@ -35,6 +42,8 @@ export interface Lookups {
   assetTypes: AssetTypeRef[]
   conditionRatings: ConditionRatingRef[]
   employees: EmployeeRef[]
+  /** Active programs only. */
+  programs: ProgramRef[]
 }
 
 // ---- Assets -------------------------------------------------------------
@@ -55,7 +64,10 @@ export interface AssetRow {
   serial: string | null
   status: AssetStatus
   state: AssetState
+  /** The employee holding it. An assigned asset has this or `program`, never both. */
   holder: EmployeeRef | null
+  /** The program holding it. */
+  program: ProgramRef | null
   assignmentId: number | null
   condition: ConditionSummary | null
   issuedAt: string | null
@@ -79,7 +91,9 @@ export interface ConditionEntry {
 
 export interface HistoryRow {
   id: number
-  employee: EmployeeRef
+  /** Who held it: an employee or a program, one of the two. */
+  employee: EmployeeRef | null
+  program: ProgramRef | null
   issuedAt: string
   returnedAt: string | null
   issueRating: string | null
@@ -106,7 +120,9 @@ export interface AssignmentRow {
   assetId: number
   assetTag: string
   assetType: string
-  employee: EmployeeRef
+  /** Who holds it: an employee or a program, one of the two. */
+  employee: EmployeeRef | null
+  program: ProgramRef | null
   issuedAt: string
   issueRating: string | null
   daysOut: number
@@ -161,6 +177,20 @@ export interface ImportPreview {
   headerError: string | null
   /** Set once the import has been committed. */
   created?: number
+}
+
+// ---- Programs -------------------------------------------------------------
+export interface ProgramRow {
+  id: number
+  code: string
+  name: string
+  address: string | null
+  isActive: boolean
+  assetsHeld: number
+  hasHistory: boolean
+  /** Why this program cannot be deleted, as a sentence, or null when it can be. */
+  deleteBlocked: string | null
+  createdAt: string
 }
 
 // ---- Lists ------------------------------------------------------------------
@@ -222,7 +252,7 @@ export interface DashboardData {
   totals: { total: number; assigned: number; inStorage: number; retired: number }
   byType: { typeId: number; type: string; total: number; free: number }[]
   overdueCount: number
-  longestOut: { assignmentId: number; assetTag: string; assetType: string; employee: EmployeeRef; daysOut: number }[]
+  longestOut: { assignmentId: number; assetTag: string; assetType: string; employee: EmployeeRef | null; program: ProgramRef | null; daysOut: number }[]
   topHolders: { employee: EmployeeRef; count: number }[]
   poorCondition: { assetId: number; assetTag: string; assetType: string; rating: string; holder: string | null }[]
   recent: AuditEntry[]

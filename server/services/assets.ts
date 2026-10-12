@@ -31,11 +31,14 @@ interface OpenAssignment {
   assetId: number
   assignmentId: number
   issuedAt: number
-  eId: number
-  eCode: string
-  eFirst: string
-  eLast: string
+  eId: number | null
+  eCode: string | null
+  eFirst: string | null
+  eLast: string | null
   eDept: string | null
+  pId: number | null
+  pCode: string | null
+  pName: string | null
 }
 interface LatestCondition {
   assetId: number
@@ -67,8 +70,9 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
     db
       .all<OpenAssignment>(sql`
         select a.asset_id as assetId, a.id as assignmentId, a.issued_at as issuedAt,
-               e.id as eId, e.code as eCode, e.first_name as eFirst, e.last_name as eLast, e.department as eDept
-        from assignments a join employees e on e.id = a.employee_id
+               e.id as eId, e.code as eCode, e.first_name as eFirst, e.last_name as eLast, e.department as eDept,
+               p.id as pId, p.code as pCode, p.name as pName
+        from assignments a left join employees e on e.id = a.employee_id left join programs p on p.id = a.program_id
         where a.returned_at is null ${forOne(sql`a.asset_id`, 'and')}`)
       .map((row) => [row.assetId, row]),
   )
@@ -109,14 +113,16 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
       serial: row.serial,
       status: row.status,
       state: row.status === 'retired' ? 'retired' : assignment ? 'assigned' : 'in_storage',
-      holder: assignment
-        ? {
-            id: assignment.eId,
-            code: assignment.eCode,
-            name: fullName(assignment.eFirst, assignment.eLast),
-            department: assignment.eDept,
-          }
-        : null,
+      holder:
+        assignment && assignment.eId !== null
+          ? {
+              id: assignment.eId,
+              code: assignment.eCode!,
+              name: fullName(assignment.eFirst!, assignment.eLast!),
+              department: assignment.eDept,
+            }
+          : null,
+      program: assignment && assignment.pId !== null ? { id: assignment.pId, code: assignment.pCode!, name: assignment.pName! } : null,
       assignmentId: assignment?.assignmentId ?? null,
       condition,
       issuedAt: issuedAt ? issuedAt.toISOString() : null,
@@ -144,11 +150,14 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
       id: number
       issuedAt: number
       returnedAt: number | null
-      eId: number
-      eCode: string
-      eFirst: string
-      eLast: string
+      eId: number | null
+      eCode: string | null
+      eFirst: string | null
+      eLast: string | null
       eDept: string | null
+      pId: number | null
+      pCode: string | null
+      pName: string | null
       issueRating: string | null
       returnRating: string | null
       issuedBy: string
@@ -156,9 +165,11 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
     }>(sql`
       select a.id as id, a.issued_at as issuedAt, a.returned_at as returnedAt,
              e.id as eId, e.code as eCode, e.first_name as eFirst, e.last_name as eLast, e.department as eDept,
+             p.id as pId, p.code as pCode, p.name as pName,
              ri.name as issueRating, rr.name as returnRating, ui.email as issuedBy, ur.email as returnedBy
       from assignments a
-      join employees e on e.id = a.employee_id
+      left join employees e on e.id = a.employee_id
+      left join programs p on p.id = a.program_id
       join users ui on ui.id = a.issued_by_id
       left join users ur on ur.id = a.returned_by_id
       left join conditions ci on ci.assignment_id = a.id and ci.kind = 'issue'
@@ -172,7 +183,8 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
       const returnedAt = row.returnedAt ? new Date(row.returnedAt) : null
       return {
         id: row.id,
-        employee: { id: row.eId, code: row.eCode, name: fullName(row.eFirst, row.eLast), department: row.eDept },
+        employee: row.eId === null ? null : { id: row.eId, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept },
+        program: row.pId === null ? null : { id: row.pId, code: row.pCode!, name: row.pName! },
         issuedAt: issuedAt.toISOString(),
         returnedAt: returnedAt ? returnedAt.toISOString() : null,
         issueRating: row.issueRating,
@@ -244,13 +256,14 @@ function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date
     .get()
   writeAudit(tx, actor, { action: 'create', entityType: 'asset', entityId: asset.id, details: `${input.tag} · ${type.name}`, at: now })
 
-  if (input.holderId) {
+  if (input.holderId || input.programId) {
     issueInTx(
       tx,
       actor,
       {
         assetId: asset.id,
         employeeId: input.holderId,
+        programId: input.programId,
         conditionRatingId: rating.id,
         assessedById: input.assessedById,
         notes: input.notes,
@@ -363,7 +376,7 @@ export function setAssetStatus(db: Db, actor: Actor, id: number, status: 'in_ser
     const current = getAssetRow(tx, id)
     if (current.status === status) return
     if (status === 'retired' && current.state === 'assigned') {
-      throw conflict('asset_assigned', `${current.tag} is assigned to ${current.holder?.name}. Return it before retiring.`)
+      throw conflict('asset_assigned', `${current.tag} is assigned to ${(current.holder ?? current.program)?.name}. Return it before retiring.`)
     }
     tx.update(assets).set({ status }).where(eq(assets.id, id)).run()
     writeAudit(tx, actor, {

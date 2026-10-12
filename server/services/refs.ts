@@ -1,7 +1,7 @@
-import { asc, desc, eq } from 'drizzle-orm'
-import type { EmployeeRef, Lookups } from '../../shared/types.ts'
+import { asc, desc, eq, sql } from 'drizzle-orm'
+import type { EmployeeRef, Lookups, ProgramRef } from '../../shared/types.ts'
 import type { DbLike } from '../db/client.ts'
-import { assetTypes, conditionRatings, employees } from '../db/schema.ts'
+import { assetTypes, conditionRatings, employees, programs } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 
@@ -9,6 +9,10 @@ export const fullName = (first: string, last: string) => `${first} ${last}`.trim
 
 export function employeeRef(row: typeof employees.$inferSelect): EmployeeRef {
   return { id: row.id, code: row.code, name: fullName(row.firstName, row.lastName), department: row.department }
+}
+
+export function programRef(row: Pick<typeof programs.$inferSelect, 'id' | 'code' | 'name'>): ProgramRef {
+  return { id: row.id, code: row.code, name: row.name }
 }
 
 export function requireActiveRating(db: DbLike, id: number) {
@@ -22,6 +26,12 @@ export function requireEmployee(db: DbLike, id: number) {
   const employee = db.select().from(employees).where(eq(employees.id, id)).get()
   if (!employee) throw notFound('Employee')
   return employee
+}
+
+export function requireProgram(db: DbLike, id: number) {
+  const program = db.select().from(programs).where(eq(programs.id, id)).get()
+  if (!program) throw notFound('Program')
+  return program
 }
 
 function requireAssessor(db: DbLike, id: number | null | undefined) {
@@ -58,5 +68,11 @@ export function loadLookups(db: DbLike): Lookups {
       .all()
       .filter((row) => !row.archivedAt)
       .map(employeeRef),
+    programs: db
+      .select({ id: programs.id, code: programs.code, name: programs.name })
+      .from(programs)
+      .where(eq(programs.isActive, true))
+      .orderBy(sql`${programs.name} collate nocase`)
+      .all(),
   }
 }

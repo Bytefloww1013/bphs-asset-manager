@@ -11,7 +11,7 @@ import { Checkbox, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { BulkReturnSheet } from '@/features/assignments/return-sheet.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
-import { AssetTagLink, DaysOut, RatingBadge, Stacked } from '@/features/common/status.tsx'
+import { AssetTagLink, DaysOut, HolderCell, RatingBadge, Stacked } from '@/features/common/status.tsx'
 import { downloadCsv, formatDateTime, plural } from '@/lib/format.ts'
 import { assignmentsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
@@ -22,6 +22,8 @@ export const Route = createFileRoute('/_app/assignments')({
 })
 
 const c = columnsFor<AssignmentRow>()
+/** An assignment always has one holder: an employee or a program. */
+const holder = (row: AssignmentRow) => (row.employee ?? row.program)!
 
 function RowActions({ row }: { row: AssignmentRow }) {
   const sheets = useSheetActions()
@@ -61,7 +63,7 @@ const columns = [
         secondary={
           <>
             {info.row.original.assetType}
-            <span className="md:hidden"> · {info.row.original.employee.name}</span>
+            <span className="md:hidden"> · {holder(info.row.original).name}</span>
             {/* On a phone there is no room for a Days out column beside Return, so the figure goes under the holder. */}
             <DaysOut days={info.row.original.daysOut} className="flex justify-start sm:hidden" />
           </>
@@ -69,14 +71,14 @@ const columns = [
       />
     ),
   }),
-  c.accessor((row) => row.employee.name, { id: 'employee', header: 'Employee', cell: (info) => <Stacked primary={info.row.original.employee.name} secondary={[info.row.original.employee.code, info.row.original.employee.department].filter(Boolean).join(' · ')} />, meta: { hideBelow: 'md' } }),
+  c.accessor((row) => holder(row).name, { id: 'holder', header: 'Holder', cell: (info) => <HolderCell employee={info.row.original.employee} program={info.row.original.program} />, meta: { hideBelow: 'md' } }),
   c.accessor('issuedAt', { header: 'Issued', cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>, meta: { hideBelow: 'md' } }),
   c.accessor((row) => row.issueRating ?? '', { id: 'issueRating', header: 'Condition at issue', cell: (info) => <RatingBadge name={info.row.original.issueRating} />, meta: { hideBelow: 'lg' } }),
   c.accessor('daysOut', { header: 'Days out', cell: (info) => <DaysOut days={info.getValue()} />, meta: { align: 'right', hideBelow: 'sm' } }),
   c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <RowActions row={info.row.original} />, meta: { align: 'right', width: 'md:w-44', pinned: true } }),
 ]
 const getRowId = (row: AssignmentRow) => String(row.id)
-const searchText = (row: AssignmentRow) => [row.assetTag, row.assetType, row.employee.name, row.employee.code, row.employee.department, row.issueRating].filter(Boolean).join(' ')
+const searchText = (row: AssignmentRow) => [row.assetTag, row.assetType, holder(row).name, holder(row).code, row.employee?.department, row.issueRating].filter(Boolean).join(' ')
 
 function AssignmentsPage() {
   usePageTitle('Assignments')
@@ -101,8 +103,8 @@ function AssignmentsPage() {
               onClick={() =>
                 downloadCsv(
                   'active-assignments.csv',
-                  ['Asset tag', 'Type', 'Employee', 'Employee ID', 'Department', 'Issued', 'Condition at issue', 'Days out'],
-                  data.map((r) => [r.assetTag, r.assetType, r.employee.name, r.employee.code, r.employee.department, formatDateTime(r.issuedAt), r.issueRating, r.daysOut]),
+                  ['Asset tag', 'Type', 'Holder type', 'Holder', 'Holder ID', 'Department', 'Issued', 'Condition at issue', 'Days out'],
+                  data.map((r) => [r.assetTag, r.assetType, r.program ? 'Program' : 'Employee', holder(r).name, holder(r).code, r.employee?.department, formatDateTime(r.issuedAt), r.issueRating, r.daysOut]),
                 )
               }
             >
@@ -121,7 +123,7 @@ function AssignmentsPage() {
       />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
-          <SearchInput className="w-full sm:w-96" aria-label="Search assignments" placeholder="Search tag, employee, department" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput className="w-full sm:w-96" aria-label="Search assignments" placeholder="Search tag, holder, department" value={search} onChange={(event) => setSearch(event.target.value)} />
           {selected.length > 0 && (
             <p className="text-sm text-ink-3">
               {plural(selected.length, 'row')} selected{hidden > 0 && `, ${hidden} hidden by the search`}.{' '}
@@ -136,7 +138,7 @@ function AssignmentsPage() {
           label="Active assignments"
           noun="assignments"
           loading={isPending}
-          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When a physical asset is issued to someone it shows up here until it is returned." action={<Link to="/available" className={buttonStyles('primary')}>See available assets</Link>} />}
+          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When a physical asset is issued to an employee or a program it shows up here until it is returned." action={<Link to="/available" className={buttonStyles('primary')}>See available assets</Link>} />}
           noMatches={<EmptyState icon={ClipboardList} title="No assignments match" description="Try a different name or tag." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
       </div>

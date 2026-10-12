@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
 import { auditActionLabel, ratingBand, type AuditAction, type RatingBand } from '@shared/constants.ts'
-import type { AssetRow, AssetState, EmployeeRef } from '@shared/types.ts'
+import type { AssetRow, AssetState, EmployeeRef, ProgramRef } from '@shared/types.ts'
 import { Badge, type Tone } from '@/components/ui/badge.tsx'
 import { Mono } from '@/components/ui/layout.tsx'
 import { cn } from '@/lib/cn.ts'
@@ -63,6 +63,12 @@ export function PersonCell({ person }: { person: EmployeeRef | null }) {
   return <Stacked primary={person.name} secondary={[person.code, person.department].filter(Boolean).join(' · ')} />
 }
 
+/** Whoever holds an asset. A program is named as one, since it sits where a person usually does; it has no department. */
+export function HolderCell({ employee, program }: { employee: EmployeeRef | null; program: ProgramRef | null }) {
+  if (program) return <Stacked primary={program.name} secondary={`Program · ${program.code}`} />
+  return <PersonCell person={employee} />
+}
+
 export function DaysOut({ days, className }: { days: number | null | undefined; className?: string }) {
   const overdue = isOverdue(days)
   return (
@@ -75,7 +81,7 @@ export function DaysOut({ days, className }: { days: number | null | undefined; 
 }
 
 export function assetSearchText(asset: AssetRow): string {
-  return [asset.tag, asset.type, asset.serial, asset.holder?.name, asset.holder?.code, asset.holder?.department, asset.condition?.rating, stateLabel(asset.state)].filter(Boolean).join(' ')
+  return [asset.tag, asset.type, asset.serial, asset.holder?.name, asset.holder?.code, asset.holder?.department, asset.program?.name, asset.program?.code, asset.condition?.rating, stateLabel(asset.state)].filter(Boolean).join(' ')
 }
 
 export { Mono }

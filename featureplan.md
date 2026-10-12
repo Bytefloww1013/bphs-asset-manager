@@ -20,7 +20,7 @@ Decisions I am proposing and will follow unless you change them are in section 8
 Five phases, each one committed and verified on its own, so you can stop or redirect after any of them.
 
 - [x] Phase 1: Rename "Assets" to "Physical Assets" (labels only)
-- [ ] Phase 2: Programs
+- [x] Phase 2: Programs
 - [ ] Phase 3: Digital Assets and Digital Asset Types
 - [ ] Phase 4: Import/Export page
 - [ ] Phase 5: Docs and end-to-end check

@@ -3,6 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet, useRouter } from '@tanstack/react-router'
 import {
+  Building2,
   ChevronsUpDown,
   ClipboardList,
   KeyRound,
@@ -31,7 +32,7 @@ import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/employees' | '/lists' | '/audit' | '/users'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/employees' | '/programs' | '/lists' | '/audit' | '/users'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -53,6 +54,7 @@ function useNav(): { heading: string; items: NavEntry[] }[] {
       items: [
         { to: '/assets', label: 'Physical Assets', icon: Laptop },
         { to: '/employees', label: 'Employees', icon: Users },
+        { to: '/programs', label: 'Programs', icon: Building2 },
       ],
     },
     {

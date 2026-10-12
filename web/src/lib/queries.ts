@@ -9,6 +9,7 @@ import type {
   DashboardData,
   EmployeeRow,
   Lookups,
+  ProgramRow,
   SessionUser,
   UserRow,
 } from '@shared/types.ts'
@@ -59,6 +60,11 @@ export const assignmentsQuery = queryOptions({
 export const employeesQuery = queryOptions({
   queryKey: ['employees'],
   queryFn: () => api.get<EmployeeRow[]>('/employees'),
+})
+
+export const programsQuery = queryOptions({
+  queryKey: ['programs'],
+  queryFn: () => api.get<ProgramRow[]>('/programs'),
 })
 
 export const assetTypesQuery = queryOptions({

@@ -84,7 +84,7 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
       setServerError(null)
       try {
         await give.mutateAsync({ conditionRatingId: value.ratingId!, assessedById: value.assessor?.id ?? null, notes: value.notes })
-        toast({ title: `${assignment?.assetTag ?? 'Asset'} returned`, description: assignment ? `From ${assignment.employee.name}` : undefined })
+        toast({ title: `${assignment?.assetTag ?? 'Asset'} returned`, description: assignment ? `From ${(assignment.employee ?? assignment.program)?.name}` : undefined })
         onClose()
       } catch (error) {
         if (error instanceof ApiError && error.code === 'already_returned') setConflict(error)
@@ -165,7 +165,7 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
             items={[
               { label: 'Assignment', value: <Mono>#{assignment.id}</Mono> },
               { label: 'Asset', value: <><Mono>{assignment.assetTag}</Mono> · {assignment.assetType}</> },
-              { label: 'Employee', value: assignment.employee.name },
+              { label: assignment.program ? 'Program' : 'Employee', value: (assignment.employee ?? assignment.program)?.name },
               { label: 'Issued', value: `${formatDate(assignment.issuedAt)} · ${assignment.daysOut} d` },
             ]}
           />
@@ -324,7 +324,7 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
             {rows.map((row) => (
               <li key={row.id} className="flex items-center justify-between gap-3 px-3.5 py-2">
                 <Mono className="font-medium">{row.assetTag}</Mono>
-                <span className="truncate text-ink-3">{row.employee.name}</span>
+                <span className="truncate text-ink-3">{(row.employee ?? row.program)?.name}</span>
               </li>
             ))}
           </ul>

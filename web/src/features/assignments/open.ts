@@ -5,7 +5,10 @@ export function useSheetActions() {
   const navigate = useNavigate()
   return {
     issue: (assetId?: number, employeeId?: number) =>
-      void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, issue: assetId ?? 'new', employee: employeeId })) as never }),
+      void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, issue: assetId ?? 'new', employee: employeeId, program: undefined })) as never }),
+    /** The Issue sheet with Program already chosen as the holder, and this program in the picker when one is given. */
+    issueToProgram: (assetId?: number, programId?: number) =>
+      void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, issue: assetId ?? 'new', employee: undefined, program: programId ?? 'pick' })) as never }),
     returnAsset: (assignmentId: number) =>
       void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, return: assignmentId })) as never }),
   }

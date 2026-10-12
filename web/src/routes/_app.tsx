@@ -12,6 +12,8 @@ export interface SheetSearch {
   return?: number
   /** Preselect this employee in the Issue sheet. */
   employee?: number
+  /** Issue to a program instead: this one, or 'pick' to choose it in the sheet. */
+  program?: number | 'pick'
 }
 
 const toId = (value: unknown) => {
@@ -24,6 +26,7 @@ export const Route = createFileRoute('/_app')({
     issue: search.issue === 'new' ? 'new' : toId(search.issue),
     return: toId(search.return),
     employee: toId(search.employee),
+    program: search.program === 'pick' ? 'pick' : toId(search.program),
   }),
   beforeLoad: async ({ context, location }) => {
     const user = await context.queryClient.ensureQueryData(meQuery)

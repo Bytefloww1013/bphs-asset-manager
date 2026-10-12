@@ -2,11 +2,11 @@ import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { IssueInput, ReturnBulkInput, ReturnInput } from '../../shared/schemas.ts'
 import type { AssignmentRow, ReturnBulkResult } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { assetTypes, assets, assignments, conditions, employees, users } from '../db/schema.ts'
+import { assetTypes, assets, assignments, conditions, employees, programs, users } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
-import { HttpError, conflict, notFound, rowFailure } from '../lib/errors.ts'
+import { HttpError, conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
-import { employeeRef, fullName, assessorFor, requireActiveRating, requireEmployee } from './refs.ts'
+import { employeeRef, fullName, assessorFor, programRef, requireActiveRating, requireEmployee, requireProgram } from './refs.ts'
 
 interface OpenRow {
   id: number
@@ -14,11 +14,14 @@ interface OpenRow {
   assetTag: string
   assetType: string
   issuedAt: number
-  eId: number
-  eCode: string
-  eFirst: string
-  eLast: string
+  eId: number | null
+  eCode: string | null
+  eFirst: string | null
+  eLast: string | null
   eDept: string | null
+  pId: number | null
+  pCode: string | null
+  pName: string | null
   issueRating: string | null
   issuedByEmail: string
 }
@@ -26,11 +29,13 @@ interface OpenRow {
 const OPEN_SQL = sql`
   select a.id as id, a.asset_id as assetId, s.tag as assetTag, t.name as assetType, a.issued_at as issuedAt,
          e.id as eId, e.code as eCode, e.first_name as eFirst, e.last_name as eLast, e.department as eDept,
+         p.id as pId, p.code as pCode, p.name as pName,
          r.name as issueRating, u.email as issuedByEmail
   from assignments a
   join assets s on s.id = a.asset_id
   join asset_types t on t.id = s.type_id
-  join employees e on e.id = a.employee_id
+  left join employees e on e.id = a.employee_id
+  left join programs p on p.id = a.program_id
   join users u on u.id = a.issued_by_id
   left join conditions c on c.assignment_id = a.id and c.kind = 'issue'
   left join condition_ratings r on r.id = c.rating_id
@@ -43,13 +48,18 @@ function toRow(row: OpenRow, now: Date): AssignmentRow {
     assetId: row.assetId,
     assetTag: row.assetTag,
     assetType: row.assetType,
-    employee: { id: row.eId, code: row.eCode, name: fullName(row.eFirst, row.eLast), department: row.eDept },
+    employee: row.eId === null ? null : { id: row.eId, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept },
+    program: row.pId === null ? null : { id: row.pId, code: row.pCode!, name: row.pName! },
     issuedAt: issuedAt.toISOString(),
     issueRating: row.issueRating,
     daysOut: daysBetween(issuedAt, now),
     issuedBy: row.issuedByEmail,
   }
 }
+
+/** How the audit log names a holder: an Employee ID as it is, a Program ID marked as one. */
+const holderCode = (employee: { code: string } | null, program: { code: string } | null) =>
+  employee ? employee.code : `program ${program?.code ?? ''}`
 
 /** Open Assignments, longest-out first. */
 export function listOpenAssignments(db: DbLike): AssignmentRow[] {
@@ -63,7 +73,7 @@ export function getAssignment(db: DbLike, id: number): AssignmentRow | null {
   return row ? toRow(row, now) : null
 }
 
-/** Issue an asset inside an already-open transaction. Returns the new Assignment id. */
+/** Issue an asset to an employee, or assign it to a program, inside an already-open transaction. Returns the new Assignment id. */
 export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new Date()): number {
   const found = tx
     .select({ asset: assets, type: assetTypes.name })
@@ -75,28 +85,34 @@ export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new
   const { asset } = found
   if (asset.status === 'retired') throw conflict('asset_retired', `${asset.tag} is retired and cannot be issued.`)
 
-  const employee = requireEmployee(tx, input.employeeId)
-  if (employee.archivedAt) {
+  // The schema lets one of the two through; the database checks it again on insert.
+  const employee = input.employeeId ? requireEmployee(tx, input.employeeId) : null
+  const program = !employee && input.programId ? requireProgram(tx, input.programId) : null
+  if (employee?.archivedAt) {
     throw conflict('employee_archived', `${fullName(employee.firstName, employee.lastName)} is archived.`)
   }
+  if (program && !program.isActive) throw conflict('program_inactive', `${program.name} is deactivated.`)
+  if (!employee && !program) throw invalid('Choose an employee or a program.', { field: 'employeeId' })
   const rating = requireActiveRating(tx, input.conditionRatingId)
   const assessedById = assessorFor(tx, input.assessedById, actor)
 
   const open = tx
-    .select({ id: assignments.id, first: employees.firstName, last: employees.lastName })
+    .select({ id: assignments.id, first: employees.firstName, last: employees.lastName, program: programs.name })
     .from(assignments)
-    .innerJoin(employees, eq(employees.id, assignments.employeeId))
+    .leftJoin(employees, eq(employees.id, assignments.employeeId))
+    .leftJoin(programs, eq(programs.id, assignments.programId))
     .where(and(eq(assignments.assetId, asset.id), isNull(assignments.returnedAt)))
     .get()
   if (open) {
-    throw conflict('asset_already_assigned', `${asset.tag} is already assigned to ${fullName(open.first, open.last)}.`, {
+    const holder = open.program ?? fullName(open.first ?? '', open.last ?? '')
+    throw conflict('asset_already_assigned', `${asset.tag} is already assigned to ${holder}.`, {
       assignmentId: open.id,
     })
   }
 
   const assignment = tx
     .insert(assignments)
-    .values({ assetId: asset.id, employeeId: employee.id, issuedAt: now, issuedById: actor.id })
+    .values({ assetId: asset.id, employeeId: employee?.id ?? null, programId: program?.id ?? null, issuedAt: now, issuedById: actor.id })
     .returning({ id: assignments.id })
     .get()
   tx.insert(conditions)
@@ -115,7 +131,7 @@ export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new
     action: 'issue',
     entityType: 'assignment',
     entityId: assignment.id,
-    details: `${asset.tag} → ${employee.code} · ${rating.name}`,
+    details: `${asset.tag} → ${holderCode(employee, program)} · ${rating.name}`,
     at: now,
   })
   return assignment.id
@@ -129,14 +145,15 @@ export function issueAsset(db: Db, actor: Actor, input: IssueInput): AssignmentR
 /** Close an Assignment inside an open transaction. */
 export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input: ReturnInput, now = new Date()) {
   const found = tx
-    .select({ assignment: assignments, asset: assets, employee: employees })
+    .select({ assignment: assignments, asset: assets, employee: employees, program: programs })
     .from(assignments)
     .innerJoin(assets, eq(assets.id, assignments.assetId))
-    .innerJoin(employees, eq(employees.id, assignments.employeeId))
+    .leftJoin(employees, eq(employees.id, assignments.employeeId))
+    .leftJoin(programs, eq(programs.id, assignments.programId))
     .where(eq(assignments.id, assignmentId))
     .get()
   if (!found) throw notFound('Assignment')
-  const { assignment, asset, employee } = found
+  const { assignment, asset, employee, program } = found
 
   if (assignment.returnedAt) {
     const closer = assignment.returnedById
@@ -173,10 +190,10 @@ export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input
     action: 'return',
     entityType: 'assignment',
     entityId: assignment.id,
-    details: `${asset.tag} ← ${employee.code} · ${rating.name}`,
+    details: `${asset.tag} ← ${holderCode(employee, program)} · ${rating.name}`,
     at: now,
   })
-  return { assetTag: asset.tag, employee: employeeRef(employee) }
+  return { assetTag: asset.tag, employee: employee ? employeeRef(employee) : null, program: program ? programRef(program) : null }
 }
 
 export function returnAssignment(db: Db, actor: Actor, id: number, input: ReturnInput) {

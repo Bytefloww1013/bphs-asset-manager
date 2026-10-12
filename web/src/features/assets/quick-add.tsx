@@ -3,7 +3,7 @@ import { CornerDownLeft } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultRating } from '@shared/constants.ts'
 import { nextTag } from '@shared/tags.ts'
-import type { AssetBulkResult, AssetRow, EmployeeRef } from '@shared/types.ts'
+import type { AssetBulkResult, AssetRow, EmployeeRef, ProgramRef } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
@@ -42,13 +42,16 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const types = lookups?.assetTypes ?? []
   const ratings = lookups?.conditionRatings ?? []
   const people = lookups?.employees ?? []
+  const programs = lookups?.programs ?? []
 
   const tagRef = useRef<HTMLInputElement>(null)
   const [tag, setTag] = useState('')
   const [typeId, setTypeId] = useState('')
   const [serial, setSerial] = useState('')
   const [ratingId, setRatingId] = useState('')
+  const [to, setTo] = useState<'employee' | 'program'>('employee')
   const [holder, setHolder] = useState<EmployeeRef | null>(null)
+  const [program, setProgram] = useState<ProgramRef | null>(null)
   const [problem, setProblem] = useState<Problem | null>(null)
   const [skipped, setSkipped] = useState<AssetBulkResult['errors']>([])
   // Pasted rows wait here to be looked over. Nothing is written until they are confirmed: there is no undo for an asset.
@@ -89,14 +92,16 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
         typeId: Number(effectiveType),
         serial,
         conditionRatingId: Number(effectiveRating),
-        holderId: holder?.id ?? null,
+        holderId: to === 'employee' ? (holder?.id ?? null) : null,
+        programId: to === 'program' ? (program?.id ?? null) : null,
         assessedById: user.employeeId,
       })
-      toast({ title: `${row.tag} added`, description: row.holder ? `Issued to ${row.holder.name}` : 'In storage' })
+      toast({ title: `${row.tag} added`, description: row.holder || row.program ? `Issued to ${(row.holder ?? row.program)?.name}` : 'In storage' })
       onAdded(row.id)
       setTag('')
       setSerial('')
       setHolder(null)
+      setProgram(null)
       tagRef.current?.focus()
     } catch (e) {
       refuse(e, 'Could not add the asset.')
@@ -145,7 +150,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
           void commit()
         }}
       >
-        <Field label="Asset tag" error={problem?.fields.tag} className="lg:col-span-2">
+        <Field label="Asset tag" error={problem?.fields.tag} className="lg:col-span-3">
           <Input
             ref={tagRef}
             mono
@@ -162,7 +167,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             }}
           />
         </Field>
-        <Field label="Type" error={problem?.fields.typeId} className="lg:col-span-2">
+        <Field label="Type" error={problem?.fields.typeId} className="lg:col-span-3">
           <Select value={effectiveType} onChange={(event) => setTypeId(event.target.value)}>
             {types.map((type) => (
               <option key={type.id} value={type.id}>
@@ -171,10 +176,10 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             ))}
           </Select>
         </Field>
-        <Field label="Serial number" optional error={problem?.fields.serial} className="lg:col-span-2">
+        <Field label="Serial number" optional error={problem?.fields.serial} className="lg:col-span-3">
           <Input mono value={serial} onChange={(event) => setSerial(event.target.value)} autoComplete="off" />
         </Field>
-        <Field label="Condition" error={problem?.fields.conditionRatingId} className="lg:col-span-2">
+        <Field label="Condition" error={problem?.fields.conditionRatingId} className="lg:col-span-3">
           <Select value={effectiveRating} onChange={(event) => setRatingId(event.target.value)}>
             {ratings.map((rating) => (
               <option key={rating.id} value={rating.id}>
@@ -183,18 +188,39 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             ))}
           </Select>
         </Field>
-        <Field label="Issue to" optional className="sm:col-span-2 lg:col-span-3">
-          <Combobox
-            items={people}
-            value={holder}
-            onChange={setHolder}
-            getKey={(person) => person.id}
-            getLabel={(person) => person.name}
-            getSearch={(person) => `${person.code} ${person.department ?? ''}`}
-            placeholder="Leave blank to keep it in storage"
-          />
+        <Field label="Issue to" className="lg:col-span-3">
+          <Select value={to} onChange={(event) => setTo(event.target.value as typeof to)}>
+            <option value="employee">Employee</option>
+            <option value="program">Program</option>
+          </Select>
         </Field>
-        <div className="sm:col-span-2 lg:col-span-1">
+        {to === 'program' ? (
+          <Field label="Program" optional className="lg:col-span-7">
+            <Combobox
+              items={programs}
+              value={program}
+              onChange={setProgram}
+              getKey={(item) => item.id}
+              getLabel={(item) => item.name}
+              getSearch={(item) => item.code}
+              placeholder="Leave blank to keep it in storage"
+              emptyText="No matching programs"
+            />
+          </Field>
+        ) : (
+          <Field label="Employee" optional className="lg:col-span-7">
+            <Combobox
+              items={people}
+              value={holder}
+              onChange={setHolder}
+              getKey={(person) => person.id}
+              getLabel={(person) => person.name}
+              getSearch={(person) => `${person.code} ${person.department ?? ''}`}
+              placeholder="Leave blank to keep it in storage"
+            />
+          </Field>
+        )}
+        <div className="sm:col-span-2 lg:col-span-2">
           <Button type="submit" variant="primary" className="w-full" loading={add.isPending || bulk.isPending}>
             Add <CornerDownLeft className="size-3.5 opacity-70" aria-hidden />
           </Button>

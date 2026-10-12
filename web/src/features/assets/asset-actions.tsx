@@ -1,6 +1,6 @@
 import { useForm } from '@tanstack/react-form'
 import { useNavigate } from '@tanstack/react-router'
-import { Eye, Pencil, RotateCcw, Trash2, Archive } from 'lucide-react'
+import { Building2, Eye, Pencil, RotateCcw, Trash2, Archive } from 'lucide-react'
 import { useState } from 'react'
 import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import { assetUpdateSchema } from '@shared/schemas.ts'
@@ -32,13 +32,19 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
   const items: MenuItem[] = [
     { label: 'View details', icon: Eye, onSelect: () => void navigate({ to: '/assets/$tag', params: { tag: asset.tag } }) },
     { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true) },
+    {
+      label: 'Assign to program',
+      icon: Building2,
+      onSelect: () => sheets.issueToProgram(asset.id),
+      disabledReason: asset.state === 'assigned' ? 'Return it first.' : asset.state === 'retired' ? 'Reinstate it first.' : undefined,
+    },
     asset.state === 'retired'
       ? { label: 'Reinstate', icon: RotateCcw, onSelect: () => reinstate.mutate(undefined) }
       : {
           label: 'Retire',
           icon: Archive,
           onSelect: () => setConfirm('retire'),
-          disabledReason: asset.state === 'assigned' ? `Assigned to ${asset.holder?.name}. Return it first.` : undefined,
+          disabledReason: asset.state === 'assigned' ? `Assigned to ${(asset.holder ?? asset.program)?.name}. Return it first.` : undefined,
         },
     {
       label: 'Delete',

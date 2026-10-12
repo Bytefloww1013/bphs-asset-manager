@@ -11,7 +11,7 @@ import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { QuickAddAsset } from '@/features/assets/quick-add.tsx'
-import { AssetStateBadge, AssetTagLink, DaysOut, PersonCell, RatingBadge, assetSearchText, stateLabel } from '@/features/common/status.tsx'
+import { AssetStateBadge, AssetTagLink, DaysOut, HolderCell, RatingBadge, assetSearchText, stateLabel } from '@/features/common/status.tsx'
 import { downloadCsv, formatDate } from '@/lib/format.ts'
 import { assetsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
@@ -47,7 +47,7 @@ const columns = [
     meta: { hideBelow: 'lg' },
   }),
   c.accessor('state', { header: 'Status', cell: (info) => <AssetStateBadge state={info.getValue()} />, meta: { hideBelow: 'md' } }),
-  c.accessor((row) => row.holder?.name ?? '', { id: 'holder', header: 'Assigned to', cell: (info) => <PersonCell person={info.row.original.holder} />, meta: { hideBelow: 'md' } }),
+  c.accessor((row) => (row.holder ?? row.program)?.name ?? '', { id: 'holder', header: 'Assigned to', cell: (info) => <HolderCell employee={info.row.original.holder} program={info.row.original.program} />, meta: { hideBelow: 'md' } }),
   c.accessor((row) => row.condition?.rating ?? '', { id: 'condition', header: 'Condition', cell: (info) => <RatingBadge name={info.row.original.condition?.rating} />, meta: { hideBelow: 'lg' } }),
   c.accessor((row) => row.daysOut ?? -1, { id: 'days', header: 'Days out', cell: (info) => <DaysOut days={info.row.original.daysOut} />, meta: { align: 'right', hideBelow: 'xl' } }),
   c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AssetRowActions asset={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } }),
@@ -94,7 +94,7 @@ function AssetsPage() {
               downloadCsv(
                 'physical-assets.csv',
                 ['Asset tag', 'Type', 'Serial', 'Status', 'Assigned to', 'Employee ID', 'Department', 'Condition', 'Days out', 'Created'],
-                data.map((a) => [a.tag, a.type, a.serial, stateLabel(a.state), a.holder?.name, a.holder?.code, a.holder?.department, a.condition?.rating, a.daysOut, formatDate(a.createdAt)]),
+                data.map((a) => [a.tag, a.type, a.serial, stateLabel(a.state), (a.holder ?? a.program)?.name, a.holder?.code, a.holder?.department, a.condition?.rating, a.daysOut, formatDate(a.createdAt)]),
               )
             }
           >
@@ -118,7 +118,7 @@ function AssetsPage() {
               { value: 'retired', label: 'Retired', count: counts.retired },
             ]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search physical assets" placeholder="Search tag, serial, person, department" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput className="w-full sm:w-80" aria-label="Search physical assets" placeholder="Search tag, serial, holder, department" value={search} onChange={(event) => setSearch(event.target.value)} />
         </Toolbar>
         <DataGrid
           table={table}

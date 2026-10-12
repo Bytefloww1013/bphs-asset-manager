@@ -48,14 +48,21 @@ export const assetTag = z
   .refine((value) => !/^\.+$/.test(value), 'Asset tag cannot be only dots')
   .transform((value) => value.toUpperCase())
 
-export const assetCreateSchema = z.object({
+const assetCreateFields = z.object({
   tag: assetTag,
   typeId: id,
   serial: optionalText(80, 'Serial number'),
   conditionRatingId: id,
+  /** The employee to issue it to straight away. */
   holderId: id.nullable().optional(),
+  /** The program to assign it to straight away. An asset starts with one holder or none. */
+  programId: id.nullable().optional(),
   assessedById: id.nullable().optional(),
   notes: optionalText(1000, 'Notes'),
+})
+export const assetCreateSchema = assetCreateFields.refine((value) => !(value.holderId && value.programId), {
+  path: ['programId'],
+  message: 'Choose an employee or a program, not both',
 })
 export type AssetCreateInput = z.infer<typeof assetCreateSchema>
 
@@ -84,16 +91,21 @@ export type AssetBulkInput = z.infer<typeof assetBulkSchema>
 
 // Each pasted row is checked on its own, so a bad row is reported without refusing the rest. The tag and serial keep the
 // limits of Add asset; type, condition and holder are looked up by name and need none.
-export const assetBulkRowFields = assetCreateSchema.pick({ tag: true, serial: true })
+export const assetBulkRowFields = assetCreateFields.pick({ tag: true, serial: true })
 
 // ---- Assignments ----------------------------------------------------------------
-export const issueSchema = z.object({
-  assetId: id,
-  employeeId: id,
-  conditionRatingId: id,
-  assessedById: id.nullable().optional(),
-  notes: optionalText(1000, 'Notes'),
-})
+// An asset is issued to an employee or assigned to a program: exactly one of the two.
+export const issueSchema = z
+  .object({
+    assetId: id,
+    employeeId: id.nullable().optional(),
+    programId: id.nullable().optional(),
+    conditionRatingId: id,
+    assessedById: id.nullable().optional(),
+    notes: optionalText(1000, 'Notes'),
+  })
+  .refine((value) => !(value.employeeId && value.programId), { path: ['programId'], message: 'Choose an employee or a program, not both' })
+  .refine((value) => value.employeeId || value.programId, { path: ['employeeId'], message: 'Choose an employee or a program' })
 export type IssueInput = z.infer<typeof issueSchema>
 
 export const returnSchema = z.object({
@@ -120,6 +132,17 @@ export type EmployeeCreateInput = z.infer<typeof employeeCreateSchema>
 
 export const employeeUpdateSchema = employeeCreateSchema.partial()
 export type EmployeeUpdateInput = z.infer<typeof employeeUpdateSchema>
+
+// ---- Programs -------------------------------------------------------------------
+export const programCreateSchema = z.object({
+  code: requiredText(40, 'Program ID'),
+  name: requiredText(120, 'Program name'),
+  address: optionalText(240, 'Program address'),
+})
+export type ProgramCreateInput = z.infer<typeof programCreateSchema>
+
+export const programUpdateSchema = programCreateSchema.partial()
+export type ProgramUpdateInput = z.infer<typeof programUpdateSchema>
 
 export const importSchema = z.object({
   csv: z.string().min(1, 'Choose a file').max(2_000_000, 'File is larger than 2 MB'),

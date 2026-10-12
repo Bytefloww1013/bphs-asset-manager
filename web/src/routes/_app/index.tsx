@@ -73,7 +73,7 @@ function Overview() {
                           <Stacked primary={<AssetTagLink tag={row.assetTag} />} secondary={row.assetType} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <Stacked primary={row.employee.name} secondary={row.employee.department} />
+                          <Stacked primary={(row.employee ?? row.program)?.name} secondary={row.program ? `Program · ${row.program.code}` : row.employee?.department} />
                         </div>
                         <DaysOut days={row.daysOut} className="w-20 shrink-0" />
                         <Button size="sm" onClick={() => sheets.returnAsset(row.assignmentId)}>

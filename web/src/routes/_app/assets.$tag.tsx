@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
-import { AssetStateBadge, DaysOut, RatingBadge, Stacked, stateLabel } from '@/features/common/status.tsx'
+import { AssetStateBadge, DaysOut, HolderCell, RatingBadge, stateLabel } from '@/features/common/status.tsx'
 import { ApiError } from '@/lib/api.ts'
 import { formatDate, formatDateTime, formatDays, plural } from '@/lib/format.ts'
 import { assetDetailQuery } from '@/lib/queries.ts'
@@ -37,7 +37,7 @@ export const Route = createFileRoute('/_app/assets/$tag')({
 const h = columnsFor<HistoryRow>()
 const historyColumns = [
   h.accessor('id', { header: 'Assignment', cell: (info) => <Mono className="text-ink-2">#{info.getValue()}</Mono> }),
-  h.accessor((row) => row.employee.name, { id: 'employee', header: 'Employee', cell: (info) => <Stacked primary={info.row.original.employee.name} secondary={[info.row.original.employee.code, info.row.original.employee.department].filter(Boolean).join(' · ')} /> }),
+  h.accessor((row) => (row.employee ?? row.program)?.name ?? '', { id: 'holder', header: 'Holder', cell: (info) => <HolderCell employee={info.row.original.employee} program={info.row.original.program} /> }),
   h.accessor('issuedAt', { header: 'Issued', cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>, meta: { hideBelow: 'md' } }),
   h.accessor((row) => row.returnedAt ?? '', {
     id: 'returnedAt',
@@ -118,7 +118,15 @@ function AssetDetailPage() {
 
       <Panel>
         <dl className="grid divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
-          <Fact label="Current holder">{asset.holder ? <><span>{asset.holder.name}</span> <Mono className="text-ink-3">{asset.holder.code}</Mono></> : <span className="text-ink-3">{stateLabel(asset.state)}</span>}</Fact>
+          <Fact label="Current holder">
+            {asset.holder ? (
+              <><span>{asset.holder.name}</span> <Mono className="text-ink-3">{asset.holder.code}</Mono></>
+            ) : asset.program ? (
+              <><span>{asset.program.name}</span> <span className="font-normal text-ink-3">Program <Mono>{asset.program.code}</Mono></span></>
+            ) : (
+              <span className="text-ink-3">{stateLabel(asset.state)}</span>
+            )}
+          </Fact>
           <Fact label="Department">{asset.holder?.department ?? <span className="text-ink-3">—</span>}</Fact>
           <Fact label="Days out">{asset.daysOut === null ? <span className="text-ink-3">—</span> : <DaysOut days={asset.daysOut} className="justify-start" />}</Fact>
           <Fact label="Latest condition">
