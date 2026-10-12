@@ -10,8 +10,10 @@ import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
+import { ExportButton } from '@/features/common/export-button.tsx'
 import { EmployeeRowActions, QuickAddEmployee } from '@/features/employees/employee-parts.tsx'
 import { Stacked } from '@/features/common/status.tsx'
+import { EXPORTS } from '@/lib/exports.ts'
 import { employeesQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
@@ -59,10 +61,13 @@ function EmployeesPage() {
         title="Employees"
         description="Everyone who can hold equipment. An employee with assignment history is archived, never deleted."
         actions={
-          <Link to="/employees/import" className={buttonStyles()}>
-            <Upload className="size-4" aria-hidden />
-            Import CSV
-          </Link>
+          <>
+            <ExportButton dataset={EXPORTS.employees} items={data} />
+            <Link to="/import-export" search={{ type: 'employees' }} className={buttonStyles()}>
+              <Upload className="size-4" aria-hidden />
+              Import
+            </Link>
+          </>
         }
       />
       <QuickAddEmployee onAdded={setFlash} />
@@ -86,7 +91,7 @@ function EmployeesPage() {
           noun="employees"
           loading={isPending}
           rowClassName={(row) => (row.original.id === flash ? 'animate-row-flash' : undefined)}
-          empty={<EmptyState icon={Users} title="No employees yet" description="Add one above, or import your HR export as a CSV." action={<Link to="/employees/import" className={buttonStyles('primary')}>Import CSV</Link>} />}
+          empty={<EmptyState icon={Users} title="No employees yet" description="Add one above, or import your HR export as a CSV or Excel file." action={<Link to="/import-export" search={{ type: 'employees' }} className={buttonStyles('primary')}>Import employees</Link>} />}
           noMatches={<EmptyState icon={Users} title="No employees match" description="Try a different name or ID." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
         />
       </div>

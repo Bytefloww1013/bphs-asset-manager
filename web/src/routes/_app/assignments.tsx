@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ClipboardList, Download, Undo2 } from 'lucide-react'
+import { ClipboardList, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 import type { AssignmentRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -12,7 +12,9 @@ import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { BulkReturnSheet } from '@/features/assignments/return-sheet.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
 import { AssetTagLink, DaysOut, HolderCell, RatingBadge, Stacked } from '@/features/common/status.tsx'
-import { downloadCsv, formatDateTime, plural } from '@/lib/format.ts'
+import { ExportButton } from '@/features/common/export-button.tsx'
+import { EXPORTS } from '@/lib/exports.ts'
+import { formatDateTime, plural } from '@/lib/format.ts'
 import { assignmentsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
@@ -97,19 +99,7 @@ function AssignmentsPage() {
         description={`${plural(data.length, 'physical asset')} currently out. A handoff is a return then an issue: two assignments, two condition records.`}
         actions={
           <>
-            <Button
-              icon={<Download className="size-4" />}
-              disabled={data.length === 0}
-              onClick={() =>
-                downloadCsv(
-                  'active-assignments.csv',
-                  ['Asset tag', 'Type', 'Holder type', 'Holder', 'Holder ID', 'Department', 'Issued', 'Condition at issue', 'Days out'],
-                  data.map((r) => [r.assetTag, r.assetType, r.program ? 'Program' : 'Employee', holder(r).name, holder(r).code, r.employee?.department, formatDateTime(r.issuedAt), r.issueRating, r.daysOut]),
-                )
-              }
-            >
-              Export CSV
-            </Button>
+            <ExportButton dataset={EXPORTS.assignments} items={data} />
             <Button
               variant="primary"
               icon={<Undo2 className="size-4" />}

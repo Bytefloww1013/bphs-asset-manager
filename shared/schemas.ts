@@ -174,8 +174,22 @@ export type ProgramCreateInput = z.infer<typeof programCreateSchema>
 export const programUpdateSchema = programCreateSchema.partial()
 export type ProgramUpdateInput = z.infer<typeof programUpdateSchema>
 
+// ---- Import -----------------------------------------------------------------------
+export const IMPORT_MAX_ROWS = 2000
+/** No field of an importable record is this long, so a cell cut to this length still fails its own check, with a message for its row. */
+export const IMPORT_MAX_CELL = 300
+
+// The browser reads the file and maps its columns; what arrives here is plain text keyed by field.
 export const importSchema = z.object({
-  csv: z.string().min(1, 'Choose a file').max(2_000_000, 'File is larger than 2 MB'),
+  rows: z
+    .array(
+      z.object({
+        row: z.number().int().min(1).max(10_000_000),
+        values: z.record(z.string().max(40), z.string().max(IMPORT_MAX_CELL)),
+      }),
+    )
+    .min(1, 'The file has no rows to import')
+    .max(IMPORT_MAX_ROWS, `A file can hold at most ${IMPORT_MAX_ROWS.toLocaleString('en-US')} rows`),
 })
 export type ImportInput = z.infer<typeof importSchema>
 

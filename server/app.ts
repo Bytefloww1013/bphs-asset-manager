@@ -17,6 +17,7 @@ import { authRoutes } from './routes/auth.ts'
 import { listRoutes, reportRoutes } from './routes/lists.ts'
 import { employeeRoutes, userRoutes } from './routes/people.ts'
 import { digitalAssetRoutes } from './routes/digital-assets.ts'
+import { importRoutes } from './routes/imports.ts'
 import { programRoutes } from './routes/programs.ts'
 
 export interface AppOptions {
@@ -27,8 +28,8 @@ export interface AppOptions {
   quiet?: boolean
 }
 
-// The largest thing anyone sends is the 2 MB CSV on the import page, wrapped in JSON; signing in and changing a password send two short strings.
-const MAX_BODY_BYTES = 3 * 1024 * 1024
+// The largest thing anyone sends is an import: 2,000 rows of at most five 300-character cells as JSON, which fits with room to spare; signing in and changing a password send two short strings.
+const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_AUTH_BODY_BYTES = 16 * 1024
 
 const limitBody = (maxSize: number) =>
@@ -44,6 +45,8 @@ export function createApp(db: Db, options: AppOptions = {}) {
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
+        // The Excel reader and writer zip in a worker they start from a blob: URL. Only a script this page already runs can make one.
+        workerSrc: ["'self'", 'blob:'],
         // Radix positions popovers with inline style attributes.
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:'],
@@ -78,6 +81,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/assignments', assignmentRoutes(db))
   api.route('/employees', employeeRoutes(db))
   api.route('/programs', programRoutes(db))
+  api.route('/import', importRoutes(db))
   api.route('/digital-assets', digitalAssetRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requirePermission('users.manage'))

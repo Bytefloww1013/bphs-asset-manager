@@ -198,11 +198,12 @@ describe('request limits', () => {
     expect((await post('/api/auth/login', '{}', { 'content-length': String(30 * 1024 * 1024) })).status).toBe(413)
     expect((await post('/api/auth/login', JSON.stringify({ email: 'm.oyelaran@bphs.local', password: PASSWORD }))).status).toBe(200)
 
-    // Everywhere else the limit leaves room for the 2 MB CSV the import page accepts, and not much more.
-    const header = 'employee_id,first_name,last_name\n'
-    const biggest = JSON.stringify({ csv: `${header}E-1,Rosa,${'D'.repeat(1_900_000)}\n` })
-    expect((await post('/api/employees/import/preview', biggest, { cookie })).status).toBe(200)
-    const tooBig = await post('/api/employees/import/preview', JSON.stringify({ csv: 'a'.repeat(4 * 1024 * 1024) }), { cookie })
+    // Everywhere else the limit leaves room for the largest import the page sends: 2,000 rows with every cell full.
+    const full = (i: number) => ({ row: i + 2, values: { code: `E-${i}`.padEnd(300, 'x'), firstName: 'F'.repeat(300), lastName: 'L'.repeat(300), department: 'D'.repeat(300), jobTitle: 'J'.repeat(300) } })
+    const biggest = JSON.stringify({ rows: Array.from({ length: 2000 }, (_, i) => full(i)) })
+    expect(biggest.length).toBeGreaterThan(3 * 1024 * 1024)
+    expect((await post('/api/import/employees/preview', biggest, { cookie })).status).toBe(200)
+    const tooBig = await post('/api/import/employees/preview', JSON.stringify({ rows: [{ row: 2, values: { code: 'a'.repeat(4 * 1024 * 1024) } }] }), { cookie })
     expect(tooBig.status).toBe(413)
     expect(((await tooBig.json()) as { message: string }).message).toMatch(/too large/i)
     // The same before sign-in: refused as too large, not read and answered with a 401.
@@ -596,61 +597,132 @@ describe('assets, assignments and the one-active-assignment rule', () => {
   })
 })
 
-describe('employees and CSV import', () => {
-  const CSV =
-    '\uFEFFemployee_id,first_name,last_name,department,job_title\r\nE-1402,Rosa,Delgado,Intake,Coordinator\r\nE-1042,Priya,Raghunathan,IT,Analyst\r\n,Kerry,Milton,Finance,\r\nE-1403,"Zhao, Wen",Lee,IT,"Help ""desk"""\r\n'
+describe('importing employees and programs', () => {
+  type Values = Record<string, string>
+  const rowsOf = (...values: Values[]) => ({ rows: values.map((v, i) => ({ row: i + 2, values: v })) })
+  const EMPLOYEES = rowsOf(
+    { code: 'E-1402', firstName: 'Rosa', lastName: 'Delgado', department: 'Intake', jobTitle: 'Coordinator' },
+    { code: 'e-1042', firstName: 'Priya', lastName: 'Raghunathan', department: 'IT', jobTitle: 'Analyst' },
+    { code: '', firstName: 'Kerry', lastName: '', department: 'Finance', jobTitle: '' },
+    { code: ' E-1403 ', firstName: 'Zhao, Wen', lastName: 'Lee' },
+    { code: 'e-1402', firstName: 'Rosa', lastName: 'Again' },
+  )
 
   it('previews, imports once, skips duplicates and logs one entry per created employee', async () => {
     const t = await setup()
     const cookie = await t.asAdmin()
-    const preview = await t.call('POST', '/api/employees/import/preview', { cookie, body: { csv: CSV } })
-    expect(preview.data.summary).toEqual({ read: 4, create: 2, duplicates: 1, errors: 1 })
-    expect(preview.data.rows.find((r: { row: number }) => r.row === 4).message).toMatch(/missing employee_id/)
-    expect(preview.data.rows[3]).toMatchObject({ firstName: 'Zhao, Wen', jobTitle: 'Help "desk"' })
+    const before = (await t.call('GET', '/api/employees', { cookie })).data.length
+    const preview = await t.call('POST', '/api/import/employees/preview', { cookie, body: EMPLOYEES })
+    expect(preview.status).toBe(200)
+    expect(preview.data.summary).toEqual({ read: 5, create: 2, duplicates: 2, errors: 1 })
+    expect(preview.data.created).toBeUndefined()
+    expect(preview.data.rows.map((r: { result: string }) => r.result)).toEqual(['new', 'duplicate', 'error', 'new', 'duplicate'])
+    expect(preview.data.rows[1].message).toBe('Skip: Employee ID already exists')
+    expect(preview.data.rows[2]).toMatchObject({ row: 4, message: 'Row 4: missing Employee ID, Last name' })
+    // Values come back trimmed, with every field present.
+    expect(preview.data.rows[3].values).toEqual({ code: 'E-1403', firstName: 'Zhao, Wen', lastName: 'Lee', department: '', jobTitle: '' })
+    // A key repeated in the file counts once: the first row wins.
+    expect(preview.data.rows[4].message).toBe('Skip: Employee ID appears earlier in this file')
+    // A preview writes nothing.
+    expect((await t.call('GET', '/api/employees', { cookie })).data).toHaveLength(before)
 
-    const run = await t.call('POST', '/api/employees/import', { cookie, body: { csv: CSV } })
+    const run = await t.call('POST', '/api/import/employees', { cookie, body: EMPLOYEES })
     expect(run.data.created).toBe(2)
-    const again = await t.call('POST', '/api/employees/import', { cookie, body: { csv: CSV } })
+    expect(run.data.summary).toEqual({ read: 5, create: 2, duplicates: 2, errors: 1 })
+    const list = (await t.call('GET', '/api/employees', { cookie })).data
+    expect(list).toHaveLength(before + 2)
+    expect(list.find((e: { code: string }) => e.code === 'E-1403')).toMatchObject({ firstName: 'Zhao, Wen', department: null, jobTitle: null, assetsHeld: 0 })
+    // The employee that was already there is not touched.
+    expect(list.find((e: { code: string }) => e.code === 'E-1042').jobTitle).not.toBe('Analyst')
+
+    const again = await t.call('POST', '/api/import/employees', { cookie, body: EMPLOYEES })
     expect(again.data.created).toBe(0)
-    expect(again.data.summary.duplicates).toBe(3)
+    expect(again.data.summary).toEqual({ read: 5, create: 0, duplicates: 4, errors: 1 })
+    expect((await t.call('GET', '/api/employees', { cookie })).data).toHaveLength(before + 2)
 
     const audit = (await t.call('GET', '/api/audit?action=import', { cookie })).data
     expect(audit.total).toBe(2)
     expect(audit.entries.map((e: { details: string }) => e.details).sort()).toEqual(['employee_id=E-1402', 'employee_id=E-1403'])
   })
 
-  it('reports a missing required column instead of guessing', async () => {
+  it('imports programs the same way, and never issues anything', async () => {
     const t = await setup()
     const cookie = await t.asAdmin()
-    const res = await t.call('POST', '/api/employees/import/preview', { cookie, body: { csv: 'employee_id,first_name\nE-1,A\n' } })
-    expect(res.data.headerError).toMatch(/last_name/)
-    expect(res.data.rows).toHaveLength(0)
+    await t.call('POST', '/api/programs', { cookie, body: { code: 'P-100', name: 'Outreach North' } })
+    const body = rowsOf(
+      { code: 'p-100', name: 'Outreach North again', address: 'Elsewhere' },
+      { code: 'P-200', name: 'Day Program', address: '12 Mill Lane' },
+      { code: 'P-300', name: '' },
+      { code: 'P-400', name: 'N'.repeat(121) },
+      { code: 'P-500', name: 'Riverside' },
+    )
+    const preview = await t.call('POST', '/api/import/programs/preview', { cookie, body })
+    expect(preview.data.summary).toEqual({ read: 5, create: 2, duplicates: 1, errors: 2 })
+    expect(preview.data.rows[0].message).toBe('Skip: Program ID already exists')
+    expect(preview.data.rows[2].message).toBe('Row 4: missing Program name')
+    expect(preview.data.rows[3].message).toMatch(/^Row 5: .*Program name.*120 characters/)
+
+    const assignments = (await t.call('GET', '/api/assignments', { cookie })).data.length
+    const run = await t.call('POST', '/api/import/programs', { cookie, body })
+    expect(run.data.created).toBe(2)
+    const list = (await t.call('GET', '/api/programs', { cookie })).data
+    expect(list.map((p: { code: string }) => p.code).sort()).toEqual(['P-100', 'P-200', 'P-500'])
+    expect(list.find((p: { code: string }) => p.code === 'P-100')).toMatchObject({ name: 'Outreach North', address: null })
+    expect(list.find((p: { code: string }) => p.code === 'P-200')).toMatchObject({ name: 'Day Program', address: '12 Mill Lane', isActive: true, assetsHeld: 0 })
+    expect(list.find((p: { code: string }) => p.code === 'P-500').address).toBeNull()
+    expect((await t.call('GET', '/api/assignments', { cookie })).data).toHaveLength(assignments)
+
+    const audit = (await t.call('GET', '/api/audit?action=import', { cookie })).data
+    expect(audit.entries.map((e: { details: string; entityType: string }) => `${e.entityType}:${e.details}`).sort()).toEqual(['program:program_id=P-200 · Day Program', 'program:program_id=P-500 · Riverside'])
+    expect((await t.call('POST', '/api/import/programs', { cookie, body })).data.created).toBe(0)
   })
 
   it('reports rows over the limits of Add employee as errors and does not create them', async () => {
     const t = await setup()
     const cookie = await t.asAdmin()
-    const csv = [
-      'employee_id,first_name,last_name,department,job_title',
-      `${'E'.repeat(200)},Rosa,Delgado,Intake,Coordinator`,
-      `E-2001,${'R'.repeat(500)},Delgado,Intake,Coordinator`,
-      `E-2002,Wen,Lee,${'D'.repeat(81)},Analyst`,
-      'E-2003,Wen,Lee,Intake,Analyst',
-    ].join('\r\n')
-
-    const preview = await t.call('POST', '/api/employees/import/preview', { cookie, body: { csv } })
+    const body = rowsOf(
+      { code: 'E'.repeat(200), firstName: 'Rosa', lastName: 'Delgado' },
+      { code: 'E-2001', firstName: 'R'.repeat(300), lastName: 'Delgado' },
+      { code: 'E-2002', firstName: 'Wen', lastName: 'Lee', department: 'D'.repeat(81) },
+      { code: 'E-2003', firstName: 'Wen', lastName: 'Lee', department: 'Intake' },
+    )
+    const preview = await t.call('POST', '/api/import/employees/preview', { cookie, body })
     expect(preview.data.summary).toEqual({ read: 4, create: 1, duplicates: 0, errors: 3 })
-    expect(preview.data.rows.map((r: { result: string }) => r.result)).toEqual(['error', 'error', 'error', 'new'])
-    expect(preview.data.rows[0].message).toMatch(/Row 2.*employee_id.*40 characters/)
-    expect(preview.data.rows[1].message).toMatch(/Row 3.*first_name.*80 characters/)
-    expect(preview.data.rows[2].message).toMatch(/Row 4.*department.*80 characters/)
+    expect(preview.data.rows[0].message).toMatch(/Row 2.*Employee ID.*40 characters/)
+    expect(preview.data.rows[1].message).toMatch(/Row 3.*First name.*80 characters/)
+    expect(preview.data.rows[2].message).toMatch(/Row 4.*Department.*80 characters/)
 
-    const run = await t.call('POST', '/api/employees/import', { cookie, body: { csv } })
+    const run = await t.call('POST', '/api/import/employees', { cookie, body })
     expect(run.data.created).toBe(1)
     const codes = (await t.call('GET', '/api/employees', { cookie })).data.map((e: { code: string }) => e.code)
     expect(codes).toContain('E-2003')
     expect(codes).not.toContain('E-2001')
     expect(codes.every((code: string) => code.length <= 40)).toBe(true)
+  })
+
+  it('refuses other record types, too many rows, an empty file and a visitor who is not signed in', async () => {
+    const t = await setup()
+    const cookie = await t.asAdmin()
+    const one = rowsOf({ code: 'E-3000', firstName: 'Ana', lastName: 'Cole' })
+    for (const type of ['assets', 'assignments', 'digital-assets', 'users', '__proto__']) {
+      const refused = await t.call('POST', `/api/import/${type}`, { cookie, body: one })
+      expect(refused.status).toBe(404)
+      expect(refused.data.error).toBe('not_importable')
+      expect((await t.call('POST', `/api/import/${type}/preview`, { cookie, body: one })).status).toBe(404)
+    }
+
+    const many = { rows: Array.from({ length: 2001 }, (_, i) => ({ row: i + 2, values: { code: `E-${i + 5000}`, firstName: 'A', lastName: 'B' } })) }
+    const tooMany = await t.call('POST', '/api/import/employees', { cookie, body: many })
+    expect(tooMany.status).toBe(422)
+    expect(tooMany.data.message).toBe('A file can hold at most 2,000 rows')
+    expect((await t.call('POST', '/api/import/employees/preview', { cookie, body: { rows: [] } })).data.message).toBe('The file has no rows to import')
+    expect((await t.call('POST', '/api/import/employees', { cookie, body: { csv: 'employee_id\nE-1\n' } })).status).toBe(422)
+    expect((await t.call('POST', '/api/import/employees', { body: one })).status).toBe(401)
+    expect((await t.call('GET', '/api/employees', { cookie })).data.map((e: { code: string }) => e.code)).not.toContain('E-3000')
+
+    // Exactly 2,000 goes through, in one transaction.
+    many.rows.pop()
+    expect((await t.call('POST', '/api/import/employees', { cookie, body: many })).data.created).toBe(2000)
   })
 
   it('names the field and the limit when an employee value is refused', async () => {

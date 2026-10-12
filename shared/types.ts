@@ -190,30 +190,20 @@ export interface EmployeeRow {
   createdAt: string
 }
 
-export interface ImportColumn {
-  name: string
-  required: boolean
-  /** 1-based column position in the file, or null when the header is missing. */
-  found: number | null
-}
+export type ImportResult = 'new' | 'duplicate' | 'error'
 
+/** One row of an import as the server judged it. `values` is keyed by the field keys of the record type's importer. */
 export interface ImportRow {
+  /** The row's number in the file, counting the header as row 1. */
   row: number
-  code: string
-  firstName: string
-  lastName: string
-  department: string
-  jobTitle: string
-  result: 'new' | 'duplicate' | 'error'
+  values: Record<string, string>
+  result: ImportResult
   message: string
 }
 
 export interface ImportPreview {
-  columns: ImportColumn[]
   rows: ImportRow[]
   summary: { read: number; create: number; duplicates: number; errors: number }
-  /** Set when the header row is unusable (e.g. a required column is missing). */
-  headerError: string | null
   /** Set once the import has been committed. */
   created?: number
 }

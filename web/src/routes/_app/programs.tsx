@@ -11,6 +11,8 @@ import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { Stacked } from '@/features/common/status.tsx'
 import { ProgramRowActions, QuickAddProgram } from '@/features/programs/program-parts.tsx'
+import { ExportButton } from '@/features/common/export-button.tsx'
+import { EXPORTS } from '@/lib/exports.ts'
 import { programsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
@@ -65,7 +67,7 @@ function ProgramsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Programs" description="A program can hold equipment the same way an employee does. One that has held an asset is deactivated, never deleted." />
+      <PageHeader title="Programs" description="A program can hold equipment the same way an employee does. One that has held an asset is deactivated, never deleted." actions={<ExportButton dataset={EXPORTS.programs} items={data} />} />
       <QuickAddProgram onAdded={setFlash} />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">

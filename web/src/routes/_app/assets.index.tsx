@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Download, Laptop } from 'lucide-react'
+import { Laptop } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { AssetRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -12,7 +12,8 @@ import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { QuickAddAsset } from '@/features/assets/quick-add.tsx'
 import { AssetStateBadge, AssetTagLink, DaysOut, HolderCell, RatingBadge, assetSearchText, stateLabel } from '@/features/common/status.tsx'
-import { downloadCsv, formatDate } from '@/lib/format.ts'
+import { ExportButton } from '@/features/common/export-button.tsx'
+import { EXPORTS } from '@/lib/exports.ts'
 import { assetsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
@@ -87,19 +88,7 @@ function AssetsPage() {
         title="Physical Assets"
         description="Every device on the register, with its current holder and latest condition."
         actions={
-          <Button
-            icon={<Download className="size-4" />}
-            disabled={data.length === 0}
-            onClick={() =>
-              downloadCsv(
-                'physical-assets.csv',
-                ['Asset tag', 'Type', 'Serial', 'Status', 'Assigned to', 'Employee ID', 'Department', 'Condition', 'Days out', 'Created'],
-                data.map((a) => [a.tag, a.type, a.serial, stateLabel(a.state), (a.holder ?? a.program)?.name, a.holder?.code, a.holder?.department, a.condition?.rating, a.daysOut, formatDate(a.createdAt)]),
-              )
-            }
-          >
-            Export CSV
-          </Button>
+          <ExportButton dataset={EXPORTS.assets} items={data} />
         }
       />
 

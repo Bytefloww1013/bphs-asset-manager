@@ -22,7 +22,7 @@ Five phases, each one committed and verified on its own, so you can stop or redi
 - [x] Phase 1: Rename "Assets" to "Physical Assets" (labels only)
 - [x] Phase 2: Programs
 - [x] Phase 3: Digital Assets and Digital Asset Types
-- [ ] Phase 4: Import/Export page
+- [x] Phase 4: Import/Export page
 - [ ] Phase 5: Docs and end-to-end check
 
 Programs comes before Import/Export because the import page needs that record type to exist, and Digital Assets comes before it because the export side covers them.

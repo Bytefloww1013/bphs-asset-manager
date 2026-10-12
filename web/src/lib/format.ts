@@ -1,5 +1,4 @@
 import { OVERDUE_DAYS } from '@shared/constants.ts'
-import { CSV_BOM, toCsv } from '@shared/csv.ts'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -63,16 +62,4 @@ export function plural(n: number, one: string, many = `${one}s`): string {
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')).toUpperCase()
-}
-
-/** Trigger a browser download of a CSV built in memory (Excel-friendly BOM, formula-safe cells). */
-export function downloadCsv(filename: string, header: string[], rows: (string | number | null | undefined)[][]) {
-  const url = URL.createObjectURL(new Blob([CSV_BOM + toCsv(header, rows)], { type: 'text/csv;charset=utf-8' }))
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.append(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

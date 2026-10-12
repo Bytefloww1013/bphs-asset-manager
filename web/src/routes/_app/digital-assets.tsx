@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { AppWindow, Download } from 'lucide-react'
+import { AppWindow } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { DigitalAssetRow, DigitalAssetState } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -11,7 +11,9 @@ import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { PersonCell, Stacked } from '@/features/common/status.tsx'
 import { DigitalAssetIdCell, DigitalAssetRowActions, DigitalStateBadge, QuickAddDigitalAsset, digitalStateLabel } from '@/features/digital-assets/digital-parts.tsx'
-import { downloadCsv, formatDate } from '@/lib/format.ts'
+import { ExportButton } from '@/features/common/export-button.tsx'
+import { EXPORTS } from '@/lib/exports.ts'
+import { formatDate } from '@/lib/format.ts'
 import { digitalAssetsQuery, lookupsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
@@ -64,19 +66,7 @@ function DigitalAssetsPage() {
         title="Digital Assets"
         description="Licenses and accounts, one seat per row, and who each is issued to. A seat is Active while someone holds it."
         actions={
-          <Button
-            icon={<Download className="size-4" />}
-            disabled={data.length === 0}
-            onClick={() =>
-              downloadCsv(
-                'digital-assets.csv',
-                ['Asset ID', 'Type', 'License/Account', 'Assigned Employee', 'Employee ID', 'Status', 'Issue Date'],
-                data.map((row) => [row.code, row.type, row.account, row.employee?.name, row.employee?.code, digitalStateLabel(row.state), row.issuedAt ? formatDate(row.issuedAt) : '']),
-              )
-            }
-          >
-            Export CSV
-          </Button>
+          <ExportButton dataset={EXPORTS.digitalAssets} items={data} />
         }
       />
       <QuickAddDigitalAsset onAdded={setFlash} />

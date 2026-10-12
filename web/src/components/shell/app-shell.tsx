@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet, useRouter } from '@tanstack/react-router'
 import {
   AppWindow,
+  ArrowDownUp,
   Building2,
   ChevronsUpDown,
   ClipboardList,
@@ -33,7 +34,7 @@ import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/audit' | '/users'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -63,6 +64,7 @@ function useNav(): { heading: string; items: NavEntry[] }[] {
       heading: 'Administration',
       items: [
         { to: '/lists', label: 'Lists', icon: ListChecks },
+        { to: '/import-export', label: 'Import/Export', icon: ArrowDownUp },
         { to: '/audit', label: 'Audit log', icon: ScrollText },
         { to: '/users', label: 'Users', icon: ShieldCheck, locked: !can(user.role, 'users.manage') },
       ],

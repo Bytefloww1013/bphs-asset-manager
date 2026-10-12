@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import {
   employeeCreateSchema,
   employeeUpdateSchema,
-  importSchema,
   userCreateSchema,
   userUpdateSchema,
 } from '../../shared/schemas.ts'
@@ -12,8 +11,6 @@ import {
   createEmployee,
   deleteEmployee,
   listEmployees,
-  previewImport,
-  runImport,
   setEmployeeArchived,
   updateEmployee,
 } from '../services/employees.ts'
@@ -24,8 +21,6 @@ export function employeeRoutes(db: Db) {
 
   app.get('/', (c) => c.json(listEmployees(db)))
   app.post('/', json(employeeCreateSchema), (c) => c.json(createEmployee(db, c.get('user'), c.req.valid('json')), 201))
-  app.post('/import/preview', json(importSchema), (c) => c.json(previewImport(db, c.req.valid('json').csv)))
-  app.post('/import', json(importSchema), (c) => c.json(runImport(db, c.get('user'), c.req.valid('json').csv)))
   app.patch('/:id', json(employeeUpdateSchema), (c) =>
     c.json(updateEmployee(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
   )

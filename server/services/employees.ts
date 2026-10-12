@@ -1,12 +1,10 @@
 import { eq, sql } from 'drizzle-orm'
-import { employeeCreateSchema, type EmployeeCreateInput, type EmployeeUpdateInput } from '../../shared/schemas.ts'
-import type { ImportColumn, ImportPreview, ImportRow, EmployeeRow } from '../../shared/types.ts'
+import type { EmployeeCreateInput, EmployeeUpdateInput } from '../../shared/schemas.ts'
+import type { EmployeeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
-import { parseCsv } from '../lib/csv.ts'
 import { conflict, notFound } from '../lib/errors.ts'
-import { describeRowProblem } from '../lib/rows.ts'
 import { fullName } from './refs.ts'
 
 interface RawEmployee {
@@ -164,118 +162,5 @@ export function deleteEmployee(db: Db, actor: Actor, id: number) {
     if (blocked) throw conflict(blocked.code, `${current.name} cannot be deleted. ${blocked.reason}`)
     tx.delete(employees).where(eq(employees.id, id)).run()
     writeAudit(tx, actor, { action: 'delete', entityType: 'employee', entityId: id, details: `employee_id=${current.code}` })
-  })
-}
-
-// ---- CSV import ---------------------------------------------------------------
-
-const COLUMNS = [
-  { name: 'employee_id', required: true },
-  { name: 'first_name', required: true },
-  { name: 'last_name', required: true },
-  { name: 'department', required: false },
-  { name: 'job_title', required: false },
-] as const
-
-const normalise = (header: string) => header.trim().toLowerCase().replace(/[\s-]+/g, '_')
-
-interface Candidate {
-  code: string
-  firstName: string
-  lastName: string
-  department: string
-  jobTitle: string
-}
-
-interface Parsed {
-  preview: ImportPreview
-  creates: Candidate[]
-}
-
-// The CSV header each field comes from, so a problem names the column the person sees in their file.
-const FIELD_COLUMNS = { code: 'employee_id', firstName: 'first_name', lastName: 'last_name', department: 'department', jobTitle: 'job_title' }
-
-/** What stops a row from being created, or null. Empty required cells are named together; the rest must fit Add employee. */
-function rowProblem(record: Candidate): string | null {
-  const lacking = [!record.code && 'employee_id', !record.firstName && 'first_name', !record.lastName && 'last_name'].filter(Boolean)
-  if (lacking.length > 0) return `missing ${lacking.join(', ')}`
-  const checked = employeeCreateSchema.safeParse(record)
-  return checked.success ? null : describeRowProblem(checked.error, FIELD_COLUMNS)
-}
-
-function analyse(db: DbLike, csv: string): Parsed {
-  const table = parseCsv(csv)
-  const header = (table[0] ?? []).map(normalise)
-  const columns: ImportColumn[] = COLUMNS.map((column) => {
-    const at = header.indexOf(column.name)
-    return { name: column.name, required: column.required, found: at === -1 ? null : at + 1 }
-  })
-  const missing = columns.filter((column) => column.required && column.found === null).map((column) => column.name)
-  const empty = { read: 0, create: 0, duplicates: 0, errors: 0 }
-  if (missing.length > 0) {
-    return {
-      preview: { columns, rows: [], summary: empty, headerError: `Missing required column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}.` },
-      creates: [],
-    }
-  }
-
-  const index = Object.fromEntries(columns.map((column) => [column.name, column.found === null ? -1 : column.found - 1]))
-  const cell = (row: string[], name: string) => (row[index[name]!] ?? '').trim()
-  const known = new Set(db.select({ code: employees.code }).from(employees).all().map((row) => row.code.toLowerCase()))
-  const rows: ImportRow[] = []
-  const creates: Parsed['creates'] = []
-  const summary = { ...empty }
-
-  table.slice(1).forEach((raw, i) => {
-    if (raw.every((value) => value.trim() === '')) return
-    const row = i + 2 // the header is row 1
-    const record = {
-      code: cell(raw, 'employee_id'),
-      firstName: cell(raw, 'first_name'),
-      lastName: cell(raw, 'last_name'),
-      department: cell(raw, 'department'),
-      jobTitle: cell(raw, 'job_title'),
-    }
-    summary.read += 1
-    const problem = rowProblem(record)
-    if (problem) {
-      summary.errors += 1
-      rows.push({ row, ...record, result: 'error', message: `Row ${row}: ${problem}` })
-    } else if (known.has(record.code.toLowerCase())) {
-      summary.duplicates += 1
-      rows.push({ row, ...record, result: 'duplicate', message: 'Skip: employee_id already exists' })
-    } else {
-      known.add(record.code.toLowerCase())
-      summary.create += 1
-      creates.push(record)
-      rows.push({ row, ...record, result: 'new', message: 'Create' })
-    }
-  })
-  return { preview: { columns, rows, summary, headerError: null }, creates }
-}
-
-export function previewImport(db: DbLike, csv: string): ImportPreview {
-  return analyse(db, csv).preview
-}
-
-/** Existing Employees are skipped, never updated; one Audit Log entry per Employee created. */
-export function runImport(db: Db, actor: Actor, csv: string): ImportPreview {
-  return db.transaction((tx) => {
-    const { preview, creates } = analyse(tx, csv)
-    for (const record of creates) {
-      const row = tx
-        .insert(employees)
-        .values({
-          code: record.code,
-          firstName: record.firstName,
-          lastName: record.lastName,
-          department: record.department || null,
-          jobTitle: record.jobTitle || null,
-        })
-        .returning({ id: employees.id })
-        .get()
-      writeAudit(tx, actor, { action: 'import', entityType: 'employee', entityId: row.id, details: `employee_id=${record.code}` })
-    }
-    return { ...preview, created: creates.length }
   })
 }
