@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **slices 1.1 and 1.2 done 2026-10-12; next is slice 1.3, people pickers.** The rich-text sanitiser, editor and read-only view are built; no grievance screen or table exists yet. Written against `main` at `bb028a3`.
+Status: **slices 1.1 to 1.3 done 2026-10-12; next is slice 1.4, workspace shell, permissions and audit writer.** The rich-text sanitiser, editor and read-only view and the people picker are built; no grievance screen or table exists yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -10,7 +10,7 @@ A slice is ticked when it is finished and committed.
 
 - [x] 1.1 Feasibility checks (2026-10-12)
 - [x] 1.2 Rich text, end to end (2026-10-12)
-- [ ] 1.3 People pickers
+- [x] 1.3 People pickers (2026-10-12)
 - [ ] 1.4 Workspace shell, permissions, audit writer
 - [ ] 2.1 Data and categories
 - [ ] 2.2 Create
@@ -143,6 +143,16 @@ Done when: unit tests show script tags, event handlers, `javascript:` links and 
 - `web/src/components/ui/combobox.tsx`: a multi-select variant with removable chips, built on the existing single-select. Searches by name and Employee ID, offers active employees only, fully keyboard-operable.
 
 Done when: it can be used with Tab, arrows, Enter and Backspace alone.
+
+**Results (2026-10-12).** Checked on a production build with the keyboard alone, then with the pointer, in headless Chrome 155 and Firefox: 34 checks, all passing in both. The check page is deleted.
+
+- `MultiCombobox` in `web/src/components/ui/combobox.tsx` is the general chip picker. It shares its search and its list with the single-select `Combobox`, which was refactored to use them and behaves as before.
+- `PeoplePicker` in `web/src/features/grievances/people-picker.tsx` is the one the grievance forms use. It takes the employee list and offers only active employees, searched by name and Employee ID. `exclude` keeps out people who are in the grievance's other list. It works as the child of a `Field`.
+- Things later slices should know:
+  - Someone already chosen keeps their chip after they are archived, but the chip does not say "archived". The edit page in slice 4.2 should decide whether it needs to.
+  - Enter adds the highlighted match only while the list is open. With the list closed, Enter submits the form, as in any text field.
+  - The keys beyond the brief: Left arrow from the start of the text walks back through the chips, Delete or Backspace removes the chip in focus, Home and End jump along them. Chips are not tab stops, so one Tab leaves the field.
+  - No unit tests: the project has no browser test environment (vitest covers `server/` and `shared/` only), so the behaviour was checked in real browsers instead.
 
 ### Slice 1.4: Workspace shell, permissions, audit writer
 

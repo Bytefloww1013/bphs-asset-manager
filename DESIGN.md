@@ -255,6 +255,7 @@ Gently rounded and consistent: 8px on controls (buttons, inputs, selects, chips,
 - **Style:** Record White, 1px Hairline Strong border, 8px radius, a faint inset shadow; label above in Label weight, hint or error beneath in Caption.
 - **Focus:** Border turns Cobalt Action with a 3px soft cobalt halo. **Error:** border and message in Alert Red, announced with `role="alert"`. **Disabled:** Sunken fill, Ink Three text.
 - **Combobox:** The same field with a type-ahead list in a portal; opens on click or typing, not on focus; arrows move, Enter or Tab accepts.
+- **Chip picker:** The combobox for several items, used to pick people. The field grows to as many rows as it needs; each choice is a 28px chip (Sunken, Hairline, 6px radius) with the name and an X, and the text box shares the last row. Items already chosen leave the list. Enter or Tab adds the highlighted match; the list closes after Enter and stays open after a click, so several can be clicked in a row. Backspace in the empty text box removes the last chip. Left arrow from the start of the text walks back through the chips, where Backspace or Delete removes the one in focus and focus stays in place. The whole field is one tab stop, and each addition and removal is announced. A disabled picker shows its chips with no X.
 - **Rating chips:** A radio group of chips. The selected chip shows a check and takes its rating's tint, so selection never relies on colour.
 
 ### Badges and status
