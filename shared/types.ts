@@ -184,6 +184,8 @@ export interface EmployeeRow {
   assetsHeld: number
   /** Digital assets issued to them now. Like a physical asset, each one keeps them from being archived. */
   digitalHeld: number
+  /** Grievances they own that are not Closed or Voided. Each one keeps them from being archived until it has another owner. */
+  openGrievancesOwned: number
   hasHistory: boolean
   /** Why this employee cannot be deleted, as a sentence, or null when they can be. */
   deleteBlocked: string | null

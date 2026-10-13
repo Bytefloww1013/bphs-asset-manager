@@ -386,6 +386,15 @@ Migration `0010_grievance_versions`:
 - `server/services/employees.ts`: an employee named anywhere on a grievance (involved, management, owner, documented by) cannot be deleted; the reason shown says "Named on a grievance" without giving its ID or title. An employee who owns a grievance that is not Closed or Voided cannot be archived until it is reassigned.
 - Tests for both, and for the existing employee rules still passing.
 
+**Results (2026-10-13).** Both guards are in `server/services/employees.ts`, with 2 new tests; 161 tests pass and typecheck is clean.
+
+- Delete: the count that blocks deleting now also takes in entries documented by an account linked to the employee, beside owner, involved and management. The reason is unchanged, "Named on a grievance. Archive instead; history is never deleted.", and gives no ID or title.
+- Archive: an employee who owns a grievance that is not Closed or Voided is refused with 409 `owns_grievances` and a message that gives the number only. Resolved and Reopened count as not closed. Closing it, voiding it or giving it another owner lifts the block.
+- `EmployeeRow` gained `openGrievancesOwned`, so the Employees page shows the reason on the Archive menu item before it is tried. This is a number only, and anyone who can list employees can see it.
+- Known limit: an entry records who documented it by account, and by name as text, not by employee. So "documented by" holds an employee only while their account is linked to them. Once the account is unlinked and nothing else names them, they can be deleted; the entry keeps the name. A test states this.
+- Known limit: a former owner who is no longer named anywhere on the grievance can be deleted. The timeline keeps their name as text.
+- Browser check on a production build: the Archive item read "Owns 1 grievance not yet closed. Give it to another owner first." and was disabled; after the owner was changed it was enabled and archiving went through.
+
 ## 8. Phase 5: Grievance Audit Log
 
 ### Slice 5.1: Page and export

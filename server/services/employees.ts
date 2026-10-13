@@ -22,6 +22,7 @@ interface RawEmployee {
   digitalTotal: number
   assessed: number
   grievances: number
+  grievancesOpenOwned: number
   account: string | null
 }
 
@@ -49,6 +50,7 @@ function toRow(row: RawEmployee): EmployeeRow {
     state: row.archivedAt ? 'archived' : 'active',
     assetsHeld: row.held,
     digitalHeld: row.digitalHeld,
+    openGrievancesOwned: row.grievancesOpenOwned,
     hasHistory: row.total > 0 || row.digitalTotal > 0,
     deleteBlocked: deleteBlocked(row)?.reason ?? null,
     createdAt: new Date(row.createdAt).toISOString(),
@@ -65,7 +67,9 @@ const listRaw = (db: DbLike, id?: number) =>
              (select count(*) from digital_assignments d where d.employee_id = e.id and d.returned_at is null) as digitalHeld,
              (select count(*) from digital_assignments d where d.employee_id = e.id) as digitalTotal,
              (select count(*) from conditions c where c.assessed_by_id = e.id) as assessed,
-             (select count(*) from grievances g where g.owner_id = e.id) + (select count(*) from grievance_people p where p.employee_id = e.id) as grievances,
+             (select count(*) from grievances g where g.owner_id = e.id) + (select count(*) from grievance_people p where p.employee_id = e.id)
+               + (select count(*) from grievance_entries x join users du on du.id = x.documented_by_user_id where du.employee_id = e.id) as grievances,
+             (select count(*) from grievances g where g.owner_id = e.id and g.status not in ('closed', 'voided')) as grievancesOpenOwned,
              (select min(u.email) from users u where u.employee_id = e.id) as account
       from employees e left join assignments a on a.employee_id = e.id
       ${id ? sql`where e.id = ${id}` : sql``}
@@ -145,6 +149,11 @@ export function setEmployeeArchived(db: Db, actor: Actor, id: number, archived: 
     }
     if (archived && current.digitalHeld > 0) {
       throw conflict('holds_assets', `${current.name} still has ${current.digitalHeld} digital asset(s). Unassign them before archiving.`)
+    }
+    // A grievance that is still open needs an owner who is here. Says how many, never which.
+    if (archived && current.openGrievancesOwned > 0) {
+      const n = current.openGrievancesOwned
+      throw conflict('owns_grievances', `${current.name} owns ${n} ${n === 1 ? 'grievance that is' : 'grievances that are'} not closed. Give ${n === 1 ? 'it' : 'them'} to another owner before archiving.`)
     }
     tx.update(employees).set({ archivedAt: archived ? new Date() : null }).where(eq(employees.id, id)).run()
     writeAudit(tx, actor, {

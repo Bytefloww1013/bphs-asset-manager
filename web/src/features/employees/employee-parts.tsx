@@ -125,7 +125,9 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
               ? `Holds ${employee.assetsHeld} asset${employee.assetsHeld === 1 ? '' : 's'}. Return them first.`
               : employee.digitalHeld > 0
                 ? `Holds ${plural(employee.digitalHeld, 'digital asset')}. Unassign them first.`
-                : undefined,
+                : employee.openGrievancesOwned > 0
+                  ? `Owns ${plural(employee.openGrievancesOwned, 'grievance')} not yet closed. Give ${employee.openGrievancesOwned === 1 ? 'it' : 'them'} to another owner first.`
+                  : undefined,
         },
     {
       label: 'Delete',

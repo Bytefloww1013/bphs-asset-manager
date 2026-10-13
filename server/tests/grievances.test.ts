@@ -916,3 +916,61 @@ describe('editing a grievance', () => {
   })
 })
 
+
+describe('grievance guards on employees', () => {
+  const entryBody = { kind: 'action', occurredAt: '2026-03-02T09:00:00.000Z', title: 'Met with Dana', shortDescription: 'A first meeting.', body: '<p>We met.</p>' }
+
+  it('keeps whoever documented an entry from being deleted, for as long as their account is linked to them', async () => {
+    const t = await setup()
+    const { body } = grievanceFixture(t)
+    const writer = t.db.insert(employees).values({ code: 'E-2005', firstName: 'Wren', lastName: 'Abara' }).returning().get()
+    t.sqlite.prepare('update users set employee_id = ? where id = ?').run(writer.id, t.adminUser.id)
+    const cookie = await t.asSuper()
+    const made = await t.call('POST', '/api/grievances', { cookie, body })
+    expect((await t.call('POST', `/api/grievances/${made.data.code}/entries`, { cookie: await t.asAdmin(), body: entryBody })).status).toBe(201)
+
+    // The grievance is the reason given, ahead of the linked account, and it names nothing.
+    const res = await t.call('DELETE', `/api/employees/${writer.id}`, { cookie })
+    expect(res.status).toBe(409)
+    expect(res.data.message).toMatch(/Named on a grievance\. Archive instead/)
+    expect(res.data.message).not.toMatch(/GR-|Shift swaps|Met with Dana/)
+
+    // An entry knows its writer by account. Once the account is unlinked nothing ties the employee to it; the entry keeps the name as text.
+    t.sqlite.prepare('update users set employee_id = null where id = ?').run(t.adminUser.id)
+    expect((await t.call('DELETE', `/api/employees/${writer.id}`, { cookie })).status).toBe(204)
+    expect(t.sqlite.prepare('select documented_by_label as label from grievance_entries where documented_by_user_id = ?').get(t.adminUser.id)).toEqual({ label: 'Marcus Oyelaran' })
+  })
+
+  it('keeps the owner of a grievance that is not closed or voided from being archived, until it has another owner', async () => {
+    const t = await setup()
+    const { ines, body } = grievanceFixture(t)
+    const cookie = await t.asSuper()
+    const owner = t.db.insert(employees).values({ code: 'E-2004', firstName: 'Owen', lastName: 'Marsh' }).returning().get()
+    const codes: string[] = []
+    for (let i = 0; i < 3; i++) codes.push((await t.call('POST', '/api/grievances', { cookie, body: { ...body, ownerId: owner.id } })).data.code)
+    const archive = () => t.call('POST', `/api/employees/${owner.id}/archive`, { cookie })
+    const owned = async () => ((await t.call('GET', '/api/employees', { cookie })).data as { id: number; openGrievancesOwned: number }[]).find((row) => row.id === owner.id)!.openGrievancesOwned
+
+    const refused = await archive()
+    expect(refused.status).toBe(409)
+    expect(refused.data.error).toBe('owns_grievances')
+    expect(refused.data.message).toBe('Owen Marsh owns 3 grievances that are not closed. Give them to another owner before archiving.')
+    expect(refused.data.message).not.toMatch(/GR-|Shift swaps/)
+    expect(await owned()).toBe(3)
+
+    // Closing one, voiding one and handing the last to someone else each take it off the count. Resolved is still open to change, so it counts.
+    expect((await t.call('POST', `/api/grievances/${codes[0]}/status`, { cookie, body: { status: 'closed', note: 'Done.' } })).status).toBe(200)
+    expect((await t.call('POST', `/api/grievances/${codes[1]}/void`, { cookie, body: { reason: 'Entered twice.' } })).status).toBe(200)
+    expect((await t.call('POST', `/api/grievances/${codes[2]}/status`, { cookie, body: { status: 'resolved', note: 'Agreed.' } })).status).toBe(200)
+    expect(await owned()).toBe(1)
+    expect((await archive()).data.message).toBe('Owen Marsh owns 1 grievance that is not closed. Give it to another owner before archiving.')
+    expect((await t.call('POST', `/api/grievances/${codes[2]}/owner`, { cookie, body: { ownerId: ines.id, note: 'Owen is leaving.' } })).status).toBe(200)
+    expect(await owned()).toBe(0)
+
+    const done = await archive()
+    expect(done.status).toBe(200)
+    expect(done.data.state).toBe('archived')
+    // Someone only named on a grievance, or who owned one that is finished, is archived freely and is still not deletable.
+    expect((await t.call('DELETE', `/api/employees/${owner.id}`, { cookie })).status).toBe(409)
+  })
+})
