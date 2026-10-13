@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
 import { grievanceStatusLabel } from '@shared/constants.ts'
 import { SUPER_ADMIN_ONLY, canManageGrievance, grievanceManageReason } from '@shared/permissions.ts'
@@ -23,11 +24,12 @@ export function ownerAccountNote(owner: { id: number; name: string } | null, acc
 type Task = 'status' | 'owner' | 'void'
 
 /**
- * Change status, Change owner and Void, for a grievance's page. Someone who may not use one still sees it, with the reason;
+ * Edit, Change status, Change owner and Void, for a grievance's page. Someone who may not use one still sees it, with the reason;
  * the server refuses them whatever the page shows. A voided grievance offers none of them.
  */
 export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) {
   const user = useUser()
+  const navigate = useNavigate()
   const canVoid = useCan('grievance.void')
   const [task, setTask] = useState<Task | null>(null)
   if (grievance.status === 'voided') return null
@@ -36,6 +38,9 @@ export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <Button disabledReason={notOwner ?? (grievance.status === 'closed' ? 'Reopen it before editing it.' : undefined)} onClick={() => void navigate({ to: '/grievances/$code/edit', params: { code: grievance.code } })}>
+        Edit
+      </Button>
       <Button disabledReason={notOwner} onClick={() => setTask('status')}>
         Change status
       </Button>

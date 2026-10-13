@@ -367,6 +367,20 @@ Migration `0010_grievance_versions`:
 - `grievances.$code.versions.tsx`: each earlier version, who changed it, when and why, with the full text of that version.
 - Closed and Voided grievances cannot be edited.
 
+**Results (2026-10-13).** Built as planned; typecheck clean, 159 tests passing (7 of them new), checked in headless Chrome 155 on a production build as the owning Admin, another Admin and a Super Admin, at 1360 and 390 wide: 34 checks, all passing. Firefox was not run. Screenshots are in `qa-shots/slice-4.2/` (not committed).
+
+- **Routes.** `PATCH /api/grievances/:code` takes the seven editable fields, `version` and `reason`, and answers with the grievance as it now is. `GET /api/grievances/:code/versions` lists what it said before each edit, the latest first; either role can read it. Both are in `server/services/grievance-versions.ts`, which goes through `findToManage`.
+- **Table.** `grievance_versions` holds the title, short description, body (HTML and text), Date Made, the category's name, and the people as role, Employee ID and name: text, not links, so a version reads the same whatever is later renamed or archived. It is append-only by triggers, like the timeline, and has no route that changes or removes a row. Version N's row is what the grievance said as version N, with who replaced it, when and why.
+- **Decisions.**
+  - The owner is not edited here; the form shows it and points to Change owner on the grievance's page. Status is likewise left to its own sheet.
+  - A save from a version that has been replaced is 409 `stale_version`, naming who got in first. The page keeps what was typed so it can be copied, disables Save, and offers "Discard my changes and reload", which starts the form again from the grievance as it now stands.
+  - A save that changes nothing is 409 `unchanged`, and the page keeps Save disabled until something differs. A Closed grievance is 409 `grievance_sealed` ("Reopen it before editing it."); a Voided one is 409 `grievance_voided`.
+  - Someone already named stays named after they are archived, and their chip says "(archived)"; only a person being added must be active. A category no longer in use stays on the grievance that has it, and is refused only when changed to.
+  - The automatic entry is titled "Edited: " and the fields that changed, by their form labels, with the reason as its body. The audit entry (`update`) has the ID, the new title and the same field names: never the reason, nor the text before or after.
+  - The create form moved to `web/src/features/grievances/form.tsx` (`GrievanceForm`), which both pages use. Leaving a changed edit form asks first, as the create form does.
+  - The Edit button is first in `GrievanceActions`, disabled with the owner reason or, when Closed, "Reopen it before editing it."; opening the edit address directly shows the same reason in place of the form. Once a grievance has been edited its Grievance panel says which version it is and links to "Earlier versions".
+- **For later slices.** Slice 6.2's case file can read earlier versions with `listGrievanceVersions`. The test that no route changes an entry no longer tries PATCH on the grievance itself, which now exists.
+
 ### Slice 4.3: Guards on employees
 
 - `server/services/employees.ts`: an employee named anywhere on a grievance (involved, management, owner, documented by) cannot be deleted; the reason shown says "Named on a grievance" without giving its ID or title. An employee who owns a grievance that is not Closed or Voided cannot be archived until it is reassigned.

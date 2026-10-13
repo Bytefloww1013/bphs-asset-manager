@@ -30,6 +30,8 @@ import { Route as AppGrievancesIndexRouteImport } from './routes/_app/grievances
 import { Route as AppGrievancesCategoriesRouteImport } from './routes/_app/grievances.categories'
 import { Route as AppGrievancesNewRouteImport } from './routes/_app/grievances.new'
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
+import { Route as AppGrievancesCodeEditRouteImport } from './routes/_app/grievances.$code.edit'
+import { Route as AppGrievancesCodeVersionsRouteImport } from './routes/_app/grievances.$code.versions'
 import { Route as AppGrievancesCodeEntriesSeqRouteImport } from './routes/_app/grievances.$code.entries.$seq'
 import { Route as AppGrievancesCodeEntriesNewRouteImport } from './routes/_app/grievances.$code.entries.new'
 
@@ -137,6 +139,17 @@ const AppGrievancesCodeIndexRoute = AppGrievancesCodeIndexRouteImport.update({
   path: '/$code/',
   getParentRoute: () => AppGrievancesRoute,
 } as any)
+const AppGrievancesCodeEditRoute = AppGrievancesCodeEditRouteImport.update({
+  id: '/$code/edit',
+  path: '/$code/edit',
+  getParentRoute: () => AppGrievancesRoute,
+} as any)
+const AppGrievancesCodeVersionsRoute =
+  AppGrievancesCodeVersionsRouteImport.update({
+    id: '/$code/versions',
+    path: '/$code/versions',
+    getParentRoute: () => AppGrievancesRoute,
+  } as any)
 const AppGrievancesCodeEntriesSeqRoute =
   AppGrievancesCodeEntriesSeqRouteImport.update({
     id: '/$code/entries/$seq',
@@ -170,6 +183,8 @@ export interface FileRoutesByFullPath {
   '/assets/': typeof AppAssetsIndexRoute
   '/employees/': typeof AppEmployeesIndexRoute
   '/grievances/': typeof AppGrievancesIndexRoute
+  '/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
+  '/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
   '/grievances/$code/': typeof AppGrievancesCodeIndexRoute
   '/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
@@ -193,6 +208,8 @@ export interface FileRoutesByTo {
   '/assets': typeof AppAssetsIndexRoute
   '/employees': typeof AppEmployeesIndexRoute
   '/grievances': typeof AppGrievancesIndexRoute
+  '/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
+  '/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
   '/grievances/$code': typeof AppGrievancesCodeIndexRoute
   '/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
@@ -219,6 +236,8 @@ export interface FileRoutesById {
   '/_app/assets/': typeof AppAssetsIndexRoute
   '/_app/employees/': typeof AppEmployeesIndexRoute
   '/_app/grievances/': typeof AppGrievancesIndexRoute
+  '/_app/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
+  '/_app/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
   '/_app/grievances/$code/': typeof AppGrievancesCodeIndexRoute
   '/_app/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/_app/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
@@ -245,6 +264,8 @@ export interface FileRouteTypes {
     | '/assets/'
     | '/employees/'
     | '/grievances/'
+    | '/grievances/$code/edit'
+    | '/grievances/$code/versions'
     | '/grievances/$code/'
     | '/grievances/$code/entries/$seq'
     | '/grievances/$code/entries/new'
@@ -268,6 +289,8 @@ export interface FileRouteTypes {
     | '/assets'
     | '/employees'
     | '/grievances'
+    | '/grievances/$code/edit'
+    | '/grievances/$code/versions'
     | '/grievances/$code'
     | '/grievances/$code/entries/$seq'
     | '/grievances/$code/entries/new'
@@ -293,6 +316,8 @@ export interface FileRouteTypes {
     | '/_app/assets/'
     | '/_app/employees/'
     | '/_app/grievances/'
+    | '/_app/grievances/$code/edit'
+    | '/_app/grievances/$code/versions'
     | '/_app/grievances/$code/'
     | '/_app/grievances/$code/entries/$seq'
     | '/_app/grievances/$code/entries/new'
@@ -453,6 +478,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGrievancesCodeIndexRouteImport
       parentRoute: typeof AppGrievancesRoute
     }
+    '/_app/grievances/$code/edit': {
+      id: '/_app/grievances/$code/edit'
+      path: '/$code/edit'
+      fullPath: '/grievances/$code/edit'
+      preLoaderRoute: typeof AppGrievancesCodeEditRouteImport
+      parentRoute: typeof AppGrievancesRoute
+    }
+    '/_app/grievances/$code/versions': {
+      id: '/_app/grievances/$code/versions'
+      path: '/$code/versions'
+      fullPath: '/grievances/$code/versions'
+      preLoaderRoute: typeof AppGrievancesCodeVersionsRouteImport
+      parentRoute: typeof AppGrievancesRoute
+    }
     '/_app/grievances/$code/entries/$seq': {
       id: '/_app/grievances/$code/entries/$seq'
       path: '/$code/entries/$seq'
@@ -474,6 +513,8 @@ interface AppGrievancesRouteChildren {
   AppGrievancesCategoriesRoute: typeof AppGrievancesCategoriesRoute
   AppGrievancesNewRoute: typeof AppGrievancesNewRoute
   AppGrievancesIndexRoute: typeof AppGrievancesIndexRoute
+  AppGrievancesCodeEditRoute: typeof AppGrievancesCodeEditRoute
+  AppGrievancesCodeVersionsRoute: typeof AppGrievancesCodeVersionsRoute
   AppGrievancesCodeIndexRoute: typeof AppGrievancesCodeIndexRoute
   AppGrievancesCodeEntriesSeqRoute: typeof AppGrievancesCodeEntriesSeqRoute
   AppGrievancesCodeEntriesNewRoute: typeof AppGrievancesCodeEntriesNewRoute
@@ -483,6 +524,8 @@ const AppGrievancesRouteChildren: AppGrievancesRouteChildren = {
   AppGrievancesCategoriesRoute: AppGrievancesCategoriesRoute,
   AppGrievancesNewRoute: AppGrievancesNewRoute,
   AppGrievancesIndexRoute: AppGrievancesIndexRoute,
+  AppGrievancesCodeEditRoute: AppGrievancesCodeEditRoute,
+  AppGrievancesCodeVersionsRoute: AppGrievancesCodeVersionsRoute,
   AppGrievancesCodeIndexRoute: AppGrievancesCodeIndexRoute,
   AppGrievancesCodeEntriesSeqRoute: AppGrievancesCodeEntriesSeqRoute,
   AppGrievancesCodeEntriesNewRoute: AppGrievancesCodeEntriesNewRoute,

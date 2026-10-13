@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { check, type AnySQLiteColumn, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, Role } from '../../shared/constants.ts'
+import type { GrievanceVersionPerson } from '../../shared/types.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
 const createdAt = () => ms('created_at').notNull().default(sql`(unixepoch() * 1000)`)
@@ -320,6 +321,38 @@ export const grievancePeople = sqliteTable(
     index('ix_grievance_people_employee').on(t.employeeId),
     check('ck_grievance_people_role', sql`${t.role} in ('employee', 'management')`),
   ],
+)
+
+/**
+ * A grievance as it stood before an edit replaced it: one row for each earlier version, written by the edit. Append-only, and
+ * triggers in the migration hold it to that. Names are kept as text, as they were, so a later rename changes nothing here.
+ */
+export const grievanceVersions = sqliteTable(
+  'grievance_versions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    grievanceId: integer('grievance_id')
+      .notNull()
+      .references(() => grievances.id, { onDelete: 'restrict' }),
+    /** The version this row holds: 1 for the grievance as first recorded. */
+    version: integer('version').notNull(),
+    title: text('title').notNull(),
+    shortDescription: text('short_description').notNull(),
+    bodyHtml: text('body_html').notNull(),
+    bodyText: text('body_text').notNull(),
+    dateMade: text('date_made').notNull(),
+    categoryName: text('category_name').notNull(),
+    /** Everyone named on it then, as JSON: `[{ role, code, name }]`. */
+    people: text('people', { mode: 'json' }).$type<GrievanceVersionPerson[]>().notNull(),
+    /** Who replaced this version, when, and the reason they gave. */
+    changedByUserId: integer('changed_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    changedByLabel: text('changed_by_label').notNull(),
+    changedAt: ms('changed_at').notNull(),
+    reason: text('reason').notNull(),
+  },
+  (t) => [uniqueIndex('uq_grievance_versions').on(t.grievanceId, t.version)],
 )
 
 /**

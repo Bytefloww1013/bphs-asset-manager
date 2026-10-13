@@ -18,7 +18,8 @@ interface PeoplePickerProps {
 }
 
 const getKey = (person: EmployeeRow) => person.id
-const getLabel = (person: EmployeeRow) => person.name
+// Someone archived since they were named is no longer offered, and says so where they still stand.
+const getLabel = (person: EmployeeRow) => (person.state === 'archived' ? `${person.name} (archived)` : person.name)
 const getSearch = (person: EmployeeRow) => person.code
 
 /**

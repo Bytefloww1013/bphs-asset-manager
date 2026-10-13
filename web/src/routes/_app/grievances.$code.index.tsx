@@ -108,7 +108,18 @@ function GrievancePage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Grievance" description="As it was recorded." className="border-b border-line" />
+        <PanelHeader
+          title="Grievance"
+          description={grievance.version === 1 ? 'As it was recorded.' : `Version ${grievance.version}. It has been edited since it was recorded.`}
+          actions={
+            grievance.version === 1 ? null : (
+              <Link to="/grievances/$code/versions" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
+                Earlier versions
+              </Link>
+            )
+          }
+          className="border-b border-line"
+        />
         <RichTextView html={grievance.bodyHtml} className="max-w-[75ch] px-5 py-5" />
       </Panel>
 

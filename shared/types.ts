@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceEntryKind, GrievanceStatus, Role } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, Role } from './constants.ts'
 
 // ---- Auth ---------------------------------------------------------------
 export interface SessionUser {
@@ -247,6 +247,30 @@ export interface GrievancePerson {
   code: string
   name: string
   archived: boolean
+}
+
+/** Someone named on an earlier version of a grievance, as they were called then. */
+export interface GrievanceVersionPerson {
+  role: GrievancePersonRole
+  code: string
+  name: string
+}
+
+/** A grievance as it stood before an edit replaced it. */
+export interface GrievanceVersion {
+  /** 1 for the grievance as first recorded. */
+  version: number
+  title: string
+  shortDescription: string
+  bodyHtml: string
+  dateMade: string
+  category: string
+  employees: { code: string; name: string }[]
+  management: { code: string; name: string }[]
+  /** Who replaced this version, when, and the reason they gave. */
+  changedBy: string
+  changedAt: string
+  reason: string
 }
 
 /** One grievance in full. */

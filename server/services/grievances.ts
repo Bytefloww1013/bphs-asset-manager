@@ -172,7 +172,7 @@ export function listGrievances(db: DbLike, query: GrievanceListQuery): Grievance
 }
 
 /** Refuses anyone who is not in the directory or has been archived: a new grievance names people who are here now. */
-function requireActiveEmployees(db: DbLike, ids: number[], field: string) {
+export function requireActiveEmployees(db: DbLike, ids: number[], field: string) {
   const found = db.select({ id: employees.id, archivedAt: employees.archivedAt }).from(employees).where(inArray(employees.id, ids)).all()
   if (found.length !== ids.length) throw invalid('Someone chosen is no longer in the employee directory.', { field })
   if (found.some((row) => row.archivedAt)) throw invalid('Someone chosen has been archived. Choose active employees only.', { field })
@@ -231,7 +231,7 @@ export function listGrievanceAccountHolders(db: DbLike): number[] {
  * The grievance as it stands, for a change to it. Changing a grievance is for its owner's account and for Super Admins,
  * whatever the page showed; and a voided one is a record only.
  */
-function findToManage(tx: DbLike, actor: Actor, code: string): GrievanceDetail {
+export function findToManage(tx: DbLike, actor: Actor, code: string): GrievanceDetail {
   const grievance = getGrievance(tx, { code })
   if (!canManageGrievance(actor, grievance.owner.id)) throw forbidden(grievanceManageReason(grievance.owner.name))
   if (grievance.status === 'voided') throw conflict('grievance_voided', `${grievance.code} has been voided. It is kept as a record and cannot be changed.`)

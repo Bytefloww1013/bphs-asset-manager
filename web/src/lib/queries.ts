@@ -15,6 +15,7 @@ import type {
   GrievanceDetail,
   GrievanceEntry,
   GrievanceList,
+  GrievanceVersion,
   Lookups,
   ProgramRow,
   SessionUser,
@@ -118,6 +119,13 @@ export const grievanceEntriesQuery = (code: string) =>
   queryOptions({
     queryKey: ['grievances', 'detail', code.toUpperCase(), 'entries'],
     queryFn: () => api.get<GrievanceEntry[]>(`/grievances/${encodeURIComponent(code)}/entries`),
+  })
+
+/** What a grievance said before each edit, the latest first. Under the grievance's own key, like its entries. */
+export const grievanceVersionsQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['grievances', 'detail', code.toUpperCase(), 'versions'],
+    queryFn: () => api.get<GrievanceVersion[]>(`/grievances/${encodeURIComponent(code)}/versions`),
   })
 
 export const digitalAssetsQuery = queryOptions({

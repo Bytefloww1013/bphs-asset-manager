@@ -251,23 +251,24 @@ const people = (missing: string) =>
     .max(GRIEVANCE_PEOPLE_MAX, `At most ${GRIEVANCE_PEOPLE_MAX} people can be named here`)
     .transform((ids) => [...new Set(ids)])
 
-export const grievanceCreateSchema = z
-  .object({
-    title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
-    shortDescription: requiredText(GRIEVANCE_SHORT_DESCRIPTION_MAX, 'Short description'),
-    /** The body as HTML from the editor. The server sanitises it and never stores what it was sent. */
-    body: z.string({ error: 'Write the grievance before saving' }).min(1, 'Write the grievance before saving').max(BODY_HTML_MAX, 'The grievance is too long'),
-    dateMade: calendarDate('date the grievance was made').refine((value) => value <= localToday(), 'The date made cannot be in the future'),
-    ownerId: z.number({ error: 'Choose an owner' }).int().positive(),
-    categoryId: z.number({ error: 'Choose a category' }).int().positive(),
-    employeeIds: people('Choose at least one employee involved'),
-    managementIds: people('Choose at least one person from management'),
-  })
-  .superRefine((value, ctx) => {
-    if (value.employeeIds.some((employee) => value.managementIds.includes(employee))) {
-      ctx.addIssue({ code: 'custom', path: ['managementIds'], message: 'Nobody can be in both Employees Involved and Management Involved' })
-    }
-  })
+const grievanceFields = {
+  title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
+  shortDescription: requiredText(GRIEVANCE_SHORT_DESCRIPTION_MAX, 'Short description'),
+  /** The body as HTML from the editor. The server sanitises it and never stores what it was sent. */
+  body: z.string({ error: 'Write the grievance before saving' }).min(1, 'Write the grievance before saving').max(BODY_HTML_MAX, 'The grievance is too long'),
+  dateMade: calendarDate('date the grievance was made').refine((value) => value <= localToday(), 'The date made cannot be in the future'),
+  categoryId: z.number({ error: 'Choose a category' }).int().positive(),
+  employeeIds: people('Choose at least one employee involved'),
+  managementIds: people('Choose at least one person from management'),
+}
+
+const notInBothLists = (value: { employeeIds: number[]; managementIds: number[] }, ctx: z.RefinementCtx) => {
+  if (value.employeeIds.some((employee) => value.managementIds.includes(employee))) {
+    ctx.addIssue({ code: 'custom', path: ['managementIds'], message: 'Nobody can be in both Employees Involved and Management Involved' })
+  }
+}
+
+export const grievanceCreateSchema = z.object({ ...grievanceFields, ownerId: z.number({ error: 'Choose an owner' }).int().positive() }).superRefine(notInBothLists)
 export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
 
 /** A note on a change to a grievance, or the reason for one. Plain text; it becomes the body of the automatic timeline entry. */
@@ -286,6 +287,15 @@ export type GrievanceStatusChangeInput = z.infer<typeof grievanceStatusChangeSch
 
 export const grievanceOwnerChangeSchema = z.object({ ownerId: z.number({ error: 'Choose an owner' }).int().positive(), note })
 export type GrievanceOwnerChangeInput = z.infer<typeof grievanceOwnerChangeSchema>
+
+/**
+ * An edit: everything the create form takes but the owner, who is changed by an action of their own. `version` is the one the
+ * editor loaded, so that a save made over someone else's is refused.
+ */
+export const grievanceUpdateSchema = z
+  .object({ ...grievanceFields, version: z.number().int().positive(), reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason for change') })
+  .superRefine(notInBothLists)
+export type GrievanceUpdateInput = z.infer<typeof grievanceUpdateSchema>
 
 export const grievanceVoidSchema = z.object({ reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason') })
 export type GrievanceVoidInput = z.infer<typeof grievanceVoidSchema>

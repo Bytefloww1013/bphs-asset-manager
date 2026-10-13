@@ -7,12 +7,14 @@ import {
   grievanceListQuerySchema,
   grievanceOwnerChangeSchema,
   grievanceStatusChangeSchema,
+  grievanceUpdateSchema,
   grievanceVoidSchema,
 } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, query, requirePermission, type Env } from '../http.ts'
 import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, voidGrievance } from '../services/grievances.ts'
 import { createGrievanceEntry, listGrievanceEntries } from '../services/grievance-entries.ts'
+import { listGrievanceVersions, updateGrievance } from '../services/grievance-versions.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
 
 export function grievanceRoutes(db: Db) {
@@ -37,6 +39,9 @@ export function grievanceRoutes(db: Db) {
 
   // Last, so that no fixed path above is taken for a Grievance ID.
   app.get('/:code', (c) => c.json(getGrievance(db, { code: c.req.param('code') })))
+  // An edit keeps what the grievance said before as a version. A version can be read; no route changes or removes one.
+  app.patch('/:code', json(grievanceUpdateSchema), (c) => c.json(updateGrievance(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
+  app.get('/:code/versions', (c) => c.json(listGrievanceVersions(db, c.req.param('code'))))
   // Who may make these three is decided in the service, where the grievance's owner is known. Voiding needs the permission as well.
   app.post('/:code/status', json(grievanceStatusChangeSchema), (c) => c.json(changeGrievanceStatus(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
   app.post('/:code/owner', json(grievanceOwnerChangeSchema), (c) => c.json(changeGrievanceOwner(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))

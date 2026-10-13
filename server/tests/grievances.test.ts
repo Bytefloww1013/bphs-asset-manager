@@ -614,7 +614,7 @@ describe('adding to the timeline', () => {
     const before = t.sqlite.prepare('select * from grievance_entries order by id').all()
     for (const cookie of [admin, superAdmin]) {
       for (const method of ['PUT', 'PATCH', 'DELETE']) {
-        for (const target of [path, `${path}/2`, `${path}/${added.id}`, `/api/grievances/${made.code}`]) {
+        for (const target of [path, `${path}/2`, `${path}/${added.id}`, ...(method === 'PATCH' ? [] : [`/api/grievances/${made.code}`])]) {
           const res = await t.call(method, target, { cookie, body: { ...entry, title: 'Changed' } })
           expect([404, 405], `${method} ${target}`).toContain(res.status)
         }
@@ -773,3 +773,146 @@ describe('changing a grievance\'s status and owner', () => {
     expect(list.counts).toMatchObject({ all: 1, open: 0, voided: 1 })
   })
 })
+
+describe('editing a grievance', () => {
+  const timeline = (t: T) => t.sqlite.prepare('select seq, kind, title, body_html, documented_by_label from grievance_entries order by seq').all()
+  const audit = (t: T) => t.sqlite.prepare("select action, entity_type, details from grievance_audit_log where action <> 'create' order by id").all()
+  const stored = (t: T) => t.sqlite.prepare('select title, version from grievances').get()
+
+  /** One grievance owned by Ines, whose account is the admin's, about Dana with Femi as management. */
+  async function one() {
+    const t = await setup()
+    const { dana, ines, femi, body } = grievanceFixture(t)
+    t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
+    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, role: 'admin', mustChangePassword: false }).returning().get()
+    const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
+    const { ownerId: _, ...fields } = { ...body, ownerId: ines.id }
+    const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
+    const edit = { ...fields, version: 1, reason: 'The title named the wrong month.' }
+    return { t, dana, ines, femi, owner, superAdmin, other, made, edit, path: `/api/grievances/${made.code}` }
+  }
+
+  it('replaces what the owner or a Super Admin changed, keeps what it said before as a version, and says which fields on the timeline and in the audit log', async () => {
+    const { t, dana, ines, femi, owner, superAdmin, edit, path } = await one()
+    expect((await t.call('GET', `${path}/versions`)).status).toBe(401)
+    expect((await t.call('GET', `${path}/versions`, { cookie: owner })).data).toEqual([])
+    const first = await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'Shift swaps refused in August', body: '<p>Requests were refused on two dates.</p>', employeeIds: [dana.id, t.person.id] } })
+    expect(first.status).toBe(200)
+    expect(first.data).toMatchObject({ title: 'Shift swaps refused in August', bodyHtml: '<p>Requests were refused on two dates.</p>', version: 2, status: 'open', owner: { id: ines.id } })
+    expect(first.data.employees.map((person: any) => person.id).sort()).toEqual([dana.id, t.person.id].sort())
+    expect(timeline(t)[1]).toEqual({ seq: 2, kind: 'system', title: 'Edited: Title, Grievance, Employees involved', body_html: '<p>The title named the wrong month.</p>', documented_by_label: 'Marcus Oyelaran' })
+    // Field names only: neither the old text nor the new, nor the reason.
+    expect(audit(t)).toEqual([{ action: 'update', entity_type: 'grievance', details: 'GR-2026-0001 · Shift swaps refused in August · Edited: Title, Grievance, Employees involved' }])
+
+    const second = await t.call('PATCH', path, { cookie: superAdmin, body: { ...edit, version: 2, title: 'Shift swaps refused in August', body: '<p>Requests were refused on two dates.</p>', dateMade: '2026-09-30', categoryId: 2, employeeIds: [dana.id], managementIds: [femi.id, t.person.id], reason: 'Date and category corrected.' } })
+    expect(second.data).toMatchObject({ version: 3, dateMade: '2026-09-30', category: { id: 2 } })
+    expect(timeline(t)[2]).toMatchObject({ title: 'Edited: Date made, Category, Employees involved, Management involved', documented_by_label: 'Priya Raghunathan' })
+
+    const versions = (await t.call('GET', `${path.toLowerCase()}/versions`, { cookie: await t.asSuper() })).data
+    expect(versions.map((version: any) => version.version)).toEqual([2, 1])
+    expect(versions[1]).toMatchObject({
+      version: 1,
+      title: 'Shift swaps refused without a reason',
+      shortDescription: 'Three swap requests were turned down in September with no explanation.',
+      dateMade: '2026-10-01',
+      category: 'Conduct',
+      employees: [{ code: 'E-2001', name: 'Dana Whitlock' }],
+      management: [{ code: 'E-2002', name: 'Femi Adeyemi' }],
+      changedBy: 'Marcus Oyelaran',
+      reason: 'The title named the wrong month.',
+    })
+    expect(versions[1].bodyHtml).toContain('<strong>refused</strong>')
+    expect(versions[0]).toMatchObject({ version: 2, title: 'Shift swaps refused in August', bodyHtml: '<p>Requests were refused on two dates.</p>', changedBy: 'Priya Raghunathan', reason: 'Date and category corrected.' })
+    expect(versions[0].employees).toHaveLength(2)
+    expect((await t.call('GET', '/api/grievances/GR-2026-0099/versions', { cookie: owner })).status).toBe(404)
+    // Search reads what it says now, not what it said.
+    expect((await t.call('GET', '/api/grievances?q=two+dates', { cookie: owner })).data.rows).toHaveLength(1)
+    expect((await t.call('GET', '/api/grievances?q=happened', { cookie: owner })).data.rows).toHaveLength(0)
+  })
+
+  it('answers 403 to any other account and 401 to none, and changes nothing', async () => {
+    const { t, other, edit, path } = await one()
+    const res = await t.call('PATCH', path, { cookie: other, body: { ...edit, title: 'Changed' } })
+    expect(res.status).toBe(403)
+    expect(res.data.message).toBe('Only the owner (Ines Carvalho) or a Super Admin can do this.')
+    expect((await t.call('PATCH', path, { body: { ...edit, title: 'Changed' } })).status).toBe(401)
+    expect(stored(t)).toEqual({ title: 'Shift swaps refused without a reason', version: 1 })
+    expect(timeline(t)).toHaveLength(1)
+    expect(audit(t)).toEqual([])
+  })
+
+  it('refuses a save made from a version that has since been replaced, and one that changes nothing', async () => {
+    const { t, owner, superAdmin, edit, path } = await one()
+    expect((await t.call('PATCH', path, { cookie: superAdmin, body: { ...edit, title: 'First in' } })).status).toBe(200)
+    const late = await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'Second in' } })
+    expect(late.status).toBe(409)
+    expect(late.data).toMatchObject({ error: 'stale_version', message: 'GR-2026-0001 was edited by Priya Raghunathan while you had it open. Nothing has been saved.' })
+    const same = await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'First in', version: 2 } })
+    expect(same.status).toBe(409)
+    expect(same.data.error).toBe('unchanged')
+    expect(stored(t)).toEqual({ title: 'First in', version: 2 })
+    expect(timeline(t)).toHaveLength(2)
+    expect(t.sqlite.prepare('select count(*) as n from grievance_versions').get()).toEqual({ n: 1 })
+  })
+
+  it('refuses an edit that breaks a rule, saying which field', async () => {
+    const { t, dana, femi, owner, edit, path } = await one()
+    const refused = async (change: object) => (await t.call('PATCH', path, { cookie: owner, body: { ...edit, ...change } })).data
+    expect((await refused({ title: 'Changed', reason: ' ' })).details.fields.reason).toBe('Required')
+    expect((await refused({ title: ' ' })).details.fields.title).toBeTruthy()
+    expect((await refused({ body: '<p> </p>' })).details.fields.body).toBeTruthy()
+    expect((await refused({ dateMade: '2999-01-01' })).details.fields.dateMade).toBeTruthy()
+    expect((await refused({ employeeIds: [] })).details.fields.employeeIds).toBeTruthy()
+    expect((await refused({ managementIds: [dana.id] })).details.fields.managementIds).toBeTruthy()
+    expect((await refused({ version: undefined, title: 'Changed' })).details.fields.version).toBeTruthy()
+    expect((await t.call('PATCH', path, { cookie: owner, body: { ...edit, categoryId: 999 } })).status).toBe(422)
+    t.sqlite.prepare('update grievance_categories set is_active = 0 where id = 2').run()
+    expect((await t.call('PATCH', path, { cookie: owner, body: { ...edit, categoryId: 2 } })).data.error).toBe('category_inactive')
+    t.sqlite.prepare("update employees set archived_at = 1 where id = ?").run(t.person.id)
+    expect((await refused({ managementIds: [femi.id, t.person.id] })).details.fields.managementIds).toBeTruthy()
+    expect(stored(t)).toEqual({ title: 'Shift swaps refused without a reason', version: 1 })
+    expect(timeline(t)).toHaveLength(1)
+  })
+
+  it('lets a person already named stay after they are archived, and a category no longer in use stay as it is', async () => {
+    const { t, dana, owner, edit, path } = await one()
+    t.sqlite.prepare("update employees set archived_at = 1 where id = ?").run(dana.id)
+    t.sqlite.prepare('update grievance_categories set is_active = 0 where id = 1').run()
+    const res = await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'Shift swaps refused in August' } })
+    expect(res.status).toBe(200)
+    expect(res.data.employees).toMatchObject([{ id: dana.id, archived: true }])
+    expect(res.data.category.id).toBe(1)
+  })
+
+  it('refuses an edit while it is Closed, and for good once it is Voided', async () => {
+    const { t, owner, superAdmin, edit, path } = await one()
+    await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'closed', note: 'Done.' } })
+    const closed = await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'Changed' } })
+    expect(closed.status).toBe(409)
+    expect(closed.data).toMatchObject({ error: 'grievance_sealed', message: 'GR-2026-0001 is Closed. Reopen it before editing it.' })
+    await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'open' } })
+    expect((await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'Changed' } })).status).toBe(200)
+    await t.call('POST', `${path}/void`, { cookie: superAdmin, body: { reason: 'Entered twice.' } })
+    const voided = await t.call('PATCH', path, { cookie: superAdmin, body: { ...edit, version: 2, title: 'Changed again' } })
+    expect(voided.status).toBe(409)
+    expect(voided.data.error).toBe('grievance_voided')
+    expect(stored(t)).toEqual({ title: 'Changed', version: 2 })
+  })
+
+  it('keeps every version as it was: the table refuses a change, a removal or a replacement, and no route offers one', async () => {
+    const { t, owner, superAdmin, edit, path } = await one()
+    await t.call('PATCH', path, { cookie: owner, body: { ...edit, title: 'Changed' } })
+    const before = t.sqlite.prepare('select * from grievance_versions').all() as { id: number }[]
+    expect(before).toHaveLength(1)
+    expect(() => t.sqlite.prepare("update grievance_versions set title = 'tampered'").run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('delete from grievance_versions').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('insert or replace into grievance_versions select * from grievance_versions').run()).toThrow(/append-only/)
+    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.includes('/versions'))
+    expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))]).toEqual(['GET /api/grievances/:code/versions'])
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      for (const target of [`${path}/versions`, `${path}/versions/1`]) expect([404, 405], `${method} ${target}`).toContain((await t.call(method, target, { cookie: superAdmin, body: {} })).status)
+    }
+    expect(t.sqlite.prepare('select * from grievance_versions').all()).toEqual(before)
+  })
+})
+

@@ -71,6 +71,13 @@
       "when": 1791860164052,
       "tag": "0009_grievance_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791863949734,
+      "tag": "0010_grievance_versions",
+      "breakpoints": true
     }
   ]
 }
