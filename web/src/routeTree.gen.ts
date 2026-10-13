@@ -27,6 +27,7 @@ import { Route as AppAssetsTagRouteImport } from './routes/_app/assets.$tag'
 import { Route as AppEmployeesIndexRouteImport } from './routes/_app/employees.index'
 import { Route as AppEmployeesImportRouteImport } from './routes/_app/employees.import'
 import { Route as AppGrievancesIndexRouteImport } from './routes/_app/grievances.index'
+import { Route as AppGrievancesAuditRouteImport } from './routes/_app/grievances.audit'
 import { Route as AppGrievancesCategoriesRouteImport } from './routes/_app/grievances.categories'
 import { Route as AppGrievancesNewRouteImport } from './routes/_app/grievances.new'
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
@@ -124,6 +125,11 @@ const AppGrievancesIndexRoute = AppGrievancesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppGrievancesRoute,
 } as any)
+const AppGrievancesAuditRoute = AppGrievancesAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppGrievancesRoute,
+} as any)
 const AppGrievancesCategoriesRoute = AppGrievancesCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof AppUsersRoute
   '/assets/$tag': typeof AppAssetsTagRoute
   '/employees/import': typeof AppEmployeesImportRoute
+  '/grievances/audit': typeof AppGrievancesAuditRoute
   '/grievances/categories': typeof AppGrievancesCategoriesRoute
   '/grievances/new': typeof AppGrievancesNewRoute
   '/assets/': typeof AppAssetsIndexRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/assets/$tag': typeof AppAssetsTagRoute
   '/employees/import': typeof AppEmployeesImportRoute
+  '/grievances/audit': typeof AppGrievancesAuditRoute
   '/grievances/categories': typeof AppGrievancesCategoriesRoute
   '/grievances/new': typeof AppGrievancesNewRoute
   '/assets': typeof AppAssetsIndexRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/assets/$tag': typeof AppAssetsTagRoute
   '/_app/employees/import': typeof AppEmployeesImportRoute
+  '/_app/grievances/audit': typeof AppGrievancesAuditRoute
   '/_app/grievances/categories': typeof AppGrievancesCategoriesRoute
   '/_app/grievances/new': typeof AppGrievancesNewRoute
   '/_app/assets/': typeof AppAssetsIndexRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/assets/$tag'
     | '/employees/import'
+    | '/grievances/audit'
     | '/grievances/categories'
     | '/grievances/new'
     | '/assets/'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets/$tag'
     | '/employees/import'
+    | '/grievances/audit'
     | '/grievances/categories'
     | '/grievances/new'
     | '/assets'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/assets/$tag'
     | '/_app/employees/import'
+    | '/_app/grievances/audit'
     | '/_app/grievances/categories'
     | '/_app/grievances/new'
     | '/_app/assets/'
@@ -457,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGrievancesIndexRouteImport
       parentRoute: typeof AppGrievancesRoute
     }
+    '/_app/grievances/audit': {
+      id: '/_app/grievances/audit'
+      path: '/audit'
+      fullPath: '/grievances/audit'
+      preLoaderRoute: typeof AppGrievancesAuditRouteImport
+      parentRoute: typeof AppGrievancesRoute
+    }
     '/_app/grievances/categories': {
       id: '/_app/grievances/categories'
       path: '/categories'
@@ -510,6 +529,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppGrievancesRouteChildren {
+  AppGrievancesAuditRoute: typeof AppGrievancesAuditRoute
   AppGrievancesCategoriesRoute: typeof AppGrievancesCategoriesRoute
   AppGrievancesNewRoute: typeof AppGrievancesNewRoute
   AppGrievancesIndexRoute: typeof AppGrievancesIndexRoute
@@ -521,6 +541,7 @@ interface AppGrievancesRouteChildren {
 }
 
 const AppGrievancesRouteChildren: AppGrievancesRouteChildren = {
+  AppGrievancesAuditRoute: AppGrievancesAuditRoute,
   AppGrievancesCategoriesRoute: AppGrievancesCategoriesRoute,
   AppGrievancesNewRoute: AppGrievancesNewRoute,
   AppGrievancesIndexRoute: AppGrievancesIndexRoute,

@@ -5,6 +5,7 @@ import type {
   AssetTypeRow,
   AssignmentRow,
   AuditPage,
+  GrievanceAuditPage,
   ConditionRatingRow,
   DashboardData,
   DigitalAssetDetail,
@@ -171,14 +172,19 @@ const auditRange = ({ from, to }: Pick<AuditParams, 'from' | 'to'>) => ({
   to: to ? startOfLocalDay(to, 1) : undefined,
 })
 
-export const auditQuery = (params: AuditParams) =>
+/** A page of an audit log: the Audit Log at `audit`, the Grievance Audit Log at `grievances/audit`. */
+const logQuery = <T,>(log: string, params: AuditParams) =>
   queryOptions({
-    queryKey: ['audit', params],
-    queryFn: () => api.get<AuditPage>(`/audit${qs({ ...params, ...auditRange(params) })}`),
+    queryKey: [log, params],
+    queryFn: () => api.get<T>(`/${log}${qs({ ...params, ...auditRange(params) })}`),
     placeholderData: (previous) => previous,
   })
+const logCsvUrl = (log: string, params: Omit<AuditParams, 'limit' | 'offset'>) => `/api/${log}.csv${qs({ ...params, ...auditRange(params) })}`
 
-export const auditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => `/api/audit.csv${qs({ ...params, ...auditRange(params) })}`
+export const auditQuery = (params: AuditParams) => logQuery<AuditPage>('audit', params)
+export const auditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('audit', params)
+export const grievanceAuditQuery = (params: AuditParams) => logQuery<GrievanceAuditPage>('grievances/audit', params)
+export const grievanceAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('grievances/audit', params)
 
 /** After any write, refresh everything that could have changed. The data set is small; correctness beats cleverness. */
 export function refreshData(queryClient: QueryClient) {

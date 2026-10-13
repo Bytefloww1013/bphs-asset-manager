@@ -974,3 +974,94 @@ describe('grievance guards on employees', () => {
     expect((await t.call('DELETE', `/api/employees/${owner.id}`, { cookie })).status).toBe(409)
   })
 })
+
+describe('reading the grievance audit log', () => {
+  /** One grievance owned by Ines, whose account is the admin's, with one entry added by the Super Admin. */
+  async function one() {
+    const t = await setup()
+    const { ines, femi, body } = grievanceFixture(t)
+    t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
+    const [owner, superAdmin] = [await t.asAdmin(), await t.asSuper()]
+    const made = (await t.call('POST', '/api/grievances', { cookie: owner, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
+    const { ownerId: _, ...fields } = body
+    return { t, femi, owner, superAdmin, made, fields, path: `/api/grievances/${made.code}` }
+  }
+
+  it('gets one entry in it, and none in the audit log, for every change to a grievance or a category', async () => {
+    const { t, femi, owner, superAdmin, made, fields, path } = await one()
+    const count = (table: string) => (t.sqlite.prepare(`select count(*) as n from ${table}`).get() as { n: number }).n
+    const category = (await t.call('POST', '/api/grievances/categories', { cookie: owner, body: { name: 'Rostering' } })).data as { id: number }
+    const changes: [string, () => ReturnType<T['call']>][] = [
+      ['create', () => t.call('POST', '/api/grievances', { cookie: owner, body: { ...fields, ownerId: femi.id, title: 'A second one' } })],
+      ['create', () => t.call('POST', '/api/grievances/categories', { cookie: owner, body: { name: 'Overtime' } })],
+      ['update', () => t.call('PATCH', `/api/grievances/categories/${category.id}`, { cookie: owner, body: { name: 'Rosters' } })],
+      ['delete', () => t.call('DELETE', `/api/grievances/categories/${category.id}`, { cookie: superAdmin })],
+      ['entry', () => t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { kind: 'event', occurredAt: '2026-10-02T09:30:00.000Z', title: 'Met with Dana', shortDescription: 'Talked it through.' } })],
+      ['update', () => t.call('PATCH', path, { cookie: owner, body: { ...fields, title: 'Shift swaps refused in August', version: 1, reason: 'Wrong month.' } })],
+      ['status', () => t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'in_progress' } })],
+      ['owner', () => t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: femi.id } })],
+      ['void', () => t.call('POST', `${path}/void`, { cookie: superAdmin, body: { reason: 'Entered twice.' } })],
+    ]
+    const audited = count('audit_log')
+    for (const [action, change] of changes) {
+      const before = count('grievance_audit_log')
+      expect((await change()).status).toBeLessThan(300)
+      expect(count('grievance_audit_log')).toBe(before + 1)
+      expect(t.sqlite.prepare('select action from grievance_audit_log order by id desc limit 1').get()).toEqual({ action })
+    }
+    expect(count('audit_log')).toBe(audited)
+    expect(made.code).toBe(`GR-${new Date().getFullYear()}-0001`)
+  })
+
+  it('lists entries newest first to either role, with the grievance and the timeline entry each one is about', async () => {
+    const { t, owner, superAdmin, made, path } = await one()
+    expect((await t.call('GET', '/api/grievances/audit')).status).toBe(401)
+    await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { kind: 'event', occurredAt: '2026-10-02T09:30:00.000Z', title: 'Met with Dana', shortDescription: 'Talked it through.' } })
+    await t.call('POST', '/api/grievances/categories', { cookie: owner, body: { name: 'Rostering' } })
+
+    const res = await t.call('GET', '/api/grievances/audit', { cookie: owner })
+    expect(res.status).toBe(200)
+    expect(res.data.total).toBe(3)
+    expect(res.data.entries).toMatchObject([
+      { actor: 'm.oyelaran@bphs.local', action: 'create', entityType: 'category', details: 'Rostering', code: null, seq: null },
+      { actor: 'p.raghunathan@bphs.local', action: 'entry', entityType: 'grievance_entry', details: `${made.code} E02 · Met with Dana`, code: made.code, seq: 2 },
+      { actor: 'm.oyelaran@bphs.local', action: 'create', entityType: 'grievance', code: made.code, seq: null },
+    ])
+    expect(res.data.entries[0].occurredAt).toMatch(/Z$/)
+  })
+
+  it('narrows by action, text and time, pages, and refuses an action it does not record', async () => {
+    const { t, owner, superAdmin, made, path } = await one()
+    await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { kind: 'event', occurredAt: '2026-10-02T09:30:00.000Z', title: 'Met with Dana', shortDescription: 'Talked it through.' } })
+    const get = async (query: string) => (await t.call('GET', `/api/grievances/audit${query}`, { cookie: owner })).data as { total: number; entries: { action: string }[] }
+    expect((await get('?action=entry')).entries.map((e) => e.action)).toEqual(['entry'])
+    expect((await get('?q=Met%20with')).total).toBe(1)
+    expect((await get('?q=p.raghunathan')).total).toBe(1)
+    expect((await get(`?q=${made.code}`)).total).toBe(2)
+    expect((await get('?to=2000-01-01T00:00:00Z')).total).toBe(0)
+    expect(await get('?limit=1&offset=1')).toMatchObject({ total: 2, entries: [{ action: 'create' }] })
+    expect((await t.call('GET', '/api/grievances/audit?action=issue', { cookie: owner })).status).toBe(422)
+    // The other log's entries are not here, nor these there.
+    expect((await t.call('GET', '/api/audit?q=Met%20with', { cookie: owner })).data.total).toBe(0)
+  })
+
+  it('exports the filtered entries as CSV, which Excel opens as text', async () => {
+    const { t, owner, superAdmin, path } = await one()
+    await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { kind: 'event', occurredAt: '2026-10-02T09:30:00.000Z', title: '=SUM(A1:A9)', shortDescription: 'Talked it through.' } })
+    const res = await t.app.request('/api/grievances/audit.csv?action=entry', { headers: { cookie: owner } })
+    expect(res.headers.get('content-disposition')).toBe('attachment; filename="grievance-audit-log.csv"')
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    const lines = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes).slice(1).trim().split('\r\n')
+    expect(lines[0]).toBe('occurred_at,user,action,entity_type,entity_id,details')
+    expect(lines.slice(1)).toEqual([expect.stringMatching(/,p\.raghunathan@bphs\.local,entry,grievance_entry,\d+,"?'?GR-.* E02 · =SUM\(A1:A9\)"?$/)])
+    expect((await t.app.request('/api/grievances/audit.csv')).status).toBe(401)
+  })
+
+  it('has no route that changes it', async () => {
+    const t = await setup()
+    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.includes('/grievances/audit'))
+    expect(routes.length).toBeGreaterThan(0)
+    expect(routes.filter((route) => route.method !== 'GET' && route.method !== 'ALL')).toEqual([])
+  })
+})

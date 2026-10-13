@@ -23,11 +23,12 @@ const toEntry = (row: AuditRaw): AuditEntry => ({ ...row, occurredAt: new Date(r
  * Who an entry is shown as acting. Entries record the actor's email. Older ones recorded only the part before the @, which two
  * accounts can share, and the log cannot be rewritten; those are read with the email of the account they point to.
  */
-const ACTOR = sql`case when instr(l.actor, '@') = 0 and u.email is not null then u.email else l.actor end`
+export const ACTOR = sql`case when instr(l.actor, '@') = 0 and u.email is not null then u.email else l.actor end`
 const AUDIT_FROM = sql`from audit_log l left join users u on u.id = l.user_id`
 const AUDIT_COLUMNS = sql`l.id as id, l.occurred_at as occurredAt, ${ACTOR} as actor, l.action as action, l.entity_type as entityType, l.entity_id as entityId, l.details as details`
 
-function auditWhere(query: Omit<AuditQuery, 'limit' | 'offset'>) {
+/** The filters both audit logs take. Reads the log as `l` and its account as `u`. */
+export function auditWhere(query: Omit<AuditQuery, 'limit' | 'offset' | 'action'> & { action?: string }) {
   const parts = [sql`1 = 1`]
   if (query.action) parts.push(sql`l.action = ${query.action}`)
   if (query.from) parts.push(sql`l.occurred_at >= ${Date.parse(query.from)}`)

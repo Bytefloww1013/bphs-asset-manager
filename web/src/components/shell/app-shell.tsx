@@ -37,7 +37,7 @@ import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/categories'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/categories' | '/grievances/audit'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -49,7 +49,13 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
   if (workspace === 'grievances') {
     return [
       { heading: 'Records', items: [{ to: '/grievances', label: 'Grievances', icon: Scale }] },
-      { heading: 'Administration', items: [{ to: '/grievances/categories', label: 'Categories', icon: Tags }] },
+      {
+        heading: 'Administration',
+        items: [
+          { to: '/grievances/categories', label: 'Categories', icon: Tags },
+          { to: '/grievances/audit', label: 'Audit log', icon: ScrollText },
+        ],
+      },
     ]
   }
   return [

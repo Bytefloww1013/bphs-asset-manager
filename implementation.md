@@ -325,6 +325,15 @@ Shared pieces every later phase needs. No grievance screen exists at the end of 
 
 Done when: every mutation in phases 2 to 4 has a test asserting one grievance audit entry and zero entries in `audit_log`.
 
+**As built (2026-10-13).**
+
+- `GET /api/grievances/audit` and `/api/grievances/audit.csv` take `grievanceAuditQuerySchema`: the Audit Log's filters over `GRIEVANCE_AUDIT_ACTIONS`. The reader is `server/services/grievance-audit.ts`; it shares `auditWhere` and `ACTOR` with `server/services/reports.ts`, so both logs filter the same way. No route writes to either log.
+- Each entry comes back with `code` and `seq`, joined from the grievance or timeline entry it describes, so the page links to `GR-2026-0001` or `GR-2026-0001-E02`. A category entry links to the Categories page. Both are null when the entry is about something else.
+- The page is `AuditLog` in `web/src/features/common/audit-log.tsx`, moved out of `audit.tsx`; the asset side's `/audit` and `/grievances/audit` are now each a short route over it (`auditSearch`, `auditColumns`). The asset Audit Log looks and behaves as before.
+- Audit log is the last entry under Administration in the Grievances sidebar. The CSV is `grievance-audit-log.csv`, with the same columns as the asset side's.
+- One test makes every change in phases 2 to 4 (grievance create, edit, status, owner, void, entry; category create, update, delete) and checks each writes one grievance audit entry, of the right action, and the Audit Log none. Exporting the log's CSV is not itself recorded, as on the asset side.
+- Not checked in a browser yet: the API was exercised on a seeded database and the page is served, but the rendered page is on the slice 8.1 browser check list.
+
 ## 9. Phase 6: Attachments
 
 ### Slice 6.1: Storage and upload

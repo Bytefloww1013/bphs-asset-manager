@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, Role } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, Role } from './constants.ts'
 
 // ---- Auth ---------------------------------------------------------------
 export interface SessionUser {
@@ -369,6 +369,18 @@ export interface AuditEntry {
 export interface AuditPage {
   total: number
   entries: AuditEntry[]
+}
+
+export interface GrievanceAuditEntry extends Omit<AuditEntry, 'action'> {
+  action: GrievanceAuditAction
+  /** The grievance the entry describes, by its ID, and the timeline entry when it is about one. Null for a category. */
+  code: string | null
+  seq: number | null
+}
+
+export interface GrievanceAuditPage {
+  total: number
+  entries: GrievanceAuditEntry[]
 }
 
 // ---- Users ------------------------------------------------------------------

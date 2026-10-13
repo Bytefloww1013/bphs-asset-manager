@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -367,3 +367,7 @@ export const auditQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 })
 export type AuditQuery = z.infer<typeof auditQuerySchema>
+
+/** The Grievance Audit Log takes the same filters, over its own actions. */
+export const grievanceAuditQuerySchema = auditQuerySchema.extend({ action: z.enum(GRIEVANCE_AUDIT_ACTIONS).optional() })
+export type GrievanceAuditQuery = z.infer<typeof grievanceAuditQuerySchema>

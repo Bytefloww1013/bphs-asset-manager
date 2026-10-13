@@ -3,6 +3,7 @@ import {
   grievanceCategoryCreateSchema,
   grievanceCategoryUpdateSchema,
   grievanceCreateSchema,
+  grievanceAuditQuerySchema,
   grievanceEntryCreateSchema,
   grievanceListQuerySchema,
   grievanceOwnerChangeSchema,
@@ -10,11 +11,13 @@ import {
   grievanceUpdateSchema,
   grievanceVoidSchema,
 } from '../../shared/schemas.ts'
+import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, query, requirePermission, type Env } from '../http.ts'
 import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, voidGrievance } from '../services/grievances.ts'
 import { createGrievanceEntry, listGrievanceEntries } from '../services/grievance-entries.ts'
 import { listGrievanceVersions, updateGrievance } from '../services/grievance-versions.ts'
+import { listGrievanceAudit, listGrievanceAuditForExport } from '../services/grievance-audit.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
 
 export function grievanceRoutes(db: Db) {
@@ -36,6 +39,20 @@ export function grievanceRoutes(db: Db) {
   })
 
   app.get('/account-holders', (c) => c.json(listGrievanceAccountHolders(db)))
+
+  // Read-only for everyone, as the Audit Log is. No route writes to it; the changes it describes do.
+  app.get('/audit', query(grievanceAuditQuerySchema), (c) => c.json(listGrievanceAudit(db, c.req.valid('query'))))
+  app.get('/audit.csv', query(grievanceAuditQuerySchema), (c) => {
+    const entries = listGrievanceAuditForExport(db, c.req.valid('query'))
+    const csv = toCsv(
+      ['occurred_at', 'user', 'action', 'entity_type', 'entity_id', 'details'],
+      entries.map((e) => [e.occurredAt, e.actor, e.action, e.entityType, e.entityId, e.details]),
+    )
+    return c.body(CSV_BOM + csv, 200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="grievance-audit-log.csv"',
+    })
+  })
 
   // Last, so that no fixed path above is taken for a Grievance ID.
   app.get('/:code', (c) => c.json(getGrievance(db, { code: c.req.param('code') })))
