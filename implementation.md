@@ -96,7 +96,7 @@ The brief says feasibility has not been checked. These are the four things that 
 
 Done when: each has a yes or a named fallback, written into this file.
 
-**Results (2026-10-12): all four are a yes, no fallback needed.** Proved on the local branch `spike/grievance-feasibility` (two throwaway pages, never merged), against a production build served by the app with its real Content Security Policy, in headless Firefox 157 and Chrome 155.
+**Results (2026-10-12): all four are a yes, no fallback needed.** Proved with two throwaway pages on a local spike branch (deleted afterwards, never merged), against a production build served by the app with its real Content Security Policy, in headless Firefox 157 and Chrome 155.
 
 | # | Check | Result |
 |---|---|---|
