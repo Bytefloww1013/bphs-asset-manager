@@ -12,6 +12,7 @@ import type {
   DigitalAssetTypeRow,
   EmployeeRow,
   GrievanceCategoryRow,
+  GrievanceDetail,
   GrievanceList,
   Lookups,
   ProgramRow,
@@ -97,6 +98,12 @@ export const grievancesQuery = (params: GrievanceListParams) =>
     queryKey: ['grievances', 'list', params],
     queryFn: () => api.get<GrievanceList>(`/grievances${qs({ ...params })}`),
     placeholderData: (previous) => previous,
+  })
+
+export const grievanceQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['grievances', 'detail', code.toUpperCase()],
+    queryFn: () => api.get<GrievanceDetail>(`/grievances/${encodeURIComponent(code)}`),
   })
 
 export const digitalAssetsQuery = queryOptions({

@@ -78,7 +78,7 @@ function NewGrievancePage() {
       const row = await save.mutateAsync(parsed.data)
       saved.current = true
       toast({ title: `${row.code} recorded`, description: row.title })
-      await navigate({ to: '/grievances' })
+      await navigate({ to: '/grievances/$code', params: { code: row.code } })
     } catch (e) {
       refuse(splitApiError(e))
     }

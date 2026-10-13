@@ -398,3 +398,47 @@ describe('browsing grievances', () => {
     expect((rows[2]!.employees as { name: string; archived: boolean }[])[0]).toMatchObject({ name: 'Dana Whitlock', archived: true })
   })
 })
+
+describe('opening a grievance', () => {
+  it('gives either role the whole grievance by its ID, in any letter case, and 404 for one that does not exist', async () => {
+    const t = await setup()
+    const { dana, femi, body } = grievanceFixture(t)
+    const [admin, superAdmin] = [await t.asAdmin(), await t.asSuper()]
+    const made = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { code: string }
+    expect((await t.call('GET', `/api/grievances/${made.code}`)).status).toBe(401)
+    for (const cookie of [admin, superAdmin]) {
+      const res = await t.call('GET', `/api/grievances/${made.code.toLowerCase()}`, { cookie })
+      expect(res.status).toBe(200)
+      expect(res.data).toMatchObject({
+        code: made.code,
+        title: body.title,
+        shortDescription: body.shortDescription,
+        bodyHtml: body.body,
+        dateMade: '2026-10-01',
+        status: 'open',
+        version: 1,
+        category: { id: 1, name: 'Conduct' },
+        owner: { id: t.person.id, archived: false },
+        employees: [{ id: dana.id, name: 'Dana Whitlock', archived: false }],
+        management: [{ id: femi.id, name: 'Femi Adeyemi', archived: false }],
+        recordedBy: 'Marcus Oyelaran',
+      })
+    }
+    for (const code of ['GR-2026-9999', 'GR-1', 'nothing', '1']) expect((await t.call('GET', `/api/grievances/${code}`, { cookie: admin })).status, code).toBe(404)
+    // The fixed paths beside it are not taken for an ID.
+    expect(Array.isArray((await t.call('GET', '/api/grievances/categories', { cookie: admin })).data)).toBe(true)
+  })
+
+  it('still names an archived employee, marked as archived, and reading it writes nothing', async () => {
+    const t = await setup()
+    const { dana, body } = grievanceFixture(t)
+    const cookie = await t.asAdmin()
+    const made = (await t.call('POST', '/api/grievances', { cookie, body })).data as { code: string }
+    t.sqlite.prepare('update employees set archived_at = ? where id in (?, ?)').run(Date.now(), dana.id, t.person.id)
+    const count = () => (t.sqlite.prepare('select count(*) as n from grievance_audit_log').get() as { n: number }).n
+    const before = count()
+    const data = (await t.call('GET', `/api/grievances/${made.code}`, { cookie })).data as { owner: { archived: boolean }; employees: { archived: boolean }[]; management: { archived: boolean }[] }
+    expect([data.owner.archived, data.employees[0]!.archived, data.management[0]!.archived]).toEqual([true, true, false])
+    expect(count()).toBe(before)
+  })
+})

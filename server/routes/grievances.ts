@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { grievanceCategoryCreateSchema, grievanceCategoryUpdateSchema, grievanceCreateSchema, grievanceListQuerySchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, query, requirePermission, type Env } from '../http.ts'
-import { createGrievance, listGrievances } from '../services/grievances.ts'
+import { createGrievance, getGrievance, listGrievances } from '../services/grievances.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
 
 export function grievanceRoutes(db: Db) {
@@ -22,6 +22,9 @@ export function grievanceRoutes(db: Db) {
     deleteGrievanceCategory(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
+
+  // Last, so that no fixed path above is taken for a Grievance ID.
+  app.get('/:code', (c) => c.json(getGrievance(db, { code: c.req.param('code') })))
 
   return app
 }

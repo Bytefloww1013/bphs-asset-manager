@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1 and slices 2.1 to 2.3 done 2026-10-12; next is slice 2.4, detail.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves, and the list with its tabs, filters and search. A grievance cannot be opened yet: the ID in the list is not a link until the detail page exists. Written against `main` at `bb028a3`.
+Status: **Phase 1 and Phase 2 (slices 2.1 to 2.4) done 2026-10-12; next is Phase 3, slice 3.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page's timeline is a placeholder until Phase 3. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -15,7 +15,7 @@ A slice is ticked when it is finished and committed.
 - [x] 2.1 Data and categories (2026-10-12)
 - [x] 2.2 Create (2026-10-12)
 - [x] 2.3 Browse (2026-10-12)
-- [ ] 2.4 Detail
+- [x] 2.4 Detail (2026-10-12)
 - [ ] 3.1 Data and add-entry
 - [ ] 3.2 Timeline
 - [ ] 3.3 Entry detail and corrections
@@ -248,6 +248,13 @@ Done when: a grievance can be created by either role and reopened with its forma
 
 - `GET /api/grievances/:code`.
 - `web/src/routes/_app/grievances.$code.index.tsx`: header (ID, title, status, category), a facts panel (Date Made, Owner, Employees Involved, Management Involved, recorded by and when), the formatted body, and a placeholder for the timeline. An archived employee is still shown, marked "archived".
+
+**Results (2026-10-12).** 134 tests pass (2 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin: 22 checks, all passing, at 1600 and 390 wide. Firefox was not run. Screenshots are in `qa-shots/slice-2.4/` (not committed).
+
+- The ID in the address is matched in any letter case, and an unknown one gets a "No grievance with that ID" page with a way back. Reading a grievance writes nothing to the Grievance Audit Log.
+- The header does not carry the workspace name (the question slice 1.4 left open): the rail, or the top bar on a narrow screen, and the back link already say Grievances.
+- The short description is shown under the title; the plan did not list it, but it is otherwise only visible in the list.
+- In the list both the ID and the title are now links to the detail page, and saving a new grievance lands on it rather than on the list.
 
 ## 6. Phase 3: Actions and events
 

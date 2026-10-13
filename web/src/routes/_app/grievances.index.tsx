@@ -117,14 +117,21 @@ function GrievancesPage() {
         },
         meta: { width: 'w-10', cellClassName: 'pr-0 sm:pr-0' },
       }),
-      c.accessor('code', { header: 'Grievance ID', cell: (info) => <Mono className="whitespace-nowrap font-medium">{info.getValue()}</Mono> }),
+      c.accessor('code', {
+        header: 'Grievance ID',
+        cell: (info) => (
+          <Link to="/grievances/$code" params={{ code: info.getValue() }} className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline">
+            {info.getValue()}
+          </Link>
+        ),
+      }),
       c.accessor('title', {
         header: 'Title',
         cell: (info) => (
           <div className="min-w-40 max-w-56 leading-5">
-            <div className="truncate font-medium" title={info.getValue()}>
+            <Link to="/grievances/$code" params={{ code: info.row.original.code }} className="block truncate font-medium hover:underline" title={info.getValue()}>
               {info.getValue()}
-            </div>
+            </Link>
             <div className="truncate text-xs text-ink-3">{info.row.original.category.name}</div>
           </div>
         ),
