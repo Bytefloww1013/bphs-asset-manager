@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slices 6.1 and 6.2 done 2026-10-13; next is slice 7.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slices 6.1, 6.2 and 7.1 done 2026-10-13; next is slice 7.2.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. A grievance has a printable case file, saved as a PDF from the browser's print dialog, and each print is logged. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -25,7 +25,7 @@ A slice is ticked when it is finished and committed.
 - [x] 5.1 Audit log page and export (2026-10-13)
 - [x] 6.1 Attachment storage and upload (2026-10-13)
 - [x] 6.2 Download and withdraw (2026-10-13)
-- [ ] 7.1 PDF case file
+- [x] 7.1 PDF case file (2026-10-13)
 - [ ] 7.2 Excel workbook
 - [ ] 8.1 Seed, docs, end-to-end check
 
@@ -377,6 +377,14 @@ Migration `0011_grievance_attachments`:
 - `grievances.$code.case-file.tsx`: a print layout outside the app shell. Cover block (ID, title, status, category, Date Made, owner, people), the full grievance body, then every timeline entry in order with all fields and full formatted body, then the attachment list (name, size, checksum, added by) and, optionally, earlier versions. Entries are kept together across page breaks where they fit. Every page carries the Grievance ID and "Confidential"; the last line reads "Exported by ... on ...".
 - Options before printing: include automatic entries (on), include earlier versions (off).
 - The user chooses "Save as PDF" in the browser's print dialog. No PDF library is added.
+
+**As built (2026-10-13).**
+
+- `/grievances/:code/case-file` sits at the routes root, outside `_app`, so it has no shell. Its guard is `requireSession` in `web/src/lib/session.ts`, which `_app.tsx` now calls too. It follows the three print rules found in slice 1.1: the ID and "Confidential" are in a `thead` row, the cover is a row with `break-after: page`, and each entry is a `break-inside: avoid` block that also holds a section heading when it comes first. Entries are oldest first. The tab title, "GR-… case file", is the browser's default PDF name. The detail page links to it with a Case file button.
+- Above the page, and left out of the print, is a toolbar with a back link, the two options and a Print button. Earlier versions are fetched only when they are asked for, and the option is disabled on version 1.
+- Each print is logged as an `export` entry, with the ID, the title and "PDF case file", through `POST /api/grievances/:code/exports {format: 'pdf'}`. The call is made on `beforeprint`, so it also catches Ctrl+P, and the same handler stamps the "Exported by … on …" line with the time. Slice 7.2 adds `xlsx` to that schema. Two limits: Chrome fires `beforeprint` even when the dialog is then cancelled, and a failed log does not stop the print.
+- Attachments now carry `sha256` in the API, as the checksum on the case file.
+- Not checked in Chrome's or Firefox's print preview yet; on the slice 8.1 list.
 
 ### Slice 7.2: Excel workbook
 

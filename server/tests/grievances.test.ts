@@ -443,6 +443,21 @@ describe('opening a grievance', () => {
     expect([data.owner.archived, data.employees[0]!.archived, data.management[0]!.archived]).toEqual([true, true, false])
     expect(count()).toBe(before)
   })
+
+  it('logs each case file printed, by ID and title only, and 404 for a grievance that does not exist', async () => {
+    const t = await setup()
+    const { body } = grievanceFixture(t)
+    const cookie = await t.asAdmin()
+    const made = (await t.call('POST', '/api/grievances', { cookie, body })).data as { id: number; code: string }
+    const res = await t.call('POST', `/api/grievances/${made.code.toLowerCase()}/exports`, { cookie, body: { format: 'pdf' } })
+    expect(res.status).toBe(204)
+    expect(t.sqlite.prepare("select entity_type, entity_id, details from grievance_audit_log where action = 'export'").all()).toEqual([
+      { entity_type: 'grievance', entity_id: made.id, details: `${made.code} · ${body.title} · PDF case file` },
+    ])
+    expect((await t.call('POST', `/api/grievances/${made.code}/exports`, { cookie, body: { format: 'docx' } })).status).toBe(422)
+    expect((await t.call('POST', '/api/grievances/GR-2026-9999/exports', { cookie, body: { format: 'pdf' } })).status).toBe(404)
+    expect((await t.call('POST', `/api/grievances/${made.code}/exports`, { body: { format: 'pdf' } })).status).toBe(401)
+  })
 })
 
 describe('adding to the timeline', () => {
@@ -1198,7 +1213,7 @@ describe('attaching files to a grievance', () => {
     await send(t, `${url}/attachments`, admin, undefined, [txt('notes – Dana.txt'), pdf()])
     const listed = (await t.call('GET', `${url}/attachments`, { cookie: admin })).data as { id: number }[]
     expect(listed).toMatchObject([
-      { filename: 'notes – Dana.txt', size: 23, entrySeq: 2, uploadedBy: 'Marcus Oyelaran', withdrawnAt: null, withdrawnReason: null },
+      { filename: 'notes – Dana.txt', size: 23, sha256: createHash('sha256').update('Called Dana on Tuesday.').digest('hex'), entrySeq: 2, uploadedBy: 'Marcus Oyelaran', withdrawnAt: null, withdrawnReason: null },
       { filename: 'letter.pdf', entrySeq: 2 },
     ])
 

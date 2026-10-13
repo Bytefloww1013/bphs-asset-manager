@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { redirect } from '@tanstack/react-router'
 import { useEffect, useSyncExternalStore } from 'react'
 import { can, type Permission } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
@@ -29,6 +30,13 @@ export function usePageTitle(title: string, product = 'BPHS Assets') {
 export function returnPath(value: unknown): string | undefined {
   if (typeof value !== 'string' || !/^\/(?![/\\])/.test(value)) return undefined
   return value === '/' || /^\/login(?:[/?#]|$)/.test(value) ? undefined : value
+}
+
+/** The auth guard for a page that needs a signed-in user with a usable password; a route's `beforeLoad` calls it. */
+export async function requireSession(queryClient: QueryClient, href: string) {
+  const user = await queryClient.ensureQueryData(meQuery)
+  if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(href) } })
+  if (user.mustChangePassword) throw redirect({ to: '/password-change' })
 }
 
 // ---- A session that ended while the app was open --------------------------------------------

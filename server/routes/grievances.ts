@@ -6,6 +6,7 @@ import {
   grievanceCreateSchema,
   grievanceAuditQuerySchema,
   grievanceEntryCreateSchema,
+  grievanceExportSchema,
   grievanceListQuerySchema,
   grievanceOwnerChangeSchema,
   grievanceStatusChangeSchema,
@@ -15,7 +16,7 @@ import {
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
 import { formFiles, intParam, json, jsonOrFiles, query, requirePermission, type Env } from '../http.ts'
-import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, voidGrievance } from '../services/grievances.ts'
+import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, recordGrievanceExport, voidGrievance } from '../services/grievances.ts'
 import {
   addGrievanceAttachments,
   createGrievanceEntry,
@@ -79,6 +80,11 @@ export function grievanceRoutes(db: Db) {
   app.post('/:code/void', requirePermission('grievance.void'), json(grievanceVoidSchema), (c) =>
     c.json(voidGrievance(db, c.get('user'), c.req.param('code'), c.req.valid('json'))),
   )
+  // The case file is printed by the browser; the page reports it here so the copy is logged.
+  app.post('/:code/exports', json(grievanceExportSchema), (c) => {
+    recordGrievanceExport(db, c.get('user'), c.req.param('code'), c.req.valid('json'))
+    return c.body(null, 204)
+  })
   // An entry can be read and added. No route changes or removes one.
   app.get('/:code/entries', (c) => c.json(listGrievanceEntries(db, c.req.param('code'))))
   app.post('/:code/entries', jsonOrFiles(grievanceEntryCreateSchema), async (c) =>

@@ -75,6 +75,7 @@ export const attachmentShape = (row: typeof grievanceAttachments.$inferSelect, e
   filename: row.filename,
   contentType: row.contentType,
   size: row.size,
+  sha256: row.sha256,
   entrySeq,
   uploadedBy: row.uploadedByLabel,
   uploadedAt: row.uploadedAt.toISOString(),

@@ -353,6 +353,8 @@ export interface GrievanceAttachment {
   filename: string
   contentType: string
   size: number
+  /** SHA-256 of the bytes as stored, in hex, so a copy can be shown to be the same file. */
+  sha256: string
   /** The entry it came with; null for a file added with the grievance itself. */
   entrySeq: number | null
   uploadedBy: string

@@ -303,6 +303,10 @@ export type GrievanceVoidInput = z.infer<typeof grievanceVoidSchema>
 export const grievanceAttachmentWithdrawSchema = z.object({ reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason') })
 export type GrievanceAttachmentWithdrawInput = z.infer<typeof grievanceAttachmentWithdrawSchema>
 
+/** An export the browser makes, reported so that it is logged. */
+export const grievanceExportSchema = z.object({ format: z.enum(['pdf']) })
+export type GrievanceExportInput = z.infer<typeof grievanceExportSchema>
+
 /** How far ahead of the server's clock "now" on someone's machine may be before it counts as the future. */
 const CLOCK_SLACK_MS = 5 * 60_000
 

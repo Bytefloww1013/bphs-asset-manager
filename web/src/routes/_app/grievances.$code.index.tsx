@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { ChevronLeft, FileText, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { grievanceEntryCode } from '@shared/constants.ts'
 import type { GrievancePerson } from '@shared/types.ts'
@@ -81,8 +81,11 @@ function GrievancePage() {
         </div>
         <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{grievance.title}</h1>
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{grievance.shortDescription}</p>
-        <div className="mt-4 print:hidden">
+        <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
           <GrievanceActions grievance={grievance} />
+          <Link to="/grievances/$code/case-file" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
+            <FileText className="size-4" aria-hidden /> Case file
+          </Link>
         </div>
       </div>
 

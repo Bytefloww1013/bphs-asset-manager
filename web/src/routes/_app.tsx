@@ -2,8 +2,8 @@ import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { AppShell } from '@/components/shell/app-shell.tsx'
 import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
 import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
-import { lookupsQuery, meQuery } from '@/lib/queries.ts'
-import { returnPath } from '@/lib/session.ts'
+import { lookupsQuery } from '@/lib/queries.ts'
+import { requireSession } from '@/lib/session.ts'
 import { workspaceToReopen } from '@/lib/workspace.ts'
 
 export interface SheetSearch {
@@ -30,9 +30,7 @@ export const Route = createFileRoute('/_app')({
     program: search.program === 'pick' ? 'pick' : toId(search.program),
   }),
   beforeLoad: async ({ context, location }) => {
-    const user = await context.queryClient.ensureQueryData(meQuery)
-    if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(location.href) } })
-    if (user.mustChangePassword) throw redirect({ to: '/password-change' })
+    await requireSession(context.queryClient, location.href)
     // Opening the app at its front page goes back to the workspace last used. Asked on every first load, wherever it lands,
     // so that choosing Assets in the switcher later is never undone.
     const reopen = workspaceToReopen()

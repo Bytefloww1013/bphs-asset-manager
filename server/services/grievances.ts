@@ -1,7 +1,7 @@
 import { eq, inArray, sql, type SQL } from 'drizzle-orm'
 import { GRIEVANCE_PREVIEW_LENGTH, GRIEVANCE_STATUSES, grievanceCode, grievanceStatusLabel, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
 import { canManageGrievance, grievanceManageReason } from '../../shared/permissions.ts'
-import type { GrievanceCreateInput, GrievanceListQuery, GrievanceOwnerChangeInput, GrievanceStatusChangeInput, GrievanceVoidInput } from '../../shared/schemas.ts'
+import type { GrievanceCreateInput, GrievanceExportInput, GrievanceListQuery, GrievanceOwnerChangeInput, GrievanceStatusChangeInput, GrievanceVoidInput } from '../../shared/schemas.ts'
 import type { GrievanceDetail, GrievanceList, GrievancePerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, grievanceCategories, grievancePeople, grievances } from '../db/schema.ts'
@@ -298,4 +298,13 @@ export function voidGrievance(db: Db, actor: Actor, code: string, input: Grievan
     return grievance.id
   })
   return getGrievance(db, { id })
+}
+
+const EXPORT_NAMES: Record<GrievanceExportInput['format'], string> = { pdf: 'PDF case file' }
+
+/** Log an export. The browser makes the file, so it reports each one here; viewing a grievance is not logged, taking a copy is. */
+export function recordGrievanceExport(db: DbLike, actor: Actor, code: string, input: GrievanceExportInput) {
+  const grievance = db.get<{ id: number; code: string; title: string }>(sql`select id, code, title from grievances where code = ${code} collate nocase`)
+  if (!grievance) throw notFound('Grievance')
+  writeGrievanceAudit(db, actor, { action: 'export', entityType: 'grievance', entityId: grievance.id, details: `${grievance.code} · ${grievance.title} · ${EXPORT_NAMES[input.format]}` })
 }
