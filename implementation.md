@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phases 1, 2 and 3 done 2026-10-12 and slices 4.1 and 4.2 by 2026-10-13; next is slice 4.3.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12 and phase 4 done 2026-10-13; next is slice 5.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -21,7 +21,7 @@ A slice is ticked when it is finished and committed.
 - [x] 3.3 Entry detail and corrections (2026-10-12)
 - [x] 4.1 Status and ownership (2026-10-12)
 - [x] 4.2 Edit with versions (2026-10-13)
-- [ ] 4.3 Guards on employees
+- [x] 4.3 Guards on employees (2026-10-13)
 - [ ] 5.1 Audit log page and export
 - [ ] 6.1 Attachment storage and upload
 - [ ] 6.2 Download and withdraw
