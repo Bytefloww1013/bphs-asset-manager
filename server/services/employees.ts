@@ -21,6 +21,7 @@ interface RawEmployee {
   digitalHeld: number
   digitalTotal: number
   assessed: number
+  grievances: number
   account: string | null
 }
 
@@ -30,6 +31,8 @@ function deleteBlocked(row: RawEmployee): { code: string; reason: string } | nul
   if (row.assessed > 0) {
     return { code: 'has_history', reason: `Assessed the condition on ${row.assessed} ${row.assessed === 1 ? 'record' : 'records'}. Archive instead; history is never deleted.` }
   }
+  // Says no more than that: which grievance, and what it is about, is not for the asset side to show.
+  if (row.grievances > 0) return { code: 'has_history', reason: 'Named on a grievance. Archive instead; history is never deleted.' }
   if (row.account) return { code: 'linked_user', reason: `Linked to the account ${row.account}. Unlink it on Users first.` }
   return null
 }
@@ -62,6 +65,7 @@ const listRaw = (db: DbLike, id?: number) =>
              (select count(*) from digital_assignments d where d.employee_id = e.id and d.returned_at is null) as digitalHeld,
              (select count(*) from digital_assignments d where d.employee_id = e.id) as digitalTotal,
              (select count(*) from conditions c where c.assessed_by_id = e.id) as assessed,
+             (select count(*) from grievances g where g.owner_id = e.id) + (select count(*) from grievance_people p where p.employee_id = e.id) as grievances,
              (select min(u.email) from users u where u.employee_id = e.id) as account
       from employees e left join assignments a on a.employee_id = e.id
       ${id ? sql`where e.id = ${id}` : sql``}

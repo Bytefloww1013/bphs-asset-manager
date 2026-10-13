@@ -1,6 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { localToday } from '../../shared/schemas.ts'
+import { employees } from '../db/schema.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { nextGrievanceCode } from '../services/grievances.ts'
 import { setup } from './helpers.ts'
@@ -156,5 +158,148 @@ describe('grievance tables and IDs', () => {
     name.run(id, t.person.id, 'management')
     expect(() => name.run(id, t.person.id, 'employee')).toThrow(/UNIQUE/)
     expect(() => name.run(id, t.person.id, 'witness')).toThrow(/CHECK/)
+  })
+})
+
+type T = Awaited<ReturnType<typeof setup>>
+
+/** Three more employees beside the one every test database starts with, and a body that passes every rule. */
+function grievanceFixture(t: T) {
+  const add = (code: string, firstName: string, lastName: string) => t.db.insert(employees).values({ code, firstName, lastName }).returning().get()
+  const [dana, femi, ines] = [add('E-2001', 'Dana', 'Whitlock'), add('E-2002', 'Femi', 'Adeyemi'), add('E-2003', 'Ines', 'Carvalho')]
+  const body = {
+    title: 'Shift swaps refused without a reason',
+    shortDescription: 'Three swap requests were turned down in September with no explanation.',
+    body: '<h2>What happened</h2><p>Requests were <strong>refused</strong> on <em>three</em> dates.</p><ul><li><p>2 September</p></li></ul>',
+    dateMade: '2026-10-01',
+    ownerId: t.person.id,
+    categoryId: 1,
+    employeeIds: [dana.id],
+    managementIds: [femi.id],
+  }
+  return { dana, femi, ines, body }
+}
+
+describe('creating a grievance', () => {
+  it('is open to either role, numbers each one, and gives the body back with its formatting', async () => {
+    const t = await setup()
+    const { dana, femi, body } = grievanceFixture(t)
+    expect((await t.call('POST', '/api/grievances', { body })).status).toBe(401)
+    const [admin, superAdmin] = [await t.asAdmin(), await t.asSuper()]
+    const before = t.sqlite.prepare('select count(*) as n from audit_log').get()
+
+    const first = await t.call('POST', '/api/grievances', { cookie: admin, body })
+    expect(first.status).toBe(201)
+    const year = new Date().getFullYear()
+    expect(first.data).toMatchObject({
+      code: `GR-${year}-0001`,
+      title: body.title,
+      shortDescription: body.shortDescription,
+      bodyHtml: body.body,
+      dateMade: '2026-10-01',
+      status: 'open',
+      version: 1,
+      category: { id: 1 },
+      owner: { id: t.person.id, code: 'E-1042', name: 'Priya Raghunathan', archived: false },
+      employees: [{ id: dana.id, code: 'E-2001', name: 'Dana Whitlock', archived: false }],
+      management: [{ id: femi.id, code: 'E-2002', name: 'Femi Adeyemi', archived: false }],
+      recordedBy: 'Marcus Oyelaran',
+    })
+    expect(first.data.createdAt).toBe(first.data.lastActivityAt)
+
+    const second = await t.call('POST', '/api/grievances', { cookie: superAdmin, body: { ...body, title: 'A second one' } })
+    expect(second.data).toMatchObject({ code: `GR-${year}-0002`, recordedBy: 'Priya Raghunathan' })
+
+    expect(t.sqlite.prepare('select body_text from grievances where id = ?').get(first.data.id)).toEqual({ body_text: 'What happened\nRequests were refused on three dates.\n2 September' })
+    expect(t.sqlite.prepare('select actor, action, entity_type, entity_id, details from grievance_audit_log order by id').all()).toEqual([
+      { actor: 'm.oyelaran@bphs.local', action: 'create', entity_type: 'grievance', entity_id: first.data.id, details: `GR-${year}-0001 · ${body.title}` },
+      { actor: 'p.raghunathan@bphs.local', action: 'create', entity_type: 'grievance', entity_id: second.data.id, details: `GR-${year}-0002 · A second one` },
+    ])
+    expect(t.sqlite.prepare('select count(*) as n from audit_log').get()).toEqual(before)
+  })
+
+  it('stores a sanitised body, whatever it was sent', async () => {
+    const t = await setup()
+    const { body } = grievanceFixture(t)
+    const res = await t.call('POST', '/api/grievances', {
+      cookie: await t.asAdmin(),
+      body: { ...body, body: '<p onclick="steal()" style="color:red">Said <a href="javascript:alert(1)">this</a>.</p><script>alert(1)</script><img src="x">' },
+    })
+    expect(res.status).toBe(201)
+    expect(res.data.bodyHtml).toBe('<p>Said this.</p>')
+  })
+
+  it('names a person once however often they are sent', async () => {
+    const t = await setup()
+    const { dana, femi, body } = grievanceFixture(t)
+    const res = await t.call('POST', '/api/grievances', { cookie: await t.asAdmin(), body: { ...body, employeeIds: [dana.id, dana.id], managementIds: [femi.id, femi.id] } })
+    expect(res.status).toBe(201)
+    expect(res.data.employees).toHaveLength(1)
+    expect(res.data.management).toHaveLength(1)
+  })
+
+  it('refuses a grievance that breaks a rule, saying which field', async () => {
+    const t = await setup()
+    const { dana, femi, ines, body } = grievanceFixture(t)
+    const cookie = await t.asAdmin()
+    t.sqlite.prepare('update employees set archived_at = 1 where id = ?').run(ines.id)
+    t.sqlite.prepare("insert into grievance_categories (id, name, is_active) values (90, 'Retired', 0)").run()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const cases: [string, Record<string, unknown>, string, number?][] = [
+      ['no title', { title: '  ' }, 'title'],
+      ['a title over 150 characters', { title: 'x'.repeat(151) }, 'title'],
+      ['no short description', { shortDescription: '' }, 'shortDescription'],
+      ['a short description over 300 characters', { shortDescription: 'x'.repeat(301) }, 'shortDescription'],
+      ['no body', { body: '' }, 'body'],
+      ['a body of empty paragraphs', { body: '<p></p><p><br></p>' }, 'body'],
+      ['a body over the limit', { body: `<p>${'x'.repeat(100_001)}</p>` }, 'body'],
+      ['no date made', { dateMade: '' }, 'dateMade'],
+      ['a date that is not on the calendar', { dateMade: '2026-02-31' }, 'dateMade'],
+      ['a date that is not a date', { dateMade: '01/10/2026' }, 'dateMade'],
+      ['a date made in the future', { dateMade: localToday(tomorrow) }, 'dateMade'],
+      ['no owner', { ownerId: null }, 'ownerId'],
+      ['an owner who is not an employee', { ownerId: 9999 }, 'ownerId'],
+      ['an archived owner', { ownerId: ines.id }, 'ownerId'],
+      ['no category', { categoryId: undefined }, 'categoryId'],
+      ['a category that does not exist', { categoryId: 9999 }, 'categoryId'],
+      ['a category that is no longer in use', { categoryId: 90 }, 'categoryId', 409],
+      ['no employee involved', { employeeIds: [] }, 'employeeIds'],
+      ['an employee involved who is not in the directory', { employeeIds: [9999] }, 'employeeIds'],
+      ['an archived employee involved', { employeeIds: [dana.id, ines.id] }, 'employeeIds'],
+      ['no management involved', { managementIds: [] }, 'managementIds'],
+      ['an archived person in management', { managementIds: [ines.id] }, 'managementIds'],
+      ['someone in both lists', { employeeIds: [dana.id, femi.id] }, 'managementIds'],
+    ]
+    for (const [what, change, field, status = 422] of cases) {
+      const res = await t.call('POST', '/api/grievances', { cookie, body: { ...body, ...change } })
+      expect(res.status, what).toBe(status)
+      expect(Object.keys(res.data.details.fields), what).toEqual([field])
+    }
+    expect(t.sqlite.prepare('select count(*) as n from grievances').get()).toEqual({ n: 0 })
+    expect(t.sqlite.prepare('select count(*) as n from grievance_audit_log').get()).toEqual({ n: 0 })
+
+    // Today is allowed, and so is an owner who is also named on it.
+    const ok = await t.call('POST', '/api/grievances', { cookie, body: { ...body, dateMade: localToday(), ownerId: femi.id } })
+    expect(ok.status).toBe(201)
+  })
+
+  it('keeps anyone named on a grievance from being deleted, without saying which grievance', async () => {
+    const t = await setup()
+    const { dana, femi, ines, body } = grievanceFixture(t)
+    const cookie = await t.asSuper()
+    const owner = t.db.insert(employees).values({ code: 'E-2004', firstName: 'Owen', lastName: 'Marsh' }).returning().get()
+    expect((await t.call('POST', '/api/grievances', { cookie, body: { ...body, ownerId: owner.id } })).status).toBe(201)
+
+    for (const named of [dana, femi, owner]) {
+      const res = await t.call('DELETE', `/api/employees/${named.id}`, { cookie })
+      expect(res.status).toBe(409)
+      expect(res.data.message).toMatch(/Named on a grievance\. Archive instead/)
+      expect(res.data.message).not.toMatch(/GR-|Shift swaps/)
+    }
+    const listed = (await t.call('GET', '/api/employees', { cookie })).data as { id: number; deleteBlocked: string | null }[]
+    expect(listed.find((row) => row.id === dana.id)!.deleteBlocked).toMatch(/^Named on a grievance/)
+    expect((await t.call('DELETE', `/api/employees/${ines.id}`, { cookie })).status).toBe(204)
   })
 })

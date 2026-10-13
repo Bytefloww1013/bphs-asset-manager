@@ -220,6 +220,56 @@ export const ratingUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
+// ---- Grievances -------------------------------------------------------------------
+const pad = (n: number) => String(n).padStart(2, '0')
+/** Today as `YYYY-MM-DD`, on the clock of whichever side is asking. */
+export const localToday = (now: Date = new Date()) => `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+
+// A calendar date, not an instant: it is stored as the text that was entered, so no time zone can move it to another day.
+const calendarDate = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `Enter the ${label}`)
+    .refine((value) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+      const date = new Date(`${value}T00:00:00Z`)
+      return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+    }, 'Enter a real date')
+
+export const GRIEVANCE_TITLE_MAX = 150
+export const GRIEVANCE_SHORT_DESCRIPTION_MAX = 300
+/** More people than any grievance names; it only keeps a request from listing the whole directory. */
+const GRIEVANCE_PEOPLE_MAX = 50
+// The body's own limit counts characters of text and is checked once it is sanitised. This one only bounds the markup around it.
+const BODY_HTML_MAX = 1_000_000
+
+const people = (missing: string) =>
+  z
+    .array(id, { error: missing })
+    .min(1, missing)
+    .max(GRIEVANCE_PEOPLE_MAX, `At most ${GRIEVANCE_PEOPLE_MAX} people can be named here`)
+    .transform((ids) => [...new Set(ids)])
+
+export const grievanceCreateSchema = z
+  .object({
+    title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
+    shortDescription: requiredText(GRIEVANCE_SHORT_DESCRIPTION_MAX, 'Short description'),
+    /** The body as HTML from the editor. The server sanitises it and never stores what it was sent. */
+    body: z.string({ error: 'Write the grievance before saving' }).min(1, 'Write the grievance before saving').max(BODY_HTML_MAX, 'The grievance is too long'),
+    dateMade: calendarDate('date the grievance was made').refine((value) => value <= localToday(), 'The date made cannot be in the future'),
+    ownerId: z.number({ error: 'Choose an owner' }).int().positive(),
+    categoryId: z.number({ error: 'Choose a category' }).int().positive(),
+    employeeIds: people('Choose at least one employee involved'),
+    managementIds: people('Choose at least one person from management'),
+  })
+  .superRefine((value, ctx) => {
+    if (value.employeeIds.some((employee) => value.managementIds.includes(employee))) {
+      ctx.addIssue({ code: 'custom', path: ['managementIds'], message: 'Nobody can be in both Employees Involved and Management Involved' })
+    }
+  })
+export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
+
 // ---- Users ------------------------------------------------------------------------
 export const userCreateSchema = z.object({
   name: requiredText(120, 'Name'),

@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, Role } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceStatus, Role } from './constants.ts'
 
 // ---- Auth ---------------------------------------------------------------
 export interface SessionUser {
@@ -239,6 +239,37 @@ export interface GrievanceCategoryRow {
   name: string
   isActive: boolean
   grievanceCount: number
+}
+
+/** Someone named on a grievance. They stay named after they are archived. */
+export interface GrievancePerson {
+  id: number
+  code: string
+  name: string
+  archived: boolean
+}
+
+/** One grievance in full. */
+export interface GrievanceDetail {
+  id: number
+  /** GR-2026-0001 */
+  code: string
+  title: string
+  shortDescription: string
+  /** Sanitised by the server; the only form of the body a page may display. */
+  bodyHtml: string
+  /** `YYYY-MM-DD` */
+  dateMade: string
+  status: GrievanceStatus
+  category: { id: number; name: string }
+  owner: GrievancePerson
+  employees: GrievancePerson[]
+  management: GrievancePerson[]
+  version: number
+  /** The account that entered it, by name, or null once that account is gone. */
+  recordedBy: string | null
+  createdAt: string
+  lastActivityAt: string
 }
 
 export interface ConditionRatingRow {

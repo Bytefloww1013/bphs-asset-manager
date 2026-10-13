@@ -1,14 +1,16 @@
 import { Hono } from 'hono'
-import { grievanceCategoryCreateSchema, grievanceCategoryUpdateSchema } from '../../shared/schemas.ts'
+import { grievanceCategoryCreateSchema, grievanceCategoryUpdateSchema, grievanceCreateSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, requirePermission, type Env } from '../http.ts'
+import { createGrievance } from '../services/grievances.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
 
 export function grievanceRoutes(db: Db) {
   const app = new Hono<Env>()
 
-  // No grievance can be recorded yet.
+  // The list is built by the browse slice.
   app.get('/', (c) => c.json([]))
+  app.post('/', json(grievanceCreateSchema), (c) => c.json(createGrievance(db, c.get('user'), c.req.valid('json')), 201))
 
   app.get('/categories', (c) => c.json(listGrievanceCategories(db)))
   app.post('/categories', json(grievanceCategoryCreateSchema), (c) =>

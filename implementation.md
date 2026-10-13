@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1 and slice 2.1 done 2026-10-12; next is slice 2.2, create.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, and a working Categories page. `/api/grievances` still answers with an empty list, and no grievance form exists yet. Written against `main` at `bb028a3`.
+Status: **Phase 1 and slices 2.1 and 2.2 done 2026-10-12; next is slice 2.3, browse.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, and a New grievance page that saves. `/api/grievances` still answers `GET` with an empty list, so a saved grievance cannot be seen in the app yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -13,7 +13,7 @@ A slice is ticked when it is finished and committed.
 - [x] 1.3 People pickers (2026-10-12)
 - [x] 1.4 Workspace shell, permissions, audit writer (2026-10-12)
 - [x] 2.1 Data and categories (2026-10-12)
-- [ ] 2.2 Create
+- [x] 2.2 Create (2026-10-12)
 - [ ] 2.3 Browse
 - [ ] 2.4 Detail
 - [ ] 3.1 Data and add-entry
@@ -214,6 +214,18 @@ Also: `web/src/routes/_app/grievances.categories.tsx`, the **Categories** page i
 - `web/src/routes/_app/grievances.new.tsx`: full page. Grievance ID shown as "Assigned when saved". Short inputs for Title and Short Description with character counts; date picker defaulting to today; two multi-select people pickers; single-select Owner; Category; the editor. Leaving with unsaved text asks first. Nothing is saved to browser storage, because these are sensitive and machines may be shared.
 
 Done when: a grievance can be created by either role and reopened with its formatting intact; every validation rule has a test.
+
+**Results (2026-10-12).** 127 tests pass (5 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin and as a Super Admin: 14 checks, all passing. Firefox was not run. Screenshots are in `qa-shots/slice-2.2/` (not committed).
+
+- **What was built:** `grievanceCreateSchema` and `localToday` in `shared/schemas.ts`; `createGrievance`, `getGrievance` and `peopleOf` in `server/services/grievances.ts`; `POST /api/grievances`; the page at `/grievances/new`, reached from a "New grievance" button on the list page.
+- **Decisions and things later slices should know:**
+  - `POST` answers 201 with a `GrievanceDetail` (in `shared/types.ts`), the shape slice 2.4's `GET /api/grievances/:code` should return; `getGrievance` already takes `{ code }`.
+  - **After saving, the page goes to the list**, because there is no detail page yet. Slice 2.4 points it at the new grievance. "Reopen it with formatting intact" was checked by reading the stored `body_html`, not on a page, for the same reason.
+  - An archived employee is refused in either people list and as owner (422 on that field); an inactive category answers 409 `category_inactive`.
+  - The warning when the owner is also named on the grievance is a note under the Owner field, not a block. The "owner has no linked account" note is left to slice 4.1, which is where it starts to matter.
+  - Leaving the page with anything typed asks first (`useBlocker`, and the browser's own prompt on close or reload). Nothing typed is written to browser storage.
+  - `deleteBlocked` in `server/services/employees.ts` now counts grievances, so deleting a named employee gets "archive instead" and not a 500.
+  - The E01 "Grievance recorded" entry is not written, as planned; slice 3.1 back-fills it.
 
 ### Slice 2.3: Browse
 
