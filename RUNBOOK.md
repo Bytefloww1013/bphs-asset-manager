@@ -95,6 +95,8 @@ Then schedule it (`crontab -e` for a user who may run `docker`; adjust the path)
 
 Copies kept inside the volume are pruned after 7 days. Files are created owner-only (mode 600) because they contain password hashes and employee records.
 
+**Watch the size.** Every copy is the whole database, and 30 of them are kept on the host. Today that is small. The planned Grievance Tracker stores file attachments inside the database (see `implementation.md`, G10), so once it is in use each nightly copy will contain every attachment: 1 GB of attachments is about 30 GB of backups. Check now and then with `du -sh /srv/backups/bphs`. If size becomes a problem, review other ways of storing attachments, such as keeping the files on the data volume with only their details in the database, so a backup run copies just the files that are new or changed instead of all of them every night.
+
 Then get `DEST` off the machine too (rsync to another host, your backup tool, a USB rotation). One copy on the same disk is not a backup.
 
 **Know when it stops working.** Cron fails silently. Alert on a stale backup, for example from your monitoring tool:
