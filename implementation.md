@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 done 2026-10-13; next is slice 6.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slice 6.1 done 2026-10-13; next is slice 6.2.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they cannot be listed or downloaded yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -23,7 +23,7 @@ A slice is ticked when it is finished and committed.
 - [x] 4.2 Edit with versions (2026-10-13)
 - [x] 4.3 Guards on employees (2026-10-13)
 - [x] 5.1 Audit log page and export (2026-10-13)
-- [ ] 6.1 Attachment storage and upload
+- [x] 6.1 Attachment storage and upload (2026-10-13)
 - [ ] 6.2 Download and withdraw
 - [ ] 7.1 PDF case file
 - [ ] 7.2 Excel workbook
@@ -346,6 +346,15 @@ Migration `0011_grievance_attachments`:
 
 - Limits: 10 MB a file, 10 files a request; PDF, PNG, JPEG, DOCX, XLSX, TXT and EML only, checked by content as well as by extension. The upload route gets its own body limit; the 4 MB limit on every other route is unchanged.
 - Files are added on the create form, on the add-entry form (attached to that entry, in the same request so the entry is complete when saved), or later from the detail page, which writes an automatic timeline entry.
+
+**As built (2026-10-13).**
+
+- `grievance_attachments` also keeps `uploaded_by_label`, the uploader's name as text, as entries do. Triggers make it append-only except for one withdrawal (`withdrawn_at` and a reason set once, nothing else changed), and refuse an `entry_id` from another grievance. `grievance_attachment_data` (`attachment_id`, `bytes`) is append-only outright.
+- Limits and types are `ATTACHMENT_MAX_BYTES`, `ATTACHMENTS_PER_REQUEST` and `ATTACHMENT_TYPES` in `shared/constants.ts`. `readUploads` in `server/services/grievance-attachments.ts` checks every file before anything is written: size, not empty, the extension, then the content (PDF, PNG and JPEG by their opening bytes, DOCX and XLSX as a zip naming their own folder, TXT and EML as text without NUL bytes, an EML opening with a header line). The type stored is the extension's, never the browser's. A refusal is 422 against the field `files` and writes nothing.
+- A post that carries files is multipart: the JSON as `data` and each file as `files` (`jsonOrFiles` and `formFiles` in `server/http.ts`). `POST /api/grievances` and `POST /api/grievances/:code/entries` take either; `POST /api/grievances/:code/attachments` takes files only and answers 201 with the saved files (`GrievanceAttachment`). Only multipart posts to those three paths get the larger body limit (101 MB); everything else keeps 4 MB.
+- Files saved with a new grievance have no entry; files on a new entry belong to it. Files added from the detail page ("Attach files" beside "Add action or event", hidden when Closed or Voided) get a system entry titled "File attached" or "N files attached" with the filenames as its short description; a Closed or Voided grievance refuses them with 409 `grievance_sealed`. Each file writes one `attach` entry to the Grievance Audit Log, with the ID and the filename.
+- The create and add-entry forms have a Files field (`FilePicker` in `web/src/features/grievances/files.tsx`) that checks count, type and size before sending; the server checks again.
+- Not checked in a browser yet; on the slice 8.1 list. Nothing shows the files yet: that is slice 6.2.
 
 ### Slice 6.2: Download and withdraw
 

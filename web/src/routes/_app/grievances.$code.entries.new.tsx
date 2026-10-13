@@ -12,6 +12,7 @@ import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { RichTextEditor } from '@/components/ui/rich-text.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
+import { FilePicker, FILES_HINT, filesProblem, withFiles } from '@/features/grievances/files.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
@@ -58,12 +59,13 @@ function NewEntryPage() {
   const [title, setTitle] = useState('')
   const [shortDescription, setShortDescription] = useState('')
   const [body, setBody] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [problem, setProblem] = useState<{ message: string; fields: Record<string, string> } | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const saved = useRef(false)
 
   const save = useWrite((input: unknown) => api.post<GrievanceEntry>(`/grievances/${encodeURIComponent(code)}/entries`, input), { silent: true })
-  const dirty = Boolean(title.trim() || shortDescription.trim() || body)
+  const dirty = Boolean(title.trim() || shortDescription.trim() || body || files.length)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
 
   if (!grievance || !entries) return null
@@ -78,9 +80,11 @@ function NewEntryPage() {
   async function commit() {
     setProblem(null)
     const parsed = grievanceEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, title, shortDescription, body } : { kind, occurredAt: instant(occurredAt), title, shortDescription, body })
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
+    const filesWrong = filesProblem(files)
+    if (!parsed.success || filesWrong)
+      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
     try {
-      const row = await save.mutateAsync(parsed.data)
+      const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
       toast({ title: `${grievanceEntryCode(row.seq)} added to ${grievance!.code}`, description: row.title })
       await navigate({ to: '/grievances/$code', params: { code: grievance!.code } })
@@ -191,6 +195,9 @@ function NewEntryPage() {
               </Field>
               <Field label="Details" hint="Optional. Anything the short description does not cover." error={error('body')}>
                 <RichTextEditor label="Details" onChange={edit('body', setBody)} />
+              </Field>
+              <Field label="Files" optional hint={FILES_HINT} error={error('files')}>
+                <FilePicker value={files} onChange={edit('files', setFiles)} />
               </Field>
             </>
           )}

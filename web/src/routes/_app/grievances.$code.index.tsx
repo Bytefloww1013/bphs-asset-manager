@@ -10,6 +10,7 @@ import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
+import { AttachFiles } from '@/features/grievances/files.tsx'
 import { GrievanceActions } from '@/features/grievances/manage.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
@@ -134,9 +135,12 @@ function GrievancePage() {
             description="Actions taken and events, by when they happened."
             actions={
               sealed ? null : (
-                <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('primary')}>
-                  <Plus className="size-4" aria-hidden /> Add action or event
-                </Link>
+                <>
+                  <AttachFiles code={grievance.code} />
+                  <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('primary')}>
+                    <Plus className="size-4" aria-hidden /> Add action or event
+                  </Link>
+                </>
               )
             }
             className="border-b border-line"

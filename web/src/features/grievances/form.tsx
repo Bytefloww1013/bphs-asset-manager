@@ -11,6 +11,7 @@ import { Mono, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { RichTextEditor } from '@/components/ui/rich-text.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
+import { FilePicker, FILES_HINT, filesProblem, withFiles } from '@/features/grievances/files.tsx'
 import { ownerAccountNote } from '@/features/grievances/manage.tsx'
 import { PeoplePicker } from '@/features/grievances/people-picker.tsx'
 import { api } from '@/lib/api.ts'
@@ -59,6 +60,7 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
   const [management, setManagement] = useState<EmployeeRow[]>(() => named(was?.management))
   const [body, setBody] = useState(was?.bodyHtml ?? '')
   const [reason, setReason] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [problem, setProblem] = useState<Problem | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   // Once it is saved there is nothing left to lose, and the page it leaves for must not be asked about.
@@ -67,7 +69,7 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
   const save = useWrite((input: unknown) => (was ? api.patch<GrievanceDetail>(`/grievances/${encodeURIComponent(was.code)}`, input) : api.post<GrievanceDetail>('/grievances', input)), { silent: true })
   const dirty = was
     ? title !== was.title || shortDescription !== was.shortDescription || dateMade !== was.dateMade || categoryId !== String(was.category.id) || body !== was.bodyHtml || !sameIds(involved, was.employees) || !sameIds(management, was.management) || Boolean(reason.trim())
-    : Boolean(title.trim() || shortDescription.trim() || body || owner || involved.length || management.length)
+    : Boolean(title.trim() || shortDescription.trim() || body || owner || involved.length || management.length || files.length)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
   // Someone else's edit was saved first. What is typed here stays on the page to be copied, but it can no longer be saved over theirs.
   const stale = problem?.code === 'stale_version'
@@ -90,9 +92,11 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
       managementIds: management.map((person) => person.id),
     }
     const parsed = was ? grievanceUpdateSchema.safeParse({ ...fields, version: was.version, reason }) : grievanceCreateSchema.safeParse({ ...fields, ownerId: owner?.id })
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
+    const filesWrong = filesProblem(files)
+    if (!parsed.success || filesWrong)
+      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
     try {
-      const row = await save.mutateAsync(parsed.data)
+      const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
       toast({ title: was ? `${row.code} edited` : `${row.code} recorded`, description: row.title })
       await navigate({ to: '/grievances/$code', params: { code: row.code } })
@@ -203,6 +207,12 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
           <Field label="Grievance" error={error('body')}>
             <RichTextEditor label="Grievance" defaultValue={was?.bodyHtml} onChange={edit('body', setBody)} />
           </Field>
+
+          {!was && (
+            <Field label="Files" optional hint={FILES_HINT} error={error('files')}>
+              <FilePicker value={files} onChange={edit('files', setFiles)} />
+            </Field>
+          )}
 
           {was && (
             <Field label="Reason for change" hint={`Shown on the timeline, beside the fields that changed. What it said before is kept as a version. ${count(reason, GRIEVANCE_NOTE_MAX)}`} error={error('reason')}>

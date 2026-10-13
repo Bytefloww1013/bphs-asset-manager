@@ -10,6 +10,7 @@ import { conflict, forbidden, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { plainToRichText, requireRichText } from '../lib/richtext.ts'
 import { appendGrievanceEntry, GRIEVANCE_RECORDED } from './grievance-entries.ts'
+import { saveAttachments, type Upload } from './grievance-attachments.ts'
 import { fullName } from './refs.ts'
 
 /**
@@ -178,7 +179,8 @@ export function requireActiveEmployees(db: DbLike, ids: number[], field: string)
   if (found.some((row) => row.archivedAt)) throw invalid('Someone chosen has been archived. Choose active employees only.', { field })
 }
 
-export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInput): GrievanceDetail {
+/** Record a grievance, and any files that came with it in the same request. */
+export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInput, uploads: Upload[] = []): GrievanceDetail {
   const body = requireRichText(input.body, 'body')
   const id = db.transaction((tx) => {
     const category = tx.select().from(grievanceCategories).where(eq(grievanceCategories.id, input.categoryId)).get()
@@ -217,6 +219,7 @@ export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInpu
       .run()
     appendGrievanceEntry(tx, actor, row.id, { kind: 'system', occurredAt: now, title: GRIEVANCE_RECORDED, at: now })
     writeGrievanceAudit(tx, actor, { action: 'create', entityType: 'grievance', entityId: row.id, details: `${code} · ${input.title}`, at: now })
+    saveAttachments(tx, actor, { id: row.id, code }, null, uploads, now)
     return row.id
   })
   return getGrievance(db, { id })

@@ -78,5 +78,23 @@ export const grievanceEntryKindLabel = (kind: GrievanceEntryKind) => GRIEVANCE_E
 /** An entry's number within its grievance, as in E01. */
 export const grievanceEntryCode = (seq: number) => `E${String(seq).padStart(2, '0')}`
 
+/** Files on a grievance (G10): at most this large each, and at most this many in one request. */
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024
+export const ATTACHMENTS_PER_REQUEST = 10
+/** The files a grievance takes, by extension, and the type each is served as. The server checks the content as well. */
+export const ATTACHMENT_TYPES = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  txt: 'text/plain',
+  eml: 'message/rfc822',
+} as const
+export type AttachmentExtension = keyof typeof ATTACHMENT_TYPES
+/** A file name's extension, lower-cased; empty when it has none. */
+export const fileExtension = (name: string) => (name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '')
+
 /** A grievance's ID: the year it was entered and its number within that year, as in GR-2026-0001. */
 export const grievanceCode = (year: number, seq: number) => `GR-${year}-${String(seq).padStart(4, '0')}`

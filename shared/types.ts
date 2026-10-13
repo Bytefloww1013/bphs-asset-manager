@@ -347,6 +347,18 @@ export interface GrievanceEntry {
   correctedBy: number[]
 }
 
+/** A file on a grievance. Its bytes are fetched on their own. */
+export interface GrievanceAttachment {
+  id: number
+  filename: string
+  contentType: string
+  size: number
+  /** The entry it came with; null for a file added with the grievance itself. */
+  entrySeq: number | null
+  uploadedBy: string
+  uploadedAt: string
+}
+
 export interface ConditionRatingRow {
   id: number
   name: string

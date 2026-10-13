@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { localToday } from '../../shared/schemas.ts'
 import { employees, users } from '../db/schema.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
+import { get } from '../lib/grievance-files.ts'
 import { nextGrievanceCode } from '../services/grievances.ts'
 import { setup } from './helpers.ts'
 
@@ -1063,5 +1065,131 @@ describe('reading the grievance audit log', () => {
     const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.includes('/grievances/audit'))
     expect(routes.length).toBeGreaterThan(0)
     expect(routes.filter((route) => route.method !== 'GET' && route.method !== 'ALL')).toEqual([])
+  })
+})
+
+describe('attaching files to a grievance', () => {
+  const pdf = (name = 'letter.pdf', size = 100) => new File([Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(size)])], name, { type: 'application/pdf' })
+  const txt = (name = 'notes.txt', text = 'Called Dana on Tuesday.') => new File([text], name, { type: 'text/plain' })
+  const files = (t: T) => t.sqlite.prepare('select id, grievance_id, entry_id, filename, content_type, size, sha256, uploaded_by_label from grievance_attachments order by id').all() as { id: number; entry_id: number | null; filename: string; size: number; sha256: string }[]
+
+  /** A multipart post, the way the page sends files: the JSON as `data`, the files as `files`, from this origin. */
+  const send = (t: T, url: string, cookie: string, data: unknown, list: File[]) => {
+    const form = new FormData()
+    if (data !== undefined) form.set('data', JSON.stringify(data))
+    for (const file of list) form.append('files', file)
+    return t.app.request(url, { method: 'POST', headers: { cookie, origin: 'http://localhost' }, body: form })
+  }
+
+  async function one() {
+    const t = await setup()
+    const { body } = grievanceFixture(t)
+    const admin = await t.asAdmin()
+    const made = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { id: number; code: string }
+    return { t, admin, body, made, url: `/api/grievances/${made.code}` }
+  }
+
+  it('takes files with a new grievance, with a new entry, and on their own, storing each one whole with one audit entry', async () => {
+    const t = await setup()
+    const { body } = grievanceFixture(t)
+    const admin = await t.asAdmin()
+    const created = await send(t, '/api/grievances', admin, body, [pdf(), txt()])
+    expect(created.status).toBe(201)
+    const made = (await created.json()) as { id: number; code: string }
+
+    const entry = { kind: 'action', occurredAt: '2026-10-02T09:30:00.000Z', title: 'Met with Dana', shortDescription: 'Notes attached.' }
+    const added = await send(t, `/api/grievances/${made.code}/entries`, admin, entry, [txt('minutes.txt')])
+    expect(added.status).toBe(201)
+    expect(await added.json()).toMatchObject({ seq: 2, title: 'Met with Dana' })
+
+    const alone = await send(t, `/api/grievances/${made.code}/attachments`, admin, undefined, [pdf('scan.pdf'), txt('reply.txt')])
+    expect(alone.status).toBe(201)
+    expect(await alone.json()).toMatchObject([
+      { filename: 'scan.pdf', contentType: 'application/pdf', entrySeq: 3, uploadedBy: 'Marcus Oyelaran' },
+      { filename: 'reply.txt', contentType: 'text/plain', entrySeq: 3, uploadedBy: 'Marcus Oyelaran' },
+    ])
+
+    const entryId = (seq: number) => (t.sqlite.prepare('select id from grievance_entries where grievance_id = ? and seq = ?').get(made.id, seq) as { id: number }).id
+    expect(files(t).map((f) => [f.filename, f.entry_id])).toEqual([
+      ['letter.pdf', null],
+      ['notes.txt', null],
+      ['minutes.txt', entryId(2)],
+      ['scan.pdf', entryId(3)],
+      ['reply.txt', entryId(3)],
+    ])
+    expect(t.sqlite.prepare('select kind, title, short_description from grievance_entries where grievance_id = ? and seq = 3').get(made.id)).toEqual({ kind: 'system', title: '2 files attached', short_description: 'scan.pdf, reply.txt' })
+
+    const stored = files(t)[1]!
+    const bytes = get(t.db, stored.id)!
+    expect(bytes.toString()).toBe('Called Dana on Tuesday.')
+    expect([stored.size, stored.sha256]).toEqual([bytes.length, createHash('sha256').update(bytes).digest('hex')])
+    expect(t.sqlite.prepare("select entity_type, entity_id, details from grievance_audit_log where action = 'attach' order by id").all()).toEqual(
+      files(t).map((f) => ({ entity_type: 'grievance_attachment', entity_id: f.id, details: `${made.code} · ${f.filename}` })),
+    )
+  })
+
+  it('refuses a file it does not take, saying so against the files, and writes nothing', async () => {
+    const { t, admin, body, url } = await one()
+    const count = () => t.sqlite.prepare('select (select count(*) from grievance_attachments) + (select count(*) from grievance_entries) + (select count(*) from grievances) as n').get()
+    const before = count()
+    const refused = async (to: string, data: unknown, list: File[], message: RegExp) => {
+      const res = await send(t, to, admin, data, list)
+      expect(res.status).toBe(422)
+      const answer = (await res.json()) as { message: string; details: { fields: Record<string, string> } }
+      expect(answer.message).toMatch(message)
+      expect(answer.details.fields.files).toBe(answer.message)
+    }
+    await refused(`${url}/attachments`, undefined, [new File(['MZ'], 'run.exe')], /run\.exe is not a file a grievance takes/)
+    await refused(`${url}/attachments`, undefined, [txt('fake.pdf')], /fake\.pdf is not the PDF file its name says it is/)
+    await refused(`${url}/attachments`, undefined, [new File([Buffer.from([0x89, 0x50, 0])], 'notes.txt')], /notes\.txt is not the TXT file/)
+    await refused(`${url}/attachments`, undefined, [new File([], 'empty.txt')], /empty\.txt is empty/)
+    await refused(`${url}/attachments`, undefined, [pdf('huge.pdf', 10 * 1024 * 1024)], /huge\.pdf is larger than 10 MB/)
+    await refused(`${url}/attachments`, undefined, Array.from({ length: 11 }, (_, i) => txt(`n${i}.txt`)), /at most 10 files/)
+    await refused(`${url}/attachments`, undefined, [], /Choose a file/)
+    await refused('/api/grievances', body, [pdf(), txt('fake.png')], /fake\.png/)
+    expect(count()).toEqual(before)
+    // A JSON post to the same route has no files to attach.
+    expect((await t.call('POST', `${url}/attachments`, { cookie: admin, body: {} })).status).toBe(422)
+  })
+
+  it('refuses files on a grievance that is Closed or Voided, and from someone signed out or another site', async () => {
+    const { t, admin, made, url } = await one()
+    expect((await send(t, `${url}/attachments`, '', undefined, [txt()])).status).toBe(401)
+    const crossSite = await t.app.request(`${url}/attachments`, { method: 'POST', headers: { cookie: admin, origin: 'https://evil.example' }, body: (() => { const f = new FormData(); f.append('files', txt()); return f })() })
+    expect(crossSite.status).toBe(403)
+    t.sqlite.prepare("update grievances set status = 'closed' where id = ?").run(made.id)
+    const sealed = await send(t, `${url}/attachments`, admin, undefined, [txt()])
+    expect(sealed.status).toBe(409)
+    expect(await sealed.json()).toMatchObject({ error: 'grievance_sealed' })
+    expect(files(t)).toEqual([])
+  })
+
+  it('takes a body of several megabytes on the routes that carry files, and keeps the usual limit everywhere else', async () => {
+    const { t, admin, url } = await one()
+    const big = pdf('big.pdf', 6 * 1024 * 1024)
+    expect((await send(t, `${url}/attachments`, admin, undefined, [big])).status).toBe(201)
+    expect((await send(t, '/api/assets', admin, { tag: 'A-1' }, [big])).status).toBe(413)
+  })
+
+  it('keeps every file as it was written: only a withdrawal changes a row, once, and the bytes never change', async () => {
+    const { t, admin, url } = await one()
+    await send(t, `${url}/attachments`, admin, undefined, [txt()])
+    expect(() => t.sqlite.prepare("update grievance_attachments set filename = 'other.txt'").run()).toThrow(/only be withdrawn/)
+    expect(() => t.sqlite.prepare('update grievance_attachments set withdrawn_at = 1').run()).toThrow(/only be withdrawn/)
+    expect(() => t.sqlite.prepare('delete from grievance_attachments').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('insert or replace into grievance_attachments select * from grievance_attachments').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare("update grievance_attachment_data set bytes = x'00'").run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('delete from grievance_attachment_data').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('insert or replace into grievance_attachment_data select * from grievance_attachment_data').run()).toThrow(/append-only/)
+    t.sqlite.prepare("update grievance_attachments set withdrawn_at = 1, withdrawn_reason = 'Wrong file'").run()
+    expect(() => t.sqlite.prepare("update grievance_attachments set withdrawn_at = 2, withdrawn_reason = 'Again'").run()).toThrow(/only be withdrawn/)
+  })
+
+  it('keeps a file on an entry to that entry\'s grievance', async () => {
+    const { t, admin, body, made } = await one()
+    const other = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { id: number }
+    const otherEntry = (t.sqlite.prepare('select id from grievance_entries where grievance_id = ?').get(other.id) as { id: number }).id
+    const insert = "insert into grievance_attachments (grievance_id, entry_id, filename, content_type, size, sha256, uploaded_by_user_id, uploaded_by_label, uploaded_at) values (?, ?, 'a.txt', 'text/plain', 1, 'x', ?, 'x', 0)"
+    expect(() => t.sqlite.prepare(insert).run(made.id, otherEntry, t.adminUser.id)).toThrow(/same grievance/)
   })
 })

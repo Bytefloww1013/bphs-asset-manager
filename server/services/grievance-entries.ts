@@ -1,13 +1,14 @@
 import { and, asc, eq, sql } from 'drizzle-orm'
 import { grievanceEntryCode, grievanceStatusLabel, type GrievanceEntryKind, type GrievanceStatus } from '../../shared/constants.ts'
 import type { GrievanceEntryCreateInput } from '../../shared/schemas.ts'
-import type { GrievanceEntry } from '../../shared/types.ts'
+import type { GrievanceAttachment, GrievanceEntry } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { grievanceEntries, grievances } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { requireRichText, type RichText } from '../lib/richtext.ts'
+import { saveAttachments, type Upload } from './grievance-attachments.ts'
 
 // There is no update and no delete in this file, and there must never be: an entry is corrected by another entry.
 
@@ -93,13 +94,19 @@ export function appendGrievanceEntry(tx: DbLike, actor: Actor, grievanceId: numb
 /** A grievance that is finished takes nothing more on its timeline. */
 const SEALED: GrievanceStatus[] = ['closed', 'voided']
 
-export function createGrievanceEntry(db: Db, actor: Actor, code: string, input: GrievanceEntryCreateInput): GrievanceEntry {
+const findUnsealedGrievance = (db: DbLike, code: string) => {
+  const grievance = findGrievance(db, code)
+  if (SEALED.includes(grievance.status)) {
+    throw conflict('grievance_sealed', `${grievance.code} is ${grievanceStatusLabel(grievance.status)}. Nothing more can be added to its timeline.`)
+  }
+  return grievance
+}
+
+/** Add an entry, and any files that came with it in the same request. */
+export function createGrievanceEntry(db: Db, actor: Actor, code: string, input: GrievanceEntryCreateInput, uploads: Upload[] = []): GrievanceEntry {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
-    const grievance = findGrievance(tx, code)
-    if (SEALED.includes(grievance.status)) {
-      throw conflict('grievance_sealed', `${grievance.code} is ${grievanceStatusLabel(grievance.status)}. Nothing more can be added to its timeline.`)
-    }
+    const grievance = findUnsealedGrievance(tx, code)
     const now = new Date()
     let corrected: EntryRow | undefined
     if (input.kind === 'correction') {
@@ -128,6 +135,24 @@ export function createGrievanceEntry(db: Db, actor: Actor, code: string, input: 
       details: `${grievance.code} ${grievanceEntryCode(row.seq)} · ${input.title}`,
       at: now,
     })
+    saveAttachments(tx, actor, grievance, row, uploads, now)
     return shape(row, corrected?.seq ?? null)
+  })
+}
+
+/** Add files to a grievance on their own, from its page. An automatic entry records it on the timeline, and the files hang off that entry. */
+export function addGrievanceAttachments(db: Db, actor: Actor, code: string, uploads: Upload[]): GrievanceAttachment[] {
+  if (!uploads.length) throw invalid('Choose a file to attach.', { field: 'files' })
+  return db.transaction((tx) => {
+    const grievance = findUnsealedGrievance(tx, code)
+    const now = new Date()
+    const entry = appendGrievanceEntry(tx, actor, grievance.id, {
+      kind: 'system',
+      occurredAt: now,
+      title: uploads.length === 1 ? 'File attached' : `${uploads.length} files attached`,
+      shortDescription: uploads.map((upload) => upload.filename).join(', '),
+      at: now,
+    })
+    return saveAttachments(tx, actor, grievance, entry, uploads, now)
   })
 }

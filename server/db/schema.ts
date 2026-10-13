@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, type AnySQLiteColumn, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { blob, check, type AnySQLiteColumn, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, Role } from '../../shared/constants.ts'
 import type { GrievanceVersionPerson } from '../../shared/types.ts'
 
@@ -393,3 +393,41 @@ export const grievanceEntries = sqliteTable(
     check('ck_grievance_entries_corrects', sql`(${t.kind} = 'correction') = (${t.correctsEntryId} is not null)`),
   ],
 )
+
+/**
+ * A file added to a grievance, or to one entry on its timeline. Never removed: a file added by mistake is withdrawn, which keeps
+ * this row and stops downloads. The bytes are in `grievance_attachment_data`, so a list never loads them.
+ */
+export const grievanceAttachments = sqliteTable(
+  'grievance_attachments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    grievanceId: integer('grievance_id')
+      .notNull()
+      .references(() => grievances.id, { onDelete: 'restrict' }),
+    /** The entry it belongs to; null for a file added with the grievance itself. */
+    entryId: integer('entry_id').references(() => grievanceEntries.id, { onDelete: 'restrict' }),
+    filename: text('filename').notNull(),
+    /** Decided by the server from the file's content, never taken from the request. */
+    contentType: text('content_type').notNull(),
+    size: integer('size').notNull(),
+    sha256: text('sha256').notNull(),
+    uploadedByUserId: integer('uploaded_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    /** The name as it was when the file was added. */
+    uploadedByLabel: text('uploaded_by_label').notNull(),
+    uploadedAt: ms('uploaded_at').notNull(),
+    withdrawnAt: ms('withdrawn_at'),
+    withdrawnReason: text('withdrawn_reason'),
+  },
+  (t) => [index('ix_grievance_attachments_grievance').on(t.grievanceId), index('ix_grievance_attachments_entry').on(t.entryId)],
+)
+
+/** The bytes of each attachment. Only `server/lib/grievance-files.ts` reads or writes this table. */
+export const grievanceAttachmentData = sqliteTable('grievance_attachment_data', {
+  attachmentId: integer('attachment_id')
+    .primaryKey()
+    .references(() => grievanceAttachments.id, { onDelete: 'restrict' }),
+  bytes: blob('bytes', { mode: 'buffer' }).notNull(),
+})

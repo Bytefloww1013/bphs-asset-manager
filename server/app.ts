@@ -7,6 +7,7 @@ import { HTTPException } from 'hono/http-exception'
 import { csrf } from 'hono/csrf'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
+import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST } from '../shared/constants.ts'
 import { config } from './config.ts'
 import type { Db } from './db/client.ts'
 import { requirePermission, type Env } from './http.ts'
@@ -32,6 +33,9 @@ export interface AppOptions {
 // The largest thing anyone sends is an import: 2,000 rows of at most five 300-character cells as JSON, which fits with room to spare; signing in and changing a password send two short strings.
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_AUTH_BODY_BYTES = 16 * 1024
+// The routes that take a grievance's files, as multipart: ten files at their limit, and room for the form beside them.
+const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
+const UPLOAD_PATH = /^\/api\/grievances(\/[^/]+\/(entries|attachments))?$/
 
 const limitBody = (maxSize: number) =>
   bodyLimit({ maxSize, onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413) })
@@ -69,7 +73,10 @@ export function createApp(db: Db, options: AppOptions = {}) {
   })
   // A body is refused before anything reads it, signed in or not: the smaller limit first, so it answers for the sign-in routes.
   app.use('/api/auth/*', limitBody(MAX_AUTH_BODY_BYTES))
-  app.use('/api/*', limitBody(MAX_BODY_BYTES))
+  const [uploadLimit, bodyLimitAll] = [limitBody(MAX_UPLOAD_BODY_BYTES), limitBody(MAX_BODY_BYTES)]
+  app.use('/api/*', (c, next) =>
+    c.req.method === 'POST' && UPLOAD_PATH.test(c.req.path) && /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '') ? uploadLimit(c, next) : bodyLimitAll(c, next),
+  )
 
   app.get('/api/health', (c) => c.json({ ok: true }))
   app.route('/api/auth', authRoutes(db))

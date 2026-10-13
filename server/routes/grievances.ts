@@ -13,9 +13,10 @@ import {
 } from '../../shared/schemas.ts'
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
-import { intParam, json, query, requirePermission, type Env } from '../http.ts'
+import { formFiles, intParam, json, jsonOrFiles, query, requirePermission, type Env } from '../http.ts'
 import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, voidGrievance } from '../services/grievances.ts'
-import { createGrievanceEntry, listGrievanceEntries } from '../services/grievance-entries.ts'
+import { addGrievanceAttachments, createGrievanceEntry, listGrievanceEntries } from '../services/grievance-entries.ts'
+import { readUploads } from '../services/grievance-attachments.ts'
 import { listGrievanceVersions, updateGrievance } from '../services/grievance-versions.ts'
 import { listGrievanceAudit, listGrievanceAuditForExport } from '../services/grievance-audit.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
@@ -24,7 +25,8 @@ export function grievanceRoutes(db: Db) {
   const app = new Hono<Env>()
 
   app.get('/', query(grievanceListQuerySchema), (c) => c.json(listGrievances(db, c.req.valid('query'))))
-  app.post('/', json(grievanceCreateSchema), (c) => c.json(createGrievance(db, c.get('user'), c.req.valid('json')), 201))
+  // Either route can take files with it, as multipart; so can the one that adds files on their own.
+  app.post('/', jsonOrFiles(grievanceCreateSchema), async (c) => c.json(createGrievance(db, c.get('user'), c.req.valid('json'), await readUploads(await formFiles(c))), 201))
 
   app.get('/categories', (c) => c.json(listGrievanceCategories(db)))
   app.post('/categories', json(grievanceCategoryCreateSchema), (c) =>
@@ -67,7 +69,11 @@ export function grievanceRoutes(db: Db) {
   )
   // An entry can be read and added. No route changes or removes one.
   app.get('/:code/entries', (c) => c.json(listGrievanceEntries(db, c.req.param('code'))))
-  app.post('/:code/entries', json(grievanceEntryCreateSchema), (c) => c.json(createGrievanceEntry(db, c.get('user'), c.req.param('code'), c.req.valid('json')), 201))
+  app.post('/:code/entries', jsonOrFiles(grievanceEntryCreateSchema), async (c) =>
+    c.json(createGrievanceEntry(db, c.get('user'), c.req.param('code'), c.req.valid('json'), await readUploads(await formFiles(c))), 201),
+  )
+  // A file is added and never changed; taking one back is a withdrawal, not a delete.
+  app.post('/:code/attachments', async (c) => c.json(addGrievanceAttachments(db, c.get('user'), c.req.param('code'), await readUploads(await formFiles(c))), 201))
 
   return app
 }

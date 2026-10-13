@@ -20,13 +20,14 @@ export class ApiError extends Error {
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let response: Response
+  const form = body instanceof FormData
   try {
     response = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      // Every write is JSON, which also keeps cross-site form posts from ever matching.
-      headers: method === 'GET' ? undefined : { 'Content-Type': 'application/json' },
-      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+      // Writes are JSON, or multipart where they carry files (the browser sets that type and its boundary); the server checks the Origin of a multipart post.
+      headers: method === 'GET' || form ? undefined : { 'Content-Type': 'application/json' },
+      body: method === 'GET' ? undefined : form ? body : JSON.stringify(body ?? {}),
     })
   } catch {
     throw new ApiError(0, null, 'Cannot reach the server. Check your connection and try again.')
