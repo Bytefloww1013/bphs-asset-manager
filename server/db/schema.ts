@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
-import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievancePersonRole, GrievanceStatus, Role } from '../../shared/constants.ts'
+import { check, type AnySQLiteColumn, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, Role } from '../../shared/constants.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
 const createdAt = () => ms('created_at').notNull().default(sql`(unixepoch() * 1000)`)
@@ -319,5 +319,44 @@ export const grievancePeople = sqliteTable(
     uniqueIndex('uq_grievance_people').on(t.grievanceId, t.employeeId, t.role),
     index('ix_grievance_people_employee').on(t.employeeId),
     check('ck_grievance_people_role', sql`${t.role} in ('employee', 'management')`),
+  ],
+)
+
+/**
+ * The timeline of a grievance: what was done and what happened, one entry each. Append-only, and triggers in the migration
+ * hold it to that: an entry is never changed or removed, only corrected by a later entry that points back at it.
+ */
+export const grievanceEntries = sqliteTable(
+  'grievance_entries',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    grievanceId: integer('grievance_id')
+      .notNull()
+      .references(() => grievances.id, { onDelete: 'restrict' }),
+    /** E01, E02 and so on: the order entries were recorded in, which is not always the order things happened in. */
+    seq: integer('seq').notNull(),
+    kind: text('kind').$type<GrievanceEntryKind>().notNull(),
+    /** Set only on a correction: the entry it corrects, in the same grievance. */
+    correctsEntryId: integer('corrects_entry_id').references((): AnySQLiteColumn => grievanceEntries.id, { onDelete: 'restrict' }),
+    /** When it happened, as the person recording it gave it. */
+    occurredAt: ms('occurred_at').notNull(),
+    /** When it was written down. Set by the server. */
+    recordedAt: ms('recorded_at').notNull(),
+    title: text('title').notNull(),
+    shortDescription: text('short_description').notNull(),
+    bodyHtml: text('body_html').notNull(),
+    bodyText: text('body_text').notNull(),
+    documentedByEmployeeId: integer('documented_by_employee_id').references(() => employees.id, { onDelete: 'set null' }),
+    documentedByUserId: integer('documented_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    /** The name as it was when the entry was written. */
+    documentedByLabel: text('documented_by_label').notNull(),
+  },
+  (t) => [
+    uniqueIndex('uq_grievance_entries_seq').on(t.grievanceId, t.seq),
+    index('ix_grievance_entries_occurred').on(t.grievanceId, t.occurredAt),
+    check('ck_grievance_entries_kind', sql`${t.kind} in ('action', 'event', 'correction', 'system')`),
+    check('ck_grievance_entries_corrects', sql`(${t.kind} = 'correction') = (${t.correctsEntryId} is not null)`),
   ],
 )

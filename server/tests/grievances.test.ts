@@ -442,3 +442,121 @@ describe('opening a grievance', () => {
     expect(count()).toBe(before)
   })
 })
+
+describe('adding to the timeline', () => {
+  const entries = (t: T) =>
+    t.sqlite
+      .prepare('select seq, kind, title, short_description, body_html, body_text, documented_by_employee_id, documented_by_user_id, documented_by_label, corrects_entry_id from grievance_entries order by grievance_id, seq')
+      .all()
+  const entry = { kind: 'action', occurredAt: '2026-10-02T09:30:00.000Z', title: 'Met with Dana', shortDescription: 'Talked through the three dates.', body: '<p>She kept <strong>notes</strong>.</p>' }
+
+  async function one() {
+    const t = await setup()
+    const { body } = grievanceFixture(t)
+    const [admin, superAdmin] = [await t.asAdmin(), await t.asSuper()]
+    const made = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { id: number; code: string; createdAt: string }
+    return { t, admin, superAdmin, made, path: `/api/grievances/${made.code}/entries` }
+  }
+
+  it('starts every grievance with "Grievance recorded", documented by the account that recorded it', async () => {
+    const { t, made } = await one()
+    expect(entries(t)).toEqual([
+      { seq: 1, kind: 'system', title: 'Grievance recorded', short_description: '', body_html: '', body_text: '', documented_by_employee_id: null, documented_by_user_id: t.adminUser.id, documented_by_label: 'Marcus Oyelaran', corrects_entry_id: null },
+    ])
+    expect(t.sqlite.prepare('select occurred_at, recorded_at from grievance_entries').get()).toEqual({ occurred_at: Date.parse(made.createdAt), recorded_at: Date.parse(made.createdAt) })
+  })
+
+  it('takes an action or an event from either role, numbers them, and moves the last activity on', async () => {
+    const { t, admin, superAdmin, made, path } = await one()
+    expect((await t.call('POST', path, { body: entry })).status).toBe(401)
+    t.sqlite.prepare('update grievances set last_activity_at = 1 where id = ?').run(made.id)
+
+    const first = await t.call('POST', path.toLowerCase(), { cookie: superAdmin, body: entry })
+    expect(first.status).toBe(201)
+    expect(first.data).toMatchObject({ seq: 2, kind: 'action', occurredAt: entry.occurredAt, title: entry.title, shortDescription: entry.shortDescription, bodyHtml: entry.body, documentedBy: 'Priya Raghunathan' })
+    const second = await t.call('POST', path, { cookie: admin, body: { kind: 'event', occurredAt: '2026-09-02T08:00:00+01:00', title: 'First swap refused', shortDescription: 'Back-dated.' } })
+    expect(second.data).toMatchObject({ seq: 3, kind: 'event', occurredAt: '2026-09-02T07:00:00.000Z', bodyHtml: '', documentedBy: 'Marcus Oyelaran' })
+
+    expect(entries(t).slice(1)).toMatchObject([
+      { seq: 2, kind: 'action', body_text: 'She kept notes.', documented_by_employee_id: t.person.id, documented_by_user_id: t.superUser.id },
+      { seq: 3, kind: 'event', body_html: '', documented_by_employee_id: null, documented_by_user_id: t.adminUser.id },
+    ])
+    const after = t.sqlite.prepare('select last_activity_at as at from grievances where id = ?').get(made.id) as { at: number }
+    expect(after.at).toBe(Date.parse(second.data.recordedAt))
+    expect(t.sqlite.prepare("select actor, entity_type, entity_id, details from grievance_audit_log where action = 'entry' order by id").all()).toEqual([
+      { actor: 'p.raghunathan@bphs.local', entity_type: 'grievance_entry', entity_id: first.data.id, details: `${made.code} E02 · Met with Dana` },
+      { actor: 'm.oyelaran@bphs.local', entity_type: 'grievance_entry', entity_id: second.data.id, details: `${made.code} E03 · First swap refused` },
+    ])
+  })
+
+  it('takes Documented By from the session and nothing else, and sanitises the body', async () => {
+    const { t, admin, path } = await one()
+    const res = await t.call('POST', path, {
+      cookie: admin,
+      body: { ...entry, body: '<p onclick="x()">Fine</p><script>alert(1)</script>', documentedBy: 'Someone Else', documentedByUserId: t.superUser.id, documentedByEmployeeId: t.person.id, seq: 9, recordedAt: '2020-01-01T00:00:00Z' },
+    })
+    expect(res.status).toBe(201)
+    expect(res.data).toMatchObject({ seq: 2, documentedBy: 'Marcus Oyelaran', bodyHtml: '<p>Fine</p>' })
+    expect(Date.parse(res.data.recordedAt)).toBeGreaterThan(Date.now() - 60_000)
+    expect(entries(t)[1]).toMatchObject({ documented_by_user_id: t.adminUser.id, documented_by_employee_id: null, documented_by_label: 'Marcus Oyelaran' })
+  })
+
+  it('refuses an entry that breaks a rule, saying which field, and one for a grievance that does not exist', async () => {
+    const { t, admin, path } = await one()
+    const refused = async (change: object) => {
+      const res = await t.call('POST', path, { cookie: admin, body: { ...entry, ...change } })
+      expect(res.status, JSON.stringify(change)).toBe(422)
+      return Object.keys(res.data.details.fields)
+    }
+    expect(await refused({ kind: 'system' })).toEqual(['kind'])
+    expect(await refused({ kind: 'correction' })).toEqual(['kind'])
+    expect(await refused({ title: '  ' })).toEqual(['title'])
+    expect(await refused({ title: 'x'.repeat(151) })).toEqual(['title'])
+    expect(await refused({ shortDescription: '' })).toEqual(['shortDescription'])
+    expect(await refused({ occurredAt: 'yesterday' })).toEqual(['occurredAt'])
+    expect(await refused({ occurredAt: new Date(Date.now() + 3_600_000).toISOString() })).toEqual(['occurredAt'])
+    expect(await refused({ body: `<p>${'x'.repeat(100_001)}</p>` })).toEqual(['body'])
+    expect((await t.call('POST', '/api/grievances/GR-2026-9999/entries', { cookie: admin, body: entry })).status).toBe(404)
+    expect(entries(t)).toHaveLength(1)
+  })
+
+  it('refuses anything more on a grievance that is Closed or Voided', async () => {
+    const { t, admin, made, path } = await one()
+    for (const [status, label] of [['closed', 'Closed'], ['voided', 'Voided']]) {
+      t.sqlite.prepare('update grievances set status = ? where id = ?').run(status, made.id)
+      const res = await t.call('POST', path, { cookie: admin, body: entry })
+      expect(res.status).toBe(409)
+      expect(res.data).toMatchObject({ error: 'grievance_sealed', message: `${made.code} is ${label}. Nothing more can be added to its timeline.` })
+    }
+    for (const status of ['in_progress', 'resolved']) {
+      t.sqlite.prepare('update grievances set status = ? where id = ?').run(status, made.id)
+      expect((await t.call('POST', path, { cookie: admin, body: entry })).status, status).toBe(201)
+    }
+  })
+
+  it('keeps every entry as it was written: the table itself refuses a change, a removal or a replacement', async () => {
+    const { t, made } = await one()
+    expect(() => t.sqlite.prepare("update grievance_entries set title = 'tampered'").run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('update grievance_entries set occurred_at = 0').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('delete from grievance_entries').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('insert or replace into grievance_entries select * from grievance_entries').run()).toThrow(/append-only/)
+    // An entry belongs to a grievance that exists, and its grievance cannot be removed from under it.
+    const insert = "insert into grievance_entries (grievance_id, seq, kind, occurred_at, recorded_at, title, short_description, body_html, body_text, documented_by_user_id, documented_by_label) values (?, 2, 'event', 0, 0, 't', '', '', '', ?, 'x')"
+    expect(() => t.sqlite.prepare(insert).run(made.id + 1, t.adminUser.id)).toThrow(/FOREIGN KEY/)
+    expect(() => t.sqlite.prepare('delete from grievance_people').run()).not.toThrow()
+    expect(() => t.sqlite.prepare('delete from grievances').run()).toThrow(/FOREIGN KEY/)
+  })
+
+  it('gives a grievance recorded before the timeline existed its first entry, from the migration', async () => {
+    const t = await setup()
+    t.sqlite
+      .prepare("insert into grievances (code, year, seq, title, short_description, body_html, body_text, date_made, owner_id, category_id, created_by_user_id, created_at, last_activity_at) values ('GR-2026-0001', 2026, 1, 'Old', 's', '<p>b</p>', 'b', '2026-10-01', ?, 1, ?, 1000, 1000)")
+      .run(t.person.id, t.superUser.id)
+    const migration = fs.readFileSync(path.resolve(import.meta.dirname, '../db/migrations/0009_grievance_entries.sql'), 'utf8')
+    const backfill = migration.split('--> statement-breakpoint').find((statement) => statement.includes('INSERT INTO `grievance_entries`'))!
+    t.sqlite.exec(backfill)
+    expect(t.sqlite.prepare('select seq, kind, title, occurred_at, recorded_at, documented_by_employee_id, documented_by_user_id, documented_by_label from grievance_entries').all()).toEqual([
+      { seq: 1, kind: 'system', title: 'Grievance recorded', occurred_at: 1000, recorded_at: 1000, documented_by_employee_id: t.person.id, documented_by_user_id: t.superUser.id, documented_by_label: 'Priya Raghunathan' },
+    ])
+  })
+})

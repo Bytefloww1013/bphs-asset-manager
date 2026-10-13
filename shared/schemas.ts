@@ -270,6 +270,22 @@ export const grievanceCreateSchema = z
   })
 export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
 
+/** How far ahead of the server's clock "now" on someone's machine may be before it counts as the future. */
+const CLOCK_SLACK_MS = 5 * 60_000
+
+export const grievanceEntryCreateSchema = z.object({
+  kind: z.enum(['action', 'event'], { error: 'Choose Action or Event' }),
+  /** An instant, as ISO text. The form gives it in local time and the page converts it. */
+  occurredAt: z.iso
+    .datetime({ offset: true, error: 'Enter the date and time it happened' })
+    .refine((value) => Date.parse(value) <= Date.now() + CLOCK_SLACK_MS, 'This cannot be in the future'),
+  title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
+  shortDescription: requiredText(GRIEVANCE_SHORT_DESCRIPTION_MAX, 'Short description'),
+  /** The details as HTML from the editor, or nothing. The server sanitises it and never stores what it was sent. */
+  body: z.string().max(BODY_HTML_MAX, 'This is too long').default(''),
+})
+export type GrievanceEntryCreateInput = z.infer<typeof grievanceEntryCreateSchema>
+
 // `from` and `to` are days, both inclusive, and are compared with Date Made, which is a day too: no time zone comes into it.
 export const grievanceListQuerySchema = z.object({
   status: z.enum([...GRIEVANCE_STATUSES, 'all']).default('all'),

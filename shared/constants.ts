@@ -70,5 +70,13 @@ export const GRIEVANCE_PREVIEW_LENGTH = 300
 export const GRIEVANCE_PERSON_ROLES = ['employee', 'management'] as const
 export type GrievancePersonRole = (typeof GRIEVANCE_PERSON_ROLES)[number]
 
+/** What a timeline entry is. `system` entries are written by the app itself, never by a form. */
+export const GRIEVANCE_ENTRY_KINDS = ['action', 'event', 'correction', 'system'] as const
+export type GrievanceEntryKind = (typeof GRIEVANCE_ENTRY_KINDS)[number]
+const GRIEVANCE_ENTRY_KIND_LABELS: Record<GrievanceEntryKind, string> = { action: 'Action', event: 'Event', correction: 'Correction', system: 'Automatic' }
+export const grievanceEntryKindLabel = (kind: GrievanceEntryKind) => GRIEVANCE_ENTRY_KIND_LABELS[kind]
+/** An entry's number within its grievance, as in E01. */
+export const grievanceEntryCode = (seq: number) => `E${String(seq).padStart(2, '0')}`
+
 /** A grievance's ID: the year it was entered and its number within that year, as in GR-2026-0001. */
 export const grievanceCode = (year: number, seq: number) => `GR-${year}-${String(seq).padStart(4, '0')}`

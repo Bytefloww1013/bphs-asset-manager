@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1 and Phase 2 (slices 2.1 to 2.4) done 2026-10-12; next is Phase 3, slice 3.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page's timeline is a placeholder until Phase 3. Written against `main` at `bb028a3`.
+Status: **Phase 1, Phase 2 and slice 3.1 done 2026-10-12; next is slice 3.2, which starts with a design sign-off.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. Entries can be added to a grievance's timeline from its detail page, but the timeline itself is still a placeholder until slice 3.2. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -16,7 +16,7 @@ A slice is ticked when it is finished and committed.
 - [x] 2.2 Create (2026-10-12)
 - [x] 2.3 Browse (2026-10-12)
 - [x] 2.4 Detail (2026-10-12)
-- [ ] 3.1 Data and add-entry
+- [x] 3.1 Data and add-entry (2026-10-12)
 - [ ] 3.2 Timeline
 - [ ] 3.3 Entry detail and corrections
 - [ ] 4.1 Status and ownership
@@ -268,6 +268,21 @@ The E01 entry written by slice 2.2 moves into this table; until this slice lands
 
 - `POST /api/grievances/:code/entries`. Documented By is taken from the session, never from the request.
 - `web/src/routes/_app/grievances.$code.entries.new.tsx`: Grievance ID and title shown locked at the top; Type (Action or Event); Occurred at (date and time, defaults to now); Title; Short Description; the editor. Refused with a clear message if the grievance is Closed or Voided.
+
+**Results (2026-10-12).** 141 tests pass (7 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin: 14 checks, all passing. Firefox was not run. The scratch database was one from before this slice, so the back-fill ran on real rows: all six grievances got their E01. Screenshots are in `qa-shots/slice-3.1/` (not committed).
+
+- **What was built:** migration `0009_grievance_entries` (table, back-fill, triggers); `server/services/grievance-entries.ts` with `appendGrievanceEntry` (used inside another transaction; `createGrievance` writes E01 with it) and `createGrievanceEntry`; `POST /api/grievances/:code/entries`, answering 201 with a `GrievanceEntry`; the page at `/grievances/:code/entries/new`, reached from "Add action or event" in the Timeline panel.
+- **Decisions and things later slices should know:**
+  - **The table itself is append-only**, by triggers on the same terms as the audit logs: an update, a delete or a replace aborts. The one change let through is the foreign key clearing `documented_by_employee_id` when that employee is deleted. A fourth trigger refuses a correction that points at another grievance's entry, and a check constraint ties `corrects_entry_id` to `kind = 'correction'`.
+  - `last_activity_at` moves with every entry already (`appendGrievanceEntry` does it), so slice 3.2 has nothing to add there.
+  - Automatic entries (`kind = 'system'`) have an empty short description and body. Slices 4.1 onwards write theirs through `appendGrievanceEntry`.
+  - **Details (the body) are optional on an entry**; Title and Short description are required. The plan did not say either way.
+  - Occurred at is sent as an instant (ISO, with offset) and may be back-dated without limit, but not in the future (five minutes of clock slack).
+  - Documented By is the signed-in account's name as it was at the time (`documented_by_label`), with the account's linked employee, if it has one, in `documented_by_employee_id`. Extra fields in the request are ignored.
+  - A Closed or Voided grievance answers 409 `grievance_sealed`; the page hides the button and shows a notice in place of the form.
+  - The back-fill skips a grievance whose recording account has been removed, since an entry must name an account. No such grievance exists today: accounts cannot be deleted.
+  - There is no way to read entries over the API yet; slice 3.2 adds it.
+  - `GrievanceLoadError` in `web/src/features/grievances/load-error.tsx` is the "No grievance with that ID" view, shared by every page under one grievance.
 
 ### Slice 3.2: Timeline
 

@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceStatus, Role } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceEntryKind, GrievanceStatus, Role } from './constants.ts'
 
 // ---- Auth ---------------------------------------------------------------
 export interface SessionUser {
@@ -295,6 +295,24 @@ export interface GrievanceDetail {
   recordedBy: string | null
   createdAt: string
   lastActivityAt: string
+}
+
+/** One entry on a grievance's timeline. Nothing here can be changed once it is written. */
+export interface GrievanceEntry {
+  id: number
+  /** Its number within the grievance: 1 is E01. */
+  seq: number
+  kind: GrievanceEntryKind
+  /** When it happened, as given by whoever recorded it. */
+  occurredAt: string
+  /** When it was written down. */
+  recordedAt: string
+  title: string
+  shortDescription: string
+  /** Sanitised by the server; empty when the entry has no more to say than its short description. */
+  bodyHtml: string
+  /** The name of whoever recorded it, as it was at the time. */
+  documentedBy: string
 }
 
 export interface ConditionRatingRow {

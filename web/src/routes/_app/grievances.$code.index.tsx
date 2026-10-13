@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, History, Scale } from 'lucide-react'
+import { ChevronLeft, History, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
@@ -8,26 +8,15 @@ import { buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
+import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
-import { ApiError } from '@/lib/api.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { grievanceQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(grievanceQuery(params.code)),
-  errorComponent: ({ error }) => (
-    <EmptyState
-      icon={Scale}
-      title={error instanceof ApiError && error.status === 404 ? 'No grievance with that ID' : 'Could not load this grievance'}
-      description={error instanceof Error ? error.message : undefined}
-      action={
-        <Link to="/grievances" className={buttonStyles('primary')}>
-          Back to grievances
-        </Link>
-      }
-    />
-  ),
+  errorComponent: GrievanceLoadError,
   component: GrievancePage,
 })
 
@@ -64,6 +53,8 @@ function GrievancePage() {
   const { data: grievance } = useQuery(grievanceQuery(code))
   useGrievancePageTitle(grievance?.code ?? code.toUpperCase())
   if (!grievance) return null
+  // A grievance that is finished takes nothing more on its timeline; the server refuses it whatever the page shows.
+  const sealed = grievance.status === 'closed' || grievance.status === 'voided'
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,7 +99,18 @@ function GrievancePage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Timeline" description="Actions taken and events, in the order they happened." className="border-b border-line" />
+        <PanelHeader
+          title="Timeline"
+          description="Actions taken and events, in the order they happened."
+          className="border-b border-line"
+          actions={
+            sealed ? null : (
+              <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
+                <Plus className="size-4" aria-hidden /> Add action or event
+              </Link>
+            )
+          }
+        />
         <EmptyState icon={History} title="Nothing on the timeline yet" description="What is done about this grievance will be recorded here." />
       </Panel>
     </div>

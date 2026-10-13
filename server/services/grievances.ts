@@ -8,6 +8,7 @@ import type { Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { requireRichText } from '../lib/richtext.ts'
+import { appendGrievanceEntry, GRIEVANCE_RECORDED } from './grievance-entries.ts'
 import { fullName } from './refs.ts'
 
 /**
@@ -210,7 +211,7 @@ export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInpu
         ...input.managementIds.map((employeeId) => ({ grievanceId: row.id, employeeId, role: 'management' as const })),
       ])
       .run()
-    // The first timeline entry, "Grievance recorded", is written by the migration that adds the entries table (slice 3.1).
+    appendGrievanceEntry(tx, actor, row.id, { kind: 'system', occurredAt: now, title: GRIEVANCE_RECORDED, at: now })
     writeGrievanceAudit(tx, actor, { action: 'create', entityType: 'grievance', entityId: row.id, details: `${code} · ${input.title}`, at: now })
     return row.id
   })
