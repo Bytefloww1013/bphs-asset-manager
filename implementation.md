@@ -1,8 +1,33 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **decisions settled 2026-10-12, awaiting the go-ahead to start slice 1.1.** Nothing is built yet. Written against `main` at `bb028a3`.
+Status: **slice 1.1 done 2026-10-12; next is the slice 1.2 design step.** No product code is built yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
+
+## Progress
+
+A slice is ticked when it is finished and committed.
+
+- [x] 1.1 Feasibility checks (2026-10-12)
+- [ ] 1.2 Rich text, end to end
+- [ ] 1.3 People pickers
+- [ ] 1.4 Workspace shell, permissions, audit writer
+- [ ] 2.1 Data and categories
+- [ ] 2.2 Create
+- [ ] 2.3 Browse
+- [ ] 2.4 Detail
+- [ ] 3.1 Data and add-entry
+- [ ] 3.2 Timeline
+- [ ] 3.3 Entry detail and corrections
+- [ ] 4.1 Status and ownership
+- [ ] 4.2 Edit with versions
+- [ ] 4.3 Guards on employees
+- [ ] 5.1 Audit log page and export
+- [ ] 6.1 Attachment storage and upload
+- [ ] 6.2 Download and withdraw
+- [ ] 7.1 PDF case file
+- [ ] 7.2 Excel workbook
+- [ ] 8.1 Seed, docs, end-to-end check
 
 ## 1. Decisions made
 
@@ -70,6 +95,26 @@ The brief says feasibility has not been checked. These are the four things that 
 4. **Print to PDF.** Confirm a print stylesheet gives clean page breaks in Firefox and Chrome. Page numbers come from the browser's own print footer; CSS page-number boxes are not relied on because Firefox does not support them.
 
 Done when: each has a yes or a named fallback, written into this file.
+
+**Results (2026-10-12): all four are a yes, no fallback needed.** Proved on the local branch `spike/grievance-feasibility` (two throwaway pages, never merged), against a production build served by the app with its real Content Security Policy, in headless Firefox 157 and Chrome 155.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Tiptap 3.31.4 under `script-src 'self'` | **Yes.** Every format in the allow-list applied from buttons, and Ctrl+B and list typing worked, in both browsers with no CSP violation. The built files contain no `eval` or `new Function`. It also runs with `injectCSS: false`, so it does not depend on `style-src 'unsafe-inline'`. |
+| 1 | Maintenance and advisories | Latest release 2026-09-30, 80 stable releases in the past 12 months, MIT, about 22 million downloads a week. `bun audit` reports nothing for Tiptap or ProseMirror (the one advisory it lists is the esbuild one already on `main`, a development-only tool). |
+| 1 | Bundle | The editor lands in its own lazily loaded file: **393 kB, 125 kB gzipped**. The entry file every page loads grew by 0.9 kB (0.25 kB gzipped), which is the route table. |
+| 2 | `sanitize-html` 2.18.0 | **Yes**, on Node 24.21 (the app's container image) and Node 26. 19 hostile inputs (script, event handlers, `javascript:` in five spellings, `data:`, `vbscript:`, protocol-relative links, inline styles, `img`, `svg`, `iframe`, `style`, `form`, `math`, broken nesting) all came out clean; Tiptap's own output came back unchanged; a second pass changes nothing. 100,000 characters take 3 ms, 5,000 nested quotes 14 ms. Latest release 2026-09-30, MIT. |
+| 3 | `write-excel-file` 4.1.1, several sheets | **Yes.** One workbook with the four sheets (Grievance, Timeline, Attachments, Versions), written in the browser under the CSP and read back sheet by sheet. Every cell is a text cell, no formula cells; `=1+1`, `+cmd|calc`, a line break and `0001` came back exactly as written. |
+| 4 | Print to PDF | **Yes, with the layout rules below.** Firefox and Chrome both gave 8 Letter pages from the same page: the cover alone on page 1, the Grievance ID and "Confidential" at the top of every page, no entry split across pages, no heading left alone at the foot of a page. |
+
+What these change in later slices (details only, no screen changes):
+
+- **Slice 1.2.** Tiptap's StarterKit already includes links and underline, so no extra extension packages; code, code block and horizontal rule are switched off and headings limited to levels 2 and 3. The server sets `rel` and `target` on links itself and does not keep what the browser sent. A line break is stored as `<br />`. Reducing HTML to plain text cannot be a bare tag strip: that runs blocks together ("Headingplain"), so the helper puts a line break between blocks.
+- **Slice 7.1.** Three rules, each needed for Firefox: (a) the running header is a table header row (`thead`), which both browsers repeat on every page; a `position: fixed` header was tried and rejected (Firefox does not show it, Chrome overlaps it with text). (b) The cover sits in its own table row with `break-after: page` on the row; a forced break on a block inside a cell is ignored by Firefox. (c) Firefox ignores `break-after: avoid`, so a heading is kept with what follows by wrapping the two in a `break-inside: avoid` block.
+- **Slice 7.1, cosmetic.** Firefox sometimes starts a new page earlier than it has to, leaving white space at the foot of a page. Nothing is cut or split. To be tuned when the real layout exists.
+- **Slice 7.2.** The multi-sheet call is `writeXlsxFile([{ data, sheet, columns, stickyRowsCount }, ...])`.
+
+Not checked here: the page-number footer in Firefox. It comes from Firefox's own print dialog, which a headless run does not have; Chrome's footer printed "1/8" to "8/8". It is on the browser check list for slice 7.1.
 
 ### Slice 1.2: Rich text, end to end
 
