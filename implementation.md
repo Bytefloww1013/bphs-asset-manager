@@ -87,313 +87,232 @@ Shared pieces every later phase needs. No grievance screen exists at the end of 
 
 ### Slice 1.1: Feasibility checks (no product code)
 
-The brief says feasibility has not been checked. These are the four things that could change the plan, each proved in a throwaway branch before anything is built on it:
+- Four checks on a throwaway branch before anything is built on them, each ending in a yes or a named fallback.
+- Rich-text editor: Tiptap, bundled from npm, under `script-src 'self'` on a production build; maintenance, advisories and bundle size; loaded only on grievance pages.
+- Server HTML sanitiser: `sanitize-html` on Node 24 with the slice 1.2 allow-list.
+- Excel: `write-excel-file` 4.1.1 writing several sheets with text-only cells.
+- Print to PDF: clean page breaks in Firefox and Chrome. Page numbers come from the browser's print footer, not CSS page-number boxes (Firefox does not support them).
 
-1. **Rich-text editor.** Candidate: Tiptap (bundled from npm, no CDN, so it works without internet). Confirm it runs under the app's Content Security Policy (`script-src 'self'`) on a production build, check its current maintenance and advisories, and measure the bundle; it is loaded only on grievance pages so other pages do not grow.
-2. **HTML sanitiser on the server.** Candidate: `sanitize-html` (no browser DOM needed). Confirm it runs on Node 24 with the allow-list in slice 1.2.
-3. **Multi-sheet Excel.** Confirm the installed `write-excel-file` 4.1.1 writes several sheets in one workbook with text-only cells.
-4. **Print to PDF.** Confirm a print stylesheet gives clean page breaks in Firefox and Chrome. Page numbers come from the browser's own print footer; CSS page-number boxes are not relied on because Firefox does not support them.
+**As built (2026-10-12).** All four are a yes, no fallback: Tiptap 3.31.4 and `sanitize-html` 2.18.0 run under the app's real Content Security Policy, `write-excel-file` 4.1.1 writes several text-only sheets in one workbook, and Firefox and Chrome print the same pages.
 
-Done when: each has a yes or a named fallback, written into this file.
-
-**Results (2026-10-12): all four are a yes, no fallback needed.** Proved with two throwaway pages on a local spike branch (deleted afterwards, never merged), against a production build served by the app with its real Content Security Policy, in headless Firefox 157 and Chrome 155.
-
-| # | Check | Result |
-|---|---|---|
-| 1 | Tiptap 3.31.4 under `script-src 'self'` | **Yes.** Every format in the allow-list applied from buttons, and Ctrl+B and list typing worked, in both browsers with no CSP violation. The built files contain no `eval` or `new Function`. It also runs with `injectCSS: false`, so it does not depend on `style-src 'unsafe-inline'`. |
-| 1 | Maintenance and advisories | Latest release 2026-09-30, 80 stable releases in the past 12 months, MIT, about 22 million downloads a week. `bun audit` reports nothing for Tiptap or ProseMirror (the one advisory it lists is the esbuild one already on `main`, a development-only tool). |
-| 1 | Bundle | The editor lands in its own lazily loaded file: **393 kB, 125 kB gzipped**. The entry file every page loads grew by 0.9 kB (0.25 kB gzipped), which is the route table. |
-| 2 | `sanitize-html` 2.18.0 | **Yes**, on Node 24.21 (the app's container image) and Node 26. 19 hostile inputs (script, event handlers, `javascript:` in five spellings, `data:`, `vbscript:`, protocol-relative links, inline styles, `img`, `svg`, `iframe`, `style`, `form`, `math`, broken nesting) all came out clean; Tiptap's own output came back unchanged; a second pass changes nothing. 100,000 characters take 3 ms, 5,000 nested quotes 14 ms. Latest release 2026-09-30, MIT. |
-| 3 | `write-excel-file` 4.1.1, several sheets | **Yes.** One workbook with the four sheets (Grievance, Timeline, Attachments, Versions), written in the browser under the CSP and read back sheet by sheet. Every cell is a text cell, no formula cells; `=1+1`, `+cmd|calc`, a line break and `0001` came back exactly as written. |
-| 4 | Print to PDF | **Yes, with the layout rules below.** Firefox and Chrome both gave 8 Letter pages from the same page: the cover alone on page 1, the Grievance ID and "Confidential" at the top of every page, no entry split across pages, no heading left alone at the foot of a page. |
-
-What these change in later slices (details only, no screen changes):
-
-- **Slice 1.2.** Tiptap's StarterKit already includes links and underline, so no extra extension packages; code, code block and horizontal rule are switched off and headings limited to levels 2 and 3. The server sets `rel` and `target` on links itself and does not keep what the browser sent. A line break is stored as `<br />`. Reducing HTML to plain text cannot be a bare tag strip: that runs blocks together ("Headingplain"), so the helper puts a line break between blocks.
 - **Slice 7.1.** Three rules, each needed for Firefox: (a) the running header is a table header row (`thead`), which both browsers repeat on every page; a `position: fixed` header was tried and rejected (Firefox does not show it, Chrome overlaps it with text). (b) The cover sits in its own table row with `break-after: page` on the row; a forced break on a block inside a cell is ignored by Firefox. (c) Firefox ignores `break-after: avoid`, so a heading is kept with what follows by wrapping the two in a `break-inside: avoid` block.
 - **Slice 7.1, cosmetic.** Firefox sometimes starts a new page earlier than it has to, leaving white space at the foot of a page. Nothing is cut or split. To be tuned when the real layout exists.
+- **Slice 7.1, not checked.** The page-number footer in Firefox comes from its print dialog, which a headless run does not have. It is on the browser check list for slice 7.1.
 - **Slice 7.2.** The multi-sheet call is `writeXlsxFile([{ data, sheet, columns, stickyRowsCount }, ...])`.
-
-Not checked here: the page-number footer in Firefox. It comes from Firefox's own print dialog, which a headless run does not have; Chrome's footer printed "1/8" to "8/8". It is on the browser check list for slice 7.1.
 
 ### Slice 1.2: Rich text, end to end
 
-**Design first (stops for your sign-off).** Before the component is built, two or three directions for the editor are mocked in the browser with real sample text and you pick one. What is being decided: toolbar placement (fixed above the text, or floating on selection, or both), how much chrome the writing area has, the reading typography (measure, line height, heading and quote styles) that the editor and the read-only view share so what is typed looks exactly like what is later read, focus and error states, and how it sits in the create page at desktop and narrow widths. The chosen direction is recorded in `DESIGN.md`.
-
-- `shared/richtext.ts`: the allow-list (paragraph, line break, bold, italic, underline, strikethrough, headings 2 and 3, bulleted and numbered lists, block quote, links with `http`, `https` or `mailto` only). No images, no inline styles, no scripts. A helper that reduces HTML to plain text.
-- `server/lib/richtext.ts`: sanitises on every write. The server stores the sanitised HTML **and** a plain-text copy (for search, previews and Excel). What the browser sends is never trusted.
-- `web/src/components/ui/rich-text.tsx`: the editor (toolbar matching the allow-list, keyboard shortcuts, labelled for screen readers) and a read-only renderer that only ever displays server-sanitised HTML.
+- Design first, with sign-off: two or three editor directions mocked with real text (toolbar placement, chrome, reading typography shared by the editor and the read-only view, focus and error states, desktop and narrow widths). The choice goes in `DESIGN.md`.
+- `shared/richtext.ts`: the allow-list (paragraph, line break, bold, italic, underline, strikethrough, headings 2 and 3, bulleted and numbered lists, block quote, links with `http`, `https` or `mailto` only; no images, inline styles or scripts) and an HTML-to-plain-text helper.
+- `server/lib/richtext.ts`: sanitises on every write and stores the sanitised HTML and a plain-text copy (search, previews, Excel). What the browser sends is never trusted.
+- `web/src/components/ui/rich-text.tsx`: the editor (toolbar matching the allow-list, shortcuts, screen-reader labels) and a read-only renderer of server-sanitised HTML only.
 - Limit: 100,000 characters of body text.
+- Done when: unit tests show script tags, event handlers, `javascript:` links and inline styles are stripped, and allowed formatting survives a save and reload.
 
-Done when: unit tests show script tags, event handlers, `javascript:` links and inline styles are stripped, and allowed formatting survives a save and reload.
+**As built (2026-10-12).** The ruled field with a fixed bar was chosen; it is recorded in `DESIGN.md` under Components, Rich text.
 
-**Results (2026-10-12).** Three directions were mocked (a ruled field with a fixed bar, an open page with a floating bar, a headed page with both); **the ruled field was chosen** and is recorded in `DESIGN.md` under Components, Rich text. The mock page is deleted.
-
-- Sanitising uses `sanitize-html`. 16 unit tests cover script and style removal, event handlers, twelve kinds of refused link, inline styles and classes, dropped tags, and the plain-text copy. A body that is empty is refused with `422 body_required` and one over the limit with `422 body_too_long`.
-- Save and reload was checked in headless Chrome 155 against a production build with the real Content Security Policy: a body typed with keyboard shortcuts only, sanitised, loaded back into the editor and into the read-only view, comes back with the same formatting, and a second save is byte-identical. No grievance API exists yet, so the "save" was the sanitiser called directly; slice 2.3 exercises it through a real route. Not run in Firefox.
-- Things later slices should know:
-  - The editor is `RichTextEditor` and the read-only view `RichTextView`, both from `web/src/components/ui/rich-text.tsx`. The editor works as the child of a `Field`. It is uncontrolled: `defaultValue` is read once and `onChange` gives the HTML, or an empty string when nothing is written.
-  - Tiptap loads only when an editor is shown (about 128 kB gzipped, in its own file). The read-only view costs nothing.
-  - The count under the editor uses the same plain-text helper as the server, so the two agree at the limit.
-  - The server drops empty paragraphs at either end of a body. Tiptap keeps one after a closing list or quote, and it would otherwise be stored.
-  - The bar is one tab stop (arrow keys move along it, Alt+F10 reaches it from the text, Escape goes back), so Tab still leaves the field (in a list it indents the item instead).
+- The editor is `RichTextEditor` and the read-only view `RichTextView`, both from `web/src/components/ui/rich-text.tsx`. The editor works as the child of a `Field`. It is uncontrolled: `defaultValue` is read once and `onChange` gives the HTML, or an empty string when nothing is written.
+- Tiptap loads only when an editor is shown (about 128 kB gzipped, in its own file). The read-only view costs nothing.
+- An empty body is refused with `422 body_required` and one over the limit with `422 body_too_long`. The count under the editor uses the same plain-text helper as the server.
+- The server sets `rel` and `target` on links itself, and drops empty paragraphs at either end of a body. The plain-text helper puts a line break between blocks.
 
 ### Slice 1.3: People pickers
 
-- `web/src/components/ui/combobox.tsx`: a multi-select variant with removable chips, built on the existing single-select. Searches by name and Employee ID, offers active employees only, fully keyboard-operable.
+- `web/src/components/ui/combobox.tsx`: a multi-select variant with removable chips, built on the single-select. Name and Employee ID search, active employees only.
+- Done when: usable with Tab, arrows, Enter and Backspace alone.
 
-Done when: it can be used with Tab, arrows, Enter and Backspace alone.
+**As built (2026-10-12).**
 
-**Results (2026-10-12).** Checked on a production build with the keyboard alone, then with the pointer, in headless Chrome 155 and Firefox: 34 checks, all passing in both. The check page is deleted.
-
-- `MultiCombobox` in `web/src/components/ui/combobox.tsx` is the general chip picker. It shares its search and its list with the single-select `Combobox`, which was refactored to use them and behaves as before.
-- `PeoplePicker` in `web/src/features/grievances/people-picker.tsx` is the one the grievance forms use. It takes the employee list and offers only active employees, searched by name and Employee ID. `exclude` keeps out people who are in the grievance's other list. It works as the child of a `Field`.
-- Things later slices should know:
-  - Someone already chosen keeps their chip after they are archived, but the chip does not say "archived". The edit page in slice 4.2 should decide whether it needs to.
-  - Enter adds the highlighted match only while the list is open. With the list closed, Enter submits the form, as in any text field.
-  - The keys beyond the brief: Left arrow from the start of the text walks back through the chips, Delete or Backspace removes the chip in focus, Home and End jump along them. Chips are not tab stops, so one Tab leaves the field.
-  - No unit tests: the project has no browser test environment (vitest covers `server/` and `shared/` only), so the behaviour was checked in real browsers instead.
+- `MultiCombobox` in `web/src/components/ui/combobox.tsx` is the general chip picker; it shares its search and list with the single-select `Combobox`.
+- `PeoplePicker` in `web/src/features/grievances/people-picker.tsx` is the one the grievance forms use: active employees only, searched by name and Employee ID, with `exclude` to keep out people in the grievance's other list. It works as the child of a `Field`.
+- Enter adds the highlighted match only while the list is open; otherwise it submits the form. Left arrow walks back through the chips, Delete or Backspace removes the one in focus, Home and End jump along them. Chips are not tab stops.
+- No unit tests: the project has no browser test environment (vitest covers `server/` and `shared/` only), so browser behaviour is checked in real browsers.
 
 ### Slice 1.4: Workspace shell, permissions, audit writer
 
-- `web/src/components/shell/app-shell.tsx`: the workspace switcher, and the nav built per workspace instead of one fixed list. The workspace is derived from the URL (anything under `/grievances` is the Grievances workspace), so links, reloads and the back button always land on the right side.
-- `web/src/routes/_app/grievances.tsx`: the layout route for the workspace (page-title suffix, lazy loading of grievance code).
+- `web/src/components/shell/app-shell.tsx`: the switcher, and the nav built per workspace. The workspace is derived from the URL (anything under `/grievances`), so links, reloads and the back button land on the right side.
+- `web/src/routes/_app/grievances.tsx`: the workspace's layout route (page-title suffix, lazy loading).
 - `web/src/styles.css`: the second accent as a token, scoped to the Grievances workspace.
-- `shared/permissions.ts`: new permission `grievance.void` (Super Admin), and `canManageGrievance(user, ownerEmployeeId)`: true for a Super Admin or the account linked to the owner. Server and browser both use this one function.
-- Migration `0007_grievance_audit`: table `grievance_audit_log` with the same columns as `audit_log`.
-- `server/lib/grievance-audit.ts`: `writeGrievanceAudit`, called inside the same transaction as the change it describes. Grievance services never call `writeAudit`, and nothing else calls `writeGrievanceAudit`; a test enforces both directions.
-- `server/routes/grievances.ts` mounted at `/api/grievances` in `server/app.ts`, returning an empty list for now.
+- `shared/permissions.ts`: permission `grievance.void` (Super Admin), and `canManageGrievance(user, ownerEmployeeId)`, true for a Super Admin or the account linked to the owner; used by server and browser.
+- Migration `0007_grievance_audit`: `grievance_audit_log`, same columns as `audit_log`.
+- `server/lib/grievance-audit.ts`: `writeGrievanceAudit`, called in the same transaction as the change. Grievance services never call `writeAudit` and nothing else calls `writeGrievanceAudit`; a test enforces both.
+- `server/routes/grievances.ts` mounted at `/api/grievances` in `server/app.ts`.
+- Done when: both roles can switch, each sidebar shows only its own entries, a reload stays in the workspace, the asset screens look as before, and a signed-out request gets 401.
 
-Done when: both roles can switch workspaces, each sidebar shows only its own entries, a reload stays in the same workspace, the asset screens look exactly as before, and a signed-out request gets 401.
+**As built (2026-10-12).**
 
-**Results (2026-10-12).** Checked on a production build in headless Chrome 155 and Firefox, as a Super Admin and as an Admin: 37 checks, all passing in both. Screenshots are in `qa-shots/slice-1.4/` (not committed).
-
-- The switcher sits under the product name in the rail and in the narrow-screen drawer. **Colour (decided 2026-10-12): Grievances uses the same cobalt as Assets for now.** Plum and an orange, rgb(241, 142, 49), were both tried and turned down; the orange was too faint as text (about 2.4:1). The token `--color-workspace` stays, used by the switcher's chosen half, the active nav icon and the "Confidential" line, so a colour can be set later in one place.
-- On the Assets side the only visible change is the switcher itself: the eleven nav entries, the titles and the cobalt are as they were.
-- Things later slices should know:
-  - **The Grievances sidebar has one entry so far.** Categories and Audit log are added to `useNav` in `app-shell.tsx` by the slices that build those pages (2.1 and 5.1), so the sidebar never links to a page that is not there. The Grievances entry is not an exact match, so it will also light up on `/grievances/categories` until slice 2.1 sets that.
-  - Grievance pages set their tab title with `useGrievancePageTitle(page?)` from `web/src/features/grievances/page-title.ts`: "Grievances · BPHS", or "GR-2026-0001 · Grievances · BPHS".
-  - `useWorkspace()` in `web/src/lib/workspace.ts` gives the workspace from the address. Dialogs and popovers are drawn outside the shell, so one that uses `--color-workspace` must carry `data-workspace` itself, as the drawer does.
-  - The workspace last used is the one thing kept in browser storage (its name only). It is applied once, when the app is opened at `/`.
-  - The Issue and Return sheets still belong to the shared shell, so `?issue=` in a grievance address would open one. No screen links that way; slice 2.3 can move them to the Assets side if it matters.
-  - "The workspace name in the page header" is met on narrow screens by the top bar ("BPHS Grievances") and on wide ones by the rail. Pages deeper than the list (slice 2.4 on) should decide whether their header also needs it.
-  - `GRIEVANCE_AUDIT_ACTIONS` in `shared/constants.ts` is a first list taken from section 8: create, update, delete, status, owner, void, entry, attach, withdraw, download, export. Later slices may add to it.
-  - `grievance_audit_log` is append-only by trigger, on the same terms as `audit_log`.
-  - The test that keeps the two logs apart reads the source: a server file whose name starts with `grievance` must not mention `writeAudit` or `auditLog`, and no other file may mention `writeGrievanceAudit` or `grievanceAuditLog`. So grievance server files must keep that name prefix.
+- **Colour: Grievances uses the same cobalt as Assets for now.** Plum and an orange were tried and turned down. The token `--color-workspace` stays, so a colour can be set later in one place.
+- A nav entry is added to `useNav` in `app-shell.tsx` by the slice that builds its page (slice 5.1 adds Audit log), so the sidebar never links to a page that is not there.
+- Grievance pages set their tab title with `useGrievancePageTitle(page?)` from `web/src/features/grievances/page-title.ts`.
+- `useWorkspace()` in `web/src/lib/workspace.ts` gives the workspace from the address. Dialogs and popovers are drawn outside the shell, so one that uses `--color-workspace` must carry `data-workspace` itself, as the drawer does.
+- The workspace last used is the one thing kept in browser storage (its name only), applied once, when the app is opened at `/`.
+- The Issue and Return sheets still belong to the shared shell, so `?issue=` in a grievance address would open one. No screen links that way.
+- `GRIEVANCE_AUDIT_ACTIONS` in `shared/constants.ts`: create, update, delete, status, owner, void, entry, attach, withdraw, download, export. Later slices may add to it.
+- `grievance_audit_log` is append-only by trigger, on the same terms as `audit_log`.
+- The test that keeps the two logs apart reads the source: a server file whose name starts with `grievance` must not mention `writeAudit` or `auditLog`, and no other file may mention `writeGrievanceAudit` or `grievanceAuditLog`. So grievance server files must keep that name prefix.
 
 ## 5. Phase 2: Grievance records
 
 ### Slice 2.1: Data and categories
 
-Migration `0008_grievances`:
+- Migration `0008_grievances`:
+  - `grievance_categories`: `id`, `name` (unique), `is_active`. Seeded in the migration, since production runs on live data: Conduct, Pay and hours, Health and safety, Discrimination or harassment, Working conditions, Other.
+  - `grievances`: `id`, `code` (unique), `year` and `seq` (unique together), `title` (up to 150), `short_description` (up to 300), `body_html`, `body_text`, `date_made` (`YYYY-MM-DD` text, so time zones cannot shift it), `owner_id` → employees, `category_id`, `status`, `version` (starts at 1), `created_by_user_id`, `created_at`, `last_activity_at`.
+  - `grievance_people`: `grievance_id`, `employee_id`, `role` (`employee` or `management`), unique on all three.
+- ID generation: inside the create transaction, `seq` is the highest for the current year plus one; SQLite's single writer and the unique index stop duplicates. The year is the year the record was entered, not Date Made.
+- `web/src/routes/_app/grievances.categories.tsx`: the Categories page. Same list component and rules as the Lists screen (rename, deactivate, delete only if unused, last active one cannot be removed) but not shown there; its changes go to the Grievance Audit Log.
 
-- `grievance_categories`: `id`, `name` (unique), `is_active`. Seeded in the migration (not the dev seed, since production runs on live data): Conduct, Pay and hours, Health and safety, Discrimination or harassment, Working conditions, Other.
-- `grievances`: `id`, `code` (unique), `year`, `seq` (unique together), `title` (up to 150), `short_description` (up to 300), `body_html`, `body_text`, `date_made` (a calendar date stored as `YYYY-MM-DD` text, so time zones cannot shift it), `owner_id` → employees, `category_id`, `status`, `version` (starts at 1), `created_by_user_id`, `created_at`, `last_activity_at`.
-- `grievance_people`: `grievance_id`, `employee_id`, `role` (`employee` or `management`), unique on all three.
+**As built (2026-10-12).**
 
-ID generation: inside the create transaction, `seq` is the highest for the current year plus one. SQLite allows one writer at a time and the unique index backs it up, so two people saving at once cannot get the same ID. The year is the year the record was entered, not Date Made.
-
-Also: `web/src/routes/_app/grievances.categories.tsx`, the **Categories** page in the Grievances workspace. It reuses the list component and rules from the Lists screen (rename, deactivate, delete only if unused, last active one cannot be removed) but does not appear on that screen. Its changes go to the Grievance Audit Log.
-
-**Results (2026-10-12).** 122 tests pass (6 of them new, in `server/tests/grievances.test.ts`), and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin and as a Super Admin: 17 checks, all passing. Firefox was not run for this slice. Screenshots are in `qa-shots/slice-2.1/` (not committed).
-
-- Any Admin can add, rename and deactivate a category; deleting needs a Super Admin (`record.delete`), as on the Lists screen. The API is `/api/grievances/categories`, in `server/services/grievance-categories.ts`. Audit entries use the entity type `category`.
-- The sidebar has a second group, Administration, with Categories. A nav entry now gives way to a longer one beneath it, so Grievances is not lit on `/grievances/categories` but will still be lit on a detail page.
-- Things later slices should know:
-  - **Deleting an employee named on a grievance will fail at the database** (`owner_id` and `grievance_people.employee_id` are `ON DELETE RESTRICT`). No grievance can exist yet, so nothing is broken today, but slice 2.2 must add this to `deleteBlocked` in `server/services/employees.ts` so the person gets the usual "archive instead" message and not a 500.
-  - `nextGrievanceCode(tx, at?)` in `server/services/grievances.ts` gives `{ code, year, seq }`; call it inside the create transaction. The year is the server's local year. `grievanceCode(year, seq)` in `shared/constants.ts` formats it (four digits, growing past 9999).
-  - `GRIEVANCE_STATUSES` (`open`, `in_progress`, `resolved`, `closed`, `voided`) and `GRIEVANCE_PERSON_ROLES` are in `shared/constants.ts`; the database checks both.
-  - `grievances.category_id` is `ON DELETE RESTRICT`, and `grievance_people` rows go with their grievance.
-  - The list parts (`EditableName`, `AddRow`, `ActiveSwitch`, `DeleteButton`) moved from `lists.tsx` to `web/src/features/common/list-parts.tsx`; the Lists screen behaves as before.
-  - `grievanceCategoriesQuery` in `web/src/lib/queries.ts` returns inactive categories too, with a count each. The create form should offer the active ones only.
+- Any Admin can add, rename and deactivate a category; deleting needs a Super Admin (`record.delete`). The API is `/api/grievances/categories`, in `server/services/grievance-categories.ts`. Audit entries use the entity type `category`.
+- `nextGrievanceCode(tx, at?)` in `server/services/grievances.ts` gives `{ code, year, seq }` (the server's local year); `grievanceCode(year, seq)` in `shared/constants.ts` formats it.
+- `GRIEVANCE_STATUSES` (`open`, `in_progress`, `resolved`, `closed`, `voided`) and `GRIEVANCE_PERSON_ROLES` are in `shared/constants.ts`; the database checks both.
+- `owner_id`, `category_id` and `grievance_people.employee_id` are `ON DELETE RESTRICT`; `grievance_people` rows go with their grievance.
+- The list parts (`EditableName`, `AddRow`, `ActiveSwitch`, `DeleteButton`) are in `web/src/features/common/list-parts.tsx`, shared with the Lists screen.
+- `grievanceCategoriesQuery` in `web/src/lib/queries.ts` returns inactive categories too, with a count each; forms offer the active ones only.
 
 ### Slice 2.2: Create
 
-- `shared/schemas.ts`: `grievanceCreateSchema`. Rules: title, short description, body, date made, owner and category required; at least one Employee Involved and one Management Involved; nobody in both lists; Date Made not in the future.
-- `server/services/grievances.ts`: `createGrievance`. Writes the grievance, its people, timeline entry E01 "Grievance recorded" (automatic), and an audit entry, in one transaction.
-- `web/src/routes/_app/grievances.new.tsx`: full page. Grievance ID shown as "Assigned when saved". Short inputs for Title and Short Description with character counts; date picker defaulting to today; two multi-select people pickers; single-select Owner; Category; the editor. Leaving with unsaved text asks first. Nothing is saved to browser storage, because these are sensitive and machines may be shared.
+- `shared/schemas.ts`: `grievanceCreateSchema`. Title, short description, body, date made, owner and category required; at least one Employee Involved and one Management Involved; nobody in both lists; Date Made not in the future.
+- `server/services/grievances.ts`: `createGrievance` writes the grievance, its people, the automatic entry E01 "Grievance recorded" and an audit entry in one transaction.
+- `web/src/routes/_app/grievances.new.tsx`: full page. Grievance ID shown as "Assigned when saved"; Title and Short Description with character counts; date picker defaulting to today; two people pickers; Owner; Category; the editor.
+- Leaving with unsaved text asks first. Nothing is saved to browser storage, because these are sensitive and machines may be shared.
+- Done when: either role can create a grievance and reopen it with formatting intact; every validation rule has a test.
 
-Done when: a grievance can be created by either role and reopened with its formatting intact; every validation rule has a test.
+**As built (2026-10-12).**
 
-**Results (2026-10-12).** 127 tests pass (5 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin and as a Super Admin: 14 checks, all passing. Firefox was not run. Screenshots are in `qa-shots/slice-2.2/` (not committed).
-
-- **What was built:** `grievanceCreateSchema` and `localToday` in `shared/schemas.ts`; `createGrievance`, `getGrievance` and `peopleOf` in `server/services/grievances.ts`; `POST /api/grievances`; the page at `/grievances/new`, reached from a "New grievance" button on the list page.
-- **Decisions and things later slices should know:**
-  - `POST` answers 201 with a `GrievanceDetail` (in `shared/types.ts`), the shape slice 2.4's `GET /api/grievances/:code` should return; `getGrievance` already takes `{ code }`.
-  - **After saving, the page goes to the list**, because there is no detail page yet. Slice 2.4 points it at the new grievance. "Reopen it with formatting intact" was checked by reading the stored `body_html`, not on a page, for the same reason.
-  - An archived employee is refused in either people list and as owner (422 on that field); an inactive category answers 409 `category_inactive`.
-  - The warning when the owner is also named on the grievance is a note under the Owner field, not a block. The "owner has no linked account" note is left to slice 4.1, which is where it starts to matter.
-  - Leaving the page with anything typed asks first (`useBlocker`, and the browser's own prompt on close or reload). Nothing typed is written to browser storage.
-  - `deleteBlocked` in `server/services/employees.ts` now counts grievances, so deleting a named employee gets "archive instead" and not a 500.
-  - The E01 "Grievance recorded" entry is not written, as planned; slice 3.1 back-fills it.
+- `POST /api/grievances` answers 201 with a `GrievanceDetail` (in `shared/types.ts`); `getGrievance` takes `{ code }`. `localToday` is in `shared/schemas.ts`.
+- An archived employee is refused in either people list and as owner (422 on that field); an inactive category answers 409 `category_inactive`.
+- The warning when the owner is also named on the grievance is a note under the Owner field, not a block.
 
 ### Slice 2.3: Browse
 
-- `GET /api/grievances` with server-side `status`, `owner`, `category`, `from`, `to` and `q` (matches ID, title, short description, body text and people's names). Returns no body HTML, only the 300-character preview.
-- `web/src/routes/_app/grievances.index.tsx`: the table in section 3, status tabs (Open, In progress, Resolved, Closed, All; Voided only under All), owner and category filters, date range, search, row expander, empty states.
+- `GET /api/grievances` with server-side `status`, `owner`, `category`, `from`, `to` and `q`. Returns no body HTML, only the 300-character preview.
+- `web/src/routes/_app/grievances.index.tsx`: the table in section 3, status tabs (Open, In progress, Resolved, Closed, All), owner and category filters, date range, search, row expander, empty states.
 
-**Results (2026-10-12).** 132 tests pass (5 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin: 14 checks, all passing. Firefox was not run. Screenshots are in `qa-shots/slice-2.3/` (not committed).
+**As built (2026-10-12).**
 
-- **What was built:** `grievanceListQuerySchema`; `listGrievances` in `server/services/grievances.ts` behind `GET /api/grievances`; `grievancesQuery` in `web/src/lib/queries.ts`; the list page; `GrievanceStatusBadge` in `web/src/features/grievances/status.tsx`; a `detail` slot on `DataGrid` for a row of its own beneath a row (the expander).
-- **Decisions and things later slices should know:**
-  - The answer is `{ rows, counts, owners }` (`GrievanceList` in `shared/types.ts`), not a bare array. `counts` is per status and for all, under the other filters, and feeds the numbers on the tabs. `owners` is everyone who owns a grievance, for the owner filter.
-  - **The page opens on the Open tab.** Voided grievances appear under All only. `status=all` is the server's default.
-  - `from` and `to` are days, both inclusive, compared with Date Made. Search splits on spaces and every word must be found somewhere: ID, title, short description, body text, or the name of the owner or anyone named.
-  - The whole match is returned and paged in the browser, 25 to a page. If the volume ever calls for it, `limit` and `offset` go on the query as in the Audit Log.
-  - **The ID and title are not links yet**; slice 2.4 makes them so.
-  - The filters live in the address, so a filtered list can be bookmarked or sent. Typing in the search replaces the history entry, as on the Audit Log page.
-  - At 1440 wide the table is wider than its panel and scrolls sideways inside it, as other wide grids do. Short Description and Last activity drop out below `xl`, the people columns below `lg`.
+- The answer is `{ rows, counts, owners }` (`GrievanceList` in `shared/types.ts`). `counts` is per status and for all, under the other filters; `owners` is everyone who owns a grievance.
+- **The page opens on the Open tab.** Voided grievances appear under All only. `status=all` is the server's default.
+- `from` and `to` are days, both inclusive, compared with Date Made. Search splits on spaces and every word must be found somewhere: ID, title, short description, body text, or the name of the owner or anyone named.
+- The whole match is returned and paged in the browser, 25 to a page. If the volume ever calls for it, `limit` and `offset` go on the query as in the Audit Log.
+- The filters live in the address; typing in the search replaces the history entry, as on the Audit Log page.
+- `GrievanceStatusBadge` is in `web/src/features/grievances/status.tsx`; `DataGrid` has a `detail` slot for a row beneath a row.
 
 ### Slice 2.4: Detail
 
 - `GET /api/grievances/:code`.
-- `web/src/routes/_app/grievances.$code.index.tsx`: header (ID, title, status, category), a facts panel (Date Made, Owner, Employees Involved, Management Involved, recorded by and when), the formatted body, and a placeholder for the timeline. An archived employee is still shown, marked "archived".
+- `web/src/routes/_app/grievances.$code.index.tsx`: header (ID, title, status, category), a facts panel (Date Made, Owner, Employees Involved, Management Involved, recorded by and when), the formatted body, and the timeline. An archived employee is still shown, marked "archived".
 
-**Results (2026-10-12).** 134 tests pass (2 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin: 22 checks, all passing, at 1600 and 390 wide. Firefox was not run. Screenshots are in `qa-shots/slice-2.4/` (not committed).
+**As built (2026-10-12).**
 
-- The ID in the address is matched in any letter case, and an unknown one gets a "No grievance with that ID" page with a way back. Reading a grievance writes nothing to the Grievance Audit Log.
-- The header does not carry the workspace name (the question slice 1.4 left open): the rail, or the top bar on a narrow screen, and the back link already say Grievances.
-- The short description is shown under the title; the plan did not list it, but it is otherwise only visible in the list.
-- In the list both the ID and the title are now links to the detail page, and saving a new grievance lands on it rather than on the list.
+- The ID in the address is matched in any letter case; an unknown one gets `GrievanceLoadError` (`web/src/features/grievances/load-error.tsx`), shared by every page under one grievance. TanStack Router logs the caught loader error to the console; the page shown is the right one.
+- Reading a grievance writes nothing to the Grievance Audit Log.
+- The header does not carry the workspace name; the rail or top bar and the back link already say Grievances.
+- The short description is shown under the title.
 
 ## 6. Phase 3: Actions and events
 
 ### Slice 3.1: Data and add-entry
 
-Migration `0009_grievance_entries`:
-
-- `grievance_entries`: `id`, `grievance_id` (required, restrict), `seq` (unique per grievance), `kind` (`action`, `event`, `correction`, `system`), `corrects_entry_id` (set only for a correction), `occurred_at`, `recorded_at`, `title`, `short_description`, `body_html`, `body_text`, `documented_by_employee_id` (nullable), `documented_by_user_id` (required), `documented_by_label` (name as it was at the time). No update or delete path exists in the service.
-
-The E01 entry written by slice 2.2 moves into this table; until this slice lands, 2.2 skips it and the migration back-fills it.
-
+- Migration `0009_grievance_entries`: `grievance_entries` with `id`, `grievance_id` (required, restrict), `seq` (unique per grievance), `kind` (`action`, `event`, `correction`, `system`), `corrects_entry_id` (corrections only), `occurred_at`, `recorded_at`, `title`, `short_description`, `body_html`, `body_text`, `documented_by_employee_id` (nullable), `documented_by_user_id` (required), `documented_by_label` (name as it was at the time). The service has no update or delete path.
+- The migration back-fills E01 for grievances created before this slice.
 - `POST /api/grievances/:code/entries`. Documented By is taken from the session, never from the request.
-- `web/src/routes/_app/grievances.$code.entries.new.tsx`: Grievance ID and title shown locked at the top; Type (Action or Event); Occurred at (date and time, defaults to now); Title; Short Description; the editor. Refused with a clear message if the grievance is Closed or Voided.
+- `web/src/routes/_app/grievances.$code.entries.new.tsx`: Grievance ID and title locked at the top; Type (Action or Event); Occurred at (defaults to now); Title; Short Description; the editor.
 
-**Results (2026-10-12).** 141 tests pass (7 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin: 14 checks, all passing. Firefox was not run. The scratch database was one from before this slice, so the back-fill ran on real rows: all six grievances got their E01. Screenshots are in `qa-shots/slice-3.1/` (not committed).
+**As built (2026-10-12).**
 
-- **What was built:** migration `0009_grievance_entries` (table, back-fill, triggers); `server/services/grievance-entries.ts` with `appendGrievanceEntry` (used inside another transaction; `createGrievance` writes E01 with it) and `createGrievanceEntry`; `POST /api/grievances/:code/entries`, answering 201 with a `GrievanceEntry`; the page at `/grievances/:code/entries/new`, reached from "Add action or event" in the Timeline panel.
-- **Decisions and things later slices should know:**
-  - **The table itself is append-only**, by triggers on the same terms as the audit logs: an update, a delete or a replace aborts. The one change let through is the foreign key clearing `documented_by_employee_id` when that employee is deleted. A fourth trigger refuses a correction that points at another grievance's entry, and a check constraint ties `corrects_entry_id` to `kind = 'correction'`.
-  - `last_activity_at` moves with every entry already (`appendGrievanceEntry` does it), so slice 3.2 has nothing to add there.
-  - Automatic entries (`kind = 'system'`) have an empty short description and body. Slices 4.1 onwards write theirs through `appendGrievanceEntry`.
-  - **Details (the body) are optional on an entry**; Title and Short description are required. The plan did not say either way.
-  - Occurred at is sent as an instant (ISO, with offset) and may be back-dated without limit, but not in the future (five minutes of clock slack).
-  - Documented By is the signed-in account's name as it was at the time (`documented_by_label`), with the account's linked employee, if it has one, in `documented_by_employee_id`. Extra fields in the request are ignored.
-  - A Closed or Voided grievance answers 409 `grievance_sealed`; the page hides the button and shows a notice in place of the form.
-  - The back-fill skips a grievance whose recording account has been removed, since an entry must name an account. No such grievance exists today: accounts cannot be deleted.
-  - There is no way to read entries over the API yet; slice 3.2 adds it.
-  - `GrievanceLoadError` in `web/src/features/grievances/load-error.tsx` is the "No grievance with that ID" view, shared by every page under one grievance.
+- **The table itself is append-only**, by triggers on the same terms as the audit logs. The one change let through is the foreign key clearing `documented_by_employee_id` when that employee is deleted. A fourth trigger refuses a correction that points at another grievance's entry, and a check constraint ties `corrects_entry_id` to `kind = 'correction'`.
+- `appendGrievanceEntry` in `server/services/grievance-entries.ts` is used inside another transaction and moves `last_activity_at`. Automatic entries (`kind = 'system'`) are written through it, with an empty short description.
+- **Details (the body) are optional on an entry**; Title and Short description are required.
+- Occurred at is sent as an instant (ISO, with offset) and may be back-dated without limit, but not in the future (five minutes of clock slack).
+- Documented By is the signed-in account's name as it was at the time (`documented_by_label`), with the account's linked employee, if any, in `documented_by_employee_id`. Extra fields in the request are ignored.
+- A Closed or Voided grievance answers 409 `grievance_sealed`; the page hides the button and shows a notice in place of the form.
 
 ### Slice 3.2: Timeline
 
-**Design first (stops for your sign-off).** The viewer is mocked in the browser against a long, realistic case (20 or more entries of every type, a correction, attachments, a back-dated entry) and you pick a direction before it is built. What is being decided: the card and rail treatment; how the four entry types and automatic entries are told apart without relying on colour alone; date grouping (a marker per day or month so a long case can be scanned); how much of an entry shows in the timeline before opening it (short description only, or expandable to the full body in place); how corrections are tied visually to what they correct; density and the print appearance, since the case file in slice 7.1 reuses this design. The chosen direction is recorded in `DESIGN.md`.
+- Design first, with sign-off: the viewer mocked against a long case (20 or more entries of every type, a correction, attachments, a back-dated entry). Decided: card and rail treatment, telling entry types apart without colour alone, date grouping, how much shows before opening, how corrections are tied to what they correct, density and print appearance (slice 7.1 reuses it). The choice goes in `DESIGN.md`.
+- The timeline on the detail page, with "Add action/event" above it and a type filter (All, Actions, Events, hide automatic).
+- A sticky summary beside it on wide screens: status, owner, entry count, first and latest activity.
+- Reduced motion and keyboard reading order checked; the timeline is a real list for screen readers.
 
-Then built:
+**As built (2026-10-12).** The rail was chosen, with month markers, newest first with a switch to oldest first, and details opening in place. It is written up under "Timeline" in `DESIGN.md`.
 
-- The timeline replaces the placeholder on the detail page, with "Add action/event" above it and a type filter (All, Actions, Events, hide automatic).
-- A sticky summary beside it on wide screens (status, owner, entry count, first and latest activity) so the case's state stays in view while reading down.
-- `last_activity_at` on the grievance is updated with each entry.
-- Reduced-motion and keyboard reading order are checked, and the timeline is a real list for screen readers.
-
-**Results (2026-10-12).** 144 tests pass (3 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin against a 61-entry grievance: 22 checks, all passing. Firefox was not run. The mock and screenshots are in `qa-shots/slice-3.2/`.
-
-- **Direction chosen: the rail**, with month markers, newest first with a switch to oldest first, and details opening in place. It is written up under "Timeline" in `DESIGN.md`.
-- **What was built:** `GET /api/grievances/:code/entries` (every entry with its body, `corrects` and `correctedBy` as entry numbers, in the order recorded, for either role, nothing audited); `grievanceEntriesQuery`; `web/src/features/grievances/timeline.tsx` with `Timeline` and `TimelineSummary`; the detail page lays the two side by side from 1024px.
-- **Decisions and things later slices should know:**
-  - **Long cases:** you asked for infinite scrolling if it stayed simple. It did: the page fetches all of a grievance's entries in one request and draws 25 at a time, the next 25 as the end comes near, with a "Show 25 more" button for anyone not scrolling. Nothing is paged on the server, so the counts and the correction links are exact. If a grievance ever reaches thousands of entries the request itself would want paging; that is not built.
-  - **"Include the grievance date"** was taken to mean the grievance's Date made, shown as "Grievance date" in the summary beside the timeline. Each entry already shows the date and time it happened.
-  - The order switch is remembered per browser (`localStorage`, key `grievance-timeline-order`).
-  - Actions or Events alone hide automatic entries, and keep a correction with the type of the entry it corrects.
-  - "First activity" and "Latest activity" in the summary are the earliest and latest Occurred at among the entries, so a back-dated entry moves the first.
-  - Entry titles are not links yet; slice 3.3 passes `Timeline` a `link` to the entry page.
-  - **Done ahead of slice 3.3, on the server only:** `POST …/entries` takes `kind: 'correction'` with `correctsSeq`; a correction's Occurred at is always the moment it is written; an automatic entry cannot be corrected; a correction can itself be corrected. The test that no route changes or removes an entry is in place too. No page offers a correction yet.
-  - Attachments in the mock are not built; they belong to the attachments slice, which adds them to the entry and to this list.
+- `GET /api/grievances/:code/entries` gives every entry with its body, and `corrects` and `correctedBy` as entry numbers, for either role, nothing audited. `Timeline` and `TimelineSummary` are in `web/src/features/grievances/timeline.tsx`.
+- The page fetches all of a grievance's entries in one request and draws 25 at a time, with a "Show 25 more" button. Nothing is paged on the server.
+- The summary shows the grievance's Date made as "Grievance date". "First activity" and "Latest activity" are the earliest and latest Occurred at, so a back-dated entry moves the first.
+- The order switch is remembered per browser (`localStorage`, key `grievance-timeline-order`).
+- Actions or Events alone hide automatic entries, and keep a correction with the type of the entry it corrects.
+- Attachments in the mock are not built; the attachments slice adds them to the entry and to this list.
 
 ### Slice 3.3: Entry detail and corrections
 
-- `web/src/routes/_app/grievances.$code.entries.$seq.tsx`: every field, full body, previous/next entry links, and back to the grievance.
-- "Add correction" on an entry opens the add form with Type fixed to Correction and the original linked. Both entries show the link. The original text is never changed or hidden.
+- `web/src/routes/_app/grievances.$code.entries.$seq.tsx`: every field, full body, previous and next entry links, and back to the grievance.
+- "Add correction" on an entry opens the add form with Type fixed to Correction and the original linked. The original text is never changed or hidden.
+- Done when: a test proves no API route can change or remove an entry, and an entry cannot be created without a valid grievance.
 
-Done when: a test proves no API route can change or remove an entry, and an entry cannot be created without a valid grievance.
+**As built (2026-10-12).**
 
-**Results (2026-10-12).** 144 tests pass and the typecheck is clean; the tests this slice is judged by were written with slice 3.2's server work. Checked on a production build in headless Chrome 155 as an Admin: 22 checks, all passing on the first run. Firefox was not run. Screenshots are in `qa-shots/slice-3.3/`.
-
-- **What was built:** `web/src/routes/_app/grievances.$code.entries.$seq.tsx`, the entry page (number, type, title, short description, Occurred at, Recorded at, Documented by, the grievance, the full details, Previous and Next by entry number, back to the grievance, and "Add correction"); the add form takes `?corrects=6` and becomes "Add a correction" with Type fixed and the original named and linked; titles on the timeline open the entry page.
-- **Done when, and where it is proved** (`server/tests/grievances.test.ts`, "adding to the timeline"):
-  - *No API route can change or remove an entry:* the only routes with `/entries` in them are one GET and one POST, every PUT, PATCH and DELETE at an entry or its grievance answers 404 or 405 for both roles, and the table is byte for byte the same afterwards. The table's own triggers refuse an update, a delete or a replace as well.
-  - *An entry cannot be created without a valid grievance:* an unknown ID answers 404 and writes nothing, and the table refuses a row with no such grievance.
-- **Decisions and things later slices should know:**
-  - An entry's address uses its number as the pages show it: `/grievances/GR-2026-0001/entries/E06`. A bare `6` is read the same way.
-  - Previous and Next follow the entry numbers (the order recorded), not the order things happened, so they never skip or loop when an entry was back-dated.
-  - **Both ends of a correction show the link:** the correction says "It corrects E06" on its page and carries a "Corrects E06" chip on the timeline; the original says "This entry has been corrected" with each correction listed, and carries "Corrected by" chips. The original's text is shown in full either way.
-  - A correction has no Occurred at of its own; it happens when it is written. An automatic entry cannot be corrected and offers no button. A correction can be corrected. A Closed or Voided grievance offers no button, as it takes no entries.
-  - The entry page reads the same one request as the timeline, so opening an entry from the timeline costs no request.
-  - TanStack Router writes a caught loader error to the console (an unknown grievance ID logs "Grievance not found"); the page shown is the right one.
+- An entry's address uses its number as the pages show it: `/grievances/GR-2026-0001/entries/E06`. A bare `6` is read the same way. The add form takes `?corrects=6`.
+- Previous and Next follow the entry numbers (the order recorded), not the order things happened.
+- Both ends of a correction show the link, on the entry pages and as "Corrects" and "Corrected by" chips on the timeline. The original's text is shown in full either way.
+- A correction is `kind: 'correction'` with `correctsSeq`, and its Occurred at is the moment it is written. An automatic entry cannot be corrected; a correction can be. A Closed or Voided grievance offers no button.
+- The entry page reads the same one request as the timeline.
+- The test in `server/tests/grievances.test.ts` ("adding to the timeline") expects the only routes with `/entries` in them to be one GET and one POST. A later slice that adds one must update it.
 
 ## 7. Phase 4: Lifecycle and history
 
 ### Slice 4.1: Status and ownership
 
-- Statuses: Open → In progress → Resolved → Closed, and Voided. The owner's account or a Super Admin can move between the first four, including reopening; a note is optional except on Close, where it is required.
-- Changing the owner is its own action with an optional note, also for the owner's account or a Super Admin. Handing a grievance to someone else therefore ends the previous owner's ability to change it.
-- Everyone else sees these controls disabled with "Only the owner (name) or a Super Admin can do this." The server refuses the request with 403 regardless of what the page shows.
-- If the Owner is an employee with no linked account, only Super Admins can change the grievance. The create and reassign forms say so when such an owner is picked.
+- Statuses: Open → In progress → Resolved → Closed, and Voided. The owner's account or a Super Admin can move between the first four, including reopening. A note is optional except on Close.
+- Changing the owner is its own action with an optional note, under the same rule; handing a grievance on ends the previous owner's ability to change it.
+- Everyone else sees the controls disabled with "Only the owner (name) or a Super Admin can do this." The server answers 403 whatever the page shows.
+- An owner with no linked account means only Super Admins can change the grievance; the create and reassign forms say so.
 - Each change writes an automatic timeline entry ("Status: Open → In progress", "Owner: A → B") with the note as its body, and an audit entry.
-- **Void** (Super Admin, reason required): the grievance becomes read-only and drops out of the default view. Admin sees the control disabled with the reason, as delete is elsewhere.
+- **Void** (Super Admin, reason required): the grievance becomes read-only and drops out of the default view.
 
-**Results (2026-10-12).** Built as planned; typecheck clean, 152 tests passing, checked in headless Chrome on a production build as the owning Admin, another Admin and a Super Admin.
+**As built (2026-10-12).**
 
-- **Routes.** `POST /api/grievances/:code/status` (`{ status, note }`), `/owner` (`{ ownerId, note }`) and `/void` (`{ reason }`, Super Admin). They are POSTs, so `/api/grievances/:code` still has no PUT, PATCH or DELETE until slice 4.2 adds its PATCH. Each answers with the grievance as it now is. `GET /api/grievances/account-holders` lists the employees an active account is linked to.
-- **Who may.** `findToManage` in `server/services/grievances.ts` is the one check: 403 with "Only the owner (name) or a Super Admin can do this." (`grievanceManageReason` in `shared/permissions.ts`, the same words the page shows), and 409 `grievance_voided` for a voided grievance. Slice 4.2's edit should go through it. `applyChange` writes the update, the automatic entry and the audit entry in one transaction.
-- **Decisions.**
-  - A status can move to any of the other three, in any order; moving to the status it already has is 409 `status_unchanged`.
-  - A Closed grievance takes no change of owner (409 `grievance_sealed`); it is reopened first. The new owner must be an active employee, and not the current one.
-  - A note or reason is plain text, 2,000 characters at most (`GRIEVANCE_NOTE_MAX`). `plainToRichText` in `server/lib/richtext.ts` turns it into the entry's body, escaped, so the timeline, and later the case file, read it like any other body.
-  - The timeline shows an automatic entry's note under its line, always open, with who made the change. It did not show an automatic entry's body before.
-  - The audit entry's details are the ID, the title and the change ("Status: Open → Closed"), never the note.
-  - `GrievanceDetail.ownerHasAccount` is false when no active account is linked to the owner. The Owner fact then says only a Super Admin can change the grievance, and the create form and the Change owner sheet say so as soon as such a person is picked (`ownerAccountNote`). An account that has been turned off counts as no account.
-  - An owner who hands a grievance to someone else is told in the sheet that they will no longer be able to change it.
-- **For later slices.** `web/src/features/grievances/manage.tsx` holds the three buttons and their sheets (`GrievanceActions`), in the page header; slice 4.2's Edit button belongs beside them, with the same disabled reason. A voided grievance shows a notice in their place.
+- `POST /api/grievances/:code/status` (`{ status, note }`), `/owner` (`{ ownerId, note }`) and `/void` (`{ reason }`, Super Admin) each answer with the grievance as it now is. `GET /api/grievances/account-holders` lists the employees an active account is linked to.
+- `findToManage` in `server/services/grievances.ts` is the one check of who may: 403 with the words from `grievanceManageReason` in `shared/permissions.ts`, and 409 `grievance_voided` for a voided grievance. `applyChange` writes the update, the automatic entry and the audit entry in one transaction.
+- A status can move to any of the other three, in any order; moving to the status it already has is 409 `status_unchanged`.
+- A Closed grievance takes no change of owner (409 `grievance_sealed`); it is reopened first. The new owner must be an active employee, and not the current one.
+- A note or reason is plain text, 2,000 characters at most (`GRIEVANCE_NOTE_MAX`). `plainToRichText` in `server/lib/richtext.ts` turns it into the entry's body, escaped. The timeline shows it under the automatic entry's line, with who made the change.
+- The audit entry's details are the ID, the title and the change ("Status: Open → Closed"), never the note.
+- `GrievanceDetail.ownerHasAccount` is false when no active account is linked to the owner; the Owner fact, the create form and the Change owner sheet then say only a Super Admin can change the grievance (`ownerAccountNote`). An account that has been turned off counts as no account.
+- `web/src/features/grievances/manage.tsx` holds the buttons and their sheets (`GrievanceActions`), in the page header. A voided grievance shows a notice in their place.
 
 ### Slice 4.2: Edit with versions
 
-Migration `0010_grievance_versions`:
+- Migration `0010_grievance_versions`: `grievance_versions` with `grievance_id`, `version`, a full snapshot of the editable fields and people, `changed_by_user_id`, `changed_at`, `reason`.
+- Editing is for the owner's account or a Super Admin (G1a), checked on the server. Closed and Voided grievances cannot be edited.
+- `PATCH /api/grievances/:code` takes the version the editor loaded; if someone else saved meanwhile it answers 409 and the page offers to reload.
+- Edit page: the create form pre-filled, plus a required "Reason for change". Saving stores the old version, bumps `version`, and writes an automatic entry naming the fields that changed.
+- `grievances.$code.versions.tsx`: each earlier version in full, with who changed it, when and why.
 
-- `grievance_versions`: `grievance_id`, `version`, a full snapshot of the editable fields and people as they were, `changed_by_user_id`, `changed_at`, `reason`.
+**As built (2026-10-13).**
 
-- Editing is for the owner's account or a Super Admin (G1a), checked on the server.
-- `PATCH /api/grievances/:code` takes the version the editor loaded. If someone else saved in the meantime it is refused with 409 and the page offers to reload, in the style of the existing return-conflict screen.
-- Edit page: the create form pre-filled, plus a required "Reason for change". Saving stores the old version, bumps `version`, and writes an automatic timeline entry naming the fields that changed.
-- `grievances.$code.versions.tsx`: each earlier version, who changed it, when and why, with the full text of that version.
-- Closed and Voided grievances cannot be edited.
-
-**Results (2026-10-13).** Built as planned; typecheck clean, 159 tests passing (7 of them new), checked in headless Chrome 155 on a production build as the owning Admin, another Admin and a Super Admin, at 1360 and 390 wide: 34 checks, all passing. Firefox was not run. Screenshots are in `qa-shots/slice-4.2/` (not committed).
-
-- **Routes.** `PATCH /api/grievances/:code` takes the seven editable fields, `version` and `reason`, and answers with the grievance as it now is. `GET /api/grievances/:code/versions` lists what it said before each edit, the latest first; either role can read it. Both are in `server/services/grievance-versions.ts`, which goes through `findToManage`.
-- **Table.** `grievance_versions` holds the title, short description, body (HTML and text), Date Made, the category's name, and the people as role, Employee ID and name: text, not links, so a version reads the same whatever is later renamed or archived. It is append-only by triggers, like the timeline, and has no route that changes or removes a row. Version N's row is what the grievance said as version N, with who replaced it, when and why.
-- **Decisions.**
-  - The owner is not edited here; the form shows it and points to Change owner on the grievance's page. Status is likewise left to its own sheet.
-  - A save from a version that has been replaced is 409 `stale_version`, naming who got in first. The page keeps what was typed so it can be copied, disables Save, and offers "Discard my changes and reload", which starts the form again from the grievance as it now stands.
-  - A save that changes nothing is 409 `unchanged`, and the page keeps Save disabled until something differs. A Closed grievance is 409 `grievance_sealed` ("Reopen it before editing it."); a Voided one is 409 `grievance_voided`.
-  - Someone already named stays named after they are archived, and their chip says "(archived)"; only a person being added must be active. A category no longer in use stays on the grievance that has it, and is refused only when changed to.
-  - The automatic entry is titled "Edited: " and the fields that changed, by their form labels, with the reason as its body. The audit entry (`update`) has the ID, the new title and the same field names: never the reason, nor the text before or after.
-  - The create form moved to `web/src/features/grievances/form.tsx` (`GrievanceForm`), which both pages use. Leaving a changed edit form asks first, as the create form does.
-  - The Edit button is first in `GrievanceActions`, disabled with the owner reason or, when Closed, "Reopen it before editing it."; opening the edit address directly shows the same reason in place of the form. Once a grievance has been edited its Grievance panel says which version it is and links to "Earlier versions".
-- **For later slices.** Slice 6.2's case file can read earlier versions with `listGrievanceVersions`. The test that no route changes an entry no longer tries PATCH on the grievance itself, which now exists.
+- `PATCH /api/grievances/:code` takes the seven editable fields, `version` and `reason`. `GET /api/grievances/:code/versions` lists what it said before each edit, the latest first, for either role. Both are in `server/services/grievance-versions.ts`, which goes through `findToManage`; slice 7.1's case file can read versions with `listGrievanceVersions`.
+- `grievance_versions` holds the category's name and the people as role, Employee ID and name: text, not links, so a version reads the same whatever is later renamed or archived. It is append-only by triggers. Version N's row is what the grievance said as version N, with who replaced it, when and why.
+- The owner and the status are not edited here; each keeps its own sheet.
+- A save from a replaced version is 409 `stale_version`, naming who got in first. The page keeps what was typed, disables Save, and offers "Discard my changes and reload".
+- A save that changes nothing is 409 `unchanged`. A Closed grievance is 409 `grievance_sealed`; a Voided one is 409 `grievance_voided`.
+- Someone already named stays named after they are archived, and their chip says "(archived)"; only a person being added must be active. A category no longer in use stays on the grievance that has it, and is refused only when changed to.
+- The automatic entry is titled "Edited: " and the fields that changed, with the reason as its body. The audit entry (`update`) has the ID, the new title and the same field names: never the reason, nor the text before or after.
+- `GrievanceForm` in `web/src/features/grievances/form.tsx` is the form both the create and edit pages use.
 
 ### Slice 4.3: Guards on employees
 
-- `server/services/employees.ts`: an employee named anywhere on a grievance (involved, management, owner, documented by) cannot be deleted; the reason shown says "Named on a grievance" without giving its ID or title. An employee who owns a grievance that is not Closed or Voided cannot be archived until it is reassigned.
-- Tests for both, and for the existing employee rules still passing.
+- `server/services/employees.ts`: an employee named anywhere on a grievance (involved, management, owner, documented by) cannot be deleted. An employee who owns a grievance that is not Closed or Voided cannot be archived until it is reassigned.
+- Tests for both; the existing employee rules still pass.
 
-**Results (2026-10-13).** Both guards are in `server/services/employees.ts`, with 2 new tests; 161 tests pass and typecheck is clean.
+**As built (2026-10-13).**
 
-- Delete: the count that blocks deleting now also takes in entries documented by an account linked to the employee, beside owner, involved and management. The reason is unchanged, "Named on a grievance. Archive instead; history is never deleted.", and gives no ID or title.
-- Archive: an employee who owns a grievance that is not Closed or Voided is refused with 409 `owns_grievances` and a message that gives the number only. Resolved and Reopened count as not closed. Closing it, voiding it or giving it another owner lifts the block.
-- `EmployeeRow` gained `openGrievancesOwned`, so the Employees page shows the reason on the Archive menu item before it is tried. This is a number only, and anyone who can list employees can see it.
-- Known limit: an entry records who documented it by account, and by name as text, not by employee. So "documented by" holds an employee only while their account is linked to them. Once the account is unlinked and nothing else names them, they can be deleted; the entry keeps the name. A test states this.
+- Delete: the count that blocks deleting also takes in entries documented by an account linked to the employee. The reason is "Named on a grievance. Archive instead; history is never deleted.", with no ID or title.
+- Archive: an employee who owns a grievance that is not Closed or Voided is refused with 409 `owns_grievances` and a message that gives the number only. Closing it, voiding it or giving it another owner lifts the block.
+- `EmployeeRow` gained `openGrievancesOwned`, so the Employees page shows the reason on the Archive menu item before it is tried.
+- Known limit: an entry records who documented it by account, and by name as text, not by employee. Once the account is unlinked and nothing else names the employee, they can be deleted; the entry keeps the name. A test states this.
 - Known limit: a former owner who is no longer named anywhere on the grievance can be deleted. The timeline keeps their name as text.
-- Browser check on a production build: the Archive item read "Owns 1 grievance not yet closed. Give it to another owner first." and was disabled; after the owner was changed it was enabled and archiving went through.
 
 ## 8. Phase 5: Grievance Audit Log
 
@@ -443,7 +362,7 @@ Migration `0011_grievance_attachments`:
 
 - `bun run db:seed` gains a few fabricated grievances with timelines (development only).
 - `PRODUCT.md` (terminology, rules, screen list), `README.md` (screens, routes), `DESIGN.md` (timeline, rich-text and chip-picker components), `RUNBOOK.md` (backups now hold grievance text and attachments and will grow; the off-box copies need the same care as HR files).
-- Browser check on a production build: create, edit, add entries of each type, correct one, change status, void, upload and download, both exports opened, both audit logs inspected, keyboard-only pass, and a session expiring mid-edit without losing the text.
+- Browser check on a production build, in Firefox as well as Chrome (slices 2.1 to 4.3 were checked in Chrome only): create, edit, add entries of each type, correct one, change status, void, upload and download, both exports opened, both audit logs inspected, keyboard-only pass, and a session expiring mid-edit without losing the text.
 
 ## 11. Proposed defaults: tell me if any is wrong
 
