@@ -272,6 +272,16 @@ Issue, Return and edit forms open as a right-hand sheet (480px, full-width on ph
 ### Quick-add panel
 A Record White panel above the register with labelled fields in one row. Enter adds; pasting spreadsheet rows into the first field adds many and lists any skipped rows by number. Replaces the spec's table-row entry line so labels stay visible and fields are real inputs.
 
+### Rich text
+The body of a grievance, an action or a note. One field, the "ruled field", chosen over a floating toolbar because every allowed format stays in view and nothing depends on making a selection first.
+- **Frame:** the Inputs shape at full size: Record White, 1px Strong Hairline, 8px radius, and the same cobalt border and 3px halo when focus is anywhere inside. In error the border turns Alert Red and the message sits beneath with `role="alert"`, as for any field.
+- **Bar:** fixed along the top on a Sunken band with a Hairline rule beneath; it sticks to the top of the scroll area in a long body. 32px ghost icon buttons (Lucide, 16px, 1.75 stroke) in groups split by a short Strong Hairline: bold, italic, underline, strikethrough, link; heading, subheading; bulleted list, numbered list, quote; undo and redo at the far right. A format that applies at the cursor shows Accent Soft with an Accent Line ring and `aria-pressed`. Each button has a tooltip naming it and its shortcut. On a narrow screen the bar wraps to a second row; it never scrolls sideways.
+- **Link:** the link button swaps the bar for one address input with Add link, Remove link and Cancel. Enter applies, Escape cancels. A bare address gets `https://`, a bare email `mailto:`; anything else is refused in words.
+- **Text:** Body size (14px on a 22px line) at a 65ch measure, blocks 10px apart. Heading 18px/600 and subheading 15px/600, each with more room above than below. Lists indent 24px with Ink 3 markers. A quote is Ink 2 behind a 2px Strong Hairline rule: neutral, never a coloured stripe. Links are cobalt and underlined.
+- **Footer:** a Canvas strip with a Hairline rule above: a one-line reminder of what is allowed on the left, the character count against the limit in mono tabular figures on the right. Past the limit the count turns Alert Red and says "over the limit".
+- **Reading it back:** the read-only view is the same text rules with no frame, so what was typed looks exactly like what is later read. It only ever shows HTML the server has sanitised.
+- **Keyboard:** the bar is a single tab stop; arrow keys, Home and End move along it. Alt+F10 goes from the text to the bar and Escape back. Tab leaves the field, except in a list, where it indents the item.
+
 ## Do's and Don'ts
 
 ### Do:

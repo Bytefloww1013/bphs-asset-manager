@@ -191,3 +191,83 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Rich text: the reading typography for a grievance body. The editor and the read-only view both wear `.rich-text`,
+ * so what is typed looks exactly like what is later read. Body size, 65ch measure, a neutral rule for quotes.
+ */
+@layer components {
+  .rich-text {
+    max-width: 65ch;
+    font-size: var(--text-sm);
+    line-height: 1.375rem;
+    color: var(--color-ink);
+    overflow-wrap: anywhere;
+  }
+  .rich-text.ProseMirror {
+    position: relative;
+    white-space: pre-wrap;
+    outline: none;
+  }
+  .rich-text > * + * {
+    margin-top: 0.625rem;
+  }
+  .rich-text h2,
+  .rich-text h3 {
+    font-weight: 600;
+  }
+  .rich-text h2 {
+    font-size: 1.125rem;
+    line-height: 1.625rem;
+    letter-spacing: -0.01em;
+  }
+  .rich-text h3 {
+    font-size: var(--text-md);
+    line-height: var(--text-md--line-height);
+  }
+  .rich-text > * + h2 {
+    margin-top: 1.5rem;
+  }
+  .rich-text > * + h3 {
+    margin-top: 1.125rem;
+  }
+  .rich-text > h2 + *,
+  .rich-text > h3 + * {
+    margin-top: 0.375rem;
+  }
+  .rich-text strong {
+    font-weight: 600;
+  }
+  .rich-text a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  .rich-text ul,
+  .rich-text ol {
+    padding-left: 1.5rem;
+  }
+  .rich-text ul {
+    list-style: disc;
+  }
+  .rich-text ol {
+    list-style: decimal;
+  }
+  .rich-text li::marker {
+    color: var(--color-ink-3);
+  }
+  .rich-text li + li,
+  .rich-text li > * + * {
+    margin-top: 0.25rem;
+  }
+  /* A neutral rule, not a coloured stripe. */
+  .rich-text blockquote {
+    border-left: 2px solid var(--color-line-strong);
+    padding-left: 0.875rem;
+    color: var(--color-ink-2);
+  }
+  .rich-text blockquote > * + * {
+    margin-top: 0.625rem;
+  }
+}

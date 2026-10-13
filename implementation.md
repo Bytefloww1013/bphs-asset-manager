@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **slice 1.1 done 2026-10-12; next is the slice 1.2 design step.** No product code is built yet. Written against `main` at `bb028a3`.
+Status: **slices 1.1 and 1.2 done 2026-10-12; next is slice 1.3, people pickers.** The rich-text sanitiser, editor and read-only view are built; no grievance screen or table exists yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -9,7 +9,7 @@ Built one slice at a time. Every slice ends with `bun run typecheck` and `bun ru
 A slice is ticked when it is finished and committed.
 
 - [x] 1.1 Feasibility checks (2026-10-12)
-- [ ] 1.2 Rich text, end to end
+- [x] 1.2 Rich text, end to end (2026-10-12)
 - [ ] 1.3 People pickers
 - [ ] 1.4 Workspace shell, permissions, audit writer
 - [ ] 2.1 Data and categories
@@ -126,6 +126,17 @@ Not checked here: the page-number footer in Firefox. It comes from Firefox's own
 - Limit: 100,000 characters of body text.
 
 Done when: unit tests show script tags, event handlers, `javascript:` links and inline styles are stripped, and allowed formatting survives a save and reload.
+
+**Results (2026-10-12).** Three directions were mocked (a ruled field with a fixed bar, an open page with a floating bar, a headed page with both); **the ruled field was chosen** and is recorded in `DESIGN.md` under Components, Rich text. The mock page is deleted.
+
+- Sanitising uses `sanitize-html`. 16 unit tests cover script and style removal, event handlers, twelve kinds of refused link, inline styles and classes, dropped tags, and the plain-text copy. A body that is empty is refused with `422 body_required` and one over the limit with `422 body_too_long`.
+- Save and reload was checked in headless Chrome 155 against a production build with the real Content Security Policy: a body typed with keyboard shortcuts only, sanitised, loaded back into the editor and into the read-only view, comes back with the same formatting, and a second save is byte-identical. No grievance API exists yet, so the "save" was the sanitiser called directly; slice 2.3 exercises it through a real route. Not run in Firefox.
+- Things later slices should know:
+  - The editor is `RichTextEditor` and the read-only view `RichTextView`, both from `web/src/components/ui/rich-text.tsx`. The editor works as the child of a `Field`. It is uncontrolled: `defaultValue` is read once and `onChange` gives the HTML, or an empty string when nothing is written.
+  - Tiptap loads only when an editor is shown (about 128 kB gzipped, in its own file). The read-only view costs nothing.
+  - The count under the editor uses the same plain-text helper as the server, so the two agree at the limit.
+  - The server drops empty paragraphs at either end of a body. Tiptap keeps one after a closing list or quote, and it would otherwise be stored.
+  - The bar is one tab stop (arrow keys move along it, Alt+F10 reaches it from the text, Escape goes back), so Tab still leaves the field (in a list it indents the item instead).
 
 ### Slice 1.3: People pickers
 
