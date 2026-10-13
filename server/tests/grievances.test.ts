@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { localToday } from '../../shared/schemas.ts'
-import { employees } from '../db/schema.ts'
+import { employees, users } from '../db/schema.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { nextGrievanceCode } from '../services/grievances.ts'
 import { setup } from './helpers.ts'
@@ -634,5 +634,142 @@ describe('adding to the timeline', () => {
     expect(t.sqlite.prepare('select seq, kind, title, occurred_at, recorded_at, documented_by_employee_id, documented_by_user_id, documented_by_label from grievance_entries').all()).toEqual([
       { seq: 1, kind: 'system', title: 'Grievance recorded', occurred_at: 1000, recorded_at: 1000, documented_by_employee_id: t.person.id, documented_by_user_id: t.superUser.id, documented_by_label: 'Priya Raghunathan' },
     ])
+  })
+})
+
+describe('changing a grievance\'s status and owner', () => {
+  const timeline = (t: T) => t.sqlite.prepare('select seq, kind, title, body_html, documented_by_label from grievance_entries order by seq').all()
+  const audit = (t: T) => t.sqlite.prepare("select action, entity_type, details from grievance_audit_log where action <> 'create' order by id").all()
+  const statusOf = (t: T) => (t.sqlite.prepare('select status from grievances').get() as { status: string }).status
+
+  /** One grievance owned by Ines, whose account is the admin's. Priya is the Super Admin and owns nothing. */
+  async function one() {
+    const t = await setup()
+    const { ines, femi, body } = grievanceFixture(t)
+    t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
+    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, role: 'admin', mustChangePassword: false }).returning().get()
+    const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
+    const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
+    return { t, ines, femi, owner, superAdmin, other, made, path: `/api/grievances/${made.code}` }
+  }
+
+  it('says whether the owner has an account that can sign in, and lists the employees who do', async () => {
+    const { t, ines, owner, made, path } = await one()
+    expect((await t.call('GET', path, { cookie: owner })).data.ownerHasAccount).toBe(true)
+    expect((await t.call('GET', '/api/grievances/account-holders')).status).toBe(401)
+    expect((await t.call('GET', '/api/grievances/account-holders', { cookie: owner })).data).toEqual([t.person.id, ines.id].sort((a, b) => a - b))
+    t.sqlite.prepare('update users set is_active = 0 where id = ?').run(t.adminUser.id)
+    const res = await t.call('GET', `/api/grievances/${made.code}`, { cookie: await t.asSuper() })
+    expect(res.data.ownerHasAccount).toBe(false)
+    expect((await t.call('GET', '/api/grievances/account-holders', { cookie: await t.asSuper() })).data).toEqual([t.person.id])
+  })
+
+  it('lets the owner\'s account and a Super Admin move it between the four statuses, with a timeline entry and an audit entry each time', async () => {
+    const { t, owner, superAdmin, path } = await one()
+    const before = t.sqlite.prepare('select count(*) as n from audit_log').get()
+    const moved = await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'in_progress', note: 'Meeting booked.\n\nRoom <b>2</b>' } })
+    expect(moved.status).toBe(200)
+    expect(moved.data.status).toBe('in_progress')
+    expect((await t.call('POST', `${path}/status`, { cookie: superAdmin, body: { status: 'resolved' } })).data.status).toBe('resolved')
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'closed', note: 'Agreed with Dana.' } })).data.status).toBe('closed')
+    // Reopening is a change like any other.
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'open' } })).data.status).toBe('open')
+    expect(timeline(t).slice(1)).toEqual([
+      { seq: 2, kind: 'system', title: 'Status: Open → In progress', body_html: '<p>Meeting booked.</p><p>Room &lt;b&gt;2&lt;/b&gt;</p>', documented_by_label: 'Marcus Oyelaran' },
+      { seq: 3, kind: 'system', title: 'Status: In progress → Resolved', body_html: '', documented_by_label: 'Priya Raghunathan' },
+      { seq: 4, kind: 'system', title: 'Status: Resolved → Closed', body_html: '<p>Agreed with Dana.</p>', documented_by_label: 'Marcus Oyelaran' },
+      { seq: 5, kind: 'system', title: 'Status: Closed → Open', body_html: '', documented_by_label: 'Marcus Oyelaran' },
+    ])
+    const title = 'Shift swaps refused without a reason'
+    expect(audit(t)).toEqual(
+      ['Open → In progress', 'In progress → Resolved', 'Resolved → Closed', 'Closed → Open'].map((change) => ({ action: 'status', entity_type: 'grievance', details: `GR-2026-0001 · ${title} · Status: ${change}` })),
+    )
+    expect(t.sqlite.prepare('select count(*) as n from audit_log').get()).toEqual(before)
+  })
+
+  it('refuses a status change that breaks a rule and changes nothing', async () => {
+    const { t, owner, path } = await one()
+    const closing = await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'closed', note: '  ' } })
+    expect(closing.status).toBe(422)
+    expect(closing.data.details.fields.note).toBe('Say why it is being closed')
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'voided', note: 'x' } })).status).toBe(422)
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'open', note: 'x'.repeat(2001) } })).status).toBe(422)
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'open' } })).data).toMatchObject({ error: 'status_unchanged', message: 'GR-2026-0001 is already Open.' })
+    expect((await t.call('POST', '/api/grievances/GR-2026-0099/status', { cookie: owner, body: { status: 'resolved' } })).status).toBe(404)
+    expect(statusOf(t)).toBe('open')
+    expect(timeline(t)).toHaveLength(1)
+    expect(audit(t)).toEqual([])
+  })
+
+  it('answers 403 to any other account, for a status, an owner or a void, whatever it sends', async () => {
+    const { t, femi, other, owner, path } = await one()
+    const reason = 'Only the owner (Ines Carvalho) or a Super Admin can do this.'
+    for (const [action, body] of [['status', { status: 'resolved' }], ['owner', { ownerId: femi.id }]] as const) {
+      const res = await t.call('POST', `${path}/${action}`, { cookie: other, body })
+      expect(res.status, action).toBe(403)
+      expect(res.data.message).toBe(reason)
+      expect((await t.call('POST', `${path}/${action}`, { body })).status).toBe(401)
+    }
+    // Voiding is for a Super Admin: not even the owner's account may.
+    for (const cookie of [other, owner]) expect((await t.call('POST', `${path}/void`, { cookie, body: { reason: 'Entered twice.' } })).status).toBe(403)
+    expect(statusOf(t)).toBe('open')
+    expect(timeline(t)).toHaveLength(1)
+    expect(audit(t)).toEqual([])
+  })
+
+  it('leaves a grievance whose owner has no account to Super Admins', async () => {
+    const { t, femi, owner, superAdmin, path } = await one()
+    expect((await t.call('POST', `${path}/owner`, { cookie: superAdmin, body: { ownerId: femi.id } })).data).toMatchObject({ owner: { id: femi.id }, ownerHasAccount: false })
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'resolved' } })).status).toBe(403)
+    expect((await t.call('POST', `${path}/status`, { cookie: superAdmin, body: { status: 'resolved' } })).status).toBe(200)
+  })
+
+  it('hands it to another owner, which ends the previous owner\'s say over it', async () => {
+    const { t, ines, femi, owner, path } = await one()
+    const handed = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: femi.id, note: 'Femi runs that team.' } })
+    expect(handed.status).toBe(200)
+    expect(handed.data.owner).toMatchObject({ id: femi.id, name: 'Femi Adeyemi' })
+    expect(timeline(t)[1]).toEqual({ seq: 2, kind: 'system', title: 'Owner: Ines Carvalho → Femi Adeyemi', body_html: '<p>Femi runs that team.</p>', documented_by_label: 'Marcus Oyelaran' })
+    expect(audit(t)).toEqual([{ action: 'owner', entity_type: 'grievance', details: 'GR-2026-0001 · Shift swaps refused without a reason · Owner: Ines Carvalho → Femi Adeyemi' }])
+    const back = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: ines.id } })
+    expect(back.status).toBe(403)
+    expect(back.data.message).toBe('Only the owner (Femi Adeyemi) or a Super Admin can do this.')
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'resolved' } })).status).toBe(403)
+  })
+
+  it('refuses an owner who is the same, archived or unknown, and any new owner while it is Closed', async () => {
+    const { t, ines, femi, owner, path } = await one()
+    const same = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: ines.id } })
+    expect(same.status).toBe(422)
+    expect(same.data.details.fields.ownerId).toBe('Ines Carvalho already owns GR-2026-0001.')
+    expect((await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: 9999 } })).status).toBe(422)
+    expect((await t.call('POST', `${path}/owner`, { cookie: owner, body: {} })).data.details.fields.ownerId).toBe('Choose an owner')
+    t.sqlite.prepare('update employees set archived_at = 1 where id = ?').run(femi.id)
+    expect((await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: femi.id } })).status).toBe(422)
+    t.sqlite.prepare('update employees set archived_at = null where id = ?').run(femi.id)
+    await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'closed', note: 'Done.' } })
+    expect((await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: femi.id } })).data).toMatchObject({ error: 'grievance_sealed', message: 'GR-2026-0001 is Closed. Reopen it before changing its owner.' })
+    expect(timeline(t)).toHaveLength(2)
+  })
+
+  it('is voided by a Super Admin with a reason, and after that nothing about it changes', async () => {
+    const { t, femi, owner, superAdmin, path } = await one()
+    expect((await t.call('POST', `${path}/void`, { cookie: superAdmin, body: { reason: ' ' } })).data.details.fields.reason).toBe('Required')
+    const voided = await t.call('POST', `${path}/void`, { cookie: superAdmin, body: { reason: 'Entered twice; see GR-2026-0002.' } })
+    expect(voided.status).toBe(200)
+    expect(voided.data.status).toBe('voided')
+    expect(timeline(t)[1]).toEqual({ seq: 2, kind: 'system', title: 'Status: Open → Voided', body_html: '<p>Entered twice; see GR-2026-0002.</p>', documented_by_label: 'Priya Raghunathan' })
+    expect(audit(t)).toEqual([{ action: 'void', entity_type: 'grievance', details: 'GR-2026-0001 · Shift swaps refused without a reason · Status: Open → Voided' }])
+    for (const [action, body] of [['status', { status: 'open' }], ['owner', { ownerId: femi.id }], ['void', { reason: 'Again.' }]] as const) {
+      const res = await t.call('POST', `${path}/${action}`, { cookie: superAdmin, body })
+      expect(res.status, action).toBe(409)
+      expect(res.data).toMatchObject({ error: 'grievance_voided', message: 'GR-2026-0001 has been voided. It is kept as a record and cannot be changed.' })
+    }
+    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'open' } })).status).toBe(409)
+    expect(timeline(t)).toHaveLength(2)
+    // It leaves every tab but All.
+    const list = (await t.call('GET', '/api/grievances?status=open', { cookie: owner })).data
+    expect(list.rows).toEqual([])
+    expect(list.counts).toMatchObject({ all: 1, open: 0, voided: 1 })
   })
 })

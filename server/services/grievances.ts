@@ -1,13 +1,14 @@
 import { eq, inArray, sql, type SQL } from 'drizzle-orm'
-import { GRIEVANCE_PREVIEW_LENGTH, GRIEVANCE_STATUSES, grievanceCode, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
-import type { GrievanceCreateInput, GrievanceListQuery } from '../../shared/schemas.ts'
+import { GRIEVANCE_PREVIEW_LENGTH, GRIEVANCE_STATUSES, grievanceCode, grievanceStatusLabel, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
+import { canManageGrievance, grievanceManageReason } from '../../shared/permissions.ts'
+import type { GrievanceCreateInput, GrievanceListQuery, GrievanceOwnerChangeInput, GrievanceStatusChangeInput, GrievanceVoidInput } from '../../shared/schemas.ts'
 import type { GrievanceDetail, GrievanceList, GrievancePerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, grievanceCategories, grievancePeople, grievances } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
-import { conflict, invalid, notFound } from '../lib/errors.ts'
+import { conflict, forbidden, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
-import { requireRichText } from '../lib/richtext.ts'
+import { plainToRichText, requireRichText } from '../lib/richtext.ts'
 import { appendGrievanceEntry, GRIEVANCE_RECORDED } from './grievance-entries.ts'
 import { fullName } from './refs.ts'
 
@@ -71,6 +72,7 @@ interface RawGrievance {
   ownerFirstName: string
   ownerLastName: string
   ownerArchivedAt: number | null
+  ownerHasAccount: number
   recordedBy: string | null
 }
 
@@ -81,6 +83,7 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
            g.date_made as dateMade, g.status as status, g.version as version, g.created_at as createdAt, g.last_activity_at as lastActivityAt,
            c.id as categoryId, c.name as categoryName,
            o.id as ownerId, o.code as ownerCode, o.first_name as ownerFirstName, o.last_name as ownerLastName, o.archived_at as ownerArchivedAt,
+           exists (select 1 from users a where a.employee_id = o.id and a.is_active = 1) as ownerHasAccount,
            u.name as recordedBy
     from grievances g
       join grievance_categories c on c.id = g.category_id
@@ -99,6 +102,7 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
     status: row.status,
     category: { id: row.categoryId, name: row.categoryName },
     owner: person({ id: row.ownerId, code: row.ownerCode, firstName: row.ownerFirstName, lastName: row.ownerLastName, archivedAt: row.ownerArchivedAt }),
+    ownerHasAccount: Boolean(row.ownerHasAccount),
     employees: named.employee,
     management: named.management,
     version: row.version,
@@ -108,7 +112,7 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
   }
 }
 
-type RawRow = Omit<RawGrievance, 'bodyHtml' | 'version' | 'createdAt' | 'recordedBy'> & { bodyStart: string }
+type RawRow = Omit<RawGrievance, 'bodyHtml' | 'version' | 'createdAt' | 'recordedBy' | 'ownerHasAccount'> & { bodyStart: string }
 
 /**
  * The grievances that match, most recent activity first. Each word of the search must be found somewhere: in the ID, the title,
@@ -214,6 +218,81 @@ export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInpu
     appendGrievanceEntry(tx, actor, row.id, { kind: 'system', occurredAt: now, title: GRIEVANCE_RECORDED, at: now })
     writeGrievanceAudit(tx, actor, { action: 'create', entityType: 'grievance', entityId: row.id, details: `${code} · ${input.title}`, at: now })
     return row.id
+  })
+  return getGrievance(db, { id })
+}
+
+/** The employees an account that can sign in is linked to. Only one of these, as owner, can change a grievance without a Super Admin. */
+export function listGrievanceAccountHolders(db: DbLike): number[] {
+  return db.all<{ id: number }>(sql`select employee_id as id from users where employee_id is not null and is_active = 1 order by employee_id`).map((row) => row.id)
+}
+
+/**
+ * The grievance as it stands, for a change to it. Changing a grievance is for its owner's account and for Super Admins,
+ * whatever the page showed; and a voided one is a record only.
+ */
+function findToManage(tx: DbLike, actor: Actor, code: string): GrievanceDetail {
+  const grievance = getGrievance(tx, { code })
+  if (!canManageGrievance(actor, grievance.owner.id)) throw forbidden(grievanceManageReason(grievance.owner.name))
+  if (grievance.status === 'voided') throw conflict('grievance_voided', `${grievance.code} has been voided. It is kept as a record and cannot be changed.`)
+  return grievance
+}
+
+interface Change {
+  action: 'status' | 'owner' | 'void'
+  /** What changed, as the timeline and the audit log both put it: "Status: Open → In progress". */
+  summary: string
+  note: string
+  set: Partial<typeof grievances.$inferInsert>
+}
+
+/** One change to a grievance, with the automatic timeline entry and the audit entry that record it. */
+function applyChange(tx: DbLike, actor: Actor, grievance: GrievanceDetail, change: Change) {
+  const now = new Date()
+  tx.update(grievances).set(change.set).where(eq(grievances.id, grievance.id)).run()
+  appendGrievanceEntry(tx, actor, grievance.id, { kind: 'system', occurredAt: now, title: change.summary, body: plainToRichText(change.note), at: now })
+  // The note stays on the timeline. This log names the grievance and what changed, never what was written about it.
+  writeGrievanceAudit(tx, actor, { action: change.action, entityType: 'grievance', entityId: grievance.id, details: `${grievance.code} · ${grievance.title} · ${change.summary}`, at: now })
+}
+
+const statusChange = (from: GrievanceStatus, to: GrievanceStatus) => `Status: ${grievanceStatusLabel(from)} → ${grievanceStatusLabel(to)}`
+
+/** Move a grievance between Open, In progress, Resolved and Closed, in any direction: reopening is a change like any other. */
+export function changeGrievanceStatus(db: Db, actor: Actor, code: string, input: GrievanceStatusChangeInput): GrievanceDetail {
+  const id = db.transaction((tx) => {
+    const grievance = findToManage(tx, actor, code)
+    if (grievance.status === input.status) throw conflict('status_unchanged', `${grievance.code} is already ${grievanceStatusLabel(input.status)}.`, { field: 'status' })
+    applyChange(tx, actor, grievance, { action: 'status', summary: statusChange(grievance.status, input.status), note: input.note, set: { status: input.status } })
+    return grievance.id
+  })
+  return getGrievance(db, { id })
+}
+
+/** Hand a grievance to another owner. Whoever owned it can no longer change it, unless they are a Super Admin. */
+export function changeGrievanceOwner(db: Db, actor: Actor, code: string, input: GrievanceOwnerChangeInput): GrievanceDetail {
+  const id = db.transaction((tx) => {
+    const grievance = findToManage(tx, actor, code)
+    if (grievance.status === 'closed') throw conflict('grievance_sealed', `${grievance.code} is Closed. Reopen it before changing its owner.`)
+    if (grievance.owner.id === input.ownerId) throw invalid(`${grievance.owner.name} already owns ${grievance.code}.`, { field: 'ownerId' })
+    requireActiveEmployees(tx, [input.ownerId], 'ownerId')
+    const next = tx.select({ firstName: employees.firstName, lastName: employees.lastName }).from(employees).where(eq(employees.id, input.ownerId)).get()!
+    applyChange(tx, actor, grievance, {
+      action: 'owner',
+      summary: `Owner: ${grievance.owner.name} → ${fullName(next.firstName, next.lastName)}`,
+      note: input.note,
+      set: { ownerId: input.ownerId },
+    })
+    return grievance.id
+  })
+  return getGrievance(db, { id })
+}
+
+/** Void a grievance entered by mistake. It stays, with its timeline and the reason, and nothing about it can change again. */
+export function voidGrievance(db: Db, actor: Actor, code: string, input: GrievanceVoidInput): GrievanceDetail {
+  const id = db.transaction((tx) => {
+    const grievance = findToManage(tx, actor, code)
+    applyChange(tx, actor, grievance, { action: 'void', summary: statusChange(grievance.status, 'voided'), note: input.reason, set: { status: 'voided' } })
+    return grievance.id
   })
   return getGrievance(db, { id })
 }

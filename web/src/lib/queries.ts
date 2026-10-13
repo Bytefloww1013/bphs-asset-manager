@@ -107,6 +107,12 @@ export const grievanceQuery = (code: string) =>
     queryFn: () => api.get<GrievanceDetail>(`/grievances/${encodeURIComponent(code)}`),
   })
 
+/** The employees an account that can sign in is linked to: the owners who can change their own grievances. */
+export const grievanceAccountHoldersQuery = queryOptions({
+  queryKey: ['grievances', 'account-holders'],
+  queryFn: () => api.get<number[]>('/grievances/account-holders'),
+})
+
 /** Every entry on one grievance's timeline. Kept under the grievance's own key, so whatever refreshes the grievance refreshes these. */
 export const grievanceEntriesQuery = (code: string) =>
   queryOptions({

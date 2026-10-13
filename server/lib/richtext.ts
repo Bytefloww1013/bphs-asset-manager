@@ -52,3 +52,15 @@ export function requireRichText(input: string, field: string, options: { optiona
   // A body of nothing but empty paragraphs is stored as nothing.
   return body.text ? body : { html: '', text: '' }
 }
+
+const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+
+/** A note typed as plain text, as a body: a paragraph for each block of it, with its line breaks kept. Nothing in it is read as markup. */
+export function plainToRichText(text: string): RichText {
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => `<p>${block.replace(/[&<>"]/g, (m) => ESCAPES[m]!).replace(/\r?\n/g, '<br />')}</p>`)
+  return cleanRichText(paragraphs.join(''))
+}

@@ -7,8 +7,10 @@ import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { buttonStyles } from '@/components/ui/button.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
+import { Alert } from '@/components/ui/feedback.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
+import { GrievanceActions } from '@/features/grievances/manage.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
@@ -72,7 +74,16 @@ function GrievancePage() {
         </div>
         <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{grievance.title}</h1>
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{grievance.shortDescription}</p>
+        <div className="mt-4 print:hidden">
+          <GrievanceActions grievance={grievance} />
+        </div>
       </div>
+
+      {grievance.status === 'voided' && (
+        <Alert tone="warn" title="This grievance has been voided">
+          It is kept as a record and cannot be changed. The reason is on its timeline.
+        </Alert>
+      )}
 
       <Panel aria-label="Facts">
         <dl className="grid divide-line max-sm:divide-y sm:grid-cols-2 lg:grid-cols-5 lg:divide-x">
@@ -81,6 +92,7 @@ function GrievancePage() {
           </Fact>
           <Fact label="Owner">
             <People people={[grievance.owner]} />
+            {!grievance.ownerHasAccount && <div className="mt-1 text-xs font-normal text-ink-3">No account here, so only a Super Admin can change this grievance.</div>}
           </Fact>
           <Fact label="Employees involved">
             <People people={grievance.employees} />

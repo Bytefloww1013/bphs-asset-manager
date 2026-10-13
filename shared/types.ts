@@ -288,6 +288,8 @@ export interface GrievanceDetail {
   status: GrievanceStatus
   category: { id: number; name: string }
   owner: GrievancePerson
+  /** Whether an account that can sign in is linked to the owner. Without one, only a Super Admin can change the grievance. */
+  ownerHasAccount: boolean
   employees: GrievancePerson[]
   management: GrievancePerson[]
   version: number

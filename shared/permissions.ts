@@ -26,3 +26,6 @@ export function canManageGrievance(user: { role: Role; employeeId: number | null
   if (!user) return false
   return user.role === 'super_admin' || (user.employeeId !== null && user.employeeId === ownerEmployeeId)
 }
+
+/** What someone who may not change a grievance is told, on the page and by the server. */
+export const grievanceManageReason = (ownerName: string) => `Only the owner (${ownerName}) or a Super Admin can do this.`

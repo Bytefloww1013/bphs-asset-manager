@@ -270,6 +270,26 @@ export const grievanceCreateSchema = z
   })
 export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
 
+/** A note on a change to a grievance, or the reason for one. Plain text; it becomes the body of the automatic timeline entry. */
+export const GRIEVANCE_NOTE_MAX = 2000
+const note = z.string().trim().max(GRIEVANCE_NOTE_MAX, `Keep the note to ${GRIEVANCE_NOTE_MAX} characters or fewer`).default('')
+
+/** Voiding is not one of these: it has its own request, its own permission and no way back. */
+export const GRIEVANCE_OPEN_STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const
+
+export const grievanceStatusChangeSchema = z
+  .object({ status: z.enum(GRIEVANCE_OPEN_STATUSES, { error: 'Choose a status' }), note })
+  .superRefine((value, ctx) => {
+    if (value.status === 'closed' && !value.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Say why it is being closed' })
+  })
+export type GrievanceStatusChangeInput = z.infer<typeof grievanceStatusChangeSchema>
+
+export const grievanceOwnerChangeSchema = z.object({ ownerId: z.number({ error: 'Choose an owner' }).int().positive(), note })
+export type GrievanceOwnerChangeInput = z.infer<typeof grievanceOwnerChangeSchema>
+
+export const grievanceVoidSchema = z.object({ reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason') })
+export type GrievanceVoidInput = z.infer<typeof grievanceVoidSchema>
+
 /** How far ahead of the server's clock "now" on someone's machine may be before it counts as the future. */
 const CLOCK_SLACK_MS = 5 * 60_000
 

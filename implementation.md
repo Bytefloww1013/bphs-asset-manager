@@ -341,6 +341,20 @@ Done when: a test proves no API route can change or remove an entry, and an entr
 - Each change writes an automatic timeline entry ("Status: Open → In progress", "Owner: A → B") with the note as its body, and an audit entry.
 - **Void** (Super Admin, reason required): the grievance becomes read-only and drops out of the default view. Admin sees the control disabled with the reason, as delete is elsewhere.
 
+**Results (2026-10-12).** Built as planned; typecheck clean, 152 tests passing, checked in headless Chrome on a production build as the owning Admin, another Admin and a Super Admin.
+
+- **Routes.** `POST /api/grievances/:code/status` (`{ status, note }`), `/owner` (`{ ownerId, note }`) and `/void` (`{ reason }`, Super Admin). They are POSTs, so `/api/grievances/:code` still has no PUT, PATCH or DELETE until slice 4.2 adds its PATCH. Each answers with the grievance as it now is. `GET /api/grievances/account-holders` lists the employees an active account is linked to.
+- **Who may.** `findToManage` in `server/services/grievances.ts` is the one check: 403 with "Only the owner (name) or a Super Admin can do this." (`grievanceManageReason` in `shared/permissions.ts`, the same words the page shows), and 409 `grievance_voided` for a voided grievance. Slice 4.2's edit should go through it. `applyChange` writes the update, the automatic entry and the audit entry in one transaction.
+- **Decisions.**
+  - A status can move to any of the other three, in any order; moving to the status it already has is 409 `status_unchanged`.
+  - A Closed grievance takes no change of owner (409 `grievance_sealed`); it is reopened first. The new owner must be an active employee, and not the current one.
+  - A note or reason is plain text, 2,000 characters at most (`GRIEVANCE_NOTE_MAX`). `plainToRichText` in `server/lib/richtext.ts` turns it into the entry's body, escaped, so the timeline, and later the case file, read it like any other body.
+  - The timeline shows an automatic entry's note under its line, always open, with who made the change. It did not show an automatic entry's body before.
+  - The audit entry's details are the ID, the title and the change ("Status: Open → Closed"), never the note.
+  - `GrievanceDetail.ownerHasAccount` is false when no active account is linked to the owner. The Owner fact then says only a Super Admin can change the grievance, and the create form and the Change owner sheet say so as soon as such a person is picked (`ownerAccountNote`). An account that has been turned off counts as no account.
+  - An owner who hands a grievance to someone else is told in the sheet that they will no longer be able to change it.
+- **For later slices.** `web/src/features/grievances/manage.tsx` holds the three buttons and their sheets (`GrievanceActions`), in the page header; slice 4.2's Edit button belongs beside them, with the same disabled reason. A voided grievance shows a notice in their place.
+
 ### Slice 4.2: Edit with versions
 
 Migration `0010_grievance_versions`:

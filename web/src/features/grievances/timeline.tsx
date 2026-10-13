@@ -102,10 +102,19 @@ function Entry({ entry, last, onGoTo, link }: { entry: GrievanceEntry; last: boo
       <span className={cn('absolute left-[calc(0.75rem-1px)] top-0 border-l-[1.5px] border-line-strong', last ? 'h-3' : 'bottom-0')} aria-hidden />
       <EntryMarker kind={entry.kind} />
       {automatic ? (
-        <p className="px-2.5 py-1 text-[0.8125rem] text-ink-3 group-focus-visible/entry:bg-accent-soft">
-          <Mono>{code}</Mono> · <span className="text-xs font-semibold uppercase tracking-wide">{grievanceEntryKindLabel(entry.kind)}</span> · {entry.title} ·{' '}
-          <time dateTime={entry.occurredAt}>{formatDateTime(entry.occurredAt)}</time>
-        </p>
+        <div className="px-2.5 py-1 text-[0.8125rem] text-ink-3 group-focus-visible/entry:bg-accent-soft">
+          <p>
+            <Mono>{code}</Mono> · <span className="text-xs font-semibold uppercase tracking-wide">{grievanceEntryKindLabel(entry.kind)}</span> · {entry.title} ·{' '}
+            <time dateTime={entry.occurredAt}>{formatDateTime(entry.occurredAt)}</time>
+          </p>
+          {/* The note or reason given with a change. It is short, and it is why the change was made, so it is never folded away. */}
+          {entry.bodyHtml && (
+            <div className="mt-1 max-w-[70ch] border-l-2 border-line-strong pl-3 text-ink-2">
+              <RichTextView html={entry.bodyHtml} />
+              <p className="mt-0.5 text-xs text-ink-3">{entry.documentedBy}</p>
+            </div>
+          )}
+        </div>
       ) : (
         <article
           className={cn(

@@ -11,14 +11,20 @@ import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { RichTextEditor } from '@/components/ui/rich-text.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
+import { ownerAccountNote } from '@/features/grievances/manage.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { PeoplePicker } from '@/features/grievances/people-picker.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
-import { employeesQuery, grievanceCategoriesQuery } from '@/lib/queries.ts'
+import { employeesQuery, grievanceAccountHoldersQuery, grievanceCategoriesQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/new')({
-  loader: ({ context }) => Promise.all([context.queryClient.ensureQueryData(employeesQuery), context.queryClient.ensureQueryData(grievanceCategoriesQuery)]),
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(employeesQuery),
+      context.queryClient.ensureQueryData(grievanceCategoriesQuery),
+      context.queryClient.ensureQueryData(grievanceAccountHoldersQuery),
+    ]),
   component: NewGrievancePage,
 })
 
@@ -92,6 +98,7 @@ function NewGrievancePage() {
       set(value)
       setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
     }
+  const { data: accountHolders } = useQuery(grievanceAccountHoldersQuery)
   const ownerNamed = owner && [...involved, ...management].some((person) => person.id === owner.id)
 
   return (
@@ -151,7 +158,7 @@ function NewGrievancePage() {
           </Field>
           <Field
             label="Owner"
-            hint={ownerNamed ? `${owner.name} is also named on this grievance.` : 'Who is responsible for seeing it through. Only the owner and Super Admins can change a grievance later.'}
+            hint={[ownerAccountNote(owner, accountHolders), ownerNamed ? `${owner.name} is also named on this grievance.` : null].filter(Boolean).join(' ') || 'Who is responsible for seeing it through. Only the owner and Super Admins can change a grievance later.'}
             error={error('ownerId')}
           >
             <Combobox items={active} value={owner} onChange={edit('ownerId', setOwner)} getKey={employeeKey} getLabel={employeeLabel} getSearch={employeeSearch} placeholder="Search by name or Employee ID" emptyText="No active employee matches" />
