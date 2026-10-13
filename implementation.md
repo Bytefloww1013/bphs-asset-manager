@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slices 6.1, 6.2, 7.1 and 7.2 done 2026-10-13; next is slice 8.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. A grievance has a printable case file, saved as a PDF from the browser's print dialog, and an Excel workbook of the grievance, its timeline, files and earlier versions; each print and each workbook is logged. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 to 8 done 2026-10-13; every slice is built.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. A grievance has a printable case file, saved as a PDF from the browser's print dialog, and an Excel workbook of the grievance, its timeline, files and earlier versions; each print and each workbook is logged. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -27,7 +27,7 @@ A slice is ticked when it is finished and committed.
 - [x] 6.2 Download and withdraw (2026-10-13)
 - [x] 7.1 PDF case file (2026-10-13)
 - [x] 7.2 Excel workbook (2026-10-13)
-- [ ] 8.1 Seed, docs, end-to-end check
+- [x] 8.1 Seed, docs, end-to-end check (2026-10-13)
 
 ## 1. Decisions made
 
@@ -404,6 +404,16 @@ Migration `0011_grievance_attachments`:
 - `bun run db:seed` gains a few fabricated grievances with timelines (development only).
 - `PRODUCT.md` (terminology, rules, screen list), `README.md` (screens, routes), `DESIGN.md` (timeline, rich-text and chip-picker components), `RUNBOOK.md` (backups now hold grievance text and attachments and will grow; the off-box copies need the same care as HR files).
 - Browser check on a production build, in Firefox as well as Chrome (slices 2.1 to 4.3 were checked in Chrome only): create, edit, add entries of each type, correct one, change status, void, upload and download, both exports opened, both audit logs inspected, keyboard-only pass, and a session expiring mid-edit without losing the text.
+
+**As built (2026-10-13).**
+
+- `server/grievance-seed.ts` adds demo grievances with timelines, files, versions and audit entries, written as the services write them but at chosen past times. `server/seed.ts` calls it. It is a separate file because only grievance code may write the Grievance Audit Log.
+- PRODUCT, README, DESIGN and RUNBOOK are updated as listed above.
+- Browser check: headless Firefox and Chromium against a production build. The full list is in RUNBOOK §11. Every step passed in both browsers once three bugs were fixed:
+  - On the Grievance Audit Log, rows for files (attach, download, withdraw) had no grievance ID. `listGrievanceAudit` now joins the attachment to its grievance, and a test covers it.
+  - In Firefox, typing over a date made it empty, because React writes a date input's value or value attribute and Firefox then resets every part of the field. A new `DateInput` in `web/src/components/ui/form.tsx` writes the value only when it changes from outside, such as Clear filters. It replaces `type="date"` on the grievance form, both audit-log filters, the grievance list filters and the digital-asset form.
+  - Zod's JIT probed for `eval` under the Content-Security-Policy, which logged console errors. This happened because `z.config({ jitless: true })` ran after schemas were built. It now sits in `web/src/zod-config.ts`, imported first in `main.tsx`.
+- Not checked: there is no print dialog when headless, so Firefox's page-number footer and the printed PDF itself were not seen.
 
 ## 11. Proposed defaults: tell me if any is wrong
 

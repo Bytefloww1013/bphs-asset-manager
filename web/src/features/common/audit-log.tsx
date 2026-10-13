@@ -6,7 +6,7 @@ import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid, type GridFeatures } from '@/components/data-grid/grid.ts'
 import { IconButton, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
-import { FilterTabs, Input, SearchInput } from '@/components/ui/form.tsx'
+import { DateInput, FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDateTime, startOfLocalDay } from '@/lib/format.ts'
 import type { AuditParams } from '@/lib/queries.ts'
@@ -157,11 +157,11 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2 text-sm text-ink-3">
               From
-              <Input type="date" className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
+              <DateInput className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
             </label>
             <label className="flex items-center gap-2 text-sm text-ink-3">
               To
-              <Input type="date" className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
+              <DateInput className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
             </label>
             <SearchInput className="w-full sm:w-64" aria-label={`Search the ${title.toLowerCase()}`} placeholder="Search details or user" maxLength={MAX_SEARCH} value={q} onChange={(event) => setQ(event.target.value)} />
           </div>

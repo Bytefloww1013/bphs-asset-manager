@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Eye, EyeOff, Search } from 'lucide-react'
-import { cloneElement, isValidElement, useId, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react'
+import { cloneElement, isValidElement, useEffect, useId, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react'
 import { cn } from '@/lib/cn.ts'
 import type { Tone } from './badge.tsx'
 import { IconButton } from './button.tsx'
@@ -10,6 +10,20 @@ const control =
 
 export function Input({ className, mono, ...rest }: ComponentProps<'input'> & { mono?: boolean }) {
   return <input className={cn(control, 'h-9 px-3 text-sm', mono && 'font-mono text-[0.8125rem]', className)} {...rest} />
+}
+
+/**
+ * A date input the browser keeps the typing of. A half-typed date reads as '', and Firefox empties every part of the field when a
+ * script sets its value or value attribute, so a controlled input would wipe the date being typed. Only a value that changes from
+ * outside is written, and the attribute only once.
+ */
+export function DateInput({ value, ...rest }: Omit<ComponentProps<'input'>, 'type' | 'value' | 'defaultValue'> & { value: string }) {
+  const ref = useRef<HTMLInputElement>(null)
+  const [initial] = useState(value)
+  useEffect(() => {
+    if (ref.current && ref.current.value !== value) ref.current.value = value
+  }, [value])
+  return <Input ref={ref} type="date" defaultValue={initial} {...rest} />
 }
 
 /** A password input with a show/hide button. Field hands its id and aria attributes to its direct child, so they are passed on to the input here. */

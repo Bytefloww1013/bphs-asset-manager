@@ -1143,6 +1143,9 @@ describe('attaching files to a grievance', () => {
     expect(t.sqlite.prepare("select entity_type, entity_id, details from grievance_audit_log where action = 'attach' order by id").all()).toEqual(
       files(t).map((f) => ({ entity_type: 'grievance_attachment', entity_id: f.id, details: `${made.code} · ${f.filename}` })),
     )
+    // The Grievance Audit Log names the grievance a file belongs to, so the page can link to it.
+    const audit = (await t.call('GET', '/api/grievances/audit?action=attach', { cookie: admin })).data as { entries: { code: string | null }[] }
+    expect(audit.entries.map((e) => e.code)).toEqual(files(t).map(() => made.code))
   })
 
   it('refuses a file it does not take, saying so against the files, and writes nothing', async () => {

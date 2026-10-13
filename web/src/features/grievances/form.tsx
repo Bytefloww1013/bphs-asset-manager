@@ -6,7 +6,7 @@ import type { EmployeeRow, GrievanceDetail, GrievancePerson } from '@shared/type
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
-import { Field, Input, Select, Textarea } from '@/components/ui/form.tsx'
+import { DateInput, Field, Input, Select, Textarea } from '@/components/ui/form.tsx'
 import { Mono, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { RichTextEditor } from '@/components/ui/rich-text.tsx'
@@ -173,7 +173,7 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Date made" hint="The day the grievance was raised. Today or earlier." error={error('dateMade')}>
-              <Input type="date" max={localToday()} value={dateMade} onChange={(event) => edit('dateMade', setDateMade)(event.target.value)} />
+              <DateInput max={localToday()} value={dateMade} onChange={(event) => edit('dateMade', setDateMade)(event.target.value)} />
             </Field>
             <Field label="Category" error={error('categoryId')}>
               <Select value={categoryId} onChange={(event) => edit('categoryId', setCategoryId)(event.target.value)}>

@@ -93,9 +93,9 @@ Then schedule it (`crontab -e` for a user who may run `docker`; adjust the path)
 | `DEST` | `/srv/backups/bphs` | Host folder for the copies |
 | `KEEP_DAYS` | `30` | Host copies older than this are deleted |
 
-Copies kept inside the volume are pruned after 7 days. Files are created owner-only (mode 600) because they contain password hashes and employee records.
+Copies kept inside the volume are pruned after 7 days. Files are created owner-only (mode 600) because they contain password hashes and employee records, and, from the Grievance Tracker, the full text of every grievance and every attached file. Treat every copy, including the off-box ones, with the same care as HR files: limit who can read them, and keep them off shared drives.
 
-**Watch the size.** Every copy is the whole database, and 30 of them are kept on the host. Today that is small. The planned Grievance Tracker stores file attachments inside the database (see `implementation.md`, G10), so once it is in use each nightly copy will contain every attachment: 1 GB of attachments is about 30 GB of backups. Check now and then with `du -sh /srv/backups/bphs`. If size becomes a problem, review other ways of storing attachments, such as keeping the files on the data volume with only their details in the database, so a backup run copies just the files that are new or changed instead of all of them every night.
+**Watch the size.** Every copy is the whole database, and 30 of them are kept on the host. The Grievance Tracker stores file attachments inside the database (see `implementation.md`, G10), and nothing is ever deleted (a withdrawn file keeps its bytes), so each nightly copy contains every attachment ever added and the copies only grow: 1 GB of attachments is about 30 GB of backups. Check now and then with `du -sh /srv/backups/bphs`. If size becomes a problem, review other ways of storing attachments, such as keeping the files on the data volume with only their details in the database, so a backup run copies just the files that are new or changed instead of all of them every night.
 
 Then get `DEST` off the machine too (rsync to another host, your backup tool, a USB rotation). One copy on the same disk is not a backup.
 
@@ -111,7 +111,7 @@ Once a quarter, restore the newest backup into a scratch volume (section 5.3) an
 
 ## 5. Restore
 
-A restore **rolls back everything since the backup**: assets issued and returned, new employees, user accounts, password changes, and the audit log itself. Tell people which window was lost. Anyone who changed their password after the backup was taken will need a reset (section 6).
+A restore **rolls back everything since the backup**: assets issued and returned, new employees, user accounts, password changes, grievances with their entries, edits and files, and both audit logs. Tell people which window was lost. Anyone who changed their password after the backup was taken will need a reset (section 6).
 
 ### 5.1 Restore into the live system
 
@@ -133,7 +133,7 @@ curl -fsS http://localhost:8080/api/health
 docker compose exec assets node server/admin.ts list     # the accounts you expect
 ```
 
-Sign in and look at the Physical Assets and Audit log screens to confirm the data is from the time you expected.
+Sign in and look at the Physical Assets, Audit log and Grievances screens to confirm the data is from the time you expected.
 
 If it was the wrong backup, repeat from step 1 with another file. The database you replaced is in `/data/pre-restore-<timestamp>/` inside the volume; delete those folders once you are sure.
 
@@ -201,7 +201,7 @@ The container speaks plain HTTP. If you put a TLS-terminating proxy in front (re
 
 1. In `docker-compose.yml` set `COOKIE_SECURE: 'true'`, and publish the port to the proxy only: `'127.0.0.1:8080:3000'`. Then `docker compose up -d`. People may need to sign in again.
 2. The proxy needs no special headers. The app does not read `Host` or any `X-Forwarded-*` header: whether the cookie is marked Secure depends on `COOKIE_SECURE` alone, which is why step 1 is not optional.
-3. Raise the proxy's request-size limit for imports. The Import/Export page reads the file in the browser and sends its rows as JSON; the API accepts up to 4 MB, and nginx's default of 1 MB would reject a large import with a 413.
+3. Raise the proxy's request-size limit. Most requests are small, but two kinds are not: the Import/Export page sends a file's rows as JSON (the API accepts up to 4 MB), and grievance file uploads send up to 10 files of 10 MB each in one request (the API accepts up to 101 MB, on the upload paths only). nginx's default of 1 MB would reject both with a 413. The sketch below allows 101 MB on the grievance paths and keeps 4 MB everywhere else.
 4. Do not let the proxy replace the app's `Content-Security-Policy` header. If you must set your own, keep `worker-src 'self' blob:` (see section 10), or large Excel files will stop importing and exporting.
 
 Sketch for nginx (adapt names and certificate paths; **not tested here**):
@@ -214,6 +214,10 @@ server {
   ssl_certificate_key /etc/ssl/assets.key;
   client_max_body_size 4m;
   location / {
+    proxy_pass http://127.0.0.1:8080;
+  }
+  location /api/grievances {
+    client_max_body_size 101m;
     proxy_pass http://127.0.0.1:8080;
   }
 }
@@ -231,7 +235,7 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Container shows `unhealthy` or keeps restarting | `docker compose logs --tail 100 assets`. Most common: the `/data` volume is not writable by the `node` user (if you replaced the named volume with a bind mount, `chown 1000:1000` the folder), or the database file is corrupt (restore, section 5) |
 | `database is locked` errors, or odd write failures | `DATA_DIR` is on a network share. SQLite in WAL mode needs a local disk |
 | Port 8080 already in use | Change the left number in `ports:` in `docker-compose.yml`, then `docker compose up -d` |
-| Import fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8). Raise it to 4 MB |
+| Import or a grievance file upload fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8). Raise it to 4 MB, and to 101 MB for `/api/grievances`. Without a proxy, the app itself refuses one file over 10 MB or more than 10 at once, with that reason |
 | Import refuses the file before any preview | Over 2,000 rows or 5 MB (split it), the old `.xls` format (save as `.xlsx` or `.csv`), or no header in the first row. Only the first sheet of a workbook is read |
 | A large Excel file never finishes reading, or an Excel export never downloads | Something is overriding the page's `Content-Security-Policy` and blocking `worker-src blob:` (a proxy or a browser policy; section 8). CSV import and export do not need it |
 | Audit log export is cut short | Exports cap at 50,000 rows per download. Narrow the filters and export in pieces |
@@ -248,15 +252,22 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Archive an employee who holds assets | Return their assets first |
 | Deactivate yourself, or the last active Super Admin | Blocked so the system always has a way in |
 | Two people return the same asset at once | The second gets a conflict message showing who got there first. Refresh and retry |
+| Edit a grievance, change its status or give it a new owner | Only the owner's account (the user linked to the employee named as Owner) or a Super Admin can. If the owner has no account, only a Super Admin can |
+| Add an entry or a file to a Closed grievance | Closed and Voided grievances take nothing new. The owner or a Super Admin reopens it first; a Voided one stays voided |
+| Change or delete an entry | Entries are never changed. Add a correction linked to it |
+| Delete an attached file | Files are never deleted. A Super Admin can withdraw one, with a reason: it stops downloading but stays listed |
+| Save an edit: "was edited by … while you had it open" | Someone else saved first and nothing of yours was saved. Reload, check their change, and edit again |
+| Delete an employee named on a grievance, or archive one who owns an open grievance | The grievance needs them. Give it a new owner, or close or void it, before archiving |
 
 ## 10. Security notes
 
-- **Who can do what.** Roles are Admin and Super Admin. Deleting, archiving and managing users are Super Admin only.
-- **The audit log is append-only inside the app and inside the database** (triggers refuse `UPDATE` and `DELETE` on it). That guards against mistakes and misuse of the app. It does not stop someone with access to the server or the volume, who can replace the whole file. Restrict shell and Docker access to the server accordingly, and keep off-box backups: they are your independent record.
-- **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), and hashed session tokens. Keep them owner-only and out of shared folders.
+- **Who can do what.** Roles are Admin and Super Admin. Deleting, archiving and managing users are Super Admin only. **Every account can read every grievance**: there are no per-grievance limits, so give accounts only to people who may see all of them.
+- **The audit logs are append-only inside the app and inside the database** (triggers refuse `UPDATE` and `DELETE` on them). There are two: the Audit Log for assets, employees and accounts, and the Grievance Audit Log, which records every grievance change, file download and export with IDs, titles and filenames but never body text. The grievance entries, earlier versions and file contents are append-only the same way; a file can be withdrawn once, which keeps its bytes. That guards against mistakes and misuse of the app. It does not stop someone with access to the server or the volume, who can replace the whole file. Restrict shell and Docker access to the server accordingly, and keep off-box backups: they are your independent record.
+- **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), hashed session tokens, and every grievance's text and attached files. Keep them owner-only and out of shared folders.
 - **Passwords** are stored as scrypt hashes; sessions as hashes in the database, so a copy of the database does not hand over working sessions.
 - **No outbound calls.** The app needs no internet access, and sends nothing anywhere.
 - **Imported files stay in the browser.** A `.csv` or `.xlsx` chosen on Import/Export is opened by the page, and only its rows are sent, as JSON, to be validated again by the server. The server never opens a workbook. Reading and writing Excel files of any size zips in a Web Worker the page starts from a `blob:` URL, so the Content-Security-Policy carries `worker-src 'self' blob:`. Scripts are still limited to the app's own (`script-src 'self'`), and only a script the page already runs can create such a URL.
+- **Grievance files are never shown in the page.** Uploads are accepted only as PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by their content as well as their name, up to 10 MB each. Downloads are always sent as a file to save (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`), so a file cannot run as part of the app. Files are not virus-scanned: the staff who open them rely on their own machine's protection.
 - **No credentials in digital assets.** The License/Account field refuses values that label themselves a password, key or token. That catches the obvious cases; it cannot recognise a bare secret, so tell staff the field is for naming a seat.
 - **Secrets.** There are no API keys or secrets to rotate. The only sensitive value in the config is the one-time bootstrap password in the first-run log.
 
@@ -269,6 +280,24 @@ Checked by running them against a real container and scratch Docker volumes whil
 - Restore into a volume holding a damaged database with stale `-wal`/`-shm` files: old files moved aside, backup loaded, `integrity_check` ok, accounts listed.
 - Account recovery commands, including audit entries and exit codes (automated tests in `server/tests/admin-cli.test.ts`).
 - Import/Export in a real browser (headless Firefox) against the production build, Oct 12 2026: a `.csv` with other header names, a hand-mapped file, a 1.6 MB `.xlsx` of 2,000 rows (read in a Web Worker under the app's Content-Security-Policy) and a programs `.xlsx`, each previewed and imported; the refusals (2,001 rows, `.xls`, a file that is not a workbook, a header with nothing under it); every export as CSV and as Excel, the Employees workbook of over 2,000 rows zipped in a worker. The Excel files were checked for the right name, type and zip signature only; none was opened in Excel itself.
+- Grievances in real browsers (headless Firefox and headless Chromium, Playwright) against the production build, Oct 13 2026, on a scratch data directory. In both browsers the following worked:
+  - Create a grievance with a file, edit it with a reason, add an action and an event with a file, and correct an entry.
+  - A renamed file is refused. Attach, download (as a file to save) and withdraw work; a withdrawn file then answers 410.
+  - Status changes work, Closed needs a note, and a Super Admin can void a grievance. A voided grievance is listed under All only.
+  - An Admin who is not the owner sees Edit, Change status, Change owner and Void disabled, with the reason.
+  - The case file is shown for printing only once its export is logged.
+  - The Excel workbook was read back and had its four sheets.
+  - The Grievance Audit Log page and its CSV work, and the asset Audit Log holds no grievance entries.
+  - A keyboard-only pass of the New grievance form, typing the date into the date field, works.
+  - When a session ends mid-edit, the sign-in-again dialog appears and the typed text is still there.
+  - The browser console showed no errors except the expected 401s and 422.
+
+  Headless browsers have no print dialog, so the case file was checked as the page the browser would print, not as a print preview. **Firefox's page-number footer and the printed PDF itself were not seen**: print one case file from each browser the first time you use it.
+
+  This check found and fixed three bugs:
+  - The audit log showed no grievance ID on file entries.
+  - In Firefox, a date being typed was wiped.
+  - Zod's eval probe broke the Content-Security-Policy.
 - Graceful shutdown on SIGTERM (exit 0), log rotation settings (accepted by `docker compose config`), and that the cookie is `HttpOnly; Secure; SameSite=Lax` when `COOKIE_SECURE=true`.
 
 **Not exercised**, so check them the first time you use them:

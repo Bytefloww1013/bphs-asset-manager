@@ -1,6 +1,6 @@
 # BPHS Asset Management
 
-An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
+An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
 
 - **Front end:** React 19, Vite, Tailwind v4, TanStack Router, Query, Table (v9) and Form, Radix primitives, Lucide icons, Geist type (self-hosted).
 - **Back end:** Hono on Node 24+, Drizzle ORM over `better-sqlite3`, Zod validation, scrypt password hashing, cookie sessions stored in SQLite.
@@ -14,7 +14,7 @@ Requires [Bun](https://bun.sh) 1.3 or newer (package manager and script runner) 
 
 ```bash
 bun install
-bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, history, 5 users)
+bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, 5 grievances, history, 5 users)
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
@@ -24,7 +24,7 @@ Other scripts:
 
 | Script | What it does |
 | --- | --- |
-| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit) against an in-memory database |
+| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files) against an in-memory database |
 | `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
 | `bun run build` | Builds the SPA to `dist/web` |
 | `bun run start` | Production mode: builds the SPA first, so it is never an older one, then the API serves it from `dist/web` |
@@ -65,7 +65,7 @@ This uses SQLite's backup API, so it is safe while the app is running. `scripts/
 
 ## What it does
 
-Sixteen screens, all built:
+Two workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 
 | Screen | Route |
 | --- | --- |
@@ -86,6 +86,21 @@ Sixteen screens, all built:
 | Audit log (filter, search, CSV export) | `/audit` |
 | Users (Super Admin only) | `/users` |
 
+**Grievances**, ten screens:
+
+| Screen | Route |
+| --- | --- |
+| Grievances: status tabs, filters, search | `/grievances` |
+| New grievance, with files | `/grievances/new` |
+| Grievance detail: facts, body, files, timeline, status, owner, void, Excel workbook | `/grievances/GR-2026-0001` |
+| Edit grievance (needs a reason; earlier versions are kept) | `/grievances/GR-2026-0001/edit` |
+| Earlier versions | `/grievances/GR-2026-0001/versions` |
+| Add an action, event or correction, with files | `/grievances/GR-2026-0001/entries/new` |
+| Entry detail | `/grievances/GR-2026-0001/entries/E03` |
+| Case file: print layout, saved as a PDF from the print dialog | `/grievances/GR-2026-0001/case-file` |
+| Grievance categories | `/grievances/categories` |
+| Grievance audit log (filter, search, CSV export) | `/grievances/audit` |
+
 ### Rules the system enforces
 
 - One open assignment per asset, in the app **and** by a partial unique index in the database.
@@ -96,6 +111,10 @@ Sixteen screens, all built:
 - A physical asset is held by exactly one employee or one program, never both and never neither, in the app **and** by a `CHECK` constraint in the database.
 - A digital asset gets its Asset ID from the system (`DA-00001`, never typed, edited or reused), is issued to employees only, and reads Active while someone has it. Its License/Account field names a seat and refuses anything that labels itself a password, key or token: no credential is stored.
 - An import only adds employees and programs. It never changes an existing record and never issues anything; a row whose ID already exists is skipped, so running the same file twice is safe. Each record created gets its own audit entry.
+- A grievance gets its ID from the system (`GR-2026-0001`), and each entry on its timeline one of its own (`GR-2026-0001-E01`). Entries, earlier versions and file contents are never changed or deleted, in the app **and** by triggers in the database; a mistake is fixed by a correction entry linked to it. Status changes, new owners, edits and files add automatic entries.
+- Only the owner's account or a Super Admin can edit a grievance, change its status or give it a new owner; voiding a grievance and withdrawing a file are Super Admin only. A Closed or Voided grievance takes no new entries or files. An edit made from an older version than the one saved is refused.
+- Grievance files: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by content, up to 10 MB each and 10 at a time, stored inside the database. Downloads are always a file to save, never shown in the page.
+- The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download, print and workbook export, by ID, title and filename only, never body text. The case file prints, and the workbook downloads, only after that entry is written.
 - Roles: **Admin** adds and changes records. **Super Admin** can also delete, archive employees and manage accounts.
 
 ## Project layout
@@ -105,11 +124,11 @@ server/            Hono API: app.ts, routes/, services/ (business rules), db/ (D
                    plus the command-line tools backup.ts, admin.ts and seed.ts
 scripts/           backup-offbox.sh (scheduled, checked backups to the host)
 shared/            Types, Zod schemas, password rules, permissions, the importable record types and the CSV reader and writer, used by both sides
-web/src/           React app: routes/ (file-based), components/ui (kit), components/data-grid (TanStack Table), features/
+web/src/           React app: routes/ (file-based), components/ui (kit), components/data-grid (TanStack Table), features/ (grievances/ holds the timeline, files, rich text and chip picker pieces)
 dist/web/          Built SPA (generated)
 ```
 
-Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts`.
+Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances, `server/tests/grievances.test.ts`.
 
 ## How it differs from the design spec
 
@@ -129,4 +148,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).
 - The audit log export caps at 50,000 rows per download, and is CSV only.
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
+- Every account can read every grievance; there is no limit to named people or an HR-only role.
+- The case-file PDF comes from the browser's print dialog, so its page header and footer are the browser's.
+- Grievance files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
 - An import takes one file of at most 2,000 rows and 5 MB, reads the first sheet of a workbook, and does not read the old `.xls` format.

@@ -1,5 +1,5 @@
 /**
- * Development seed: synthetic employees, programs, physical and digital assets, history and users modelled on the design spec.
+ * Development seed: synthetic employees, programs, physical and digital assets, grievances with their timelines, history and users modelled on the design spec.
  * Every name and serial here is made up. Never run against production data.
  *
  *   bun run db:seed            # fills an empty database
@@ -25,6 +25,7 @@ import {
   programs,
   users,
 } from './db/schema.ts'
+import { seedGrievances } from './grievance-seed.ts'
 import { hashPassword } from './lib/password.ts'
 
 if (isProduction) {
@@ -282,6 +283,10 @@ db.transaction((tx) => {
   }
 })
 
-console.log(`Seeded ${people.length} employees, ${programCount} programs, ${tagNumber} physical assets, ${seatCount} digital assets and 5 users into ${file}`)
+const grievanceCount = seedGrievances(db, now, byCode, { priya: priya!, marcus: marcus! })
+
+console.log(
+  `Seeded ${people.length} employees, ${programCount} programs, ${tagNumber} physical assets, ${seatCount} digital assets, ${grievanceCount} grievances and 5 users into ${file}`,
+)
 console.log(`Sign in as p.raghunathan@bphs.local (Super Admin) or m.oyelaran@bphs.local (Admin), password: ${PASSWORD}`)
 sqlite.close()

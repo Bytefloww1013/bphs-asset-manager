@@ -9,7 +9,7 @@ import { Badge, type Tone } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
-import { Field, Input, Select } from '@/components/ui/form.tsx'
+import { DateInput, Field, Input, Select } from '@/components/ui/form.tsx'
 import { Mono, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
@@ -298,7 +298,7 @@ function DigitalIssueSheet({ asset, onClose }: { asset: DigitalAssetRow; onClose
           />
         </Field>
         <Field label="Issue date" hint="Today unless it was issued earlier. It cannot be in the future." error={error?.fields.issuedAt}>
-          <Input type="date" className="w-44" value={date} max={today()} onChange={(event) => setDate(event.target.value)} />
+          <DateInput className="w-44" value={date} max={today()} onChange={(event) => setDate(event.target.value)} />
         </Field>
       </form>
     </Sheet>

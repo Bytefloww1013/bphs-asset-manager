@@ -297,6 +297,14 @@ A grievance's actions and events, read down one rail. Chosen on 2026-10-12 from 
 - **Summary:** a panel beside the timeline on wide screens (240px, sticky 24px from the top) with status, owner, grievance date, entry counts by type, and first and latest activity. Below 1024px it sits above the timeline in two columns.
 - **Print:** the controls and the summary are dropped, every entry's details are open, and no entry breaks across a page.
 
+### Files
+Attachments on a grievance or an entry. Once saved a file is never changed or removed, and the hint under every picker says so.
+- **Picking:** a dashed Strong Hairline box labelled "Choose files" wraps the real file input, which is visually hidden but keeps its keyboard focus and label. Choosing again adds to the list rather than replacing it. Each chosen file is a row with its name, its size and a Remove icon button. The hint names the allowed types and the limits (10 MB each, 10 at a time).
+- **Attaching later:** on a grievance that is not sealed, a secondary "Attach files" button with a paperclip, which turns into a spinner while the files go up. A refusal arrives as a toast in the server's words.
+- **List:** one row per file: a file icon, the filename as a cobalt download link, and a meta line in Ink 3 with size, who added it, when, and "with E03" when it came with an entry. Files always download; nothing opens in the page.
+- **Withdrawn:** the name is struck through in Ink 3 with no link, a warn "Withdrawn" badge, and a line giving the date and the reason. The row stays, so the list still shows everything that was ever added.
+- **Withdraw:** a danger-ghost button per file, shown disabled with the reason for an Admin and absent on a Closed or Voided grievance. It opens a sheet with a warn alert ("This cannot be undone") and a required reason, which is also shown on the timeline.
+
 ### Case file
 A grievance printed whole, saved as a PDF from the browser's print dialog. Decided on 2026-10-13:
 - **Printed only from its Print button.** The button logs the print first and opens the dialog only once the log is written; if the log fails, the page says so and nothing prints. Ctrl+P or the browser menu prints a single line asking for the button instead of the case file. Why: a confidential copy should never leave without an audit entry, and the browser cannot be made to wait on a log once its own print has started.

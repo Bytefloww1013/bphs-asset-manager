@@ -8,7 +8,7 @@ import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
 import { Button, IconButton, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
-import { FilterTabs, Input, SearchInput, Select } from '@/components/ui/form.tsx'
+import { DateInput, FilterTabs, SearchInput, Select } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
@@ -206,11 +206,11 @@ function GrievancesPage() {
           </Select>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             Made from
-            <Input type="date" className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
+            <DateInput className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
           </label>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             to
-            <Input type="date" className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
+            <DateInput className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
           </label>
           {narrowed && (
             <Button variant="ghost" onClick={clear}>

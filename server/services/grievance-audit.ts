@@ -8,10 +8,11 @@ type Raw = Omit<GrievanceAuditEntry, 'occurredAt'> & { occurredAt: number }
 
 const toEntry = (row: Raw): GrievanceAuditEntry => ({ ...row, occurredAt: new Date(row.occurredAt).toISOString() })
 
-// The grievance or timeline entry a row describes is joined in, so the page can link to it by its ID.
+// The grievance or timeline entry a row describes is joined in, so the page can link to it by its ID; a file links to its grievance.
 const FROM = sql`from grievance_audit_log l left join users u on u.id = l.user_id
   left join grievance_entries e on l.entity_type = 'grievance_entry' and e.id = l.entity_id
-  left join grievances g on g.id = case l.entity_type when 'grievance' then l.entity_id when 'grievance_entry' then e.grievance_id end`
+  left join grievance_attachments a on l.entity_type = 'grievance_attachment' and a.id = l.entity_id
+  left join grievances g on g.id = case l.entity_type when 'grievance' then l.entity_id when 'grievance_entry' then e.grievance_id when 'grievance_attachment' then a.grievance_id end`
 const COLUMNS = sql`l.id as id, l.occurred_at as occurredAt, ${ACTOR} as actor, l.action as action, l.entity_type as entityType, l.entity_id as entityId, l.details as details, g.code as code, e.seq as seq`
 
 /** The Grievance Audit Log, newest first. Read-only: nothing here or in any route changes it. */
