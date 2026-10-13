@@ -17,6 +17,7 @@ import { authRoutes } from './routes/auth.ts'
 import { listRoutes, reportRoutes } from './routes/lists.ts'
 import { employeeRoutes, userRoutes } from './routes/people.ts'
 import { digitalAssetRoutes } from './routes/digital-assets.ts'
+import { grievanceRoutes } from './routes/grievances.ts'
 import { importRoutes } from './routes/imports.ts'
 import { programRoutes } from './routes/programs.ts'
 
@@ -83,6 +84,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/programs', programRoutes(db))
   api.route('/import', importRoutes(db))
   api.route('/digital-assets', digitalAssetRoutes(db))
+  api.route('/grievances', grievanceRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requirePermission('users.manage'))
   api.use('/users', requirePermission('users.manage'))

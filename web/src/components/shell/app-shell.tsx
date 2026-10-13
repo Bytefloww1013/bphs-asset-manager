@@ -16,6 +16,7 @@ import {
   LogOut,
   Menu as MenuIcon,
   PackageCheck,
+  Scale,
   ScrollText,
   ShieldCheck,
   Users,
@@ -29,19 +30,22 @@ import { cn } from '@/lib/cn.ts'
 import { api } from '@/lib/api.ts'
 import { initials } from '@/lib/format.ts'
 import { useUser } from '@/lib/session.ts'
+import { WORKSPACE_LABEL, rememberWorkspace, useWorkspace, type Workspace } from '@/lib/workspace.ts'
 import { IconButton } from '../ui/button.tsx'
 import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances'
   label: string
   icon: LucideIcon
   locked?: boolean
 }
 
-function useNav(): { heading: string; items: NavEntry[] }[] {
+/** Each workspace has a sidebar of its own; nothing from one appears in the other. */
+function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] {
   const user = useUser()
+  if (workspace === 'grievances') return [{ heading: 'Records', items: [{ to: '/grievances', label: 'Grievances', icon: Scale }] }]
   return [
     {
       heading: 'Work',
@@ -72,8 +76,41 @@ function useNav(): { heading: string; items: NavEntry[] }[] {
   ]
 }
 
+const WORKSPACES: { workspace: Workspace; to: '/' | '/grievances' }[] = [
+  { workspace: 'assets', to: '/' },
+  { workspace: 'grievances', to: '/grievances' },
+]
+
+/** The two-part control under the product name. Choosing a side replaces the whole sidebar and opens that side's first page. */
+function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
+  const current = useWorkspace()
+  return (
+    <div>
+      <nav aria-label="Workspace" className="grid grid-cols-2 gap-0.5 rounded-control bg-line/70 p-0.5">
+        {WORKSPACES.map(({ workspace, to }) => (
+          <Link
+            key={workspace}
+            to={to}
+            onClick={onNavigate}
+            aria-current={workspace === current ? 'true' : undefined}
+            className="flex h-8 items-center justify-center rounded-[0.375rem] text-sm font-medium text-ink-2 transition-colors duration-150 hover:text-ink aria-[current]:bg-surface aria-[current]:text-workspace aria-[current]:shadow-panel"
+          >
+            {WORKSPACE_LABEL[workspace]}
+          </Link>
+        ))}
+      </nav>
+      {current === 'grievances' && (
+        <p className="flex items-center gap-1.5 px-1 pt-2.5 text-xs font-medium text-workspace">
+          <Lock className="size-3.5" aria-hidden />
+          Confidential
+        </p>
+      )}
+    </div>
+  )
+}
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
-  const groups = useNav()
+  const groups = useNav(useWorkspace())
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {groups.map((group) => (
@@ -89,7 +126,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   className="group flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-surface/70 hover:text-ink data-[status=active]:bg-surface data-[status=active]:text-ink data-[status=active]:shadow-panel data-[status=active]:ring-1 data-[status=active]:ring-line"
                   activeProps={{ 'aria-current': 'page' }}
                 >
-                  <item.icon className="size-[1.125rem] shrink-0 text-ink-3 group-data-[status=active]:text-accent" aria-hidden strokeWidth={1.75} />
+                  <item.icon className="size-[1.125rem] shrink-0 text-ink-3 group-data-[status=active]:text-workspace" aria-hidden strokeWidth={1.75} />
                   <span className="flex-1">{item.label}</span>
                   {item.locked && (
                     <>
@@ -169,6 +206,9 @@ function UserMenu() {
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const [drawer, setDrawer] = useState(false)
+  const workspace = useWorkspace()
+  const product = WORKSPACE_LABEL[workspace]
+  useEffect(() => rememberWorkspace(workspace), [workspace])
   // The drawer is only drawn below `lg`. Close it when the window grows past that, or it would stay open, unseen, holding the page.
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1024px)')
@@ -177,15 +217,18 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
     return () => wide.removeEventListener('change', close)
   }, [])
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+    <div data-workspace={workspace} className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[90] focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop">
         Skip to content
       </a>
 
       {/* Wide screens: a fixed rail on a slightly cooler neutral than the page. */}
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar lg:flex">
-        <div className="px-4 pb-4 pt-5">
-          <Wordmark />
+        <div className="px-4 pb-3 pt-5">
+          <Wordmark product={product} />
+        </div>
+        <div className="px-3 pb-4">
+          <WorkspaceSwitcher />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
           <NavList />
@@ -201,21 +244,24 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           <MenuIcon className="size-5" />
         </IconButton>
         <LogoMark className="size-7" />
-        <span className="text-md font-semibold">BPHS Assets</span>
+        <span className="text-md font-semibold">BPHS {product}</span>
       </header>
       <Dialog.Root open={drawer} onOpenChange={setDrawer}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ink/35 lg:hidden" />
-          <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] animate-fade-in flex-col bg-sidebar shadow-pop outline-none lg:hidden">
+          <Dialog.Content data-workspace={workspace} className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] animate-fade-in flex-col bg-sidebar shadow-pop outline-none lg:hidden">
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
             <Dialog.Description className="sr-only">Move between sections of the app</Dialog.Description>
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
-              <Wordmark />
+              <Wordmark product={product} />
               <Dialog.Close asChild>
                 <IconButton label="Close navigation" size="sm">
                   <X className="size-4" />
                 </IconButton>
               </Dialog.Close>
+            </div>
+            <div className="px-3 pb-4">
+              <WorkspaceSwitcher onNavigate={() => setDrawer(false)} />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
               <NavList onNavigate={() => setDrawer(false)} />

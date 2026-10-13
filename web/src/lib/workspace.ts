@@ -1,0 +1,37 @@
+import { useRouterState } from '@tanstack/react-router'
+
+/** The app is two workspaces behind one sign-in. A person is in one or the other, never looking at a mix. */
+export type Workspace = 'assets' | 'grievances'
+
+export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances' }
+
+/** The address decides the workspace, so a link, a reload and the back button always land on the right side. */
+export const workspaceOf = (pathname: string): Workspace => (/^\/grievances(?:\/|$)/.test(pathname) ? 'grievances' : 'assets')
+
+export function useWorkspace(): Workspace {
+  return useRouterState({ select: (state) => workspaceOf(state.location.pathname) })
+}
+
+// ---- The workspace last used -----------------------------------------------------------------
+// Only the name of the workspace is kept in the browser, never anything from inside it.
+const KEY = 'bphs.workspace'
+let reopened = false
+
+export function rememberWorkspace(workspace: Workspace) {
+  try {
+    localStorage.setItem(KEY, workspace)
+  } catch {
+    // Storage is off or full: the app opens on Assets next time.
+  }
+}
+
+/** The workspace to reopen in, asked once: the first time the app opens at its front page. After that the address alone decides. */
+export function workspaceToReopen(): Workspace {
+  if (reopened) return 'assets'
+  reopened = true
+  try {
+    return localStorage.getItem(KEY) === 'grievances' ? 'grievances' : 'assets'
+  } catch {
+    return 'assets'
+  }
+}

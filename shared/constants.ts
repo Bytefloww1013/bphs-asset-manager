@@ -11,6 +11,10 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number]
 /** An action as the Audit Log shows it: "sign in" for sign_in. */
 export const auditActionLabel = (action: AuditAction) => action.replaceAll('_', ' ')
 
+/** What the Grievance Audit Log records. It is a log of its own: nothing here is written to the Audit Log, and nothing there is written here. */
+export const GRIEVANCE_AUDIT_ACTIONS = ['create', 'update', 'delete', 'status', 'owner', 'void', 'entry', 'attach', 'withdraw', 'download', 'export'] as const
+export type GrievanceAuditAction = (typeof GRIEVANCE_AUDIT_ACTIONS)[number]
+
 export const CONDITION_KINDS = ['intake', 'issue', 'return'] as const
 export type ConditionKind = (typeof CONDITION_KINDS)[number]
 

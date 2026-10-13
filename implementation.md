@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **slices 1.1 to 1.3 done 2026-10-12; next is slice 1.4, workspace shell, permissions and audit writer.** The rich-text sanitiser, editor and read-only view and the people picker are built; no grievance screen or table exists yet. Written against `main` at `bb028a3`.
+Status: **Phase 1 (slices 1.1 to 1.4) done 2026-10-12; next is slice 2.1, data and categories.** The Grievances workspace exists as an empty section with its own sidebar, the Grievance Audit Log table and its writer are in place, and `/api/grievances` answers with an empty list. No grievance table or form exists yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -11,7 +11,7 @@ A slice is ticked when it is finished and committed.
 - [x] 1.1 Feasibility checks (2026-10-12)
 - [x] 1.2 Rich text, end to end (2026-10-12)
 - [x] 1.3 People pickers (2026-10-12)
-- [ ] 1.4 Workspace shell, permissions, audit writer
+- [x] 1.4 Workspace shell, permissions, audit writer (2026-10-12)
 - [ ] 2.1 Data and categories
 - [ ] 2.2 Create
 - [ ] 2.3 Browse
@@ -165,6 +165,21 @@ Done when: it can be used with Tab, arrows, Enter and Backspace alone.
 - `server/routes/grievances.ts` mounted at `/api/grievances` in `server/app.ts`, returning an empty list for now.
 
 Done when: both roles can switch workspaces, each sidebar shows only its own entries, a reload stays in the same workspace, the asset screens look exactly as before, and a signed-out request gets 401.
+
+**Results (2026-10-12).** Checked on a production build in headless Chrome 155 and Firefox, as a Super Admin and as an Admin: 37 checks, all passing in both. Screenshots are in `qa-shots/slice-1.4/` (not committed).
+
+- The switcher sits under the product name in the rail and in the narrow-screen drawer. The Grievances mark is plum, `oklch(0.47 0.15 340)`, held in the token `--color-workspace` (cobalt on the Assets side) and used by the switcher's chosen half, the active nav icon and the "Confidential" line. **Awaiting your look at the switcher and the colour** (section 13).
+- On the Assets side the only visible change is the switcher itself: the eleven nav entries, the titles and the cobalt are as they were.
+- Things later slices should know:
+  - **The Grievances sidebar has one entry so far.** Categories and Audit log are added to `useNav` in `app-shell.tsx` by the slices that build those pages (2.1 and 5.1), so the sidebar never links to a page that is not there. The Grievances entry is not an exact match, so it will also light up on `/grievances/categories` until slice 2.1 sets that.
+  - Grievance pages set their tab title with `useGrievancePageTitle(page?)` from `web/src/features/grievances/page-title.ts`: "Grievances · BPHS", or "GR-2026-0001 · Grievances · BPHS".
+  - `useWorkspace()` in `web/src/lib/workspace.ts` gives the workspace from the address. Dialogs and popovers are drawn outside the shell, so one that needs the plum mark must carry `data-workspace` itself, as the drawer does.
+  - The workspace last used is the one thing kept in browser storage (its name only). It is applied once, when the app is opened at `/`.
+  - The Issue and Return sheets still belong to the shared shell, so `?issue=` in a grievance address would open one. No screen links that way; slice 2.3 can move them to the Assets side if it matters.
+  - "The workspace name in the page header" is met on narrow screens by the top bar ("BPHS Grievances") and on wide ones by the rail. Pages deeper than the list (slice 2.4 on) should decide whether their header also needs it.
+  - `GRIEVANCE_AUDIT_ACTIONS` in `shared/constants.ts` is a first list taken from section 8: create, update, delete, status, owner, void, entry, attach, withdraw, download, export. Later slices may add to it.
+  - `grievance_audit_log` is append-only by trigger, on the same terms as `audit_log`.
+  - The test that keeps the two logs apart reads the source: a server file whose name starts with `grievance` must not mention `writeAudit` or `auditLog`, and no other file may mention `writeGrievanceAudit` or `grievanceAuditLog`. So grievance server files must keep that name prefix.
 
 ## 5. Phase 2: Grievance records
 

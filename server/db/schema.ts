@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, Role } from '../../shared/constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, Role } from '../../shared/constants.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
 const createdAt = () => ms('created_at').notNull().default(sql`(unixepoch() * 1000)`)
@@ -241,4 +241,20 @@ export const auditLog = sqliteTable(
     details: text('details').notNull().default(''),
   },
   (t) => [index('ix_audit_time').on(t.occurredAt), index('ix_audit_action').on(t.action)],
+)
+
+/** The Grievance Audit Log: the same shape as `audit_log`, and kept apart from it. */
+export const grievanceAuditLog = sqliteTable(
+  'grievance_audit_log',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    occurredAt: ms('occurred_at').notNull(),
+    userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
+    actor: text('actor').notNull(),
+    action: text('action').$type<GrievanceAuditAction>().notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: integer('entity_id'),
+    details: text('details').notNull().default(''),
+  },
+  (t) => [index('ix_grievance_audit_time').on(t.occurredAt), index('ix_grievance_audit_action').on(t.action)],
 )

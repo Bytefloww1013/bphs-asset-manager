@@ -16,10 +16,10 @@ export function useCan(permission: Permission): boolean {
 }
 
 /** Sets the browser tab title for the current screen. */
-export function usePageTitle(title: string) {
+export function usePageTitle(title: string, product = 'BPHS Assets') {
   useEffect(() => {
-    document.title = `${title} · BPHS Assets`
-  }, [title])
+    document.title = `${title} · ${product}`
+  }, [title, product])
 }
 
 /**

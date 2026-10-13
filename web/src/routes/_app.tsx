@@ -4,6 +4,7 @@ import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
 import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
 import { lookupsQuery, meQuery } from '@/lib/queries.ts'
 import { returnPath } from '@/lib/session.ts'
+import { workspaceToReopen } from '@/lib/workspace.ts'
 
 export interface SheetSearch {
   /** Open the Issue sheet for this asset id, or 'new' to pick one. */
@@ -32,6 +33,10 @@ export const Route = createFileRoute('/_app')({
     const user = await context.queryClient.ensureQueryData(meQuery)
     if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(location.href) } })
     if (user.mustChangePassword) throw redirect({ to: '/password-change' })
+    // Opening the app at its front page goes back to the workspace last used. Asked on every first load, wherever it lands,
+    // so that choosing Assets in the switcher later is never undone.
+    const reopen = workspaceToReopen()
+    if (location.href === '/' && reopen === 'grievances') throw redirect({ to: '/grievances' })
   },
   // Pickers in the Issue and Return sheets need these; fetch once, up front.
   loader: ({ context }) => context.queryClient.ensureQueryData(lookupsQuery),

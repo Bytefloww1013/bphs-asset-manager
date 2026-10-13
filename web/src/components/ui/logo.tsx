@@ -13,12 +13,12 @@ export function LogoMark({ className }: { className?: string }) {
   )
 }
 
-export function Wordmark({ className }: { className?: string }) {
+export function Wordmark({ className, product = 'Assets' }: { className?: string; product?: string }) {
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <LogoMark />
       <span className="text-md font-semibold tracking-[-0.01em] text-ink">
-        BPHS <span className="font-medium text-ink-3">Assets</span>
+        BPHS <span className="font-medium text-ink-3">{product}</span>
       </span>
     </span>
   )

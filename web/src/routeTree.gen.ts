@@ -17,6 +17,7 @@ import { Route as AppAssignmentsRouteImport } from './routes/_app/assignments'
 import { Route as AppAuditRouteImport } from './routes/_app/audit'
 import { Route as AppAvailableRouteImport } from './routes/_app/available'
 import { Route as AppDigitalAssetsRouteImport } from './routes/_app/digital-assets'
+import { Route as AppGrievancesRouteImport } from './routes/_app/grievances'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppProgramsRouteImport } from './routes/_app/programs'
@@ -25,6 +26,7 @@ import { Route as AppAssetsIndexRouteImport } from './routes/_app/assets.index'
 import { Route as AppAssetsTagRouteImport } from './routes/_app/assets.$tag'
 import { Route as AppEmployeesIndexRouteImport } from './routes/_app/employees.index'
 import { Route as AppEmployeesImportRouteImport } from './routes/_app/employees.import'
+import { Route as AppGrievancesIndexRouteImport } from './routes/_app/grievances.index'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -63,6 +65,11 @@ const AppAvailableRoute = AppAvailableRouteImport.update({
 const AppDigitalAssetsRoute = AppDigitalAssetsRouteImport.update({
   id: '/digital-assets',
   path: '/digital-assets',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGrievancesRoute = AppGrievancesRouteImport.update({
+  id: '/grievances',
+  path: '/grievances',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImportExportRoute = AppImportExportRouteImport.update({
@@ -105,6 +112,11 @@ const AppEmployeesImportRoute = AppEmployeesImportRouteImport.update({
   path: '/employees/import',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGrievancesIndexRoute = AppGrievancesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppGrievancesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -114,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AppAuditRoute
   '/available': typeof AppAvailableRoute
   '/digital-assets': typeof AppDigitalAssetsRoute
+  '/grievances': typeof AppGrievancesRouteWithChildren
   '/import-export': typeof AppImportExportRoute
   '/lists': typeof AppListsRoute
   '/programs': typeof AppProgramsRoute
@@ -122,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/employees/import': typeof AppEmployeesImportRoute
   '/assets/': typeof AppAssetsIndexRoute
   '/employees/': typeof AppEmployeesIndexRoute
+  '/grievances/': typeof AppGrievancesIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -139,6 +153,7 @@ export interface FileRoutesByTo {
   '/employees/import': typeof AppEmployeesImportRoute
   '/assets': typeof AppAssetsIndexRoute
   '/employees': typeof AppEmployeesIndexRoute
+  '/grievances': typeof AppGrievancesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +164,7 @@ export interface FileRoutesById {
   '/_app/audit': typeof AppAuditRoute
   '/_app/available': typeof AppAvailableRoute
   '/_app/digital-assets': typeof AppDigitalAssetsRoute
+  '/_app/grievances': typeof AppGrievancesRouteWithChildren
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/lists': typeof AppListsRoute
   '/_app/programs': typeof AppProgramsRoute
@@ -158,6 +174,7 @@ export interface FileRoutesById {
   '/_app/employees/import': typeof AppEmployeesImportRoute
   '/_app/assets/': typeof AppAssetsIndexRoute
   '/_app/employees/': typeof AppEmployeesIndexRoute
+  '/_app/grievances/': typeof AppGrievancesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -169,6 +186,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/available'
     | '/digital-assets'
+    | '/grievances'
     | '/import-export'
     | '/lists'
     | '/programs'
@@ -177,6 +195,7 @@ export interface FileRouteTypes {
     | '/employees/import'
     | '/assets/'
     | '/employees/'
+    | '/grievances/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -194,6 +213,7 @@ export interface FileRouteTypes {
     | '/employees/import'
     | '/assets'
     | '/employees'
+    | '/grievances'
   id:
     | '__root__'
     | '/_app'
@@ -203,6 +223,7 @@ export interface FileRouteTypes {
     | '/_app/audit'
     | '/_app/available'
     | '/_app/digital-assets'
+    | '/_app/grievances'
     | '/_app/import-export'
     | '/_app/lists'
     | '/_app/programs'
@@ -212,6 +233,7 @@ export interface FileRouteTypes {
     | '/_app/employees/import'
     | '/_app/assets/'
     | '/_app/employees/'
+    | '/_app/grievances/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -278,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDigitalAssetsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/grievances': {
+      id: '/_app/grievances'
+      path: '/grievances'
+      fullPath: '/grievances'
+      preLoaderRoute: typeof AppGrievancesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/import-export': {
       id: '/_app/import-export'
       path: '/import-export'
@@ -334,14 +363,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployeesImportRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/grievances/': {
+      id: '/_app/grievances/'
+      path: '/'
+      fullPath: '/grievances/'
+      preLoaderRoute: typeof AppGrievancesIndexRouteImport
+      parentRoute: typeof AppGrievancesRoute
+    }
   }
 }
+
+interface AppGrievancesRouteChildren {
+  AppGrievancesIndexRoute: typeof AppGrievancesIndexRoute
+}
+
+const AppGrievancesRouteChildren: AppGrievancesRouteChildren = {
+  AppGrievancesIndexRoute: AppGrievancesIndexRoute,
+}
+
+const AppGrievancesRouteWithChildren = AppGrievancesRoute._addFileChildren(
+  AppGrievancesRouteChildren,
+)
 
 interface AppRouteChildren {
   AppAssignmentsRoute: typeof AppAssignmentsRoute
   AppAuditRoute: typeof AppAuditRoute
   AppAvailableRoute: typeof AppAvailableRoute
   AppDigitalAssetsRoute: typeof AppDigitalAssetsRoute
+  AppGrievancesRoute: typeof AppGrievancesRouteWithChildren
   AppImportExportRoute: typeof AppImportExportRoute
   AppListsRoute: typeof AppListsRoute
   AppProgramsRoute: typeof AppProgramsRoute
@@ -358,6 +407,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAuditRoute: AppAuditRoute,
   AppAvailableRoute: AppAvailableRoute,
   AppDigitalAssetsRoute: AppDigitalAssetsRoute,
+  AppGrievancesRoute: AppGrievancesRouteWithChildren,
   AppImportExportRoute: AppImportExportRoute,
   AppListsRoute: AppListsRoute,
   AppProgramsRoute: AppProgramsRoute,
