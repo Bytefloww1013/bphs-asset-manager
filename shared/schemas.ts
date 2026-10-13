@@ -273,17 +273,29 @@ export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
 /** How far ahead of the server's clock "now" on someone's machine may be before it counts as the future. */
 const CLOCK_SLACK_MS = 5 * 60_000
 
-export const grievanceEntryCreateSchema = z.object({
-  kind: z.enum(['action', 'event'], { error: 'Choose Action or Event' }),
-  /** An instant, as ISO text. The form gives it in local time and the page converts it. */
-  occurredAt: z.iso
-    .datetime({ offset: true, error: 'Enter the date and time it happened' })
-    .refine((value) => Date.parse(value) <= Date.now() + CLOCK_SLACK_MS, 'This cannot be in the future'),
+const entryText = {
   title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
   shortDescription: requiredText(GRIEVANCE_SHORT_DESCRIPTION_MAX, 'Short description'),
   /** The details as HTML from the editor, or nothing. The server sanitises it and never stores what it was sent. */
   body: z.string().max(BODY_HTML_MAX, 'This is too long').default(''),
-})
+}
+
+export const grievanceEntryCreateSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.object({
+      kind: z.enum(['action', 'event']),
+      /** An instant, as ISO text. The form gives it in local time and the page converts it. */
+      occurredAt: z.iso
+        .datetime({ offset: true, error: 'Enter the date and time it happened' })
+        .refine((value) => Date.parse(value) <= Date.now() + CLOCK_SLACK_MS, 'This cannot be in the future'),
+      ...entryText,
+    }),
+    // A correction happens when it is written, so it is not asked when; it says which entry it corrects, by number.
+    z.object({ kind: z.literal('correction'), correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(), ...entryText }),
+  ],
+  { error: 'Choose Action, Event or Correction' },
+)
 export type GrievanceEntryCreateInput = z.infer<typeof grievanceEntryCreateSchema>
 
 // `from` and `to` are days, both inclusive, and are compared with Date Made, which is a day too: no time zone comes into it.

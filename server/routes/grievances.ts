@@ -3,7 +3,7 @@ import { grievanceCategoryCreateSchema, grievanceCategoryUpdateSchema, grievance
 import type { Db } from '../db/client.ts'
 import { intParam, json, query, requirePermission, type Env } from '../http.ts'
 import { createGrievance, getGrievance, listGrievances } from '../services/grievances.ts'
-import { createGrievanceEntry } from '../services/grievance-entries.ts'
+import { createGrievanceEntry, listGrievanceEntries } from '../services/grievance-entries.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
 
 export function grievanceRoutes(db: Db) {
@@ -26,7 +26,8 @@ export function grievanceRoutes(db: Db) {
 
   // Last, so that no fixed path above is taken for a Grievance ID.
   app.get('/:code', (c) => c.json(getGrievance(db, { code: c.req.param('code') })))
-  // An entry can be added. No route changes or removes one.
+  // An entry can be read and added. No route changes or removes one.
+  app.get('/:code/entries', (c) => c.json(listGrievanceEntries(db, c.req.param('code'))))
   app.post('/:code/entries', json(grievanceEntryCreateSchema), (c) => c.json(createGrievanceEntry(db, c.get('user'), c.req.param('code'), c.req.valid('json')), 201))
 
   return app

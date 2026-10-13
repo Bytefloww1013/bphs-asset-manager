@@ -13,6 +13,7 @@ import type {
   EmployeeRow,
   GrievanceCategoryRow,
   GrievanceDetail,
+  GrievanceEntry,
   GrievanceList,
   Lookups,
   ProgramRow,
@@ -104,6 +105,13 @@ export const grievanceQuery = (code: string) =>
   queryOptions({
     queryKey: ['grievances', 'detail', code.toUpperCase()],
     queryFn: () => api.get<GrievanceDetail>(`/grievances/${encodeURIComponent(code)}`),
+  })
+
+/** Every entry on one grievance's timeline. Kept under the grievance's own key, so whatever refreshes the grievance refreshes these. */
+export const grievanceEntriesQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['grievances', 'detail', code.toUpperCase(), 'entries'],
+    queryFn: () => api.get<GrievanceEntry[]>(`/grievances/${encodeURIComponent(code)}/entries`),
   })
 
 export const digitalAssetsQuery = queryOptions({

@@ -1,21 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, History, Plus } from 'lucide-react'
+import { ChevronLeft, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { buttonStyles } from '@/components/ui/button.tsx'
-import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
+import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { formatDateTime } from '@/lib/format.ts'
-import { grievanceQuery } from '@/lib/queries.ts'
+import { grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/')({
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(grievanceQuery(params.code)),
+  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(grievanceQuery(params.code)), context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code))]),
   errorComponent: GrievanceLoadError,
   component: GrievancePage,
 })
@@ -51,8 +51,9 @@ function People({ people }: { people: GrievancePerson[] }) {
 function GrievancePage() {
   const { code } = Route.useParams()
   const { data: grievance } = useQuery(grievanceQuery(code))
+  const { data: entries } = useQuery(grievanceEntriesQuery(code))
   useGrievancePageTitle(grievance?.code ?? code.toUpperCase())
-  if (!grievance) return null
+  if (!grievance || !entries) return null
   // A grievance that is finished takes nothing more on its timeline; the server refuses it whatever the page shows.
   const sealed = grievance.status === 'closed' || grievance.status === 'voided'
 
@@ -98,21 +99,27 @@ function GrievancePage() {
         <RichTextView html={grievance.bodyHtml} className="max-w-[75ch] px-5 py-5" />
       </Panel>
 
-      <Panel>
-        <PanelHeader
-          title="Timeline"
-          description="Actions taken and events, in the order they happened."
-          className="border-b border-line"
-          actions={
-            sealed ? null : (
-              <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
-                <Plus className="size-4" aria-hidden /> Add action or event
-              </Link>
-            )
-          }
-        />
-        <EmptyState icon={History} title="Nothing on the timeline yet" description="What is done about this grievance will be recorded here." />
-      </Panel>
+      {/* On a wide screen the summary stays beside the timeline as it scrolls. In the page's order it comes first, so it is read first. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
+        <Panel aria-label="Summary" className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 print:hidden">
+          <TimelineSummary grievance={grievance} entries={entries} />
+        </Panel>
+        <Panel className="lg:col-start-1 lg:row-start-1">
+          <PanelHeader
+            title="Timeline"
+            description="Actions taken and events, by when they happened."
+            actions={
+              sealed ? null : (
+                <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('primary')}>
+                  <Plus className="size-4" aria-hidden /> Add action or event
+                </Link>
+              )
+            }
+            className="border-b border-line"
+          />
+          <Timeline entries={entries} />
+        </Panel>
+      </div>
     </div>
   )
 }

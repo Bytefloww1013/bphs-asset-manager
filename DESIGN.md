@@ -285,6 +285,18 @@ The body of a grievance, an action or a note. One field, the "ruled field", chos
 - **Reading it back:** the read-only view is the same text rules with no frame, so what was typed looks exactly like what is later read. It only ever shows HTML the server has sanitised.
 - **Keyboard:** the bar is a single tab stop; arrow keys, Home and End move along it. Alt+F10 goes from the text to the bar and Escape back. Tab leaves the field, except in a list, where it indents the item.
 
+### Timeline
+A grievance's actions and events, read down one rail. Chosen on 2026-10-12 from three mocked directions (rail, ledger, cards; the mock is `qa-shots/slice-3.2/timeline-mock.html`).
+- **Rail:** a 1.5px Strong Hairline line down the left with a 24px marker per entry. It stops at the last entry's marker. Month headings (Label size, Ink 3) sit on the text column, and each month is its own ordered list.
+- **Types without colour:** every entry carries its type as a word in small capitals beside its number, and each type has its own marker shape: an Action is a filled Ink 2 disc with a tick, an Event an outlined diamond, a Correction a dashed ring with a pencil, an Automatic entry a small Ink 4 dot. The markers are all ink; no type has a colour of its own.
+- **Entry:** number in mono, type, chips, and the date and time it happened at the right; then the title at 14px/600, the short description in Ink 2, and "Documented by" in Ink 3. "Details" opens the full text in place, in the Rich text reading style; an entry with no details has no such button. An automatic entry is one Ink 3 line with no card.
+- **Corrections:** a correction sits at its own time and carries a dashed "Corrects E06" chip. The corrected entry keeps every word and is marked twice: a Warn Soft tint with a 3px Warn Line edge, and a "Corrected by E61" chip. Either chip goes to the other entry, drawing it first if it was filtered out or not yet reached, and puts focus on it.
+- **Back-dated:** an action or event written down more than a day after it happened carries a solid "Recorded 2026-10-12" chip.
+- **Controls:** a bar under the panel header: Show (All, Actions, Events) and Order (Newest first, Oldest first) as segmented buttons, and a "Hide automatic" checkbox. Newest first is the default and the choice is remembered in the browser. Filtering by type keeps a correction with the type of what it corrects.
+- **Long cases:** 25 entries are drawn at first and the next 25 as the reader nears the end; a "Show 25 more" button does the same without scrolling. All the entries are fetched at once, so the counts, the chips and the filter are exact from the start.
+- **Summary:** a panel beside the timeline on wide screens (240px, sticky 24px from the top) with status, owner, grievance date, entry counts by type, and first and latest activity. Below 1024px it sits above the timeline in two columns.
+- **Print:** the controls and the summary are dropped, every entry's details are open, and no entry breaks across a page.
+
 ## Do's and Don'ts
 
 ### Do:

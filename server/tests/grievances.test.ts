@@ -454,8 +454,9 @@ describe('adding to the timeline', () => {
     const t = await setup()
     const { body } = grievanceFixture(t)
     const [admin, superAdmin] = [await t.asAdmin(), await t.asSuper()]
-    const made = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { id: number; code: string; createdAt: string }
-    return { t, admin, superAdmin, made, path: `/api/grievances/${made.code}/entries` }
+    const base = body
+    const made = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { id: number; code: string; createdAt: string; employees: { id: number }[]; management: { id: number }[] }
+    return { t, admin, superAdmin, made, base, path: `/api/grievances/${made.code}/entries` }
   }
 
   it('starts every grievance with "Grievance recorded", documented by the account that recorded it', async () => {
@@ -509,7 +510,6 @@ describe('adding to the timeline', () => {
       return Object.keys(res.data.details.fields)
     }
     expect(await refused({ kind: 'system' })).toEqual(['kind'])
-    expect(await refused({ kind: 'correction' })).toEqual(['kind'])
     expect(await refused({ title: '  ' })).toEqual(['title'])
     expect(await refused({ title: 'x'.repeat(151) })).toEqual(['title'])
     expect(await refused({ shortDescription: '' })).toEqual(['shortDescription'])
@@ -545,6 +545,82 @@ describe('adding to the timeline', () => {
     expect(() => t.sqlite.prepare(insert).run(made.id + 1, t.adminUser.id)).toThrow(/FOREIGN KEY/)
     expect(() => t.sqlite.prepare('delete from grievance_people').run()).not.toThrow()
     expect(() => t.sqlite.prepare('delete from grievances').run()).toThrow(/FOREIGN KEY/)
+  })
+
+  it('reads a grievance\'s entries in the order they were recorded, for either role, and writes nothing by it', async () => {
+    const { t, admin, superAdmin, made, path } = await one()
+    await t.call('POST', path, { cookie: admin, body: entry })
+    expect((await t.call('GET', path)).status).toBe(401)
+    const audited = t.sqlite.prepare('select count(*) as n from grievance_audit_log').get()
+    for (const cookie of [admin, superAdmin]) {
+      const res = await t.call('GET', path.toLowerCase(), { cookie })
+      expect(res.status).toBe(200)
+      expect(res.data).toMatchObject([
+        { seq: 1, kind: 'system', title: 'Grievance recorded', occurredAt: made.createdAt, bodyHtml: '', documentedBy: 'Marcus Oyelaran', corrects: null, correctedBy: [] },
+        { seq: 2, kind: 'action', title: entry.title, shortDescription: entry.shortDescription, occurredAt: entry.occurredAt, bodyHtml: entry.body, corrects: null, correctedBy: [] },
+      ])
+    }
+    expect(t.sqlite.prepare('select count(*) as n from grievance_audit_log').get()).toEqual(audited)
+    expect((await t.call('GET', '/api/grievances/GR-2026-9999/entries', { cookie: admin })).status).toBe(404)
+  })
+
+  it('takes a correction that points at an entry of the same grievance, and leaves the original as it was', async () => {
+    const { t, admin, superAdmin, made, base, path } = await one()
+    const other = (await t.call('POST', '/api/grievances', { cookie: admin, body: { ...base, title: 'Another grievance', employeeIds: [made.employees[0]!.id], managementIds: [made.management[0]!.id] } })).data as { code: string }
+    await t.call('POST', path, { cookie: admin, body: entry })
+    await t.call('POST', `/api/grievances/${other.code}/entries`, { cookie: admin, body: entry })
+    await t.call('POST', `/api/grievances/${other.code}/entries`, { cookie: admin, body: entry })
+    const original = t.sqlite.prepare('select * from grievance_entries where grievance_id = ? and seq = 2').get(made.id)
+    const correction = { kind: 'correction', correctsSeq: 2, title: 'The meeting was on 3 October', shortDescription: 'E02 gives the wrong day.', occurredAt: '2001-01-01T00:00:00Z' }
+
+    const res = await t.call('POST', path, { cookie: superAdmin, body: correction })
+    expect(res.status).toBe(201)
+    expect(res.data).toMatchObject({ seq: 3, kind: 'correction', corrects: 2, documentedBy: 'Priya Raghunathan' })
+    // A correction happens when it is written, whatever the request says.
+    expect(res.data.occurredAt).toBe(res.data.recordedAt)
+    const again = await t.call('POST', path, { cookie: admin, body: { ...correction, correctsSeq: 3, title: 'Correcting the correction' } })
+    expect(again.data).toMatchObject({ seq: 4, corrects: 3 })
+
+    const listed = (await t.call('GET', path, { cookie: admin })).data as { seq: number; corrects: number | null; correctedBy: number[] }[]
+    expect(listed.map((row) => [row.seq, row.corrects, row.correctedBy])).toEqual([[1, null, []], [2, null, [3]], [3, 2, [4]], [4, 3, []]])
+    expect(t.sqlite.prepare('select * from grievance_entries where grievance_id = ? and seq = 2').get(made.id)).toEqual(original)
+
+    const refused = async (change: object, field: string) => {
+      const bad = await t.call('POST', path, { cookie: admin, body: { ...correction, ...change } })
+      expect(bad.status, JSON.stringify(change)).toBe(422)
+      expect(Object.keys(bad.data.details.fields)).toEqual([field])
+    }
+    await refused({ correctsSeq: undefined }, 'correctsSeq')
+    await refused({ correctsSeq: 0 }, 'correctsSeq')
+    // The other grievance has an E03 by now; this one's numbers are its own.
+    await refused({ correctsSeq: 9 }, 'correctsSeq')
+    await refused({ correctsSeq: 1 }, 'correctsSeq')
+    await refused({ title: '' }, 'title')
+    expect(listed).toHaveLength(4)
+    // The table refuses what the service would never send: a correction pointing into another grievance.
+    const foreign = t.sqlite.prepare('select id from grievance_entries where grievance_id != ? and seq = 2').get(made.id) as { id: number }
+    const insert = "insert into grievance_entries (grievance_id, seq, kind, corrects_entry_id, occurred_at, recorded_at, title, short_description, body_html, body_text, documented_by_user_id, documented_by_label) values (?, 9, ?, ?, 0, 0, 't', '', '', '', ?, 'x')"
+    expect(() => t.sqlite.prepare(insert).run(made.id, 'correction', foreign.id, t.adminUser.id)).toThrow(/same grievance/)
+    expect(() => t.sqlite.prepare(insert).run(made.id, 'correction', null, t.adminUser.id)).toThrow(/CHECK/)
+    expect(() => t.sqlite.prepare(insert).run(made.id, 'action', (original as { id: number }).id, t.adminUser.id)).toThrow(/CHECK/)
+  })
+
+  it('has no route that changes or removes an entry, and none is changed by trying', async () => {
+    const { t, admin, superAdmin, made, path } = await one()
+    const added = (await t.call('POST', path, { cookie: admin, body: entry })).data as { id: number }
+    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.includes('/entries'))
+    // A route with a validator is listed once for each handler.
+    expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))].sort()).toEqual(['GET /api/grievances/:code/entries', 'POST /api/grievances/:code/entries'])
+    const before = t.sqlite.prepare('select * from grievance_entries order by id').all()
+    for (const cookie of [admin, superAdmin]) {
+      for (const method of ['PUT', 'PATCH', 'DELETE']) {
+        for (const target of [path, `${path}/2`, `${path}/${added.id}`, `/api/grievances/${made.code}`]) {
+          const res = await t.call(method, target, { cookie, body: { ...entry, title: 'Changed' } })
+          expect([404, 405], `${method} ${target}`).toContain(res.status)
+        }
+      }
+    }
+    expect(t.sqlite.prepare('select * from grievance_entries order by id').all()).toEqual(before)
   })
 
   it('gives a grievance recorded before the timeline existed its first entry, from the migration', async () => {

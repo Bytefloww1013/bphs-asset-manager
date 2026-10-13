@@ -313,6 +313,10 @@ export interface GrievanceEntry {
   bodyHtml: string
   /** The name of whoever recorded it, as it was at the time. */
   documentedBy: string
+  /** On a correction, the number of the entry it corrects; otherwise null. */
+  corrects: number | null
+  /** The numbers of the corrections made to this entry, oldest first. */
+  correctedBy: number[]
 }
 
 export interface ConditionRatingRow {

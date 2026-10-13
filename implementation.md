@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1, Phase 2 and slice 3.1 done 2026-10-12; next is slice 3.2, which starts with a design sign-off.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. Entries can be added to a grievance's timeline from its detail page, but the timeline itself is still a placeholder until slice 3.2. Written against `main` at `bb028a3`.
+Status: **Phase 1, Phase 2 and slices 3.1 and 3.2 done 2026-10-12; next is slice 3.3.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it, and entries can be added to it. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -17,7 +17,7 @@ A slice is ticked when it is finished and committed.
 - [x] 2.3 Browse (2026-10-12)
 - [x] 2.4 Detail (2026-10-12)
 - [x] 3.1 Data and add-entry (2026-10-12)
-- [ ] 3.2 Timeline
+- [x] 3.2 Timeline (2026-10-12)
 - [ ] 3.3 Entry detail and corrections
 - [ ] 4.1 Status and ownership
 - [ ] 4.2 Edit with versions
@@ -294,6 +294,20 @@ Then built:
 - A sticky summary beside it on wide screens (status, owner, entry count, first and latest activity) so the case's state stays in view while reading down.
 - `last_activity_at` on the grievance is updated with each entry.
 - Reduced-motion and keyboard reading order are checked, and the timeline is a real list for screen readers.
+
+**Results (2026-10-12).** 144 tests pass (3 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin against a 61-entry grievance: 22 checks, all passing. Firefox was not run. The mock and screenshots are in `qa-shots/slice-3.2/`.
+
+- **Direction chosen: the rail**, with month markers, newest first with a switch to oldest first, and details opening in place. It is written up under "Timeline" in `DESIGN.md`.
+- **What was built:** `GET /api/grievances/:code/entries` (every entry with its body, `corrects` and `correctedBy` as entry numbers, in the order recorded, for either role, nothing audited); `grievanceEntriesQuery`; `web/src/features/grievances/timeline.tsx` with `Timeline` and `TimelineSummary`; the detail page lays the two side by side from 1024px.
+- **Decisions and things later slices should know:**
+  - **Long cases:** you asked for infinite scrolling if it stayed simple. It did: the page fetches all of a grievance's entries in one request and draws 25 at a time, the next 25 as the end comes near, with a "Show 25 more" button for anyone not scrolling. Nothing is paged on the server, so the counts and the correction links are exact. If a grievance ever reaches thousands of entries the request itself would want paging; that is not built.
+  - **"Include the grievance date"** was taken to mean the grievance's Date made, shown as "Grievance date" in the summary beside the timeline. Each entry already shows the date and time it happened.
+  - The order switch is remembered per browser (`localStorage`, key `grievance-timeline-order`).
+  - Actions or Events alone hide automatic entries, and keep a correction with the type of the entry it corrects.
+  - "First activity" and "Latest activity" in the summary are the earliest and latest Occurred at among the entries, so a back-dated entry moves the first.
+  - Entry titles are not links yet; slice 3.3 passes `Timeline` a `link` to the entry page.
+  - **Done ahead of slice 3.3, on the server only:** `POST …/entries` takes `kind: 'correction'` with `correctsSeq`; a correction's Occurred at is always the moment it is written; an automatic entry cannot be corrected; a correction can itself be corrected. The test that no route changes or removes an entry is in place too. No page offers a correction yet.
+  - Attachments in the mock are not built; they belong to the attachments slice, which adds them to the entry and to this list.
 
 ### Slice 3.3: Entry detail and corrections
 
