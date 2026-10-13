@@ -168,12 +168,12 @@ Done when: both roles can switch workspaces, each sidebar shows only its own ent
 
 **Results (2026-10-12).** Checked on a production build in headless Chrome 155 and Firefox, as a Super Admin and as an Admin: 37 checks, all passing in both. Screenshots are in `qa-shots/slice-1.4/` (not committed).
 
-- The switcher sits under the product name in the rail and in the narrow-screen drawer. The Grievances mark is plum, `oklch(0.47 0.15 340)`, held in the token `--color-workspace` (cobalt on the Assets side) and used by the switcher's chosen half, the active nav icon and the "Confidential" line. **Awaiting your look at the switcher and the colour** (section 13).
+- The switcher sits under the product name in the rail and in the narrow-screen drawer. **Colour (decided 2026-10-12): Grievances uses the same cobalt as Assets for now.** Plum and an orange, rgb(241, 142, 49), were both tried and turned down; the orange was too faint as text (about 2.4:1). The token `--color-workspace` stays, used by the switcher's chosen half, the active nav icon and the "Confidential" line, so a colour can be set later in one place.
 - On the Assets side the only visible change is the switcher itself: the eleven nav entries, the titles and the cobalt are as they were.
 - Things later slices should know:
   - **The Grievances sidebar has one entry so far.** Categories and Audit log are added to `useNav` in `app-shell.tsx` by the slices that build those pages (2.1 and 5.1), so the sidebar never links to a page that is not there. The Grievances entry is not an exact match, so it will also light up on `/grievances/categories` until slice 2.1 sets that.
   - Grievance pages set their tab title with `useGrievancePageTitle(page?)` from `web/src/features/grievances/page-title.ts`: "Grievances · BPHS", or "GR-2026-0001 · Grievances · BPHS".
-  - `useWorkspace()` in `web/src/lib/workspace.ts` gives the workspace from the address. Dialogs and popovers are drawn outside the shell, so one that needs the plum mark must carry `data-workspace` itself, as the drawer does.
+  - `useWorkspace()` in `web/src/lib/workspace.ts` gives the workspace from the address. Dialogs and popovers are drawn outside the shell, so one that uses `--color-workspace` must carry `data-workspace` itself, as the drawer does.
   - The workspace last used is the one thing kept in browser storage (its name only). It is applied once, when the app is opened at `/`.
   - The Issue and Return sheets still belong to the shared shell, so `?issue=` in a grievance address would open one. No screen links that way; slice 2.3 can move them to the Assets side if it matters.
   - "The workspace name in the page header" is met on narrow screens by the top bar ("BPHS Grievances") and on wide ones by the rail. Pages deeper than the list (slice 2.4 on) should decide whether their header also needs it.

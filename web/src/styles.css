@@ -33,7 +33,8 @@
   --color-accent-line: oklch(0.88 0.06 262);
   --color-on-accent: oklch(0.99 0 0);
 
-  /* Workspace: marks which side of the app you are on (the switcher and the active nav item). Cobalt on the Assets side. */
+  /* Workspace: marks which side of the app you are on (the switcher and the active nav item). Cobalt on both sides for now;
+     a workspace can be given its own by setting this under [data-workspace='grievances']. */
   --color-workspace: var(--color-accent);
 
   /* Status */
@@ -123,11 +124,6 @@
 }
 
 @layer base {
-  /* The Grievances workspace carries a plum mark, so the two sides are never confused at a glance. 6.0:1 on the rail. */
-  [data-workspace='grievances'] {
-    --color-workspace: oklch(0.47 0.15 340);
-  }
-
   html {
     color-scheme: light;
     -webkit-text-size-adjust: 100%;
