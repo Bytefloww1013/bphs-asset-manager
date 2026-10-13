@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronLeft, Printer } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -14,6 +14,7 @@ import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { EntryMarker } from '@/features/grievances/timeline.tsx'
 import { api } from '@/lib/api.ts'
+import { cn } from '@/lib/cn.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery, grievanceVersionsQuery } from '@/lib/queries.ts'
 import { requireSession, useUser } from '@/lib/session.ts'
@@ -121,18 +122,25 @@ function CaseFile() {
   const [includeVersions, setIncludeVersions] = useState(false)
   const versions = useQuery({ ...grievanceVersionsQuery(code), enabled: includeVersions })
   const [exportedAt, setExportedAt] = useState(() => new Date().toISOString())
+  // No printed copy without a log entry: the content prints only after the button has logged it, so Ctrl+P alone prints an instruction.
+  const [logged, setLogged] = useState(false)
   useGrievancePageTitle(`${grievance?.code ?? code.toUpperCase()} case file`)
-
-  // Ctrl+P prints the page as well as the button, so each print is caught here: logged, and stamped with its own time.
+  const logPrint = useMutation({
+    mutationFn: () => api.post(`/grievances/${encodeURIComponent(code)}/exports`, { format: 'pdf' }),
+    onSuccess: () => {
+      // The dialog captures the page as it is drawn when it opens, so the stamp and the gate must be rendered first.
+      flushSync(() => {
+        setExportedAt(new Date().toISOString())
+        setLogged(true)
+      })
+      window.print()
+    },
+  })
   useEffect(() => {
-    const onPrint = () => {
-      flushSync(() => setExportedAt(new Date().toISOString()))
-      // shortcut: the print goes ahead if the log cannot be written (the server is unreachable); make printing wait on it if that matters.
-      api.post(`/grievances/${encodeURIComponent(code)}/exports`, { format: 'pdf' }).catch(() => {})
-    }
-    window.addEventListener('beforeprint', onPrint)
-    return () => window.removeEventListener('beforeprint', onPrint)
-  }, [code])
+    const relock = () => setLogged(false)
+    window.addEventListener('afterprint', relock)
+    return () => window.removeEventListener('afterprint', relock)
+  }, [])
 
   if (!grievance || !entries || !files) return null
   const shown = entries
@@ -154,16 +162,22 @@ function CaseFile() {
             <Checkbox checked={includeVersions} disabled={grievance.version === 1} onChange={(event) => setIncludeVersions(event.target.checked)} /> Include earlier versions
           </label>
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-xs text-ink-3">Choose “Save as PDF” in the print dialog. Each print is logged.</span>
-            <Button variant="primary" icon={<Printer className="size-4" aria-hidden />} disabled={!versionsReady} onClick={() => window.print()}>
+            <span className="text-xs text-ink-3">Print from this button and choose “Save as PDF” in the dialog. Each print is logged.</span>
+            <Button variant="primary" icon={<Printer className="size-4" aria-hidden />} disabled={!versionsReady} loading={logPrint.isPending} onClick={() => logPrint.mutate()}>
               Print
             </Button>
           </div>
         </div>
         {versions.isError && <p className="mx-auto max-w-[50rem] px-6 pb-3 text-bad">Could not load the earlier versions. {versions.error.message}</p>}
+        {logPrint.isError && (
+          <p role="alert" className="mx-auto max-w-[50rem] px-6 pb-3 text-bad">
+            Not printed: the print could not be logged. {logPrint.error.message}
+          </p>
+        )}
       </div>
 
-      <table className="mx-auto w-full max-w-[50rem] print:max-w-none">
+      {!logged && <p className="hidden print:block">Print from the Print button on the page, so the copy is logged.</p>}
+      <table className={cn('mx-auto w-full max-w-[50rem] print:max-w-none', !logged && 'print:hidden')}>
         {/* A table head repeats on every printed page, in Firefox as in Chrome, where a fixed header does not. */}
         <thead>
           <tr>

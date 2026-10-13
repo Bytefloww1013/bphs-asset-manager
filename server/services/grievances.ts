@@ -300,7 +300,8 @@ export function voidGrievance(db: Db, actor: Actor, code: string, input: Grievan
   return getGrievance(db, { id })
 }
 
-const EXPORT_NAMES: Record<GrievanceExportInput['format'], string> = { pdf: 'PDF case file' }
+// A cancelled print dialog cannot be detected, so the entry says only that the dialog opened.
+const EXPORT_NAMES: Record<GrievanceExportInput['format'], string> = { pdf: 'PDF case file (print dialog opened)' }
 
 /** Log an export. The browser makes the file, so it reports each one here; viewing a grievance is not logged, taking a copy is. */
 export function recordGrievanceExport(db: DbLike, actor: Actor, code: string, input: GrievanceExportInput) {
