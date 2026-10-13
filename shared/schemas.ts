@@ -300,6 +300,9 @@ export type GrievanceUpdateInput = z.infer<typeof grievanceUpdateSchema>
 export const grievanceVoidSchema = z.object({ reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason') })
 export type GrievanceVoidInput = z.infer<typeof grievanceVoidSchema>
 
+export const grievanceAttachmentWithdrawSchema = z.object({ reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason') })
+export type GrievanceAttachmentWithdrawInput = z.infer<typeof grievanceAttachmentWithdrawSchema>
+
 /** How far ahead of the server's clock "now" on someone's machine may be before it counts as the future. */
 const CLOCK_SLACK_MS = 5 * 60_000
 

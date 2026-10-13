@@ -1192,4 +1192,62 @@ describe('attaching files to a grievance', () => {
     const insert = "insert into grievance_attachments (grievance_id, entry_id, filename, content_type, size, sha256, uploaded_by_user_id, uploaded_by_label, uploaded_at) values (?, ?, 'a.txt', 'text/plain', 1, 'x', ?, 'x', 0)"
     expect(() => t.sqlite.prepare(insert).run(made.id, otherEntry, t.adminUser.id)).toThrow(/same grievance/)
   })
+
+  it('lists the files and sends each one as a download, never shown in the page, logging every download', async () => {
+    const { t, admin, body, url, made } = await one()
+    await send(t, `${url}/attachments`, admin, undefined, [txt('notes – Dana.txt'), pdf()])
+    const listed = (await t.call('GET', `${url}/attachments`, { cookie: admin })).data as { id: number }[]
+    expect(listed).toMatchObject([
+      { filename: 'notes – Dana.txt', size: 23, entrySeq: 2, uploadedBy: 'Marcus Oyelaran', withdrawnAt: null, withdrawnReason: null },
+      { filename: 'letter.pdf', entrySeq: 2 },
+    ])
+
+    const res = await t.app.request(`${url}/attachments/${listed[0]!.id}`, { headers: { cookie: admin } })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('text/plain')
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(res.headers.get('content-disposition')).toBe(`attachment; filename="notes _ Dana.txt"; filename*=UTF-8''notes%20%E2%80%93%20Dana.txt`)
+    expect(await res.text()).toBe('Called Dana on Tuesday.')
+    expect(t.sqlite.prepare("select entity_id, details from grievance_audit_log where action = 'download'").all()).toEqual([{ entity_id: listed[0]!.id, details: `${made.code} · notes – Dana.txt` }])
+    expect(t.sqlite.prepare("select count(*) as n from audit_log where details like '%Dana%'").get()).toEqual({ n: 0 })
+
+    // A file is found only under its own grievance.
+    const other = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { code: string }
+    expect((await t.app.request(`/api/grievances/${other.code}/attachments/${listed[0]!.id}`, { headers: { cookie: admin } })).status).toBe(404)
+    expect((await t.app.request(`${url}/attachments/${listed[0]!.id}`)).status).toBe(401)
+  })
+
+  it('lets a Super Admin withdraw a file with a reason: it stays listed and on the timeline, but can no longer be downloaded', async () => {
+    const { t, admin, made, url } = await one()
+    const superAdmin = await t.asSuper()
+    const [file] = (await (await send(t, `${url}/attachments`, admin, undefined, [txt()])).json()) as { id: number }[]
+    const withdraw = (cookie: string, body: unknown) => t.call('POST', `${url}/attachments/${file!.id}/withdraw`, { cookie, body })
+
+    expect((await withdraw(admin, { reason: 'Wrong file.' })).status).toBe(403)
+    expect((await withdraw(superAdmin, { reason: ' ' })).status).toBe(422)
+    const done = await withdraw(superAdmin, { reason: 'Wrong file.' })
+    expect(done.status).toBe(200)
+    expect(done.data).toMatchObject({ filename: 'notes.txt', withdrawnReason: 'Wrong file.', withdrawnAt: expect.any(String) })
+    expect((await withdraw(superAdmin, { reason: 'Again.' })).status).toBe(409)
+
+    const listed = (await t.call('GET', `${url}/attachments`, { cookie: admin })).data
+    expect(listed).toMatchObject([{ filename: 'notes.txt', uploadedBy: 'Marcus Oyelaran', withdrawnReason: 'Wrong file.' }])
+    const gone = await t.app.request(`${url}/attachments/${file!.id}`, { headers: { cookie: admin } })
+    expect(gone.status).toBe(410)
+    expect(await gone.json()).toMatchObject({ error: 'attachment_withdrawn' })
+    expect(t.sqlite.prepare('select kind, title, short_description, body_text from grievance_entries where grievance_id = ? order by seq desc').get(made.id)).toEqual({ kind: 'system', title: 'File withdrawn', short_description: 'notes.txt', body_text: 'Wrong file.' })
+    expect(t.sqlite.prepare("select action, entity_id, details from grievance_audit_log where action in ('withdraw', 'download')").all()).toEqual([{ action: 'withdraw', entity_id: file!.id, details: `${made.code} · notes.txt` }])
+    // The bytes are kept, out of the app's reach.
+    expect(get(t.db, file!.id)?.toString()).toBe('Called Dana on Tuesday.')
+  })
+
+  it('refuses a withdrawal on a grievance that is Closed or Voided, but still downloads its files', async () => {
+    const { t, admin, made, url } = await one()
+    const [file] = (await (await send(t, `${url}/attachments`, admin, undefined, [txt()])).json()) as { id: number }[]
+    t.sqlite.prepare("update grievances set status = 'closed' where id = ?").run(made.id)
+    const refused = await t.call('POST', `${url}/attachments/${file!.id}/withdraw`, { cookie: await t.asSuper(), body: { reason: 'Wrong file.' } })
+    expect(refused.status).toBe(409)
+    expect(refused.data).toMatchObject({ error: 'grievance_sealed' })
+    expect((await t.app.request(`${url}/attachments/${file!.id}`, { headers: { cookie: admin } })).status).toBe(200)
+  })
 })

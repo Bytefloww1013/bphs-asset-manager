@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slice 6.1 done 2026-10-13; next is slice 6.2.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they cannot be listed or downloaded yet. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slices 6.1 and 6.2 done 2026-10-13; next is slice 7.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -24,7 +24,7 @@ A slice is ticked when it is finished and committed.
 - [x] 4.3 Guards on employees (2026-10-13)
 - [x] 5.1 Audit log page and export (2026-10-13)
 - [x] 6.1 Attachment storage and upload (2026-10-13)
-- [ ] 6.2 Download and withdraw
+- [x] 6.2 Download and withdraw (2026-10-13)
 - [ ] 7.1 PDF case file
 - [ ] 7.2 Excel workbook
 - [ ] 8.1 Seed, docs, end-to-end check
@@ -361,6 +361,14 @@ Migration `0011_grievance_attachments`:
 - Downloads are always sent as a file to save, never displayed in the page, with `nosniff`, so an uploaded file cannot run as part of the app.
 - **Withdraw** (Super Admin, reason required) for a file added by mistake: downloads stop, while the filename, who added it, the reason and a timeline entry remain.
 - Shown as a list on the grievance and on each entry, with size and who added it.
+
+**As built (2026-10-13).**
+
+- `GET /api/grievances/:code/attachments` lists every file, withdrawn ones too, with the number of the entry each came with. `GET /api/grievances/:code/attachments/:id` sends the bytes with the stored type, `Content-Disposition: attachment` (an ASCII name plus the exact name as `filename*`) and `X-Content-Type-Options: nosniff`. A file ID from another grievance is 404; a withdrawn file is 410 `attachment_withdrawn`. Downloads work on Closed and Voided grievances too.
+- Each download writes a `download` entry to the Grievance Audit Log, and each withdrawal a `withdraw` entry, with the ID and the filename only, as `attach` does.
+- `POST /api/grievances/:code/attachments/:id/withdraw` needs `grievance.void` (Super Admin) and a reason. It sets `withdrawn_at` and `withdrawn_reason` once (the 6.1 triggers allow nothing else; a second withdrawal is 409), keeps the bytes, and writes a system entry titled "File withdrawn" with the filename as its short description and the reason as its body. A Closed or Voided grievance refuses it with 409 `grievance_sealed`.
+- `AttachmentList` in `web/src/features/grievances/files.tsx` is a Files panel on the grievance page (every file) and on the entry page (that entry's files): name as a download link, size, who added it and when, and the entry it came with. A withdrawn file is struck through with a Withdrawn badge and the reason, and has no link. Withdraw opens a sheet that asks for the reason; it is disabled with the Super Admin reason for other roles and hidden on a sealed grievance.
+- Not checked in a browser yet; on the slice 8.1 list.
 
 ## 10. Phase 7: Export, then Phase 8: finish
 

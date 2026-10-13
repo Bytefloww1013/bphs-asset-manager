@@ -1,11 +1,18 @@
-import { Loader2, Paperclip, X } from 'lucide-react'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension } from '@shared/constants.ts'
+import { FileText, Loader2, Paperclip, X } from 'lucide-react'
+import { useState } from 'react'
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, grievanceEntryCode } from '@shared/constants.ts'
+import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
+import { GRIEVANCE_NOTE_MAX } from '@shared/schemas.ts'
 import type { GrievanceAttachment } from '@shared/types.ts'
-import { buttonStyles, IconButton } from '@/components/ui/button.tsx'
-import { useToast } from '@/components/ui/feedback.tsx'
+import { Badge } from '@/components/ui/badge.tsx'
+import { Button, buttonStyles, IconButton } from '@/components/ui/button.tsx'
+import { Alert, useToast } from '@/components/ui/feedback.tsx'
+import { Field, Textarea } from '@/components/ui/form.tsx'
+import { Sheet } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
-import { api } from '@/lib/api.ts'
-import { plural } from '@/lib/format.ts'
+import { ApiError, api } from '@/lib/api.ts'
+import { formatDateTime, plural } from '@/lib/format.ts'
+import { useCan } from '@/lib/session.ts'
 
 const ACCEPT = Object.keys(ATTACHMENT_TYPES).map((extension) => `.${extension}`).join(',')
 const MB = 1024 * 1024
@@ -107,5 +114,114 @@ export function AttachFiles({ code }: { code: string }) {
       {attach.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Paperclip className="size-4" aria-hidden />}
       Attach files
     </label>
+  )
+}
+
+/**
+ * A grievance's files, or one entry's. Each downloads as a file to save; the page never shows one. A withdrawn file stays on the
+ * list, with the reason, but no longer downloads.
+ */
+export function AttachmentList({ code, files, sealed }: { code: string; files: GrievanceAttachment[]; sealed: boolean }) {
+  const canWithdraw = useCan('grievance.void')
+  const [withdrawing, setWithdrawing] = useState<GrievanceAttachment | null>(null)
+  return (
+    <>
+      <ul className="divide-y divide-line">
+        {files.map((file) => (
+          <li key={file.id} className="flex flex-wrap items-start gap-x-4 gap-y-2 px-5 py-3">
+            <FileText className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                {file.withdrawnAt ? (
+                  <span className="text-ink-3 line-through [overflow-wrap:anywhere]">{file.filename}</span>
+                ) : (
+                  <a href={`/api/grievances/${encodeURIComponent(code)}/attachments/${file.id}`} download className="text-accent hover:underline [overflow-wrap:anywhere]">
+                    {file.filename}
+                  </a>
+                )}
+                {file.withdrawnAt && <Badge tone="warn">Withdrawn</Badge>}
+              </div>
+              <div className="mt-0.5 text-xs text-ink-3">
+                {fileSize(file.size)} · {file.uploadedBy} · {formatDateTime(file.uploadedAt)}
+                {file.entrySeq !== null && <> · with {grievanceEntryCode(file.entrySeq)}</>}
+              </div>
+              {file.withdrawnAt && (
+                <p className="mt-1 text-xs text-ink-2 [overflow-wrap:anywhere]">
+                  Withdrawn {formatDateTime(file.withdrawnAt)}: {file.withdrawnReason}
+                </p>
+              )}
+            </div>
+            {!sealed && !file.withdrawnAt && (
+              <Button size="sm" variant="danger-ghost" disabledReason={canWithdraw ? undefined : SUPER_ADMIN_ONLY} onClick={() => setWithdrawing(file)}>
+                Withdraw
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {withdrawing && <WithdrawSheet code={code} file={withdrawing} onClose={() => setWithdrawing(null)} />}
+    </>
+  )
+}
+
+function WithdrawSheet({ code, file, onClose }: { code: string; file: GrievanceAttachment; onClose: () => void }) {
+  const [reason, setReason] = useState('')
+  const [missing, setMissing] = useState<string>()
+  const [error, setError] = useState<ApiError | null>(null)
+  const withdraw = useWrite((body: { reason: string }) => api.post<GrievanceAttachment>(`/grievances/${encodeURIComponent(code)}/attachments/${file.id}/withdraw`, body), {
+    silent: true,
+    success: (withdrawn) => `${withdrawn.filename} withdrawn`,
+  })
+
+  async function commit() {
+    setMissing(reason.trim() ? undefined : 'Say why it is being withdrawn')
+    if (!reason.trim()) return
+    setError(null)
+    try {
+      await withdraw.mutateAsync({ reason })
+      onClose()
+    } catch (e) {
+      if (e instanceof ApiError) setError(e)
+    }
+  }
+
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title="Withdraw this file"
+      description={`${code.toUpperCase()} · ${file.filename}`}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="danger" type="submit" form="withdraw-file-form" loading={withdraw.isPending}>
+            Withdraw file
+          </Button>
+        </>
+      }
+    >
+      <form
+        id="withdraw-file-form"
+        noValidate
+        className="flex flex-col gap-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          void commit()
+        }}
+      >
+        {error && !Object.keys(error.fields).length && (
+          <Alert tone="bad" title="That did not go through">
+            {error.message}
+          </Alert>
+        )}
+        <Alert tone="warn" title="This cannot be undone">
+          A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the grievance. Use it for a file added by mistake.
+        </Alert>
+        <Field label="Reason" hint="Shown on the timeline." error={missing ?? error?.fields.reason}>
+          <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />
+        </Field>
+      </form>
+    </Sheet>
   )
 }

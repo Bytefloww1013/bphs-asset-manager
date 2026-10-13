@@ -69,6 +69,19 @@ export async function readUploads(files: File[]): Promise<Upload[]> {
   return uploads
 }
 
+/** A file as the pages see it: everything about it but its bytes. `entrySeq` is the number of the entry it came with, if any. */
+export const attachmentShape = (row: typeof grievanceAttachments.$inferSelect, entrySeq: number | null): GrievanceAttachment => ({
+  id: row.id,
+  filename: row.filename,
+  contentType: row.contentType,
+  size: row.size,
+  entrySeq,
+  uploadedBy: row.uploadedByLabel,
+  uploadedAt: row.uploadedAt.toISOString(),
+  withdrawnAt: row.withdrawnAt?.toISOString() ?? null,
+  withdrawnReason: row.withdrawnReason,
+})
+
 /**
  * Write checked files onto a grievance, each with its own Grievance Audit Log entry. Call inside the transaction of
  * whatever they came with: the grievance (no entry) or one entry of it.
@@ -89,14 +102,6 @@ export function saveAttachments(
       .get()
     put(tx, row.id, bytes)
     writeGrievanceAudit(tx, actor, { action: 'attach', entityType: 'grievance_attachment', entityId: row.id, details: `${grievance.code} · ${row.filename}`, at })
-    return {
-      id: row.id,
-      filename: row.filename,
-      contentType: row.contentType,
-      size: row.size,
-      entrySeq: entry?.seq ?? null,
-      uploadedBy: row.uploadedByLabel,
-      uploadedAt: row.uploadedAt.toISOString(),
-    }
+    return attachmentShape(row, entry?.seq ?? null)
   })
 }

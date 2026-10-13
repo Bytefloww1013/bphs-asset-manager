@@ -13,6 +13,7 @@ import type {
   DigitalAssetTypeRow,
   EmployeeRow,
   GrievanceCategoryRow,
+  GrievanceAttachment,
   GrievanceDetail,
   GrievanceEntry,
   GrievanceList,
@@ -120,6 +121,12 @@ export const grievanceEntriesQuery = (code: string) =>
   queryOptions({
     queryKey: ['grievances', 'detail', code.toUpperCase(), 'entries'],
     queryFn: () => api.get<GrievanceEntry[]>(`/grievances/${encodeURIComponent(code)}/entries`),
+  })
+
+export const grievanceAttachmentsQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['grievances', 'detail', code.toUpperCase(), 'attachments'],
+    queryFn: () => api.get<GrievanceAttachment[]>(`/grievances/${encodeURIComponent(code)}/attachments`),
   })
 
 /** What a grievance said before each edit, the latest first. Under the grievance's own key, like its entries. */

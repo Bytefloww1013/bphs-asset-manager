@@ -10,12 +10,18 @@ import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
+import { AttachmentList } from '@/features/grievances/files.tsx'
 import { EntryMarker } from '@/features/grievances/timeline.tsx'
 import { formatDateTime } from '@/lib/format.ts'
-import { grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
+import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/entries/$seq')({
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(grievanceQuery(params.code)), context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code))]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(grievanceQuery(params.code)),
+      context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code)),
+      context.queryClient.ensureQueryData(grievanceAttachmentsQuery(params.code)),
+    ]),
   errorComponent: GrievanceLoadError,
   component: EntryPage,
 })
@@ -48,10 +54,11 @@ function EntryPage() {
   const { code, seq: named } = Route.useParams()
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
+  const { data: attachments } = useQuery(grievanceAttachmentsQuery(code))
   const seq = seqOf(named)
   const entry = entries?.find((one) => one.seq === seq)
   useGrievancePageTitle(`${entry ? grievanceEntryCode(entry.seq) : named.toUpperCase()} of ${grievance?.code ?? code.toUpperCase()}`)
-  if (!grievance || !entries) return null
+  if (!grievance || !entries || !attachments) return null
 
   const back = (
     <Link to="/grievances/$code" params={{ code: grievance.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
@@ -83,6 +90,7 @@ function EntryPage() {
   const previous = bySeq(entry.seq - 1)
   const next = bySeq(entry.seq + 1)
   // Nothing a person wrote is in an automatic entry, and a finished grievance takes no more entries; the server refuses both.
+  const files = attachments.filter((file) => file.entrySeq === entry.seq)
   const correctable = entry.kind !== 'system' && grievance.status !== 'closed' && grievance.status !== 'voided'
 
   return (
@@ -155,6 +163,13 @@ function EntryPage() {
           <p className="px-5 py-5 text-sm text-ink-3">{entry.kind === 'system' ? 'This entry was written by the app. It has no details.' : 'Nothing was recorded beyond the short description.'}</p>
         )}
       </Panel>
+
+      {files.length > 0 && (
+        <Panel>
+          <PanelHeader title="Files" description="Added with this entry. Each one downloads to be opened on your computer." className="border-b border-line" />
+          <AttachmentList code={grievance.code} files={files} sealed={grievance.status === 'closed' || grievance.status === 'voided'} />
+        </Panel>
+      )}
 
       <nav aria-label="Entries" className="flex flex-wrap items-center justify-between gap-3">
         {previous ? (

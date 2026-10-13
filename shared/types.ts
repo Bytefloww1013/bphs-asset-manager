@@ -357,6 +357,9 @@ export interface GrievanceAttachment {
   entrySeq: number | null
   uploadedBy: string
   uploadedAt: string
+  /** Set when a Super Admin took it back as added by mistake: it can no longer be downloaded. */
+  withdrawnAt: string | null
+  withdrawnReason: string | null
 }
 
 export interface ConditionRatingRow {

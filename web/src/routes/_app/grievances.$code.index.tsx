@@ -10,16 +10,21 @@ import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
-import { AttachFiles } from '@/features/grievances/files.tsx'
+import { AttachFiles, AttachmentList } from '@/features/grievances/files.tsx'
 import { GrievanceActions } from '@/features/grievances/manage.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { formatDateTime } from '@/lib/format.ts'
-import { grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
+import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/')({
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(grievanceQuery(params.code)), context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code))]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(grievanceQuery(params.code)),
+      context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code)),
+      context.queryClient.ensureQueryData(grievanceAttachmentsQuery(params.code)),
+    ]),
   errorComponent: GrievanceLoadError,
   component: GrievancePage,
 })
@@ -56,8 +61,9 @@ function GrievancePage() {
   const { code } = Route.useParams()
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
+  const { data: files } = useQuery(grievanceAttachmentsQuery(code))
   useGrievancePageTitle(grievance?.code ?? code.toUpperCase())
-  if (!grievance || !entries) return null
+  if (!grievance || !entries || !files) return null
   // A grievance that is finished takes nothing more on its timeline; the server refuses it whatever the page shows.
   const sealed = grievance.status === 'closed' || grievance.status === 'voided'
 
@@ -123,6 +129,13 @@ function GrievancePage() {
         />
         <RichTextView html={grievance.bodyHtml} className="max-w-[75ch] px-5 py-5" />
       </Panel>
+
+      {files.length > 0 && (
+        <Panel>
+          <PanelHeader title="Files" description="Each one downloads to be opened on your computer. Downloads are logged." className="border-b border-line" />
+          <AttachmentList code={grievance.code} files={files} sealed={sealed} />
+        </Panel>
+      )}
 
       {/* On a wide screen the summary stays beside the timeline as it scrolls. In the page's order it comes first, so it is read first. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">

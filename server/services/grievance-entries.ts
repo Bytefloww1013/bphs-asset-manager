@@ -1,16 +1,18 @@
 import { and, asc, eq, sql } from 'drizzle-orm'
 import { grievanceEntryCode, grievanceStatusLabel, type GrievanceEntryKind, type GrievanceStatus } from '../../shared/constants.ts'
-import type { GrievanceEntryCreateInput } from '../../shared/schemas.ts'
+import type { GrievanceAttachmentWithdrawInput, GrievanceEntryCreateInput } from '../../shared/schemas.ts'
 import type { GrievanceAttachment, GrievanceEntry } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { grievanceEntries, grievances } from '../db/schema.ts'
+import { grievanceAttachments, grievanceEntries, grievances } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
-import { conflict, invalid, notFound } from '../lib/errors.ts'
+import { conflict, HttpError, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
-import { requireRichText, type RichText } from '../lib/richtext.ts'
-import { saveAttachments, type Upload } from './grievance-attachments.ts'
+import { get } from '../lib/grievance-files.ts'
+import { plainToRichText, requireRichText, type RichText } from '../lib/richtext.ts'
+import { attachmentShape, saveAttachments, type Upload } from './grievance-attachments.ts'
 
 // There is no update and no delete in this file, and there must never be: an entry is corrected by another entry.
+// The one update here is a file's withdrawal, which the database allows once and nothing else.
 
 /** The title of every grievance's first entry. The migration that back-fills it uses the same words. */
 export const GRIEVANCE_RECORDED = 'Grievance recorded'
@@ -154,5 +156,61 @@ export function addGrievanceAttachments(db: Db, actor: Actor, code: string, uplo
       at: now,
     })
     return saveAttachments(tx, actor, grievance, entry, uploads, now)
+  })
+}
+
+const attachmentRows = (db: DbLike, grievanceId: number, id?: number) =>
+  db
+    .select({ row: grievanceAttachments, seq: grievanceEntries.seq })
+    .from(grievanceAttachments)
+    .leftJoin(grievanceEntries, eq(grievanceEntries.id, grievanceAttachments.entryId))
+    .where(and(eq(grievanceAttachments.grievanceId, grievanceId), id === undefined ? undefined : eq(grievanceAttachments.id, id)))
+    .orderBy(asc(grievanceAttachments.id))
+    .all()
+
+/** Every file on one grievance, withdrawn ones too, in the order they were added. */
+export function listGrievanceAttachments(db: DbLike, code: string): GrievanceAttachment[] {
+  return attachmentRows(db, findGrievance(db, code).id).map(({ row, seq }) => attachmentShape(row, seq))
+}
+
+/** One of a grievance's files, or 404: an ID from another grievance is not found here. */
+function findAttachment(db: DbLike, grievanceId: number, id: number) {
+  const [found] = attachmentRows(db, grievanceId, id)
+  if (!found) throw notFound('File')
+  return found
+}
+
+/** A file's bytes, to be sent as a download. Every download is logged; a withdrawn file has none to give. */
+export function downloadGrievanceAttachment(db: Db, actor: Actor, code: string, id: number) {
+  return db.transaction((tx) => {
+    const grievance = findGrievance(tx, code)
+    const { row } = findAttachment(tx, grievance.id, id)
+    if (row.withdrawnAt) throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
+    const bytes = get(tx, row.id)
+    if (!bytes) throw notFound('File')
+    writeGrievanceAudit(tx, actor, { action: 'download', entityType: 'grievance_attachment', entityId: row.id, details: `${grievance.code} · ${row.filename}` })
+    return { filename: row.filename, contentType: row.contentType, bytes }
+  })
+}
+
+/**
+ * Take back a file added by mistake. Its bytes stay in the database, but nothing in the app reads them again; its name, who
+ * added it and the reason stay on the list, and an automatic entry records it on the timeline.
+ */
+export function withdrawGrievanceAttachment(db: Db, actor: Actor, code: string, id: number, input: GrievanceAttachmentWithdrawInput): GrievanceAttachment {
+  return db.transaction((tx) => {
+    const grievance = findUnsealedGrievance(tx, code)
+    const { row, seq } = findAttachment(tx, grievance.id, id)
+    if (row.withdrawnAt) throw conflict('attachment_withdrawn', `${row.filename} has already been withdrawn.`)
+    const now = new Date()
+    const withdrawn = tx
+      .update(grievanceAttachments)
+      .set({ withdrawnAt: now, withdrawnReason: input.reason })
+      .where(eq(grievanceAttachments.id, row.id))
+      .returning()
+      .get()
+    appendGrievanceEntry(tx, actor, grievance.id, { kind: 'system', occurredAt: now, title: 'File withdrawn', shortDescription: row.filename, body: plainToRichText(input.reason), at: now })
+    writeGrievanceAudit(tx, actor, { action: 'withdraw', entityType: 'grievance_attachment', entityId: row.id, details: `${grievance.code} · ${row.filename}`, at: now })
+    return attachmentShape(withdrawn, seq)
   })
 }
