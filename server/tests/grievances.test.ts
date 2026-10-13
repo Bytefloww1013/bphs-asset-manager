@@ -8,13 +8,13 @@ import { nextGrievanceCode } from '../services/grievances.ts'
 import { setup } from './helpers.ts'
 
 describe('the grievances workspace', () => {
-  it('answers 401 to a signed-out request and an empty list to either role', async () => {
+  it('answers 401 to a signed-out request and an empty list to either role while there are none', async () => {
     const t = await setup()
     expect((await t.call('GET', '/api/grievances')).status).toBe(401)
     for (const cookie of [await t.asAdmin(), await t.asSuper()]) {
       const res = await t.call('GET', '/api/grievances', { cookie })
       expect(res.status).toBe(200)
-      expect(res.data).toEqual([])
+      expect(res.data).toEqual({ rows: [], owners: [], counts: { all: 0, open: 0, in_progress: 0, resolved: 0, closed: 0, voided: 0 } })
     }
   })
 })
@@ -301,5 +301,100 @@ describe('creating a grievance', () => {
     const listed = (await t.call('GET', '/api/employees', { cookie })).data as { id: number; deleteBlocked: string | null }[]
     expect(listed.find((row) => row.id === dana.id)!.deleteBlocked).toMatch(/^Named on a grievance/)
     expect((await t.call('DELETE', `/api/employees/${ines.id}`, { cookie })).status).toBe(204)
+  })
+})
+
+describe('browsing grievances', () => {
+  type Listed = { owners: { name: string }[]; rows: { code: string; preview: string; status: string; [key: string]: unknown }[]; counts: Record<string, number> }
+
+  // Three grievances: the fixture's own, one about pay owned by Ines and made earlier, and a long one that is then resolved.
+  async function three() {
+    const t = await setup()
+    const { dana, femi, ines, body } = grievanceFixture(t)
+    const cookie = await t.asAdmin()
+    const post = async (extra: object) => ((await t.call('POST', '/api/grievances', { cookie, body: { ...body, ...extra } })).data as { id: number; code: string }).code
+    const swaps = await post({})
+    const pay = await post({ title: 'Night allowance missing', shortDescription: 'Allowance not paid for 100% of August.', body: '<p>Payslips show no allowance.</p>', dateMade: '2026-08-15', ownerId: ines.id, categoryId: 2, employeeIds: [femi.id], managementIds: [dana.id] })
+    const long = await post({ title: 'Rota published late', body: `<p>${'word '.repeat(100)}</p><p>Unfindable_ending</p>`, dateMade: '2026-09-10' })
+    t.sqlite.prepare("update grievances set status = 'resolved' where code = ?").run(long)
+    t.sqlite.prepare('update grievances set last_activity_at = last_activity_at + seq').run()
+    const list = async (query = '') => (await t.call('GET', `/api/grievances${query}`, { cookie })).data as Listed
+    const codes = async (query: string) => (await list(query)).rows.map((row) => row.code)
+    return { t, cookie, dana, femi, ines, swaps, pay, long, list, codes }
+  }
+
+  it('lists each grievance with its people and a preview, most recent activity first, and never the body', async () => {
+    const { t, dana, femi, swaps, pay, long, list } = await three()
+    const { rows, counts } = await list()
+    expect(rows.map((row) => row.code)).toEqual([long, pay, swaps])
+    expect(counts).toEqual({ all: 3, open: 2, in_progress: 0, resolved: 1, closed: 0, voided: 0 })
+    expect(rows[2]).toMatchObject({
+      code: swaps,
+      title: 'Shift swaps refused without a reason',
+      shortDescription: 'Three swap requests were turned down in September with no explanation.',
+      dateMade: '2026-10-01',
+      status: 'open',
+      category: { id: 1, name: 'Conduct' },
+      owner: { id: t.person.id, code: 'E-1042', archived: false },
+      employees: [{ id: dana.id, code: 'E-2001', name: 'Dana Whitlock', archived: false }],
+      management: [{ id: femi.id, code: 'E-2002', name: 'Femi Adeyemi', archived: false }],
+    })
+    // Plain text only, with the blocks kept apart.
+    expect(rows[2]!.preview).toMatch(/^What happened\s+Requests were refused on three dates\./)
+    expect(rows[0]!.preview).toHaveLength(300)
+    expect(rows[0]!.preview.endsWith('…')).toBe(true)
+    for (const row of rows) expect(Object.keys(row).filter((key) => /body|html/i.test(key))).toEqual([])
+    expect(JSON.stringify(rows)).not.toContain('<')
+  })
+
+  it('narrows by status, owner, category and the days Date Made falls between, and counts each status under the other filters', async () => {
+    const { t, ines, swaps, pay, long, list, codes } = await three()
+    expect(await codes('?status=open')).toEqual([pay, swaps])
+    expect(await codes('?status=resolved')).toEqual([long])
+    expect(await codes('?status=voided')).toEqual([])
+    expect(await codes(`?owner=${ines.id}`)).toEqual([pay])
+    expect(await codes(`?owner=${t.person.id}&status=open`)).toEqual([swaps])
+    expect(await codes('?category=2')).toEqual([pay])
+    expect(await codes('?from=2026-09-10')).toEqual([long, swaps])
+    expect(await codes('?to=2026-09-10')).toEqual([long, pay])
+    expect(await codes('?from=2026-08-15&to=2026-08-15')).toEqual([pay])
+    // The owner filter offers every owner, whatever else is chosen.
+    expect((await list('?category=2&status=closed')).owners.map((owner) => owner.name)).toEqual(['Ines Carvalho', 'Priya Raghunathan'])
+    expect((await list(`?status=resolved&owner=${t.person.id}`)).counts).toEqual({ all: 2, open: 1, in_progress: 0, resolved: 1, closed: 0, voided: 0 })
+  })
+
+  it('searches the ID, title, short description, body text and the names of the owner and the people named', async () => {
+    const { swaps, pay, long, codes } = await three()
+    expect(await codes(`?q=${swaps.toLowerCase()}`)).toEqual([swaps])
+    expect(await codes('?q=ROTA')).toEqual([long])
+    expect(await codes('?q=turned%20down')).toEqual([long, swaps])
+    expect(await codes('?q=payslips')).toEqual([pay])
+    // Past the preview, and with an underscore that must not act as a wildcard.
+    expect(await codes('?q=unfindable_ending')).toEqual([long])
+    expect(await codes('?q=unfindable.ending')).toEqual([])
+    expect(await codes('?q=100%25')).toEqual([pay])
+    expect(await codes('?q=carvalho')).toEqual([pay])
+    expect(await codes('?q=dana%20whitlock')).toEqual([long, pay, swaps])
+    expect(await codes('?q=Priya%20Raghunathan')).toEqual([long, swaps])
+    // Every word must be found, though not all in one place.
+    expect(await codes('?q=whitlock%20allowance')).toEqual([pay])
+    expect(await codes('?q=whitlock%20nothing-like-it')).toEqual([])
+    // Markup is not text.
+    expect(await codes('?q=strong')).toEqual([])
+  })
+
+  it('refuses a query it cannot read', async () => {
+    const { cookie, t } = await three()
+    for (const query of ['?status=pending', '?owner=dana', '?category=0', '?from=2026-02-30', '?to=yesterday', `?q=${'x'.repeat(101)}`]) {
+      expect((await t.call('GET', `/api/grievances${query}`, { cookie })).status, query).toBe(422)
+    }
+  })
+
+  it('still names an employee who has since been archived, and says so', async () => {
+    const { t, dana, list } = await three()
+    t.sqlite.prepare('update employees set archived_at = ? where id = ?').run(Date.now(), dana.id)
+    const { rows } = await list('?q=whitlock')
+    expect(rows).toHaveLength(3)
+    expect((rows[2]!.employees as { name: string; archived: boolean }[])[0]).toMatchObject({ name: 'Dana Whitlock', archived: true })
   })
 })

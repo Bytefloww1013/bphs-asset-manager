@@ -1,7 +1,7 @@
-import { eq, inArray, sql } from 'drizzle-orm'
-import { grievanceCode, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
-import type { GrievanceCreateInput } from '../../shared/schemas.ts'
-import type { GrievanceDetail, GrievancePerson } from '../../shared/types.ts'
+import { eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { GRIEVANCE_PREVIEW_LENGTH, GRIEVANCE_STATUSES, grievanceCode, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
+import type { GrievanceCreateInput, GrievanceListQuery } from '../../shared/schemas.ts'
+import type { GrievanceDetail, GrievanceList, GrievancePerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, grievanceCategories, grievancePeople, grievances } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
@@ -104,6 +104,65 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
     recordedBy: row.recordedBy,
     createdAt: new Date(row.createdAt).toISOString(),
     lastActivityAt: new Date(row.lastActivityAt).toISOString(),
+  }
+}
+
+type RawRow = Omit<RawGrievance, 'bodyHtml' | 'version' | 'createdAt' | 'recordedBy'> & { bodyStart: string }
+
+/**
+ * The grievances that match, most recent activity first. Each word of the search must be found somewhere: in the ID, the title,
+ * the short description, the body's text, or the name of the owner or of anyone named on it. No body HTML is returned.
+ */
+export function listGrievances(db: DbLike, query: GrievanceListQuery): GrievanceList {
+  const where: SQL[] = []
+  if (query.owner) where.push(sql`g.owner_id = ${query.owner}`)
+  if (query.category) where.push(sql`g.category_id = ${query.category}`)
+  if (query.from) where.push(sql`g.date_made >= ${query.from}`)
+  if (query.to) where.push(sql`g.date_made <= ${query.to}`)
+  for (const word of (query.q ?? '').split(/\s+/).filter(Boolean)) {
+    const like = `%${word.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
+    const name = (alias: string) => sql`${sql.raw(alias)}.first_name || ' ' || ${sql.raw(alias)}.last_name like ${like} escape '\\'`
+    where.push(sql`(g.code like ${like} escape '\\' or g.title like ${like} escape '\\' or g.short_description like ${like} escape '\\'
+      or g.body_text like ${like} escape '\\' or ${name('o')}
+      or exists (select 1 from grievance_people p join employees e on e.id = p.employee_id where p.grievance_id = g.id and ${name('e')}))`)
+  }
+  const matching = db.all<RawRow>(sql`
+    select g.id as id, g.code as code, g.title as title, g.short_description as shortDescription,
+           substr(g.body_text, 1, ${GRIEVANCE_PREVIEW_LENGTH + 1}) as bodyStart,
+           g.date_made as dateMade, g.status as status, g.last_activity_at as lastActivityAt,
+           c.id as categoryId, c.name as categoryName,
+           o.id as ownerId, o.code as ownerCode, o.first_name as ownerFirstName, o.last_name as ownerLastName, o.archived_at as ownerArchivedAt
+    from grievances g
+      join grievance_categories c on c.id = g.category_id
+      join employees o on o.id = g.owner_id
+    ${where.length ? sql`where ${sql.join(where, sql` and `)}` : sql``}
+    order by g.last_activity_at desc, g.id desc`)
+
+  const counts = Object.fromEntries([['all', matching.length], ...GRIEVANCE_STATUSES.map((status) => [status, 0])]) as GrievanceList['counts']
+  for (const row of matching) counts[row.status] += 1
+  const shown = query.status === 'all' ? matching : matching.filter((row) => row.status === query.status)
+  const named = peopleOf(db, shown.map((row) => row.id))
+  const owners = db.all<Pick<RawPerson, 'id' | 'code' | 'firstName' | 'lastName' | 'archivedAt'>>(sql`
+    select e.id as id, e.code as code, e.first_name as firstName, e.last_name as lastName, e.archived_at as archivedAt
+    from employees e where e.id in (select owner_id from grievances)
+    order by e.last_name collate nocase, e.first_name collate nocase`)
+  return {
+    counts,
+    owners: owners.map(person),
+    rows: shown.map((row) => ({
+      id: row.id,
+      code: row.code,
+      title: row.title,
+      shortDescription: row.shortDescription,
+      preview: row.bodyStart.length > GRIEVANCE_PREVIEW_LENGTH ? `${row.bodyStart.slice(0, GRIEVANCE_PREVIEW_LENGTH).trimEnd()}…` : row.bodyStart,
+      dateMade: row.dateMade,
+      status: row.status,
+      category: { id: row.categoryId, name: row.categoryName },
+      owner: person({ id: row.ownerId, code: row.ownerCode, firstName: row.ownerFirstName, lastName: row.ownerLastName, archivedAt: row.ownerArchivedAt }),
+      employees: named.get(row.id)!.employee,
+      management: named.get(row.id)!.management,
+      lastActivityAt: new Date(row.lastActivityAt).toISOString(),
+    })),
   }
 }
 

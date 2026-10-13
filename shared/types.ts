@@ -250,6 +250,31 @@ export interface GrievancePerson {
 }
 
 /** One grievance in full. */
+/** A grievance as the list shows it. The body is not here, only the start of its text. */
+export interface GrievanceRow {
+  id: number
+  code: string
+  title: string
+  shortDescription: string
+  /** The start of the body as plain text, ending in an ellipsis when there is more. */
+  preview: string
+  dateMade: string
+  status: GrievanceStatus
+  category: { id: number; name: string }
+  owner: GrievancePerson
+  employees: GrievancePerson[]
+  management: GrievancePerson[]
+  lastActivityAt: string
+}
+
+export interface GrievanceList {
+  rows: GrievanceRow[]
+  /** How many grievances match the other filters in each status, and in all of them, whichever status was asked for. */
+  counts: Record<GrievanceStatus | 'all', number>
+  /** Everyone who owns a grievance, whatever the filters, in name order: what the owner filter offers. */
+  owners: GrievancePerson[]
+}
+
 export interface GrievanceDetail {
   id: number
   /** GR-2026-0001 */

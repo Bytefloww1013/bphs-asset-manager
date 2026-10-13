@@ -1,7 +1,7 @@
 import type { ReactTable } from '@tanstack/react-table'
 import type { Row, RowData } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown } from 'lucide-react'
-import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from '@/lib/cn.ts'
 import { IconButton } from '../ui/button.tsx'
 import { Skeleton } from '../ui/feedback.tsx'
@@ -29,6 +29,8 @@ interface DataGridProps<TData extends RowData> {
   rowClassName?: (row: Row<GridFeatures, TData>) => string | undefined
   /** Extra attributes per row, e.g. tabIndex and key handlers for row shortcuts. */
   rowProps?: (row: Row<GridFeatures, TData>) => HTMLAttributes<HTMLTableRowElement>
+  /** More about a row, shown in a row of its own beneath it. Answer null for a row that is not opened. */
+  detail?: (row: Row<GridFeatures, TData>) => ReactNode
   /** Replace the built-in count and pager, e.g. when paging happens on the server. */
   footer?: ReactNode
   className?: string
@@ -57,7 +59,7 @@ function useOverflowing() {
 }
 
 /** Presentational shell over a TanStack Table instance: sortable headers, calm rows, pagination. */
-export function DataGrid<TData extends RowData>({ table, label, noun, loading, empty, noMatches, rowClassName, rowProps, footer, className }: DataGridProps<TData>) {
+export function DataGrid<TData extends RowData>({ table, label, noun, loading, empty, noMatches, rowClassName, rowProps, detail, footer, className }: DataGridProps<TData>) {
   const rows = table.getRowModel().rows
   const total = table.getPrePaginatedRowModel().rows.length
   const sourceCount = table.getCoreRowModel().rows.length
@@ -131,9 +133,11 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
                     ))}
                   </tr>
                 ))
-              : rows.map((row) => (
+              : rows.map((row) => {
+                  const more = detail?.(row)
+                  return (
+                  <Fragment key={row.id}>
                   <tr
-                    key={row.id}
                     data-selected={row.getIsSelected() || undefined}
                     {...rowProps?.(row)}
                     className={cn(
@@ -162,7 +166,16 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
                       )
                     })}
                   </tr>
-                ))}
+                  {more != null && (
+                    <tr className="border-b border-line bg-canvas/60 last:border-0">
+                      <td colSpan={row.getAllCells().length} className="px-3 py-3 sm:px-4">
+                        {more}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  )
+                })}
           </tbody>
         </table>
       </div>

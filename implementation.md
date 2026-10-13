@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1 and slices 2.1 and 2.2 done 2026-10-12; next is slice 2.3, browse.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, and a New grievance page that saves. `/api/grievances` still answers `GET` with an empty list, so a saved grievance cannot be seen in the app yet. Written against `main` at `bb028a3`.
+Status: **Phase 1 and slices 2.1 to 2.3 done 2026-10-12; next is slice 2.4, detail.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves, and the list with its tabs, filters and search. A grievance cannot be opened yet: the ID in the list is not a link until the detail page exists. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -14,7 +14,7 @@ A slice is ticked when it is finished and committed.
 - [x] 1.4 Workspace shell, permissions, audit writer (2026-10-12)
 - [x] 2.1 Data and categories (2026-10-12)
 - [x] 2.2 Create (2026-10-12)
-- [ ] 2.3 Browse
+- [x] 2.3 Browse (2026-10-12)
 - [ ] 2.4 Detail
 - [ ] 3.1 Data and add-entry
 - [ ] 3.2 Timeline
@@ -231,6 +231,18 @@ Done when: a grievance can be created by either role and reopened with its forma
 
 - `GET /api/grievances` with server-side `status`, `owner`, `category`, `from`, `to` and `q` (matches ID, title, short description, body text and people's names). Returns no body HTML, only the 300-character preview.
 - `web/src/routes/_app/grievances.index.tsx`: the table in section 3, status tabs (Open, In progress, Resolved, Closed, All; Voided only under All), owner and category filters, date range, search, row expander, empty states.
+
+**Results (2026-10-12).** 132 tests pass (5 of them new) and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin: 14 checks, all passing. Firefox was not run. Screenshots are in `qa-shots/slice-2.3/` (not committed).
+
+- **What was built:** `grievanceListQuerySchema`; `listGrievances` in `server/services/grievances.ts` behind `GET /api/grievances`; `grievancesQuery` in `web/src/lib/queries.ts`; the list page; `GrievanceStatusBadge` in `web/src/features/grievances/status.tsx`; a `detail` slot on `DataGrid` for a row of its own beneath a row (the expander).
+- **Decisions and things later slices should know:**
+  - The answer is `{ rows, counts, owners }` (`GrievanceList` in `shared/types.ts`), not a bare array. `counts` is per status and for all, under the other filters, and feeds the numbers on the tabs. `owners` is everyone who owns a grievance, for the owner filter.
+  - **The page opens on the Open tab.** Voided grievances appear under All only. `status=all` is the server's default.
+  - `from` and `to` are days, both inclusive, compared with Date Made. Search splits on spaces and every word must be found somewhere: ID, title, short description, body text, or the name of the owner or anyone named.
+  - The whole match is returned and paged in the browser, 25 to a page. If the volume ever calls for it, `limit` and `offset` go on the query as in the Audit Log.
+  - **The ID and title are not links yet**; slice 2.4 makes them so.
+  - The filters live in the address, so a filtered list can be bookmarked or sent. Typing in the search replaces the history entry, as on the Audit Log page.
+  - At 1440 wide the table is wider than its panel and scrolls sideways inside it, as other wide grids do. Short Description and Last activity drop out below `xl`, the people columns below `lg`.
 
 ### Slice 2.4: Detail
 

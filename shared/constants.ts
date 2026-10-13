@@ -61,6 +61,10 @@ export const OVERDUE_DAYS = 365
 
 export const GRIEVANCE_STATUSES = ['open', 'in_progress', 'resolved', 'closed', 'voided'] as const
 export type GrievanceStatus = (typeof GRIEVANCE_STATUSES)[number]
+const GRIEVANCE_STATUS_LABELS: Record<GrievanceStatus, string> = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed', voided: 'Voided' }
+export const grievanceStatusLabel = (status: GrievanceStatus) => GRIEVANCE_STATUS_LABELS[status]
+/** How much of a grievance's text the list carries. The text in full is on the grievance's own page. */
+export const GRIEVANCE_PREVIEW_LENGTH = 300
 
 /** How a person is named on a grievance: as an employee involved, or as management involved. */
 export const GRIEVANCE_PERSON_ROLES = ['employee', 'management'] as const

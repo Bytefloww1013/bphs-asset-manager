@@ -12,11 +12,13 @@ import type {
   DigitalAssetTypeRow,
   EmployeeRow,
   GrievanceCategoryRow,
+  GrievanceList,
   Lookups,
   ProgramRow,
   SessionUser,
   UserRow,
 } from '@shared/types.ts'
+import type { GrievanceStatus } from '@shared/constants.ts'
 import { ApiError, api, qs } from './api.ts'
 import { startOfLocalDay } from './format.ts'
 
@@ -80,6 +82,22 @@ export const grievanceCategoriesQuery = queryOptions({
   queryKey: ['grievances', 'categories'],
   queryFn: () => api.get<GrievanceCategoryRow[]>('/grievances/categories'),
 })
+
+export interface GrievanceListParams {
+  status?: GrievanceStatus | 'all'
+  owner?: number
+  category?: number
+  from?: string
+  to?: string
+  q?: string
+}
+
+export const grievancesQuery = (params: GrievanceListParams) =>
+  queryOptions({
+    queryKey: ['grievances', 'list', params],
+    queryFn: () => api.get<GrievanceList>(`/grievances${qs({ ...params })}`),
+    placeholderData: (previous) => previous,
+  })
 
 export const digitalAssetsQuery = queryOptions({
   queryKey: ['digital-assets'],

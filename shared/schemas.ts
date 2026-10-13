@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -269,6 +269,17 @@ export const grievanceCreateSchema = z
     }
   })
 export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
+
+// `from` and `to` are days, both inclusive, and are compared with Date Made, which is a day too: no time zone comes into it.
+export const grievanceListQuerySchema = z.object({
+  status: z.enum([...GRIEVANCE_STATUSES, 'all']).default('all'),
+  owner: z.coerce.number().int().positive().optional(),
+  category: z.coerce.number().int().positive().optional(),
+  from: calendarDate('start date').optional(),
+  to: calendarDate('end date').optional(),
+  q: z.string().trim().max(100).optional(),
+})
+export type GrievanceListQuery = z.infer<typeof grievanceListQuerySchema>
 
 // ---- Users ------------------------------------------------------------------------
 export const userCreateSchema = z.object({
