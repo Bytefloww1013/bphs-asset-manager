@@ -304,7 +304,7 @@ export const grievanceAttachmentWithdrawSchema = z.object({ reason: requiredText
 export type GrievanceAttachmentWithdrawInput = z.infer<typeof grievanceAttachmentWithdrawSchema>
 
 /** An export the browser makes, reported so that it is logged. */
-export const grievanceExportSchema = z.object({ format: z.enum(['pdf']) })
+export const grievanceExportSchema = z.object({ format: z.enum(['pdf', 'xlsx']) })
 export type GrievanceExportInput = z.infer<typeof grievanceExportSchema>
 
 /** How far ahead of the server's clock "now" on someone's machine may be before it counts as the future. */

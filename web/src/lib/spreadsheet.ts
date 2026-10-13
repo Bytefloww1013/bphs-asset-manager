@@ -60,27 +60,43 @@ export function downloadCsv(filename: string, header: string[], rows: SheetCell[
   save(new Blob([CSV_BOM + toCsv(header, rows)], { type: 'text/csv;charset=utf-8' }), filename)
 }
 
+export interface Sheet {
+  /** At most 31 characters, as Excel allows. */
+  name: string
+  header: string[]
+  rows: SheetCell[][]
+}
+
+// Excel will not open a file with a longer cell; a grievance body may hold 100,000 characters.
+const MAX_CELL = 32_767
+const CUT = ' […cut: Excel holds at most 32,767 characters in a cell]'
+const fit = (text: string) => (text.length > MAX_CELL ? text.slice(0, MAX_CELL - CUT.length) + CUT : text)
+
 /**
- * The same table as a workbook. Text goes in as text cells, never as formulas, so a value that starts with = is shown as
- * typed and needs no guard in front of it.
+ * Tables as one workbook, a sheet each. Text goes in as text cells, never as formulas, so a value that starts with = is shown
+ * as typed and needs no guard in front of it.
  */
-export async function downloadXlsx(filename: string, header: string[], rows: SheetCell[][], sheet = 'Sheet1') {
+export async function downloadWorkbook(filename: string, sheets: Sheet[]) {
   const { default: writeXlsxFile } = await import('write-excel-file/browser')
-  const body = rows.map((row) =>
-    row.map((value) => (value == null || value === '' ? null : typeof value === 'number' ? { value, type: Number } : { value: String(value), type: String })),
-  )
-  const widths = header.map((title, i) => {
-    const longest = rows.reduce((max, row) => Math.max(max, String(row[i] ?? '').length), title.length)
-    return { width: Math.min(Math.max(longest + 2, 10), 48) }
-  })
-  const blob = await writeXlsxFile([header.map((value) => ({ value, type: String, fontWeight: 'bold' as const })), ...body], {
-    sheet,
-    columns: widths,
-    stickyRowsCount: 1,
-  }).toBlob()
+  const blob = await writeXlsxFile(
+    sheets.map(({ name, header, rows }) => ({
+      sheet: name,
+      data: [
+        header.map((value) => ({ value, type: String, fontWeight: 'bold' as const })),
+        ...rows.map((row) =>
+          row.map((value) => (value == null || value === '' ? null : typeof value === 'number' ? { value, type: Number } : { value: fit(String(value)), type: String })),
+        ),
+      ],
+      columns: header.map((title, i) => {
+        const longest = rows.reduce((max, row) => Math.max(max, String(row[i] ?? '').length), title.length)
+        return { width: Math.min(Math.max(longest + 2, 10), 48) }
+      }),
+      stickyRowsCount: 1,
+    })),
+  ).toBlob()
   save(new Blob([blob], { type: XLSX_TYPE }), filename)
 }
 
-export function downloadTable(format: FileFormat, name: string, header: string[], rows: SheetCell[][], sheet?: string) {
-  return format === 'csv' ? Promise.resolve(downloadCsv(`${name}.csv`, header, rows)) : downloadXlsx(`${name}.xlsx`, header, rows, sheet)
+export function downloadTable(format: FileFormat, name: string, header: string[], rows: SheetCell[][], sheet = 'Sheet1') {
+  return format === 'csv' ? Promise.resolve(downloadCsv(`${name}.csv`, header, rows)) : downloadWorkbook(`${name}.xlsx`, [{ name: sheet, header, rows }])
 }

@@ -301,6 +301,7 @@ A grievance's actions and events, read down one rail. Chosen on 2026-10-12 from 
 A grievance printed whole, saved as a PDF from the browser's print dialog. Decided on 2026-10-13:
 - **Printed only from its Print button.** The button logs the print first and opens the dialog only once the log is written; if the log fails, the page says so and nothing prints. Ctrl+P or the browser menu prints a single line asking for the button instead of the case file. Why: a confidential copy should never leave without an audit entry, and the browser cannot be made to wait on a log once its own print has started.
 - **The log says "print dialog opened", not "printed".** Browsers do not report whether the dialog was then cancelled, so the entry claims only what is known.
+- **The Excel workbook follows the same rule.** Its button logs the export before the file is made, so a failed log means no file.
 
 ## Do's and Don'ts
 

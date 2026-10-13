@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slices 6.1, 6.2 and 7.1 done 2026-10-13; next is slice 7.2.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. A grievance has a printable case file, saved as a PDF from the browser's print dialog, and each print is logged. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12 and phases 4 and 5 and slices 6.1, 6.2, 7.1 and 7.2 done 2026-10-13; next is slice 8.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. The owner or a Super Admin can change a grievance's status and owner, and a Super Admin can void it. A grievance can be edited, with earlier versions kept. An employee named on a grievance cannot be deleted, and the owner of one that is not closed cannot be archived. The Grievance Audit Log has its own page, linking to what each entry describes, and a CSV export. Files can be attached to a grievance when it is made, with a new entry, or from its timeline; they are listed on the grievance and on each entry, download as files to save, and a Super Admin can withdraw one added by mistake. A grievance has a printable case file, saved as a PDF from the browser's print dialog, and an Excel workbook of the grievance, its timeline, files and earlier versions; each print and each workbook is logged. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -26,7 +26,7 @@ A slice is ticked when it is finished and committed.
 - [x] 6.1 Attachment storage and upload (2026-10-13)
 - [x] 6.2 Download and withdraw (2026-10-13)
 - [x] 7.1 PDF case file (2026-10-13)
-- [ ] 7.2 Excel workbook
+- [x] 7.2 Excel workbook (2026-10-13)
 - [ ] 8.1 Seed, docs, end-to-end check
 
 ## 1. Decisions made
@@ -391,6 +391,13 @@ Migration `0011_grievance_attachments`:
 - `web/src/lib/spreadsheet.ts`: multi-sheet support.
 - Sheets: **Grievance** (field and value), **Timeline** (one row per entry: Entry ID, Grievance ID, Type, Occurred at, Recorded at, Title, Short Description, Body as plain text, Documented By, Corrects), **Attachments**, **Versions**. All cells written as text, never formulas, as the existing exports do.
 - Both exports write a Grievance Audit Log entry.
+
+**As built (2026-10-13).**
+
+- `downloadWorkbook(filename, sheets)` in `web/src/lib/spreadsheet.ts` writes one sheet per table; `downloadTable` now calls it with one sheet, so the list exports are unchanged. A text cell longer than Excel's 32,767 characters (a body can hold 100,000) is cut, with a note saying so at its end; the full text is in the case file.
+- `web/src/features/grievances/workbook.ts` builds `GR-….xlsx`. It fetches the grievance, timeline, files and versions afresh, logs the export (`format: 'xlsx'`, "Excel workbook" in the entry) and only then makes the file, so a failed log means no file. The Grievance sheet has a Field and Value row for each fact, people as "Name (code)" joined by "; ", and an Exported At row. Entry IDs are written in full, `GR-…-E01`, on the Timeline and Attachments sheets. Timeline rows are oldest first and include automatic entries. Versions has a row per earlier version, with who replaced it, when and why; a header alone on version 1.
+- An Excel button sits beside Case file on the detail page. A failure shows as a toast.
+- Checked in headless Chromium against a production build: the download has the four sheets, a title starting with `=` reads back as text, a 40,000-character body comes back cut to 32,767, and the audit log has the export entry.
 
 ### Slice 8.1: Seed, docs, end-to-end check
 

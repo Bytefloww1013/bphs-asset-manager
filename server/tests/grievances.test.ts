@@ -444,15 +444,17 @@ describe('opening a grievance', () => {
     expect(count()).toBe(before)
   })
 
-  it('logs each case file printed, by ID and title only, and 404 for a grievance that does not exist', async () => {
+  it('logs each case file printed or workbook taken, by ID and title only, and 404 for a grievance that does not exist', async () => {
     const t = await setup()
     const { body } = grievanceFixture(t)
     const cookie = await t.asAdmin()
     const made = (await t.call('POST', '/api/grievances', { cookie, body })).data as { id: number; code: string }
     const res = await t.call('POST', `/api/grievances/${made.code.toLowerCase()}/exports`, { cookie, body: { format: 'pdf' } })
     expect(res.status).toBe(204)
-    expect(t.sqlite.prepare("select entity_type, entity_id, details from grievance_audit_log where action = 'export'").all()).toEqual([
+    expect((await t.call('POST', `/api/grievances/${made.code}/exports`, { cookie, body: { format: 'xlsx' } })).status).toBe(204)
+    expect(t.sqlite.prepare("select entity_type, entity_id, details from grievance_audit_log where action = 'export' order by id").all()).toEqual([
       { entity_type: 'grievance', entity_id: made.id, details: `${made.code} · ${body.title} · PDF case file (print dialog opened)` },
+      { entity_type: 'grievance', entity_id: made.id, details: `${made.code} · ${body.title} · Excel workbook` },
     ])
     expect((await t.call('POST', `/api/grievances/${made.code}/exports`, { cookie, body: { format: 'docx' } })).status).toBe(422)
     expect((await t.call('POST', '/api/grievances/GR-2026-9999/exports', { cookie, body: { format: 'pdf' } })).status).toBe(404)
