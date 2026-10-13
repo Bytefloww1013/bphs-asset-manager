@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronLeft, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { grievanceEntryCode } from '@shared/constants.ts'
 import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { buttonStyles } from '@/components/ui/button.tsx'
@@ -117,7 +118,14 @@ function GrievancePage() {
             }
             className="border-b border-line"
           />
-          <Timeline entries={entries} />
+          <Timeline
+            entries={entries}
+            link={(entry, children) => (
+              <Link to="/grievances/$code/entries/$seq" params={{ code: grievance.code, seq: grievanceEntryCode(entry.seq) }} className="hover:text-accent hover:underline">
+                {children}
+              </Link>
+            )}
+          />
         </Panel>
       </div>
     </div>

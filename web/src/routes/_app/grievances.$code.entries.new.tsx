@@ -17,10 +17,15 @@ import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
-import { grievanceQuery } from '@/lib/queries.ts'
+import { grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/entries/new')({
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(grievanceQuery(params.code)),
+  // `corrects` is set by "Add correction" on an entry: the number of the entry being corrected.
+  validateSearch: (search: Record<string, unknown>): { corrects?: number } => {
+    const corrects = Number(search.corrects)
+    return Number.isInteger(corrects) && corrects > 0 ? { corrects } : {}
+  },
+  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(grievanceQuery(params.code)), context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code))]),
   errorComponent: GrievanceLoadError,
   component: NewEntryPage,
 })
@@ -38,8 +43,13 @@ const KIND_HINTS = { action: 'Something done about the grievance: a meeting held
 // As on New grievance, nothing typed here is kept in browser storage.
 function NewEntryPage() {
   const { code } = Route.useParams()
+  const { corrects } = Route.useSearch()
   const { data: grievance } = useQuery(grievanceQuery(code))
-  useGrievancePageTitle(`Add to ${grievance?.code ?? code.toUpperCase()}`)
+  const { data: entries } = useQuery(grievanceEntriesQuery(code))
+  // A correction is this same form with its type fixed and the entry it corrects named; that entry is never touched.
+  const correcting = corrects !== undefined
+  const original = correcting ? entries?.find((entry) => entry.seq === corrects && entry.kind !== 'system') : undefined
+  useGrievancePageTitle(`${correcting ? `Correct ${grievanceEntryCode(corrects)} of` : 'Add to'} ${grievance?.code ?? code.toUpperCase()}`)
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -56,8 +66,9 @@ function NewEntryPage() {
   const dirty = Boolean(title.trim() || shortDescription.trim() || body)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
 
-  if (!grievance) return null
+  if (!grievance || !entries) return null
   const sealed = grievance.status === 'closed' || grievance.status === 'voided'
+  const blocked = sealed || (correcting && !original)
 
   function refuse(next: { message: string; fields: Record<string, string> }) {
     setProblem(next)
@@ -66,7 +77,7 @@ function NewEntryPage() {
 
   async function commit() {
     setProblem(null)
-    const parsed = grievanceEntryCreateSchema.safeParse({ kind, occurredAt: instant(occurredAt), title, shortDescription, body })
+    const parsed = grievanceEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, title, shortDescription, body } : { kind, occurredAt: instant(occurredAt), title, shortDescription, body })
     if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
     try {
       const row = await save.mutateAsync(parsed.data)
@@ -93,7 +104,11 @@ function NewEntryPage() {
           <ChevronLeft className="size-4" aria-hidden /> {grievance.code}
         </Link>
         <div className="mt-3">
-          <PageHeader title="Add an action or event" description="What was done, or what happened. Once saved it cannot be changed or removed, only corrected by a later entry." />
+          {correcting ? (
+            <PageHeader title="Add a correction" description={`What ${grievanceEntryCode(corrects)} should have said. It is added as a new entry; ${grievanceEntryCode(corrects)} itself stays exactly as it was written.`} />
+          ) : (
+            <PageHeader title="Add an action or event" description="What was done, or what happened. Once saved it cannot be changed or removed, only corrected by a later entry." />
+          )}
         </div>
       </div>
       <Panel className="p-5 sm:p-6">
@@ -119,11 +134,32 @@ function NewEntryPage() {
               <dt className="font-medium text-ink">Title</dt>
               <dd className="min-w-0 text-ink-2 [overflow-wrap:anywhere]">{grievance.title}</dd>
             </div>
+            {correcting && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <dt className="font-medium text-ink">Type</dt>
+                <dd className="text-ink-2">Correction</dd>
+              </div>
+            )}
+            {original && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <dt className="font-medium text-ink">Corrects</dt>
+                <dd className="min-w-0 [overflow-wrap:anywhere]">
+                  <Link to="/grievances/$code/entries/$seq" params={{ code: grievance.code, seq: grievanceEntryCode(original.seq) }} className="font-medium text-accent hover:underline">
+                    <Mono>{grievanceEntryCode(original.seq)}</Mono>: {original.title}
+                  </Link>
+                  <span className="block text-ink-2">{original.shortDescription}</span>
+                </dd>
+              </div>
+            )}
           </dl>
 
           {sealed ? (
             <Alert tone="warn" title={`This grievance is ${grievanceStatusLabel(grievance.status)}`}>
               Nothing more can be added to its timeline.
+            </Alert>
+          ) : correcting && !original ? (
+            <Alert tone="bad" title={`${grievanceEntryCode(corrects)} cannot be corrected`}>
+              {entries.some((entry) => entry.seq === corrects) ? 'It is an automatic entry, written by the app.' : `${grievance.code} has no entry with that number.`}
             </Alert>
           ) : (
             <>
@@ -133,22 +169,24 @@ function NewEntryPage() {
                 </Alert>
               )}
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Type" hint={KIND_HINTS[kind]} error={error('kind')}>
-                  <Select value={kind} onChange={(event) => edit('kind', setKind)(event.target.value as 'action' | 'event')}>
-                    <option value="action">Action</option>
-                    <option value="event">Event</option>
-                  </Select>
-                </Field>
-                <Field label="Occurred at" hint="When it happened, which may be earlier than now." error={error('occurredAt')}>
-                  <Input type="datetime-local" max={localNow()} value={occurredAt} onChange={(event) => edit('occurredAt', setOccurredAt)(event.target.value)} />
-                </Field>
-              </div>
+              {!correcting && (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Type" hint={KIND_HINTS[kind]} error={error('kind')}>
+                    <Select value={kind} onChange={(event) => edit('kind', setKind)(event.target.value as 'action' | 'event')}>
+                      <option value="action">Action</option>
+                      <option value="event">Event</option>
+                    </Select>
+                  </Field>
+                  <Field label="Occurred at" hint="When it happened, which may be earlier than now." error={error('occurredAt')}>
+                    <Input type="datetime-local" max={localNow()} value={occurredAt} onChange={(event) => edit('occurredAt', setOccurredAt)(event.target.value)} />
+                  </Field>
+                </div>
+              )}
 
               <Field label="Title" hint={count(title, GRIEVANCE_TITLE_MAX)} error={error('title')}>
                 <Input value={title} onChange={(event) => edit('title', setTitle)(event.target.value)} autoComplete="off" autoFocus />
               </Field>
-              <Field label="Short description" hint={`One or two sentences, shown on the timeline. ${count(shortDescription, GRIEVANCE_SHORT_DESCRIPTION_MAX)}`} error={error('shortDescription')}>
+              <Field label="Short description" hint={`${correcting ? 'What was wrong and what is right, in one or two sentences.' : 'One or two sentences, shown on the timeline.'} ${count(shortDescription, GRIEVANCE_SHORT_DESCRIPTION_MAX)}`} error={error('shortDescription')}>
                 <Textarea rows={2} className="min-h-0" value={shortDescription} onChange={(event) => edit('shortDescription', setShortDescription)(event.target.value)} />
               </Field>
               <Field label="Details" hint="Optional. Anything the short description does not cover." error={error('body')}>
@@ -159,11 +197,11 @@ function NewEntryPage() {
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line pt-5">
             <Link to="/grievances/$code" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
-              {sealed ? 'Back to the grievance' : 'Cancel'}
+              {blocked ? 'Back to the grievance' : 'Cancel'}
             </Link>
-            {!sealed && (
+            {!blocked && (
               <Button variant="primary" type="submit" loading={save.isPending}>
-                Save entry
+                {correcting ? 'Save correction' : 'Save entry'}
               </Button>
             )}
           </div>

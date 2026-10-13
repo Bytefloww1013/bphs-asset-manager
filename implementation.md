@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1, Phase 2 and slices 3.1 and 3.2 done 2026-10-12; next is slice 3.3.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it, and entries can be added to it. Written against `main` at `bb028a3`.
+Status: **Phases 1, 2 and 3 done 2026-10-12; next is slice 4.1.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, a working Categories page, a New grievance page that saves and lands on the new grievance, the list with its tabs, filters and search, and a detail page reached from the ID or the title in the list. The detail page shows the grievance's timeline with a filter, an order switch and a summary beside it; entries can be added, opened on a page of their own, and corrected by a later entry. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -18,7 +18,7 @@ A slice is ticked when it is finished and committed.
 - [x] 2.4 Detail (2026-10-12)
 - [x] 3.1 Data and add-entry (2026-10-12)
 - [x] 3.2 Timeline (2026-10-12)
-- [ ] 3.3 Entry detail and corrections
+- [x] 3.3 Entry detail and corrections (2026-10-12)
 - [ ] 4.1 Status and ownership
 - [ ] 4.2 Edit with versions
 - [ ] 4.3 Guards on employees
@@ -315,6 +315,20 @@ Then built:
 - "Add correction" on an entry opens the add form with Type fixed to Correction and the original linked. Both entries show the link. The original text is never changed or hidden.
 
 Done when: a test proves no API route can change or remove an entry, and an entry cannot be created without a valid grievance.
+
+**Results (2026-10-12).** 144 tests pass and the typecheck is clean; the tests this slice is judged by were written with slice 3.2's server work. Checked on a production build in headless Chrome 155 as an Admin: 22 checks, all passing on the first run. Firefox was not run. Screenshots are in `qa-shots/slice-3.3/`.
+
+- **What was built:** `web/src/routes/_app/grievances.$code.entries.$seq.tsx`, the entry page (number, type, title, short description, Occurred at, Recorded at, Documented by, the grievance, the full details, Previous and Next by entry number, back to the grievance, and "Add correction"); the add form takes `?corrects=6` and becomes "Add a correction" with Type fixed and the original named and linked; titles on the timeline open the entry page.
+- **Done when, and where it is proved** (`server/tests/grievances.test.ts`, "adding to the timeline"):
+  - *No API route can change or remove an entry:* the only routes with `/entries` in them are one GET and one POST, every PUT, PATCH and DELETE at an entry or its grievance answers 404 or 405 for both roles, and the table is byte for byte the same afterwards. The table's own triggers refuse an update, a delete or a replace as well.
+  - *An entry cannot be created without a valid grievance:* an unknown ID answers 404 and writes nothing, and the table refuses a row with no such grievance.
+- **Decisions and things later slices should know:**
+  - An entry's address uses its number as the pages show it: `/grievances/GR-2026-0001/entries/E06`. A bare `6` is read the same way.
+  - Previous and Next follow the entry numbers (the order recorded), not the order things happened, so they never skip or loop when an entry was back-dated.
+  - **Both ends of a correction show the link:** the correction says "It corrects E06" on its page and carries a "Corrects E06" chip on the timeline; the original says "This entry has been corrected" with each correction listed, and carries "Corrected by" chips. The original's text is shown in full either way.
+  - A correction has no Occurred at of its own; it happens when it is written. An automatic entry cannot be corrected and offers no button. A correction can be corrected. A Closed or Voided grievance offers no button, as it takes no entries.
+  - The entry page reads the same one request as the timeline, so opening an entry from the timeline costs no request.
+  - TanStack Router writes a caught loader error to the console (an unknown grievance ID logs "Grievance not found"); the page shown is the right one.
 
 ## 7. Phase 4: Lifecycle and history
 

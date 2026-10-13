@@ -30,6 +30,7 @@ import { Route as AppGrievancesIndexRouteImport } from './routes/_app/grievances
 import { Route as AppGrievancesCategoriesRouteImport } from './routes/_app/grievances.categories'
 import { Route as AppGrievancesNewRouteImport } from './routes/_app/grievances.new'
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
+import { Route as AppGrievancesCodeEntriesSeqRouteImport } from './routes/_app/grievances.$code.entries.$seq'
 import { Route as AppGrievancesCodeEntriesNewRouteImport } from './routes/_app/grievances.$code.entries.new'
 
 const AppRoute = AppRouteImport.update({
@@ -136,6 +137,12 @@ const AppGrievancesCodeIndexRoute = AppGrievancesCodeIndexRouteImport.update({
   path: '/$code/',
   getParentRoute: () => AppGrievancesRoute,
 } as any)
+const AppGrievancesCodeEntriesSeqRoute =
+  AppGrievancesCodeEntriesSeqRouteImport.update({
+    id: '/$code/entries/$seq',
+    path: '/$code/entries/$seq',
+    getParentRoute: () => AppGrievancesRoute,
+  } as any)
 const AppGrievancesCodeEntriesNewRoute =
   AppGrievancesCodeEntriesNewRouteImport.update({
     id: '/$code/entries/new',
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/employees/': typeof AppEmployeesIndexRoute
   '/grievances/': typeof AppGrievancesIndexRoute
   '/grievances/$code/': typeof AppGrievancesCodeIndexRoute
+  '/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
 }
 export interface FileRoutesByTo {
@@ -186,6 +194,7 @@ export interface FileRoutesByTo {
   '/employees': typeof AppEmployeesIndexRoute
   '/grievances': typeof AppGrievancesIndexRoute
   '/grievances/$code': typeof AppGrievancesCodeIndexRoute
+  '/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
 }
 export interface FileRoutesById {
@@ -211,6 +220,7 @@ export interface FileRoutesById {
   '/_app/employees/': typeof AppEmployeesIndexRoute
   '/_app/grievances/': typeof AppGrievancesIndexRoute
   '/_app/grievances/$code/': typeof AppGrievancesCodeIndexRoute
+  '/_app/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/_app/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
 }
 export interface FileRouteTypes {
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/employees/'
     | '/grievances/'
     | '/grievances/$code/'
+    | '/grievances/$code/entries/$seq'
     | '/grievances/$code/entries/new'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/grievances'
     | '/grievances/$code'
+    | '/grievances/$code/entries/$seq'
     | '/grievances/$code/entries/new'
   id:
     | '__root__'
@@ -282,6 +294,7 @@ export interface FileRouteTypes {
     | '/_app/employees/'
     | '/_app/grievances/'
     | '/_app/grievances/$code/'
+    | '/_app/grievances/$code/entries/$seq'
     | '/_app/grievances/$code/entries/new'
   fileRoutesById: FileRoutesById
 }
@@ -440,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGrievancesCodeIndexRouteImport
       parentRoute: typeof AppGrievancesRoute
     }
+    '/_app/grievances/$code/entries/$seq': {
+      id: '/_app/grievances/$code/entries/$seq'
+      path: '/$code/entries/$seq'
+      fullPath: '/grievances/$code/entries/$seq'
+      preLoaderRoute: typeof AppGrievancesCodeEntriesSeqRouteImport
+      parentRoute: typeof AppGrievancesRoute
+    }
     '/_app/grievances/$code/entries/new': {
       id: '/_app/grievances/$code/entries/new'
       path: '/$code/entries/new'
@@ -455,6 +475,7 @@ interface AppGrievancesRouteChildren {
   AppGrievancesNewRoute: typeof AppGrievancesNewRoute
   AppGrievancesIndexRoute: typeof AppGrievancesIndexRoute
   AppGrievancesCodeIndexRoute: typeof AppGrievancesCodeIndexRoute
+  AppGrievancesCodeEntriesSeqRoute: typeof AppGrievancesCodeEntriesSeqRoute
   AppGrievancesCodeEntriesNewRoute: typeof AppGrievancesCodeEntriesNewRoute
 }
 
@@ -463,6 +484,7 @@ const AppGrievancesRouteChildren: AppGrievancesRouteChildren = {
   AppGrievancesNewRoute: AppGrievancesNewRoute,
   AppGrievancesIndexRoute: AppGrievancesIndexRoute,
   AppGrievancesCodeIndexRoute: AppGrievancesCodeIndexRoute,
+  AppGrievancesCodeEntriesSeqRoute: AppGrievancesCodeEntriesSeqRoute,
   AppGrievancesCodeEntriesNewRoute: AppGrievancesCodeEntriesNewRoute,
 }
 

@@ -30,31 +30,31 @@ function savedOrder(): Order {
 }
 
 /** Each type has its own shape as well as its own word, so the types can be told apart without colour. */
-function Marker({ kind }: { kind: GrievanceEntryKind }) {
-  const box = 'relative z-10 grid size-6 shrink-0 place-items-center rounded-full bg-surface'
+export function EntryMarker({ kind, className }: { kind: GrievanceEntryKind; className?: string }) {
+  const box = cn('relative z-10 grid size-6 shrink-0 place-items-center rounded-full bg-surface', className)
   if (kind === 'system') {
     return (
-      <span className={cn(box, 'mt-0.5')} aria-hidden>
+      <span className={cn('mt-0.5', box)} aria-hidden>
         <span className="size-2 rounded-full bg-ink-4" />
       </span>
     )
   }
   if (kind === 'action') {
     return (
-      <span className={cn(box, 'mt-2 bg-ink-2 text-surface')} aria-hidden>
+      <span className={cn('mt-2', box, 'bg-ink-2 text-surface')} aria-hidden>
         <Check className="size-3.5" strokeWidth={2.75} />
       </span>
     )
   }
   if (kind === 'event') {
     return (
-      <span className={cn(box, 'mt-2 text-ink-2')} aria-hidden>
+      <span className={cn('mt-2', box, 'text-ink-2')} aria-hidden>
         <Diamond className="size-5" strokeWidth={2} />
       </span>
     )
   }
   return (
-    <span className={cn(box, 'mt-2 border-[1.5px] border-dashed border-ink-3 text-ink-2')} aria-hidden>
+    <span className={cn('mt-2', box, 'border-[1.5px] border-dashed border-ink-3 text-ink-2')} aria-hidden>
       <Pencil className="size-3" strokeWidth={2} />
     </span>
   )
@@ -100,7 +100,7 @@ function Entry({ entry, last, onGoTo, link }: { entry: GrievanceEntry; last: boo
     <li id={anchor(entry.seq)} tabIndex={-1} className="group/entry relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-3 pb-1 focus-visible:outline-none print:break-inside-avoid">
       {/* The rail. It stops at the last entry's marker. */}
       <span className={cn('absolute left-[calc(0.75rem-1px)] top-0 border-l-[1.5px] border-line-strong', last ? 'h-3' : 'bottom-0')} aria-hidden />
-      <Marker kind={entry.kind} />
+      <EntryMarker kind={entry.kind} />
       {automatic ? (
         <p className="px-2.5 py-1 text-[0.8125rem] text-ink-3 group-focus-visible/entry:bg-accent-soft">
           <Mono>{code}</Mono> · <span className="text-xs font-semibold uppercase tracking-wide">{grievanceEntryKindLabel(entry.kind)}</span> · {entry.title} ·{' '}
