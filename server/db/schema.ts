@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, Role } from '../../shared/constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievancePersonRole, GrievanceStatus, Role } from '../../shared/constants.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
 const createdAt = () => ms('created_at').notNull().default(sql`(unixepoch() * 1000)`)
@@ -257,4 +257,67 @@ export const grievanceAuditLog = sqliteTable(
     details: text('details').notNull().default(''),
   },
   (t) => [index('ix_grievance_audit_time').on(t.occurredAt), index('ix_grievance_audit_action').on(t.action)],
+)
+
+// ---- Grievances -----------------------------------------------------------------------
+
+export const grievanceCategories = sqliteTable('grievance_categories', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+})
+
+export const grievances = sqliteTable(
+  'grievances',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** GR-2026-0001: the year the record was entered (not Date Made) and its number within that year. */
+    code: text('code').notNull().unique(),
+    year: integer('year').notNull(),
+    seq: integer('seq').notNull(),
+    title: text('title').notNull(),
+    shortDescription: text('short_description').notNull(),
+    bodyHtml: text('body_html').notNull(),
+    bodyText: text('body_text').notNull(),
+    /** A calendar date as `YYYY-MM-DD` text, so time zones cannot shift it. */
+    dateMade: text('date_made').notNull(),
+    ownerId: integer('owner_id')
+      .notNull()
+      .references(() => employees.id, { onDelete: 'restrict' }),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => grievanceCategories.id, { onDelete: 'restrict' }),
+    status: text('status').$type<GrievanceStatus>().notNull().default('open'),
+    /** Starts at 1 and goes up by one with each edit. */
+    version: integer('version').notNull().default(1),
+    createdByUserId: integer('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    lastActivityAt: ms('last_activity_at').notNull(),
+  },
+  (t) => [
+    uniqueIndex('uq_grievances_year_seq').on(t.year, t.seq),
+    index('ix_grievances_status').on(t.status),
+    index('ix_grievances_owner').on(t.ownerId),
+    index('ix_grievances_category').on(t.categoryId),
+    index('ix_grievances_date_made').on(t.dateMade),
+    check('ck_grievances_status', sql`${t.status} in ('open', 'in_progress', 'resolved', 'closed', 'voided')`),
+  ],
+)
+
+export const grievancePeople = sqliteTable(
+  'grievance_people',
+  {
+    grievanceId: integer('grievance_id')
+      .notNull()
+      .references(() => grievances.id, { onDelete: 'cascade' }),
+    employeeId: integer('employee_id')
+      .notNull()
+      .references(() => employees.id, { onDelete: 'restrict' }),
+    role: text('role').$type<GrievancePersonRole>().notNull(),
+  },
+  (t) => [
+    uniqueIndex('uq_grievance_people').on(t.grievanceId, t.employeeId, t.role),
+    index('ix_grievance_people_employee').on(t.employeeId),
+    check('ck_grievance_people_role', sql`${t.role} in ('employee', 'management')`),
+  ],
 )

@@ -204,6 +204,10 @@ export const assetTypeUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
+/** Grievance categories follow the same rules as the asset type lists. */
+export const grievanceCategoryCreateSchema = assetTypeCreateSchema
+export const grievanceCategoryUpdateSchema = assetTypeUpdateSchema
+
 const ratingScore = z
   .number({ error: 'Give the rating a score from 1 to 100.' })
   .int('The score must be a whole number from 1 to 100.')

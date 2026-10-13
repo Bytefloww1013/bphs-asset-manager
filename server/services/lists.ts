@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
 import type { AssetTypeRow, ConditionRatingRow, DigitalAssetTypeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { assetTypes, conditionRatings, digitalAssetTypes } from '../db/schema.ts'
+import { assetTypes, conditionRatings, digitalAssetTypes, type grievanceCategories } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, notFound } from '../lib/errors.ts'
 
@@ -25,7 +25,7 @@ function typeRow(db: DbLike, id: number): AssetTypeRow {
  * A list with nothing active in it leaves the forms with nothing to offer: no asset can be added without a type, and nothing can be
  * issued or returned without a rating. So the last active item can be neither switched off nor deleted.
  */
-function assertNotLastActive(db: DbLike, table: typeof assetTypes | typeof conditionRatings | typeof digitalAssetTypes, item: { id: number; name: string; isActive: boolean }, noun: string) {
+export function assertNotLastActive(db: DbLike, table: typeof assetTypes | typeof conditionRatings | typeof digitalAssetTypes | typeof grievanceCategories, item: { id: number; name: string; isActive: boolean }, noun: string) {
   if (!item.isActive) return
   const others = db.get<{ n: number }>(sql`select count(*) as n from ${table} where is_active = 1 and id <> ${item.id}`)?.n ?? 0
   if (others === 0) throw conflict('last_active', `"${item.name}" is the only active ${noun}. Activate or add another first.`)

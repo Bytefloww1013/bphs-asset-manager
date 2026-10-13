@@ -58,3 +58,13 @@ export const LOCK_THRESHOLD = 5
 export const LOCK_MINUTES = 15
 /** Assets out longer than this are flagged as overdue in the UI. */
 export const OVERDUE_DAYS = 365
+
+export const GRIEVANCE_STATUSES = ['open', 'in_progress', 'resolved', 'closed', 'voided'] as const
+export type GrievanceStatus = (typeof GRIEVANCE_STATUSES)[number]
+
+/** How a person is named on a grievance: as an employee involved, or as management involved. */
+export const GRIEVANCE_PERSON_ROLES = ['employee', 'management'] as const
+export type GrievancePersonRole = (typeof GRIEVANCE_PERSON_ROLES)[number]
+
+/** A grievance's ID: the year it was entered and its number within that year, as in GR-2026-0001. */
+export const grievanceCode = (year: number, seq: number) => `GR-${year}-${String(seq).padStart(4, '0')}`

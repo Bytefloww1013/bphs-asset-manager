@@ -1,6 +1,6 @@
 # Implementation plan: Employee Grievance Tracker
 
-Status: **Phase 1 (slices 1.1 to 1.4) done 2026-10-12; next is slice 2.1, data and categories.** The Grievances workspace exists as an empty section with its own sidebar, the Grievance Audit Log table and its writer are in place, and `/api/grievances` answers with an empty list. No grievance table or form exists yet. Written against `main` at `bb028a3`.
+Status: **Phase 1 and slice 2.1 done 2026-10-12; next is slice 2.2, create.** The Grievances workspace has its own sidebar, the Grievance Audit Log table and its writer, the grievance tables, and a working Categories page. `/api/grievances` still answers with an empty list, and no grievance form exists yet. Written against `main` at `bb028a3`.
 
 Built one slice at a time. Every slice ends with `bun run typecheck` and `bun run test` green and its own commit, so work can stop or change direction after any of them. Phases are in build order; a later phase never has to reopen an earlier one.
 
@@ -12,7 +12,7 @@ A slice is ticked when it is finished and committed.
 - [x] 1.2 Rich text, end to end (2026-10-12)
 - [x] 1.3 People pickers (2026-10-12)
 - [x] 1.4 Workspace shell, permissions, audit writer (2026-10-12)
-- [ ] 2.1 Data and categories
+- [x] 2.1 Data and categories (2026-10-12)
 - [ ] 2.2 Create
 - [ ] 2.3 Browse
 - [ ] 2.4 Detail
@@ -194,6 +194,18 @@ Migration `0008_grievances`:
 ID generation: inside the create transaction, `seq` is the highest for the current year plus one. SQLite allows one writer at a time and the unique index backs it up, so two people saving at once cannot get the same ID. The year is the year the record was entered, not Date Made.
 
 Also: `web/src/routes/_app/grievances.categories.tsx`, the **Categories** page in the Grievances workspace. It reuses the list component and rules from the Lists screen (rename, deactivate, delete only if unused, last active one cannot be removed) but does not appear on that screen. Its changes go to the Grievance Audit Log.
+
+**Results (2026-10-12).** 122 tests pass (6 of them new, in `server/tests/grievances.test.ts`), and the typecheck is clean. Checked on a production build in headless Chrome 155 as an Admin and as a Super Admin: 17 checks, all passing. Firefox was not run for this slice. Screenshots are in `qa-shots/slice-2.1/` (not committed).
+
+- Any Admin can add, rename and deactivate a category; deleting needs a Super Admin (`record.delete`), as on the Lists screen. The API is `/api/grievances/categories`, in `server/services/grievance-categories.ts`. Audit entries use the entity type `category`.
+- The sidebar has a second group, Administration, with Categories. A nav entry now gives way to a longer one beneath it, so Grievances is not lit on `/grievances/categories` but will still be lit on a detail page.
+- Things later slices should know:
+  - **Deleting an employee named on a grievance will fail at the database** (`owner_id` and `grievance_people.employee_id` are `ON DELETE RESTRICT`). No grievance can exist yet, so nothing is broken today, but slice 2.2 must add this to `deleteBlocked` in `server/services/employees.ts` so the person gets the usual "archive instead" message and not a 500.
+  - `nextGrievanceCode(tx, at?)` in `server/services/grievances.ts` gives `{ code, year, seq }`; call it inside the create transaction. The year is the server's local year. `grievanceCode(year, seq)` in `shared/constants.ts` formats it (four digits, growing past 9999).
+  - `GRIEVANCE_STATUSES` (`open`, `in_progress`, `resolved`, `closed`, `voided`) and `GRIEVANCE_PERSON_ROLES` are in `shared/constants.ts`; the database checks both.
+  - `grievances.category_id` is `ON DELETE RESTRICT`, and `grievance_people` rows go with their grievance.
+  - The list parts (`EditableName`, `AddRow`, `ActiveSwitch`, `DeleteButton`) moved from `lists.tsx` to `web/src/features/common/list-parts.tsx`; the Lists screen behaves as before.
+  - `grievanceCategoriesQuery` in `web/src/lib/queries.ts` returns inactive categories too, with a count each. The create form should offer the active ones only.
 
 ### Slice 2.2: Create
 

@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, Outlet, useRouter } from '@tanstack/react-router'
+import { Link, Outlet, useLocation, useRouter } from '@tanstack/react-router'
 import {
   AppWindow,
   ArrowDownUp,
@@ -19,6 +19,7 @@ import {
   Scale,
   ScrollText,
   ShieldCheck,
+  Tags,
   Users,
   X,
   type LucideIcon,
@@ -36,7 +37,7 @@ import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/categories'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -45,7 +46,12 @@ interface NavEntry {
 /** Each workspace has a sidebar of its own; nothing from one appears in the other. */
 function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] {
   const user = useUser()
-  if (workspace === 'grievances') return [{ heading: 'Records', items: [{ to: '/grievances', label: 'Grievances', icon: Scale }] }]
+  if (workspace === 'grievances') {
+    return [
+      { heading: 'Records', items: [{ to: '/grievances', label: 'Grievances', icon: Scale }] },
+      { heading: 'Administration', items: [{ to: '/grievances/categories', label: 'Categories', icon: Tags }] },
+    ]
+  }
   return [
     {
       heading: 'Work',
@@ -111,6 +117,9 @@ function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const groups = useNav(useWorkspace())
+  const pathname = useLocation({ select: (location) => location.pathname })
+  // An entry gives way to one beneath it: on /grievances/categories, Categories is the current page and Grievances is not.
+  const yields = (to: string) => groups.some((group) => group.items.some((other) => other.to !== to && other.to.startsWith(`${to}/`) && pathname.startsWith(other.to)))
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {groups.map((group) => (
@@ -122,7 +131,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 <Link
                   to={item.to}
                   onClick={onNavigate}
-                  activeOptions={{ exact: item.to === '/' }}
+                  activeOptions={{ exact: item.to === '/' || yields(item.to) }}
                   className="group flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-surface/70 hover:text-ink data-[status=active]:bg-surface data-[status=active]:text-ink data-[status=active]:shadow-panel data-[status=active]:ring-1 data-[status=active]:ring-line"
                   activeProps={{ 'aria-current': 'page' }}
                 >

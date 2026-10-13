@@ -233,6 +233,14 @@ export interface AssetTypeRow {
 /** A digital asset type, with how many digital assets use it. */
 export type DigitalAssetTypeRow = AssetTypeRow
 
+/** A grievance category, with how many grievances are filed under it. */
+export interface GrievanceCategoryRow {
+  id: number
+  name: string
+  isActive: boolean
+  grievanceCount: number
+}
+
 export interface ConditionRatingRow {
   id: number
   name: string

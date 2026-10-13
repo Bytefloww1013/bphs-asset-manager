@@ -11,6 +11,7 @@ import type {
   DigitalAssetRow,
   DigitalAssetTypeRow,
   EmployeeRow,
+  GrievanceCategoryRow,
   Lookups,
   ProgramRow,
   SessionUser,
@@ -73,6 +74,11 @@ export const programsQuery = queryOptions({
 export const assetTypesQuery = queryOptions({
   queryKey: ['asset-types'],
   queryFn: () => api.get<AssetTypeRow[]>('/asset-types'),
+})
+
+export const grievanceCategoriesQuery = queryOptions({
+  queryKey: ['grievances', 'categories'],
+  queryFn: () => api.get<GrievanceCategoryRow[]>('/grievances/categories'),
 })
 
 export const digitalAssetsQuery = queryOptions({
