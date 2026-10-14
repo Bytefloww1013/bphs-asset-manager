@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { can, type Permission } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { meQuery } from './queries.ts'
+import { APP_NAME } from './brand.ts'
 
 /** The signed-in user. Only call inside routes below the auth guard. */
 export function useUser(): SessionUser {
@@ -17,10 +18,10 @@ export function useCan(permission: Permission): boolean {
 }
 
 /** Sets the browser tab title for the current screen. */
-export function usePageTitle(title: string, product = 'BPHS Assets') {
+export function usePageTitle(title: string) {
   useEffect(() => {
-    document.title = `${title} · ${product}`
-  }, [title, product])
+    document.title = `${title} · ${APP_NAME}`
+  }, [title])
 }
 
 /**

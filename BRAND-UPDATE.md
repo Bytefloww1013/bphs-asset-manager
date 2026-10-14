@@ -224,10 +224,10 @@ Acceptance: artwork choices and palette sources are traceable; the existing work
 
 ### Phase 1 — Finish the application-name change
 
-- [ ] **1.1 Shared identity:** Introduce one client-side name source, for example `web/src/lib/brand.ts`, for `BPHS-Connect` and the canonical URL where needed. Use it in the wordmark, mobile title, sign-in copy, and default page-title helper. Keep the static HTML title synchronized explicitly.
-- [ ] **1.2 Titles and runtime copy:** Review and finish the prepared name edits in `web/index.html`, `session.ts`, the grievance title helper, `login.tsx`, `app-shell.tsx`, `logo.tsx`, `styles.css`, and `server/index.ts`.
-- [ ] **1.3 Package metadata:** Review `package.json` and `bun.lock` together; confirm a frozen lockfile install succeeds with the new root package slug.
-- [ ] **1.4 Name verification:** Check sign-in, password change, desktop navigation, mobile header/drawer, and both workspaces' page titles. Search source and design metadata again for the old full names and short aliases; record only intentional legacy identifiers from the compatibility table.
+- [x] **1.1 Shared identity:** Introduce one client-side name source, for example `web/src/lib/brand.ts`, for `BPHS-Connect` and the canonical URL where needed. Use it in the wordmark, mobile title, sign-in copy, and default page-title helper. Keep the static HTML title synchronized explicitly.
+- [x] **1.2 Titles and runtime copy:** Review and finish the prepared name edits in `web/index.html`, `session.ts`, the grievance title helper, `login.tsx`, `app-shell.tsx`, `logo.tsx`, `styles.css`, and `server/index.ts`.
+- [x] **1.3 Package metadata:** Review `package.json` and `bun.lock` together; confirm a frozen lockfile install succeeds with the new root package slug.
+- [x] **1.4 Name verification:** Check sign-in, password change, desktop navigation, mobile header/drawer, and both workspaces' page titles. Search source and design metadata again for the old full names and short aliases; record only intentional legacy identifiers from the compatibility table.
 
 Acceptance: visible application identity and browser-title suffixes consistently read `BPHS-Connect`, independent of workspace. Package metadata and logs agree.
 
@@ -298,3 +298,22 @@ Changes:
 Validation/visual judgment: reviewed the five-source inventory and opened the mark, corporate signature, and hero; checked clean exports on white and navy. Light artwork is intended for light surfaces; it requires a light backing on a navy surface. The existing UI retains its form hierarchy and navigation clearance. Fifteen rendered states passed title, overflow, image-load, external-request, and page-error checks. Frozen offline install succeeded (local Bun 1.4.2; declared package manager remains 1.3.14). Docker Desktop is not integrated with this WSL distro, so no Docker execution has been claimed.
 
 Rollback for Phase 0: revert this documentation/evidence commit; no application code is changed.
+
+### Phase 1 — one application identity
+
+Phase 0 commit: `13ac05f`.
+
+Changes:
+- Added `web/src/lib/brand.ts` with the app name, canonical URL, and corporate accessible name.
+- `web/src/components/ui/logo.tsx`: removed the workspace-specific name prop; preserved the two-weight wordmark while deriving its text from the shared name.
+- `web/src/components/shell/app-shell.tsx`: desktop/drawer wordmarks use constant app identity; mobile heading uses the shared name; removed the workspace-dependent product suffix.
+- `web/src/routes/login.tsx`: account copy uses the shared name.
+- `web/src/lib/session.ts`: title helper uses the shared name without an overriding workspace product argument.
+- `web/src/features/grievances/page-title.ts`: keeps the grievance/page prefixes and uses the shared product suffix.
+- `web/index.html`, `server/index.ts`, `web/src/styles.css`: reviewed and included the prepared static title, startup-log name, and token-header name edits.
+- `package.json`, `bun.lock`: included the prepared `bphs-connect` root slug and package description together.
+- `docs/brand-review/phase1.png`: same-state visual comparison against the reviewed working-tree baseline.
+
+Validation/visual judgment: typecheck/build and frozen offline lockfile install pass. Fifteen production-rendered states pass; sign-in, voluntary and forced password change, rail, mobile heading/drawer, and both workspace titles consistently use BPHS-Connect. Grievance detail retains its page-specific title prefix. Full comparisons and phone captures show unchanged fonts, spacing, form geometry, and navigation clearance; this phase consolidates the already-prepared name. Legacy scan finds only documented repository/image/container/path identifiers outside the audit's historical wording. No page errors, broken images, external requests, or horizontal overflow.
+
+Rollback for Phase 1: revert its commit to restore the previous app/package names, workspace-dependent wordmarks, and title suffixes; rebuild. Documentation rename edits remain for Phase 4.

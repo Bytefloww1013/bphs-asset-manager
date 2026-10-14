@@ -35,6 +35,7 @@ import { WORKSPACE_LABEL, rememberWorkspace, useWorkspace, type Workspace } from
 import { IconButton } from '../ui/button.tsx'
 import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
+import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
   to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/categories' | '/grievances/audit'
@@ -222,7 +223,6 @@ function UserMenu() {
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const [drawer, setDrawer] = useState(false)
   const workspace = useWorkspace()
-  const product = WORKSPACE_LABEL[workspace]
   useEffect(() => rememberWorkspace(workspace), [workspace])
   // The drawer is only drawn below `lg`. Close it when the window grows past that, or it would stay open, unseen, holding the page.
   useEffect(() => {
@@ -240,7 +240,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       {/* Wide screens: a fixed rail on a slightly cooler neutral than the page. */}
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar lg:flex">
         <div className="px-4 pb-3 pt-5">
-          <Wordmark product={product} />
+          <Wordmark />
         </div>
         <div className="px-3 pb-4">
           <WorkspaceSwitcher />
@@ -259,7 +259,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
           <MenuIcon className="size-5" />
         </IconButton>
         <LogoMark className="size-7" />
-        <span className="text-md font-semibold">BPHS {product}</span>
+        <span className="text-md font-semibold">{APP_NAME}</span>
       </header>
       <Dialog.Root open={drawer} onOpenChange={setDrawer}>
         <Dialog.Portal>
@@ -268,7 +268,7 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
             <Dialog.Description className="sr-only">Move between sections of the app</Dialog.Description>
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
-              <Wordmark product={product} />
+              <Wordmark />
               <Dialog.Close asChild>
                 <IconButton label="Close navigation" size="sm">
                   <X className="size-4" />

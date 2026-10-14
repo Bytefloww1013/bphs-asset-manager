@@ -13,6 +13,7 @@ import { fieldError } from '@/lib/form.ts'
 import { meQuery } from '@/lib/queries.ts'
 import { formatTime } from '@/lib/format.ts'
 import { returnPath, usePageTitle } from '@/lib/session.ts'
+import { APP_NAME } from '@/lib/brand.ts'
 
 export const Route = createFileRoute('/login')({
   // Where the user was when they were sent here, so signing in takes them back to it.
@@ -57,7 +58,7 @@ function LoginPage() {
         </div>
         <div className="rounded-panel border border-line bg-surface p-7 shadow-pop">
           <h1 className="text-xl font-semibold tracking-[-0.015em]">Sign in</h1>
-          <p className="mt-1 text-sm text-ink-3">Use your BPHS Assets account.</p>
+          <p className="mt-1 text-sm text-ink-3">Use your {APP_NAME} account.</p>
 
           {error && (
             <Alert tone={locked ? 'warn' : 'bad'} className="mt-5" title={locked ? 'Account locked' : 'Could not sign in'}>

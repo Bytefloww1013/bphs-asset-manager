@@ -14,7 +14,7 @@ purgeExpiredSessions(db)
 
 const app = createApp(db, { serveWeb: isProduction || process.env.SERVE_WEB === 'true' })
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' }, (info) => {
-  console.log(`BPHS Asset Management listening on :${info.port} (${config.env}), data in ${config.dataDir}`)
+  console.log(`BPHS-Connect listening on :${info.port} (${config.env}), data in ${config.dataDir}`)
 })
 
 // Docker sends SIGTERM on stop: finish in-flight requests, then close the database cleanly.

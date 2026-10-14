@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn.ts'
+import { APP_NAME } from '@/lib/brand.ts'
 
 export function LogoMark({ className }: { className?: string }) {
   return (
@@ -13,12 +14,13 @@ export function LogoMark({ className }: { className?: string }) {
   )
 }
 
-export function Wordmark({ className, product = 'Assets' }: { className?: string; product?: string }) {
+export function Wordmark({ className }: { className?: string }) {
+  const [organization, product] = APP_NAME.split('-')
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <LogoMark />
       <span className="text-md font-semibold tracking-[-0.01em] text-ink">
-        BPHS <span className="font-medium text-ink-3">{product}</span>
+        {organization}-<span className="font-medium text-ink-3">{product}</span>
       </span>
     </span>
   )
