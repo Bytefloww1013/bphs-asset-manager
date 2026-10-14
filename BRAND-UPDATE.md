@@ -6,7 +6,7 @@ Audit date: 2026-10-14. Baseline: `main` at `4a6bf8a`, including the existing lo
 
 Use **BPHS-Connect** as the application name, matching **https://bphs-connect.com**. Incorporate the supplied logos, favicons, and related media, then introduce their colors through the existing design tokens while retaining the current layouts, typography, spacing, and component behavior.
 
-**This pass creates only this document.** The application already had uncommitted name changes in 19 files when this audit began. Those edits are evidence of work prepared locally, not changes made by this audit or changes included in this document's commit. Implementation checkboxes remain open until the corresponding work is reviewed, committed, and verified.
+**Implementation started 2026-10-14 at `1d2c534`**, the plan-only commit. The original audit baseline was `4a6bf8a`. The 19 prepared name-change diffs have been reviewed and will be included in their relevant phases. The phase ledger below records every delivered change, validation, visual evidence, and rollback method. Earlier audit findings describe the starting state.
 
 `/brand-assets` means the directory at this repository's root. **Five supplied PNGs are present and were inspected.** They show Brightpath / Brightpath Human Services corporate identity with a lighthouse, navy, orange, and cream. They do not contain the application name `BPHS-Connect`; keep that name as readable text beside the compact corporate mark. The files are currently untracked and are not included in this document-only commit.
 
@@ -215,10 +215,10 @@ Each numbered slice should be reviewable independently. Check a slice only when 
 ### Phase 0 — Record the baseline and artwork
 
 - [x] **0.1 Audit and plan:** Record the name inventory, media placements, delivery approach, and color strategy in this document.
-- [ ] **0.2 Reconcile existing local work:** Review the 19 pre-existing rename diffs and keep unrelated work out of brand commits. Confirm the starting revision before implementing.
+- [x] **0.2 Reconcile existing local work:** Review the 19 pre-existing rename diffs and keep unrelated work out of brand commits. Confirm the starting revision before implementing.
 - [x] **0.3 Inventory `brand-assets/`:** Record the five actual files, dimensions, backgrounds, transparency, placement recommendations, and export gaps. Identify the compact lighthouse source and horizontal corporate signature.
 - [x] **0.4 Record the proposed palette:** Record representative raster color samples, their sources, proposed action/hover/tint values, and computed contrast results; distinguish samples from official color specifications.
-- [ ] **0.5 Finalize media inputs:** Obtain/prepare clean derivatives for the transparent exports, determine the small-icon treatment, and reconcile any official palette/vector specifications subsequently supplied. Commit the five original PNGs with the future media slice; this document's commit leaves them untracked.
+- [x] **0.5 Finalize media inputs:** Obtain/prepare clean derivatives for the transparent exports, determine the small-icon treatment, and reconcile any official palette/vector specifications subsequently supplied. Commit the five original PNGs with the future media slice; this document's commit leaves them untracked.
 
 Acceptance: artwork choices and palette sources are traceable; the existing working tree is accounted for.
 
@@ -279,3 +279,22 @@ Acceptance: all required slices are checked, optional slices are recorded as sel
 | Official exact brand colors / vector originals | Raster samples and measured proposed interface colors recorded; official specification not supplied | Use the documented navy-family proposal, with any later official source taking precedence. Finalize during 0.5 / 3.1. |
 | Existing local rename edits | Prepared in 19 files before this task | Review and commit separately during Phase 1; this document-only commit does not publish them. |
 | Secondary placements and technical-name cleanup | Recommendations, not required for the core update | Select or defer the optional Phase 4 slices during implementation. |
+
+## Implementation and rollback ledger
+
+Execution date: 2026-10-14. Starting commit: `1d2c534`. All 19 existing tracked diffs are name-only edits reviewed against that commit. The unrelated untracked `.rtk/` and `SECURITYREVIEW.md` stay outside brand commits. No runtime database or secret is committed. Isolated seeded review data lives in `/tmp/bphs-brand-review/data`.
+
+Selected optional work: the desktop login hero (4.5) and small identities on standalone/session screens (4.3). Deferred: printed identity (4.4), sharing images and home-screen manifest (remaining 4.5), and technical-name migration (4.6). Docker runtime verification and deployment require the corresponding environment; their boxes remain open until actually verified.
+
+**Rollback:** each phase has a commit titled `brand: phase N …`. Inspect it with `git show --stat <commit>`. Revert one phase with `git revert <commit>`; for a full rollback, revert phase commits in reverse order, rebuild, and deploy the rebuilt image through the existing process. These changes have no schema migration or data-volume rename. Preserve the deployed pre-update image and revision before release. Do not reset or clean the working tree: the unrelated local report and telemetry must survive.
+
+### Phase 0 — baseline and artwork preparation
+
+Changes:
+- `BRAND-UPDATE.md`: reconciled the 19 prepared diffs; recorded execution baseline, optional selections, and rollback procedure; completed 0.2 and 0.5.
+- `docs/brand-review/phase0.png`: baseline contact sheet of sign-in, overview, phone drawer, and phone password change. Individual desktop (1440×1000), tablet (834×1112), phone (390×844), and narrow (320×740) captures and reports are in `/tmp/bphs-brand-review/phase0/`.
+- Prepared, but not yet published or committed, clean SVG contours for the compact mark and corporate lettering in `/tmp/bphs-brand-review/exports/`. The source gradients are normalized to navy `#08384F` and orange `#FF961F`; retained the original contours, windows, rays, and lettering, removed stray pixel components, and cropped clear space. The hero retains its original textured artwork as a 1440×617 WebP. Original PNGs remain unchanged for Phase 2.
+
+Validation/visual judgment: reviewed the five-source inventory and opened the mark, corporate signature, and hero; checked clean exports on white and navy. Light artwork is intended for light surfaces; it requires a light backing on a navy surface. The existing UI retains its form hierarchy and navigation clearance. Fifteen rendered states passed title, overflow, image-load, external-request, and page-error checks. Frozen offline install succeeded (local Bun 1.4.2; declared package manager remains 1.3.14). Docker Desktop is not integrated with this WSL distro, so no Docker execution has been claimed.
+
+Rollback for Phase 0: revert this documentation/evidence commit; no application code is changed.
