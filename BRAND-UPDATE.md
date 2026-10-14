@@ -4,11 +4,11 @@ Audit date: 2026-10-14. Baseline: `main` at `4a6bf8a`, including the existing lo
 
 ## Objective and status
 
-**Current status:** Phases 0–4 and the local Phase 5 checks are complete and committed. Docker runtime delivery (2.5) and production release (5.5) remain pending: Docker Desktop is unavailable in this WSL distro and the deployment SSH username/target has not been supplied. No push or live deployment is claimed. Optional print, sharing/manifest, and infrastructure-name work is deferred.
+**Current status:** Phases 0–4 and local Phase 5 checks pass, including Docker runtime delivery (2.5), native desktop hover, and favicon cache refresh. Production release (5.5) remains pending the SSH target/release-scope response and live DNS/TLS verification. Current environment resolution returns `204.11.56.246` for both names, whereas DEPLOY-GUIDE.md targets `50.6.205.113`. Public HTTPS probes have not passed. No push or live deployment is claimed. Optional print, sharing/manifest, and infrastructure-name work is deferred.
 
 Use **BPHS-Connect** as the application name, matching **https://bphs-connect.com**. Incorporate the supplied logos, favicons, and related media, then introduce their colors through the existing design tokens while retaining the current layouts, typography, spacing, and component behavior.
 
-**Implementation started 2026-10-14 at `1d2c534`**, the plan-only commit. The original audit baseline was `4a6bf8a`. The 19 prepared name-change diffs have been reviewed and will be included in their relevant phases. The phase ledger below records every delivered change, validation, visual evidence, and rollback method. Earlier audit findings describe the starting state.
+**Implementation started 2026-10-14 at `1d2c534`**, the plan-only commit. The original audit baseline was `4a6bf8a`. The 19 prepared name-change diffs were reviewed and included in their relevant phase commits. The phase ledger below records every delivered change, validation, visual evidence, and rollback method. Earlier audit findings describe the starting state.
 
 `/brand-assets` means the directory at this repository's root. **Five supplied PNGs are present and were inspected.** They show Brightpath / Brightpath Human Services corporate identity with a lighthouse, navy, orange, and cream. They do not contain the application name `BPHS-Connect`; keep that name as readable text beside the compact corporate mark. The original PNGs are now preserved in commit `86f40f7`; they were untracked during the original audit.
 
@@ -239,7 +239,7 @@ Acceptance: visible application identity and browser-title suffixes consistently
 - [x] **2.2 Shared components:** Implement compact-mark and full-lockup rendering in `logo.tsx`, including explicit dimensions, meaningful accessible naming, and decorative treatment when text is adjacent.
 - [x] **2.3 Existing placements:** Apply the shared artwork to desktop rail, mobile header, mobile drawer, sign-in, and password change. Check narrow screens and drawer-close clearance without changing the layout structure.
 - [x] **2.4 Browser identity:** Update favicon/fallback/touch-icon links in `web/index.html`. Check 16px/32px favicon legibility and the touch icon at its intended size. Choose and document the browser theme color.
-- [ ] **2.5 Delivery verification:** Build and confirm each referenced image exists in `dist/web` and in the Docker runtime output. Fetch the URLs while signed out and confirm the correct image MIME type and bytes, including a nested client route and a reload. A `200` response alone is insufficient: the current server falls back to SPA HTML for missing public paths outside `/static/`.
+- [x] **2.5 Delivery verification:** Build and confirm each referenced image exists in `dist/web` and in the Docker runtime output. Fetch the URLs while signed out and confirm the correct image MIME type and bytes, including a nested client route and a reload. A `200` response alone is insufficient: the current server falls back to SPA HTML for missing public paths outside `/static/`.
 
 Acceptance: all existing branding slots show the approved artwork without distortion, duplicated names, layout shifts, or missing-resource fallbacks. Icons refresh in a browser with prior site data.
 
@@ -338,7 +338,7 @@ Changes:
 
 Validation/visual judgment: build/typecheck pass. Fifteen rendered states have no overflow, broken artwork, external requests, or page errors. Full comparison plus full-size phone sign-in/drawer views show crisp, proportionate marks and corporate lettering, one readable application identity, stable form width/spacing, and clear drawer-close space. The corporate signature intentionally increases only the authentication identity area's height; all fields fit the 390px phone view. Simplified icons are recognizable at 16/32px and the touch icon is crisp at 180px. All seven published files match source and built bytes by SHA-256 when fetched signed out, return image MIME types and `no-cache`, and load after a protected nested-route redirect/reload. Versioned URLs avoid reusing the previous placeholder's cache key.
 
-Slice 2.5 is **partially verified**: production `dist/web` delivery and MIME/byte checks passed; the Dockerfile copies that exact directory to its runtime stage, but Docker execution remains unavailable in WSL. The box remains open for an actual runtime-image check. No live deployment has occurred.
+At the Phase 2 commit, slice 2.5 was **partially verified** (the runtime follow-up below now closes it): production `dist/web` delivery and MIME/byte checks passed; the Dockerfile copies that exact directory to its runtime stage, but Docker execution remains unavailable in WSL. The box remains open for an actual runtime-image check. No live deployment has occurred.
 
 Rollback for Phase 2: revert the implementation commit to restore the previous tag mark and favicon links. The separate original-source commit can remain for reference, or be reverted independently. Rebuild to remove published derivatives from deployment.
 
@@ -399,7 +399,7 @@ Validation:
 - Final media delivery: eight byte-identical image responses, correct image MIME types and `no-cache`; signed-out nested reload works; all five icon links include the refresh version; no CSP console errors or security-policy violation events on the checked page.
 - Tracked working tree is clean after this commit; only the original unrelated `.rtk/` and `SECURITYREVIEW.md` remain untracked.
 
-**Release still pending:** 2.5 requires an actual Docker runtime-image check. 5.5 requires the user's SSH target/release-scope response, a successful pre-deploy backup, the deployed prior revision/image, release deployment through DEPLOY-GUIDE.md, and live checks of `https://bphs-connect.com` and `www`. These are not checked off. Local committed code is ready for that environment; no database, volume, backup caller, infrastructure identifier, push, or production configuration was changed.
+**Release still pending:** the runtime follow-up below closes 2.5. Slice 5.5 requires the user's SSH target/release-scope response, a successful pre-deploy backup, the deployed prior revision/image, release deployment through DEPLOY-GUIDE.md, and live checks of `https://bphs-connect.com` and `www`. These are not checked off. Local committed code is ready for that environment; no database, volume, backup caller, infrastructure identifier, push, or production configuration was changed.
 
 Rollback for Phase 5: revert this validation-only commit to remove its evidence/status updates. For the delivered app, revert Phase 4→3→2→1 in reverse order and rebuild; the original artwork commit can remain or be reverted separately. Keep the prior production image/commit before deployment, as release checks still require.
 
@@ -413,4 +413,23 @@ Rollback for Phase 5: revert this validation-only commit to remove its evidence/
 | Phase 2 | `9373d94` | Restores placeholder logos/browser icons and authentication lockup. |
 | Phase 3 | `1707942` | Restores cobalt accent/foreground/button shadow. |
 | Phase 4 | `48e07bb` | Removes hero/secondary identity/retry fix and restores prior documentation. |
-| Phase 5 | Commit titled `brand: phase 5 record final validation and release gaps` | Removes final evidence/status only; find its ID with `git log -1 --oneline` immediately after this phase. |
+| Phase 5 | `9ff3e69` | Removes final evidence/status only. |
+
+### Runtime follow-up — close Docker and desktop verification
+
+Source/build revision: `9ff3e69`. No app, server, dependency, Dockerfile, infrastructure configuration, or source artwork changed in this follow-up. The application tree still matches the tested revision.
+
+Changes:
+- `BRAND-UPDATE.md`: completed 2.5, updated current release status and the Phase 5 commit ID, and recorded the verification/remaining deployment evidence.
+- `design-qa.md`: completed Docker and real desktop hover/cache checks; retained only the production release gate.
+- Added `docs/brand-review/desktop-hover.png` and `desktop-runtime.json`: headed Chromium/WSLg screenshot and actual hover/cache evidence. No CSS injection or hover media override is used. Real desktop media reports hover/fine pointer; the button changes from `rgb(8,56,79)` to `rgb(6,43,62)` with white text. The prior placeholder is cached for one year at the old unversioned URL; it remains cached while the new versioned SVG returns the exact new bytes and survives reload. The old URL hit the fixture server only once. Current app requests use the unchanged production build through a local proxy.
+- Added `docs/brand-review/docker-runtime.json`: actual healthy Linux/amd64 runtime image, non-root Node v24.21.0 process, eight exact media files, image MIME/cache headers, signed-out API response, and nested-route/reload shell hashes.
+- Added `docs/brand-review/release-probe.json`: failed public HTTPS probes without bypassing certificate validation, and current environment resolver results compared with the guide's VPS.
+
+Docker verification: the Linux WSL wrapper initially lacked a running engine. Started the installed Docker Desktop through its Windows CLI, without changing WSL integration or Docker configuration. Built the repository's unchanged Dockerfile from `git archive 9ff3e69` (only committed input, filtered by .dockerignore), including its declared Bun 1.3.14 frozen install and production build. Image tag `bphs-connect-brand-review:9ff3e69`; image/repository digest `sha256:cb270235e37436b4e71c988afd3d77bc76e882872832bea77fb48ebde365a2d2`. Ran a labeled disposable container with no host port exposed; `/api/health` passed and Docker reported healthy. Signed-out `/api/auth/me` correctly returned 401, while all eight artwork URLs returned 200/image content byte-identical to both source and runtime files. `/login` and the nested grievance URL/reload returned the exact runtime SPA shell with BPHS-Connect title and versioned icons. Stopped only the owned container; `--rm` removed it and its anonymous review-data volume. The built image is retained locally for reuse. Docker Desktop remains running; no other containers or images were removed.
+
+Visual judgment: opened the headed 1440×1000/DPR 1 hover capture. The hero stays sharp, proportions/form hierarchy remain intact, and the actual hover fill visibly deepens as intended. Earlier headless-only hover/cache gaps are closed; the original screenshots/measurements remain historical evidence. No unexpected page errors in the real desktop check.
+
+Release evidence: the first HTTPS probes rejected a certificate named `testexp` for both hostnames; later probes timed out (curl exit 28). The current resolver returns `204.11.56.246` for apex and www, differing from the guide's `50.6.205.113`. These observations do not identify the source of the certificate/access failures and do not verify a production deployment. Before 5.5 can be checked, obtain the intended SSH target and confirm the deployment/DNS configuration, run the existing pre-deploy backup procedure, retain the prior deployed revision/image, deploy the approved revision, and verify trusted HTTPS identity plus www behavior. The earlier SSH/release-scope question remains unanswered.
+
+Rollback: revert this verification-only commit to remove its evidence/status changes; application behavior is unaffected. To discard the local review image, first confirm its recorded tag/digest and that nothing uses it, then remove that specific image. Keep the existing phase rollback sequence for the application. No new test or source edits were required.

@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-14T18:47:33.992478+00:00",
+  "certificateValidationBypassed": false,
+  "results": [
+    {
+      "url": "https://bphs-connect.com/login",
+      "exitCode": 28,
+      "headers": "",
+      "error": "curl: (28) Connection timed out after 8002 milliseconds"
+    },
+    {
+      "url": "https://www.bphs-connect.com/login",
+      "exitCode": 28,
+      "headers": "",
+      "error": "curl: (28) Connection timed out after 8002 milliseconds"
+    }
+  ],
+  "earlierObservation": {
+    "observedDuring": "first read-only HTTPS probe in this continuation, before the image build",
+    "results": [
+      {
+        "url": "https://bphs-connect.com/login",
+        "exitCode": 60,
+        "error": "SSL: certificate subject name 'testexp' does not match target hostname 'bphs-connect.com'"
+      },
+      {
+        "url": "https://www.bphs-connect.com/login",
+        "exitCode": 60,
+        "error": "SSL: certificate subject name 'testexp' does not match target hostname 'www.bphs-connect.com'"
+      }
+    ]
+  },
+  "conclusion": "Production identity, trusted TLS, and www behavior are not verified. The observations do not establish whether the mismatch/timeouts originate at the VPS, DNS, or the access path.",
+  "resolverObservation": {
+    "checkedAt": "2026-10-14T18:53:00.906558+00:00",
+    "method": "getent ahostsv4 in the current environment",
+    "bphs-connect.com": [
+      "204.11.56.246"
+    ],
+    "www.bphs-connect.com": [
+      "204.11.56.246"
+    ],
+    "deploymentGuideVps": "50.6.205.113",
+    "matchesGuideVps": false
+  }
+}

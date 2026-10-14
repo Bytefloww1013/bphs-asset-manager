@@ -1,0 +1,128 @@
+{
+  "revision": "9ff3e69",
+  "node": "v24.21.0",
+  "uid": 1000,
+  "health": true,
+  "signedOut": true,
+  "files": [
+    {
+      "name": "favicon.svg",
+      "mime": "image/svg+xml; charset=utf-8",
+      "bytes": 518,
+      "sha256": "da2e3974fedc14f40fc7d53eab0c103cb677177ff8f83f93be8838152cd915e2",
+      "runtimePath": "/app/dist/web/favicon.svg",
+      "responseMime": "image/svg+xml; charset=utf-8",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "favicon.ico",
+      "mime": "image/x-icon",
+      "bytes": 3577,
+      "sha256": "ad731139f3ffc97c1039596fec0a02b9cef8d12c7050d4a70248f1051634c94a",
+      "runtimePath": "/app/dist/web/favicon.ico",
+      "responseMime": "image/x-icon",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "favicon-16.png",
+      "mime": "image/png",
+      "bytes": 621,
+      "sha256": "56b98d583177a0392a489fd406d72da43bd7b94dab824627f1c8a01907bc4c6d",
+      "runtimePath": "/app/dist/web/favicon-16.png",
+      "responseMime": "image/png",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "favicon-32.png",
+      "mime": "image/png",
+      "bytes": 1092,
+      "sha256": "c95f577f8fea3346e66a7b0dacb6b4da421a25416a18492bedf0be4c5561b83c",
+      "runtimePath": "/app/dist/web/favicon-32.png",
+      "responseMime": "image/png",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "apple-touch-icon.png",
+      "mime": "image/png",
+      "bytes": 7369,
+      "sha256": "a18fa1830a2ff3f9f41c389971c7b72ee5062e3ba9736c6774a731f78ef2be03",
+      "runtimePath": "/app/dist/web/apple-touch-icon.png",
+      "responseMime": "image/png",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "brand/brightpath-header.svg",
+      "mime": "image/svg+xml; charset=utf-8",
+      "bytes": 9608,
+      "sha256": "1f366b1311ef97b38a97578e43e80bb7114553c6be0a2513d9d95cb8e9cefbe2",
+      "runtimePath": "/app/dist/web/brand/brightpath-header.svg",
+      "responseMime": "image/svg+xml; charset=utf-8",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "brand/brightpath-hero.webp",
+      "mime": "image/webp",
+      "bytes": 57502,
+      "sha256": "886408cf25e969687a4c626a6a400bb9672e6dfaf79ffcbd9218fa89712612b5",
+      "runtimePath": "/app/dist/web/brand/brightpath-hero.webp",
+      "responseMime": "image/webp",
+      "status": 200,
+      "cacheControl": "no-cache"
+    },
+    {
+      "name": "brand/brightpath-mark.svg",
+      "mime": "image/svg+xml; charset=utf-8",
+      "bytes": 6160,
+      "sha256": "ceb8df4c73b077a490f851c1347ab9e41e9fb6dce773b0a212eb7e6b69610cac",
+      "runtimePath": "/app/dist/web/brand/brightpath-mark.svg",
+      "responseMime": "image/svg+xml; charset=utf-8",
+      "status": 200,
+      "cacheControl": "no-cache"
+    }
+  ],
+  "nestedRoutesAndReload": [
+    {
+      "path": "/login",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "shellSha256": "2269c4e335b53298ab2d336922247906b785cec326125b2e0159ed2be9b6f740"
+    },
+    {
+      "path": "/grievances/GR-2026-0001",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "shellSha256": "2269c4e335b53298ab2d336922247906b785cec326125b2e0159ed2be9b6f740"
+    },
+    {
+      "path": "/grievances/GR-2026-0001",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "shellSha256": "2269c4e335b53298ab2d336922247906b785cec326125b2e0159ed2be9b6f740"
+    }
+  ],
+  "image": {
+    "tag": "bphs-connect-brand-review:9ff3e69",
+    "id": "sha256:cb270235e37436b4e71c988afd3d77bc76e882872832bea77fb48ebde365a2d2",
+    "repoDigests": [
+      "bphs-connect-brand-review@sha256:cb270235e37436b4e71c988afd3d77bc76e882872832bea77fb48ebde365a2d2"
+    ],
+    "architecture": "amd64",
+    "os": "linux"
+  },
+  "container": {
+    "name": "bphs-brand-review-9ff3e69",
+    "id": "37bbc9bcf94473ffa5e12b5c1ca20c87449fda32124b104d9e9f5b076eb65988",
+    "health": "healthy",
+    "ownershipLabel": {
+      "codex.brand-review": "9ff3e69"
+    },
+    "cleanup": "Stopped the owned disposable container; --rm removed it and its anonymous data volume. Kept the built image for reuse."
+  },
+  "checkedAt": "2026-10-14T18:47:17.976699+00:00"
+}

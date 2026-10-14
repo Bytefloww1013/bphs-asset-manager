@@ -1,0 +1,31 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000,
+    "dpr": 1
+  },
+  "browserMode": "headed Chromium on WSLg; desktop context without media overrides or injected styles",
+  "before": {
+    "background": "rgb(8, 56, 79)",
+    "color": "rgb(255, 255, 255)"
+  },
+  "hover": {
+    "hoverCapable": true,
+    "pointerFine": true,
+    "hovered": true,
+    "background": "rgb(6, 43, 62)",
+    "color": "rgb(255, 255, 255)",
+    "inlineBackground": ""
+  },
+  "cache": {
+    "fixture": "Original placeholder at unversioned URL cached for one year; all current app requests proxy the unchanged production build on port 3140",
+    "oldUnversionedNetworkRequests": 1,
+    "oldUnversionedRemainsCached": true,
+    "newVersionedUrl": "/favicon.svg?v=20261014",
+    "newVersionedBytesMatch": true,
+    "reloadPassed": true,
+    "oldSha256": "43bc7014e08160120d13e4788e7f0f4a527eeec26c566575b4c484d0ccb7b0b1",
+    "newSha256": "da2e3974fedc14f40fc7d53eab0c103cb677177ff8f83f93be8838152cd915e2"
+  },
+  "errors": []
+}

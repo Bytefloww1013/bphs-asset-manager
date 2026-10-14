@@ -2,7 +2,7 @@
 
 Final result: passed
 
-This is the local visual/interaction result. Docker runtime and production deployment are pending environment access; they have not been marked verified in BRAND-UPDATE.md.
+This is the local visual/interaction result. The Docker runtime, actual desktop hover, and stale-icon cache checks now pass. Production deployment/DNS/TLS verification remains pending in BRAND-UPDATE.md.
 
 **Source visual truth:** supplied `brand-assets/hero-banner.png`, `logo-header-wide.png`, and `favicon-1024.png`; existing rendered app baseline in `docs/brand-review/phase0.png`; the approved placement/palette requirements in BRAND-UPDATE.md. The user explicitly authorized SVG reconstruction and the login hero. Comparisons assess preservation of the working interface plus these intentional changes, rather than treating the old placeholder artwork as the target.
 
@@ -37,8 +37,12 @@ Sign-in succeeds, forced/voluntary password screens render, navigation works acr
 - [x] Normalize source/rendered imagery and fix the hero sharpness finding.
 - [x] Verify rendered palette, responsive behavior, accessible identity, and session focus.
 - [x] Verify production asset MIME types, bytes, and signed-out nested-route reload.
-- [ ] Run an actual Docker runtime-image check when Docker is available.
-- [ ] Verify native desktop hover on physical hardware: the headless profile reports hover:none, so its hover fill was explicitly rendered from the implemented token for color/contrast review.
+- [x] Build the unchanged Dockerfile and verify a healthy runtime image, signed-out media bytes/MIME types, and nested-route/reload shell delivery (docker-runtime.json).
+- [x] Verify native hover with a headed desktop pointer, without injected styles/media overrides, and refresh a versioned favicon while the old unversioned icon remains cached (desktop-runtime.json and desktop-hover.png).
 - [ ] Deploy and verify the production domain and www behavior once the SSH target/release scope is supplied.
 
 Final project checks pass: client/server typecheck, production build, and 176 tests across 10 files (full test suite rerun outside the sandbox after two CLI-output failures in the restricted run). Final media-report.json verifies eight image files, versioned icons, PNG sizes, and no CSP events/errors on signed-out nested-route reload. No actionable P0/P1/P2 visual finding remains in the local build. Environment/manual checks above remain explicit release gaps.
+
+**Runtime follow-up:** built revision 9ff3e69 using the unchanged Dockerfile and Bun 1.3.14. The actual non-root Node v24.21.0 Linux container was healthy and served eight byte-identical images plus the correct nested-route SPA shell. The headed Chromium/WSLg screenshot was opened and judged at 1440×1000/DPR 1; the real CSS hover produces #062B3E and the old placeholder cache does not replace the new versioned icon. Disposable review container/volume removed; image retained. No app source changed.
+
+**Remaining release evidence:** both names currently resolve to 204.11.56.246 in this environment, differing from the guide's VPS at 50.6.205.113. Initial HTTPS probes rejected a testexp hostname mismatch; later probes timed out. See release-probe.json. Confirm the intended SSH target and DNS/TLS setup before live release; no production identity or www behavior is claimed verified.
