@@ -11,7 +11,7 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'bg-accent text-on-accent shadow-[inset_0_1px_0_oklch(1_0_0/0.14),0_1px_2px_oklch(0.3_0.1_262/0.25)] hover:bg-accent-hover disabled:bg-line disabled:text-ink-3 disabled:shadow-none aria-disabled:bg-line aria-disabled:text-ink-3 aria-disabled:shadow-none',
+    'bg-accent text-on-accent shadow-primary hover:bg-accent-hover disabled:bg-line disabled:text-ink-3 disabled:shadow-none aria-disabled:bg-line aria-disabled:text-ink-3 aria-disabled:shadow-none',
   secondary:
     'border border-line-strong bg-surface text-ink shadow-panel hover:bg-sunken disabled:text-ink-3 disabled:hover:bg-surface aria-disabled:text-ink-3 aria-disabled:hover:bg-surface',
   ghost: 'text-ink-2 hover:bg-sunken hover:text-ink disabled:text-ink-3 aria-disabled:text-ink-3 aria-disabled:hover:bg-transparent',

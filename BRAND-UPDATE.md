@@ -243,10 +243,10 @@ Acceptance: all existing branding slots show the approved artwork without distor
 
 ### Phase 3 — Apply the restrained brand palette
 
-- [ ] **3.1 Accent tokens:** Update accent/action, hover, soft tint, border tint, and foreground tokens in `styles.css` using the proposed measured navy family, reconciled with any later official specification. Keep neutral and status families stable; add separate orange/warm decoration tokens only for a selected small use.
-- [ ] **3.2 Dependent styling:** Fix the primary-button shadow, review the shared danger-button foreground, and verify the workspace token follows the chosen accent.
-- [ ] **3.3 Component review:** Check buttons, links, inputs, selected controls, badges, user initials, navigation, dialogs, and focus states. Measure contrast on actual background pairs and document the results.
-- [ ] **3.4 Responsive comparison:** Capture the same representative screens before and after at desktop, tablet, and phone widths. Confirm the difference is limited to application identity, artwork, and restrained accent color.
+- [x] **3.1 Accent tokens:** Update accent/action, hover, soft tint, border tint, and foreground tokens in `styles.css` using the proposed measured navy family, reconciled with any later official specification. Keep neutral and status families stable; add separate orange/warm decoration tokens only for a selected small use.
+- [x] **3.2 Dependent styling:** Fix the primary-button shadow, review the shared danger-button foreground, and verify the workspace token follows the chosen accent.
+- [x] **3.3 Component review:** Check buttons, links, inputs, selected controls, badges, user initials, navigation, dialogs, and focus states. Measure contrast on actual background pairs and document the results.
+- [x] **3.4 Responsive comparison:** Capture the same representative screens before and after at desktop, tablet, and phone widths. Confirm the difference is limited to application identity, artwork, and restrained accent color.
 
 Acceptance: the brand hue is recognizable in the logo and existing interaction accents; reading surfaces and workflows retain the current visual structure. Contrast and keyboard focus pass the recorded checks.
 
@@ -337,3 +337,18 @@ Validation/visual judgment: build/typecheck pass. Fifteen rendered states have n
 Slice 2.5 is **partially verified**: production `dist/web` delivery and MIME/byte checks passed; the Dockerfile copies that exact directory to its runtime stage, but Docker execution remains unavailable in WSL. The box remains open for an actual runtime-image check. No live deployment has occurred.
 
 Rollback for Phase 2: revert the implementation commit to restore the previous tag mark and favicon links. The separate original-source commit can remain for reference, or be reverted independently. Rebuild to remove published derivatives from deployment.
+
+### Phase 3 — restrained navy accent
+
+Original-source commit: `86f40f7`. Phase 2 implementation commit: `9373d94`.
+
+Changes:
+- `web/src/styles.css`: action `#08384F`, hover `#062B3E`, soft fill `#EAF2F5`, accent border/selection `#B8CED9`, foreground `#FFFFFF`; updated the contrast/workspace comments and added `--shadow-primary` with a navy shadow. Every neutral, ink, workspace alias, status, typography, spacing, radius, and motion value is unchanged (verified against Phase 2).
+- `web/src/components/ui/button.tsx`: replaced the hardcoded cobalt shadow with `shadow-primary`. The danger button retains its red fill and now inherits pure white text.
+- Added `docs/brand-review/phase3.png`, `contrast.json`, and `login-errors.png` as comparison, measured-pair, and error-state evidence.
+
+Validation/visual judgment: built and opened the same 15 responsive states; compared Phase 2/3 in one board. Reviewed live quick-add fields, status badges, selected filter, links, initials, workspace navigation, password form, validation errors, and an unsubmitted danger sheet. Composition, fonts, dimensions, density, neutral surfaces, and green/amber/red meanings are preserved. Navy now ties actions and navigation to the lighthouse. Focused input borders remain clearly navy; keyboard focus remains visible.
+
+Rendered solid-color measurements: white/action 12.43:1; white/hover 14.76:1; navy/white workspace and links 12.43:1; navy/soft initials 10.96:1; focused navy border/white 12.43:1; input ink/white 17.77:1; white/red danger 7.47:1. The light accent border is a tint, not a standalone focus indicator; the solid navy boundary carries focus. The browser profile reports `hover: none` even with mouse events, so the hover **color** was rendered by applying the implemented hover token for measurement; native hover media-query behavior on physical desktop hardware is a remaining manual check. Disabled/error states retain textual meaning. No page errors, broken images, overflow, or external image/font requests.
+
+Rollback for Phase 3: revert its commit to restore the cobalt action family, near-white foreground, and prior primary-button shadow. No media or data is affected.

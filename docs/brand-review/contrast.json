@@ -1,0 +1,369 @@
+{
+  "pairs": [
+    {
+      "name": "primary default",
+      "fg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "bg": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "border": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outline": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 12.43,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    },
+    {
+      "name": "primary hover fill",
+      "fg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "bg": [
+        6,
+        43,
+        62,
+        255
+      ],
+      "border": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outline": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 14.76,
+      "borderContrast": 14.76,
+      "outlineContrast": 14.76
+    },
+    {
+      "name": "focused input",
+      "fg": [
+        19,
+        24,
+        34,
+        255
+      ],
+      "bg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "border": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outline": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 17.77,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    },
+    {
+      "name": "workspace selection",
+      "fg": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "bg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "border": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outline": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 12.43,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    },
+    {
+      "name": "overview link",
+      "fg": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "bg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "border": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outline": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 12.43,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    },
+    {
+      "name": "asset tag focus",
+      "fg": [
+        19,
+        24,
+        34,
+        255
+      ],
+      "bg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "border": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outline": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Mono Variable\", ui-monospace, \"SF Mono\", \"Cascadia Mono\", Menlo, monospace",
+      "textContrast": 17.77,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    },
+    {
+      "name": "initials on soft tint",
+      "fg": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "bg": [
+        234,
+        242,
+        245,
+        255
+      ],
+      "border": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outline": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 10.96,
+      "borderContrast": 10.96,
+      "outlineContrast": 10.96
+    },
+    {
+      "name": "selected filter",
+      "fg": [
+        19,
+        24,
+        34,
+        255
+      ],
+      "bg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "border": [
+        19,
+        24,
+        34,
+        255
+      ],
+      "outline": [
+        19,
+        24,
+        34,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 17.77,
+      "borderContrast": 17.77,
+      "outlineContrast": 17.77
+    },
+    {
+      "name": "danger button",
+      "fg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "bg": [
+        165,
+        30,
+        36,
+        255
+      ],
+      "border": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outline": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 7.47,
+      "borderContrast": 7.47,
+      "outlineContrast": 7.47
+    },
+    {
+      "name": "password action",
+      "fg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "bg": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "border": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outline": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 12.43,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    }
+  ],
+  "focus": [
+    {
+      "name": "focused input",
+      "fg": [
+        19,
+        24,
+        34,
+        255
+      ],
+      "bg": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "border": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outline": [
+        8,
+        56,
+        79,
+        255
+      ],
+      "outlineWidth": "0px",
+      "font": "\"Geist Variable\", ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "textContrast": 17.77,
+      "borderContrast": 12.43,
+      "outlineContrast": 12.43
+    },
+    {
+      "keyboardTarget": "<a class=\"inline-flex select-none items-center justify-center whitespace-nowrap rounded-control font-medium transition-[background-color,border-color,color,box-shadow] duration-150 outline-offset-2 disabled:cursor-not-al"
+    }
+  ],
+  "errors": [],
+  "hover": {
+    "hovered": true,
+    "media": false,
+    "background": "rgb(8, 56, 79)",
+    "hoverToken": "#062b3e",
+    "forcedTokenForColorReview": true
+  }
+}

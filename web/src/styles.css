@@ -6,7 +6,7 @@
  * BPHS-Connect: design tokens.
  * One cool neutral family (hue 262), one accent used only for primary action, selection and focus,
  * and semantic status colours that always travel with an icon or a word.
- * Every text/background pairing below was measured: body text >= 5.5:1, accent text 6.2:1.
+ * Body text remains >= 5.5:1. Navy on white is 12.43:1; selected navy on its soft tint is 10.96:1.
  */
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -27,14 +27,13 @@
   --color-ink-4: oklch(0.62 0.014 262); /* decoration and disabled glyphs only, never text */
 
   /* Accent */
-  --color-accent: oklch(0.5 0.19 262);
-  --color-accent-hover: oklch(0.44 0.19 262);
-  --color-accent-soft: oklch(0.96 0.025 262);
-  --color-accent-line: oklch(0.88 0.06 262);
-  --color-on-accent: oklch(0.99 0 0);
+  --color-accent: #08384f;
+  --color-accent-hover: #062b3e;
+  --color-accent-soft: #eaf2f5;
+  --color-accent-line: #b8ced9;
+  --color-on-accent: #ffffff;
 
-  /* Workspace: marks which side of the app you are on (the switcher and the active nav item). Cobalt on both sides for now;
-     a workspace can be given its own by setting this under [data-workspace='grievances']. */
+  /* Both workspaces share the navy action accent. Their switcher text and Confidential label identify the workspace. */
   --color-workspace: var(--color-accent);
 
   /* Status */
@@ -64,6 +63,7 @@
   --radius-panel: 0.75rem;
 
   --shadow-panel: 0 1px 2px oklch(0.2 0.02 262 / 0.05), 0 0 0 1px oklch(0.2 0.02 262 / 0.015);
+  --shadow-primary: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(8 56 79 / 0.25);
   --shadow-pop: 0 10px 28px -6px oklch(0.2 0.03 262 / 0.16), 0 2px 6px oklch(0.2 0.03 262 / 0.08);
   --shadow-sheet: -16px 0 48px -12px oklch(0.2 0.03 262 / 0.22);
 
