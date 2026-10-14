@@ -4,6 +4,8 @@ Audit date: 2026-10-14. Baseline: `main` at `4a6bf8a`, including the existing lo
 
 ## Objective and status
 
+**Current status:** Phases 0–4 and the local Phase 5 checks are complete and committed. Docker runtime delivery (2.5) and production release (5.5) remain pending: Docker Desktop is unavailable in this WSL distro and the deployment SSH username/target has not been supplied. No push or live deployment is claimed. Optional print, sharing/manifest, and infrastructure-name work is deferred.
+
 Use **BPHS-Connect** as the application name, matching **https://bphs-connect.com**. Incorporate the supplied logos, favicons, and related media, then introduce their colors through the existing design tokens while retaining the current layouts, typography, spacing, and component behavior.
 
 **Implementation started 2026-10-14 at `1d2c534`**, the plan-only commit. The original audit baseline was `4a6bf8a`. The 19 prepared name-change diffs have been reviewed and will be included in their relevant phases. The phase ledger below records every delivered change, validation, visual evidence, and rollback method. Earlier audit findings describe the starting state.
@@ -22,7 +24,7 @@ Search variants included `BPHS Asset Manager`, `BPHS Asset Management`, `BPHS As
 
 The initial audit was source-based, with artwork inspection and computed sRGB contrast measurements. Implementation now includes the rendered phase reviews recorded below; production-domain verification remains a release task. The existing ignored `dist/web/index.html` already says `BPHS-Connect`; generated bundles are not an independent source of branding and must be rebuilt for the eventual release. Dependencies, tool telemetry, index caches, and runtime data are not implementation targets.
 
-**Search result:** the visible old application names have already been replaced in the current authored working tree. The committed `main` revision still contains the old names. Remaining old-name matches are the deliberate deployment/repository identifiers below. This report's commit publishes the plan only; it does not publish the prepared rename or media.
+**Initial audit search result:** visible old application names had been replaced in the prepared working tree while committed `main` still contained them. The phase commits now include the rename and media. Remaining old-name matches are deliberate deployment/repository identifiers and historical audit wording.
 
 ## Application-name inventory
 
@@ -265,10 +267,10 @@ Acceptance: documentation describes the delivered brand and approved assets. Opt
 
 ### Phase 5 — Validate and release
 
-- [ ] **5.1 Source checks:** Run the final legacy-name scan, review split JSX/dynamic titles, and check the diff for unrelated changes. Historical audit wording in this document and deliberately retained operational identifiers are expected exceptions.
-- [ ] **5.2 Project checks:** Run `bun run typecheck`, `bun run build`, and `bun run test` after implementation. Avoid adding tests that merely duplicate static copy; add targeted regression coverage only where shared identity/title behavior changes justify it.
-- [ ] **5.3 Browser checks:** Verify sign-in, password setup/change, navigation at each breakpoint, both workspace title patterns, a session-expiry prompt, and standalone errors. Check keyboard navigation and the shared logo's accessible name.
-- [ ] **5.4 Media and cache checks:** Verify favicon refresh, touch icons, image dimensions, correct MIME types, same-origin loading, and no broken requests/CSP violations. Inspect the production build rather than relying only on development serving.
+- [x] **5.1 Source checks:** Run the final legacy-name scan, review split JSX/dynamic titles, and check the diff for unrelated changes. Historical audit wording in this document and deliberately retained operational identifiers are expected exceptions.
+- [x] **5.2 Project checks:** Run `bun run typecheck`, `bun run build`, and `bun run test` after implementation. Avoid adding tests that merely duplicate static copy; add targeted regression coverage only where shared identity/title behavior changes justify it.
+- [x] **5.3 Browser checks:** Verify sign-in, password setup/change, navigation at each breakpoint, both workspace title patterns, a session-expiry prompt, and standalone errors. Check keyboard navigation and the shared logo's accessible name.
+- [x] **5.4 Media and cache checks:** Verify favicon refresh, touch icons, image dimensions, correct MIME types, same-origin loading, and no broken requests/CSP violations. Inspect the production build rather than relying only on development serving.
 - [ ] **5.5 Release record:** Commit only the approved implementation slices, deploy through the existing process, and verify the released identity at `https://bphs-connect.com` and the intended `www` behavior. Record the release revision and retain the prior code/image for rollback.
 
 Acceptance: all required slices are checked, optional slices are recorded as selected or deferred, and the deployed app consistently presents BPHS-Connect with the approved media and accessible accent palette.
@@ -377,3 +379,38 @@ Changes:
 Validation/visual judgment: build/typecheck pass; 15 representative responsive states plus focused artwork, error, and session checks pass. Compared source hero/signature and rendered elements in one normalized input; the higher-quality hero resolves the earlier softness finding. Desktop layout is balanced and the fields stay prominent; tablet/phone match the prior centered form. Session dialog identity stays secondary to its task and fits the phone viewport. Verified Password autofocus, tab containment, Escape behavior, successful reauthentication to the same record, missing-page return, and actual error retry after restoring a synthetic failed endpoint. Source CSS, DESIGN frontmatter, design metadata, tonal ramps, and embedded preview colors agree. Local visual QA passes; release environment gaps remain open.
 
 Rollback for Phase 4: revert its commit to remove the hero and secondary identities and restore prior documentation. To undo only the recovery fix, restore the prior error component in `__root.tsx` (the reset-only handler) while keeping `StandaloneState`. No record, print, backup, or infrastructure behavior is otherwise changed.
+
+### Phase 5 — local validation and release candidate
+
+Phase 4 / implemented release-candidate revision: `48e07bb`. The Phase 5 commit records validation only; it changes no application behavior.
+
+Changes:
+- `BRAND-UPDATE.md`: checked completed local validation slices, clarified current/historical status, retained open Docker/deployment checks, and recorded this final phase and commit map.
+- `design-qa.md`: final local sign-off includes project-check results and the same release gaps.
+- `docs/brand-review/phase5.png`: fresh production-build comparison against Phase 4; no new visual differences beyond synthetic last-login/timestamp data.
+- `docs/brand-review/media-report.json`: final eight-file MIME, byte count, SHA-256, signed-out nested-route reload, versioned icon URLs, PNG dimensions, and empty CSP-event/error evidence.
+
+Validation:
+- `bun run typecheck`: passed for client and server.
+- `bun run build`: passed; all public media present in `dist/web` and fetched from the production Node server.
+- `bun run test`: **176/176 tests passed across 10 files** outside the sandbox. Initial sandbox run had 174 passes and two CLI subprocess-output failures; rerunning the complete suite with the required permission passed without code/test changes. Logs: `/tmp/bphs-brand-review/final-{typecheck,build,test-unsandboxed}.log`.
+- Final legacy-name scan: no old visible application names in authored app/package/design sources. Matches in Compose, backup defaults, repository/checkout references, and compatibility notes are intentional. Historical wording in this audit and the preserved unrelated security report are excluded.
+- Fifteen final responsive states plus drawer, password setup/change, record title, session expiry, and standalone error checks pass. Final screenshots were opened and compared; no unintended layout/type/status changes, broken images, external artwork/font requests, or horizontal overflow. Native physical-device hover and browser-chrome favicon display remain manual checks; actual hover token contrast, icon URLs, image bytes, and icon dimensions are verified.
+- Final media delivery: eight byte-identical image responses, correct image MIME types and `no-cache`; signed-out nested reload works; all five icon links include the refresh version; no CSP console errors or security-policy violation events on the checked page.
+- Tracked working tree is clean after this commit; only the original unrelated `.rtk/` and `SECURITYREVIEW.md` remain untracked.
+
+**Release still pending:** 2.5 requires an actual Docker runtime-image check. 5.5 requires the user's SSH target/release-scope response, a successful pre-deploy backup, the deployed prior revision/image, release deployment through DEPLOY-GUIDE.md, and live checks of `https://bphs-connect.com` and `www`. These are not checked off. Local committed code is ready for that environment; no database, volume, backup caller, infrastructure identifier, push, or production configuration was changed.
+
+Rollback for Phase 5: revert this validation-only commit to remove its evidence/status updates. For the delivered app, revert Phase 4→3→2→1 in reverse order and rebuild; the original artwork commit can remain or be reverted separately. Keep the prior production image/commit before deployment, as release checks still require.
+
+### Commit map
+
+| Slice | Commit | Revert effect |
+| --- | --- | --- |
+| Phase 0 | `13ac05f` | Removes baseline documentation/evidence only. |
+| Phase 1 | `dc25662` | Restores previous application/package identity and title behavior. |
+| Original artwork | `86f40f7` | Removes the five source PNGs only; published derivatives are separate. |
+| Phase 2 | `9373d94` | Restores placeholder logos/browser icons and authentication lockup. |
+| Phase 3 | `1707942` | Restores cobalt accent/foreground/button shadow. |
+| Phase 4 | `48e07bb` | Removes hero/secondary identity/retry fix and restores prior documentation. |
+| Phase 5 | Commit titled `brand: phase 5 record final validation and release gaps` | Removes final evidence/status only; find its ID with `git log -1 --oneline` immediately after this phase. |

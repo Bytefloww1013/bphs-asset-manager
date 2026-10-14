@@ -6,7 +6,7 @@ This is the local visual/interaction result. Docker runtime and production deplo
 
 **Source visual truth:** supplied `brand-assets/hero-banner.png`, `logo-header-wide.png`, and `favicon-1024.png`; existing rendered app baseline in `docs/brand-review/phase0.png`; the approved placement/palette requirements in BRAND-UPDATE.md. The user explicitly authorized SVG reconstruction and the login hero. Comparisons assess preservation of the working interface plus these intentional changes, rather than treating the old placeholder artwork as the target.
 
-**Rendered implementation:** production Vite output served by the existing Node server on local port 3140 with isolated seeded data. Full-view comparisons: `docs/brand-review/phase1.png` through `phase4.png`. Final readable views: `docs/brand-review/login-desktop.png`, `login-phone.png`, and `standalone-error-phone.png`. Individual route/state captures and browser scripts remain in `/tmp/bphs-brand-review/`.
+**Rendered implementation:** production Vite output served by the existing Node server on local port 3140 with isolated seeded data. Full-view comparisons: `docs/brand-review/phase1.png` through `phase5.png`. Final readable views: `docs/brand-review/login-desktop.png`, `login-phone.png`, and `standalone-error-phone.png`. Individual route/state captures and browser scripts remain in `/tmp/bphs-brand-review/`.
 
 **Viewport/density:** desktop 1440×1000, tablet 834×1112, phone 390×844, narrow phone 320×740; DPR 1, light theme, self-hosted Geist loaded before capture. Full-page screenshots can extend below the CSS viewport for long records; comparisons pair the same route, content, viewport, and auth state. Seed data, last-login events, and relative timestamps differ slightly across runs; these are not design findings.
 
@@ -41,4 +41,4 @@ Sign-in succeeds, forced/voluntary password screens render, navigation works acr
 - [ ] Verify native desktop hover on physical hardware: the headless profile reports hover:none, so its hover fill was explicitly rendered from the implemented token for color/contrast review.
 - [ ] Deploy and verify the production domain and www behavior once the SSH target/release scope is supplied.
 
-No actionable P0/P1/P2 visual finding remains in the local build. Environment/manual checks above remain explicit release gaps.
+Final project checks pass: client/server typecheck, production build, and 176 tests across 10 files (full test suite rerun outside the sandbox after two CLI-output failures in the restricted run). Final media-report.json verifies eight image files, versioned icons, PNG sizes, and no CSP events/errors on signed-out nested-route reload. No actionable P0/P1/P2 visual finding remains in the local build. Environment/manual checks above remain explicit release gaps.

@@ -1,0 +1,75 @@
+{
+  "files": [
+    {
+      "name": "favicon.svg",
+      "mime": "image/svg+xml; charset=utf-8",
+      "bytes": 518,
+      "sha256": "da2e3974fedc14f40fc7d53eab0c103cb677177ff8f83f93be8838152cd915e2"
+    },
+    {
+      "name": "favicon.ico",
+      "mime": "image/x-icon",
+      "bytes": 3577,
+      "sha256": "ad731139f3ffc97c1039596fec0a02b9cef8d12c7050d4a70248f1051634c94a"
+    },
+    {
+      "name": "favicon-16.png",
+      "mime": "image/png",
+      "bytes": 621,
+      "sha256": "56b98d583177a0392a489fd406d72da43bd7b94dab824627f1c8a01907bc4c6d"
+    },
+    {
+      "name": "favicon-32.png",
+      "mime": "image/png",
+      "bytes": 1092,
+      "sha256": "c95f577f8fea3346e66a7b0dacb6b4da421a25416a18492bedf0be4c5561b83c"
+    },
+    {
+      "name": "apple-touch-icon.png",
+      "mime": "image/png",
+      "bytes": 7369,
+      "sha256": "a18fa1830a2ff3f9f41c389971c7b72ee5062e3ba9736c6774a731f78ef2be03"
+    },
+    {
+      "name": "brand/brightpath-header.svg",
+      "mime": "image/svg+xml; charset=utf-8",
+      "bytes": 9608,
+      "sha256": "1f366b1311ef97b38a97578e43e80bb7114553c6be0a2513d9d95cb8e9cefbe2"
+    },
+    {
+      "name": "brand/brightpath-hero.webp",
+      "mime": "image/webp",
+      "bytes": 57502,
+      "sha256": "886408cf25e969687a4c626a6a400bb9672e6dfaf79ffcbd9218fa89712612b5"
+    },
+    {
+      "name": "brand/brightpath-mark.svg",
+      "mime": "image/svg+xml; charset=utf-8",
+      "bytes": 6160,
+      "sha256": "ceb8df4c73b077a490f851c1347ab9e41e9fb6dce773b0a212eb7e6b69610cac"
+    }
+  ],
+  "signedOutNestedReload": [
+    {
+      "src": "/brand/brightpath-hero.webp",
+      "alt": "",
+      "width": 1916,
+      "height": 821
+    },
+    {
+      "src": "/brand/brightpath-header.svg",
+      "alt": "Brightpath Human Services",
+      "width": 1002,
+      "height": 295
+    }
+  ],
+  "icons": [
+    "/favicon.ico?v=20261014",
+    "/favicon-16.png?v=20261014",
+    "/favicon-32.png?v=20261014",
+    "/favicon.svg?v=20261014",
+    "/apple-touch-icon.png?v=20261014"
+  ],
+  "cspErrors": [],
+  "violations": []
+}
