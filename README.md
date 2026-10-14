@@ -1,4 +1,8 @@
-# BPHS Asset Management
+# BPHS-Connect
+
+<img src="web/public/brand/brightpath-header.svg" alt="Brightpath Human Services" width="280" height="83" />
+
+Application: [BPHS-Connect](https://bphs-connect.com).
 
 An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
 
@@ -142,7 +146,7 @@ The design was reworked for legibility and comfort, not just restyled:
 
 ## Known gaps and next steps
 
-- No logo or brand colour was supplied; the mark is a placeholder. What "BPHS" expands to is unrecorded.
+- Supplied Brightpath artwork, clean SVG logos, browser icons, the desktop login hero, and the measured navy palette are recorded in [BRAND-UPDATE.md](BRAND-UPDATE.md), including per-phase rollback. Official vector originals and an exact corporate color specification remain welcome.
 - Bulk return applies one condition to every selected asset.
 - No dark theme yet (the tokens are semantic, so it is additive).
 - Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).

@@ -1,4 +1,6 @@
-# BPHS Asset Management: Runbook
+# BPHS-Connect: Runbook
+
+**Brand compatibility:** the application is BPHS-Connect (https://bphs-connect.com), with Brightpath Human Services artwork. The repository/checkout `bphs-asset-manager`, image `bphs-asset-manager:latest`, container `bphs-assets`, service `assets`, and existing data-volume bindings are retained working identifiers. Branding does not rename them. Keep deployed Compose overrides and backup callers aligned; use BRAND-UPDATE.md for code/artwork rollback. No infrastructure-name migration is included.
 
 How to run, back up, restore, upgrade and rescue the production deployment. For building and changing the code, see the [README](README.md).
 

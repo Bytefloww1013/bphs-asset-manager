@@ -29,7 +29,7 @@ Programs comes before Import/Export because the import page needs that record ty
 
 ## 3. Phase 1: rename to Physical Assets
 
-Label-only. URLs (`/assets`, `/assets/BPHS-0141`), API paths, table names and audit `entity_type` values do not change, so bookmarks, the audit history and the backup script are unaffected. The product name stays "BPHS Asset Management".
+Label-only. URLs (`/assets`, `/assets/BPHS-0141`), API paths, table names and audit `entity_type` values do not change, so bookmarks, the audit history and the backup script are unaffected. The product name is "BPHS-Connect".
 
 - `web/src/components/shell/app-shell.tsx`: nav label "Physical Assets". Records becomes: Physical Assets, Digital Assets, Employees, Programs.
 - `web/src/routes/_app/assets.index.tsx`: page title, grid label, empty states, search label, export filename `physical-assets.csv`.

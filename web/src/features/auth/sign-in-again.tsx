@@ -5,6 +5,7 @@ import type { SessionUser } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Input, PasswordInput } from '@/components/ui/form.tsx'
+import { Wordmark } from '@/components/ui/logo.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { formatTime } from '@/lib/format.ts'
 import { meQuery, refreshData } from '@/lib/queries.ts'
@@ -106,6 +107,7 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
           }}
           className="fixed left-1/2 top-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 animate-pop-in rounded-panel border border-line bg-surface p-6 shadow-pop outline-none"
         >
+          <Wordmark className="mb-4" />
           <Dialog.Title className="text-lg font-semibold tracking-[-0.01em] text-ink">Your session has ended</Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-5 text-ink-2">
             Sign in again to carry on. This page stays as you left it, including anything you had typed.

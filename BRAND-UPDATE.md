@@ -8,7 +8,7 @@ Use **BPHS-Connect** as the application name, matching **https://bphs-connect.co
 
 **Implementation started 2026-10-14 at `1d2c534`**, the plan-only commit. The original audit baseline was `4a6bf8a`. The 19 prepared name-change diffs have been reviewed and will be included in their relevant phases. The phase ledger below records every delivered change, validation, visual evidence, and rollback method. Earlier audit findings describe the starting state.
 
-`/brand-assets` means the directory at this repository's root. **Five supplied PNGs are present and were inspected.** They show Brightpath / Brightpath Human Services corporate identity with a lighthouse, navy, orange, and cream. They do not contain the application name `BPHS-Connect`; keep that name as readable text beside the compact corporate mark. The files are currently untracked and are not included in this document-only commit.
+`/brand-assets` means the directory at this repository's root. **Five supplied PNGs are present and were inspected.** They show Brightpath / Brightpath Human Services corporate identity with a lighthouse, navy, orange, and cream. They do not contain the application name `BPHS-Connect`; keep that name as readable text beside the compact corporate mark. The original PNGs are now preserved in commit `86f40f7`; they were untracked during the original audit.
 
 ## Audit coverage
 
@@ -20,7 +20,7 @@ Use **BPHS-Connect** as the application name, matching **https://bphs-connect.co
 
 Search variants included `BPHS Asset Manager`, `BPHS Asset Management`, `BPHS Assets`, `bphs-asset-manager`, `bphs-assets`, `BPHS Connect`, `BPHS-Connect`, and related app-identity wording. Business terminology and record content are outside this rename inventory. Dependencies, generated builds/caches, the Git database, runtime databases, and private environment/credential files are outside the source audit; generated output should be rebuilt from the updated source.
 
-This is a source-based implementation plan with artwork inspection and computed sRGB contrast measurements. No rendered-screen audit or production-domain verification was performed. The existing ignored `dist/web/index.html` already says `BPHS-Connect`; generated bundles are not an independent source of branding and must be rebuilt for the eventual release. Dependencies, tool telemetry, index caches, and runtime data are not implementation targets.
+The initial audit was source-based, with artwork inspection and computed sRGB contrast measurements. Implementation now includes the rendered phase reviews recorded below; production-domain verification remains a release task. The existing ignored `dist/web/index.html` already says `BPHS-Connect`; generated bundles are not an independent source of branding and must be rebuilt for the eventual release. Dependencies, tool telemetry, index caches, and runtime data are not implementation targets.
 
 **Search result:** the visible old application names have already been replaced in the current authored working tree. The committed `main` revision still contains the old names. Remaining old-name matches are the deliberate deployment/repository identifiers below. This report's commit publishes the plan only; it does not publish the prepared rename or media.
 
@@ -108,21 +108,21 @@ The current Vite root is `web` ([vite.config.ts](vite.config.ts)); its public di
 
 For frequently rendered component media, `web/src/media/brand/` plus imports is an alternative that uses the configured `/static/` hashed output and immutable cache policy. Choose one delivery convention for component media; fixed browser-icon paths still belong in `web/public/`. Never reference the source directory directly as `/brand-assets/...` in the app.
 
-Suggested export names are placeholders, not claims that these files exist:
+Export inventory (implemented paths are identified below; optional PNG/sharing/home-screen derivatives remain deferred):
 
 | Proposed published file | Purpose |
 | --- | --- |
-| `web/public/brand/brightpath-header.png` | Optimized horizontal corporate signature from `logo-header-wide.png` |
-| `web/public/brand/brightpath-mark.png` | Compact cleaned lighthouse from `favicon-1024.png`, beside live `BPHS-Connect` text |
-| `web/public/brand/brightpath-hero.webp` | Optional optimized landscape derived from `hero-banner.png` |
+| `web/public/brand/brightpath-header.svg` | Implemented: clean 1002×295 contour reconstruction from `logo-header-wide.png` (9,608 bytes) |
+| `web/public/brand/brightpath-mark.svg` | Implemented: clean 328×471 contour reconstruction from the 1254px source, beside live `BPHS-Connect` text (6,160 bytes) |
+| `web/public/brand/brightpath-hero.webp` | Implemented: 1916×821 optimized original landscape from `hero-banner.png`; desktop sign-in uses a left crop (final bytes in Phase 4 ledger) |
 | `web/public/brand/brightpath-mark-mono.png` | Optional approved monochrome derivative for print |
-| `web/public/favicon-16.png`, `favicon-32.png` | Explicit size-specific browser icons from the cleaned compact mark |
-| `web/public/favicon.ico` | Multi-size fallback from the approved compact artwork |
-| `web/public/apple-touch-icon.png` | 180×180 touch icon |
+| `web/public/favicon-16.png`, `favicon-32.png` | Implemented: 16/32px exports from the simplified browser SVG |
+| `web/public/favicon.ico` | Implemented: 16/32/48px PNG entries from the simplified browser SVG |
+| `web/public/apple-touch-icon.png` | Implemented: 180×180 touch icon from the simplified browser SVG |
 | `web/public/icon-192.png`, `icon-512.png` | Optional home-screen icon set |
 | `web/public/brand/bphs-connect-social.png` | Optional 1200×630 generic sharing image |
 
-Use the cleaned SVG mark/signature reconstructed from the supplied outlines, as authorized by the implementation request. Keep the textured hero as optimized WebP. The original PNGs remain the source references; reconstructed vectors are derivatives, not official vector originals. Replace the existing `web/public/favicon.svg` link with the actual new icon links and retire the placeholder in the future media slice. Preserve proportions with explicit dimensions and `object-fit: contain`; do not stretch or crop lettering. The corporate artwork does not say `BPHS-Connect`, so retain the live app name even where a corporate signature is shown. Prefer the compact lighthouse + app name for everyday navigation and reserve the long corporate signature for the larger authentication slot.
+Use the cleaned SVG mark/signature reconstructed from the supplied outlines, as authorized by the implementation request. Keep the textured hero as optimized WebP. The original PNGs remain the source references; reconstructed vectors are derivatives, not official vector originals. The placeholder `web/public/favicon.svg` is now replaced with the simplified lighthouse; links include SVG/PNG/ICO/touch icons and a refresh version. Preserve proportions with explicit dimensions and `object-fit: contain`; do not stretch or crop lettering. The corporate artwork does not say `BPHS-Connect`, so retain the live app name even where a corporate signature is shown. Prefer the compact lighthouse + app name for everyday navigation and reserve the long corporate signature for the larger authentication slot.
 
 Proposed export budgets: compact mark under 25 KiB, horizontal signature under 80 KiB, and optional hero under 150 KiB, where quality permits. These are targets for derivatives, not measurements of the originals. Export appropriately sized 1×/2× variants and avoid enlarging smaller artwork. Lazy-load only optional offscreen images; the visible auth wordmark should load immediately.
 
@@ -252,11 +252,13 @@ Acceptance: the brand hue is recognizable in the logo and existing interaction a
 
 ### Phase 4 — Synchronize documentation and optional surfaces
 
-- [ ] **4.1 Product/design records:** Finish the name updates in every documentation row above. Replace missing-artwork assumptions in `PRODUCT.md` and the surface brief. Synchronize `DESIGN.md` frontmatter/prose and `.impeccable/design.json` metadata/preview CSS with the implemented colors.
-- [ ] **4.2 Onboarding and operations:** Add the approved README logo/domain. Explain retained technical names in `RUNBOOK.md` and `DEPLOY-GUIDE.md` so maintainers do not blindly rename working commands.
-- [ ] **4.3 Optional standalone screens:** If selected for this release, add a compact shared identity to session-expiry and standalone error states; verify dialog focus and message prominence.
+Selection: 4.3 standalone/session identity and the 4.5 desktop hero are delivered. 4.4 printed identity, 4.5 sharing/home-screen metadata, and 4.6 infrastructure-name migration are **deferred**, with no changes to those surfaces.
+
+- [x] **4.1 Product/design records:** Finish the name updates in every documentation row above. Replace missing-artwork assumptions in `PRODUCT.md` and the surface brief. Synchronize `DESIGN.md` frontmatter/prose and `.impeccable/design.json` metadata/preview CSS with the implemented colors.
+- [x] **4.2 Onboarding and operations:** Add the approved README logo/domain. Explain retained technical names in `RUNBOOK.md` and `DEPLOY-GUIDE.md` so maintainers do not blindly rename working commands.
+- [x] **4.3 Optional standalone screens:** If selected for this release, add a compact shared identity to session-expiry and standalone error states; verify dialog focus and message prominence.
 - [ ] **4.4 Optional printed identity:** If selected, add the approved monochrome identity to the repeating case-file header. Verify grayscale printing, page breaks, Confidential labeling, export attribution, and print logging.
-- [ ] **4.5 Optional hero/sharing/home-screen metadata:** If selected, add an optimized desktop sign-in illustration from `hero-banner.png`, a generic sharing-image derivative, and/or a manifest/icon set. Retain app text beside corporate imagery and preserve the sign-in form's prominence. Verify published metadata uses `BPHS-Connect` and the intended domain. Reserve `logo-light-bg.png` / `logo-dark-bg.png` for appropriate optional collateral rather than introducing a new site theme.
+- [x] **4.5 Optional hero/sharing/home-screen metadata:** If selected, add an optimized desktop sign-in illustration from `hero-banner.png`, a generic sharing-image derivative, and/or a manifest/icon set. Retain app text beside corporate imagery and preserve the sign-in form's prominence. Verify published metadata uses `BPHS-Connect` and the intended domain. Reserve `logo-light-bg.png` / `logo-dark-bg.png` for appropriate optional collateral rather than introducing a new site theme.
 - [ ] **4.6 Optional technical-name migration, separate release:** Only if desired, coordinate repository slug, checkout paths, image/container names, deployed Compose overrides, backup defaults/callers, and documentation. Verify backups and rollback commands against the final identifiers. Preserve existing data-volume bindings.
 
 Acceptance: documentation describes the delivered brand and approved assets. Optional slices are explicitly selected or deferred; they do not block the core identity release.
@@ -275,10 +277,10 @@ Acceptance: all required slices are checked, optional slices are recorded as sel
 
 | Input | Current status | Resolution |
 | --- | --- | --- |
-| Logo, mark, favicon, and other supplied media | Five PNGs present, inspected, and currently untracked | Inventory complete. Clean/optimize derivatives and commit original media in slices 0.5 and 2.1. |
+| Logo, mark, favicon, and other supplied media | Five PNGs preserved unchanged in `86f40f7`; SVG masters and web derivatives implemented | Originals and clean SVG exports delivered; optimized hero added in Phase 4. |
 | Official exact brand colors / vector originals | Raster samples and measured proposed interface colors recorded; official specification not supplied | Use the documented navy-family proposal, with any later official source taking precedence. Finalize during 0.5 / 3.1. |
-| Existing local rename edits | Prepared in 19 files before this task | Review and commit separately during Phase 1; this document-only commit does not publish them. |
-| Secondary placements and technical-name cleanup | Recommendations, not required for the core update | Select or defer the optional Phase 4 slices during implementation. |
+| Existing local rename edits | Prepared in 19 files before this task | Reviewed: runtime/package edits committed in Phase 1; documentation edits committed in Phase 4. |
+| Secondary placements and technical-name cleanup | Recommendations, not required for the core update | Selected: hero and standalone/session identity. Print, sharing/manifest, and infrastructure-name migration are deferred. |
 
 ## Implementation and rollback ledger
 
@@ -352,3 +354,26 @@ Validation/visual judgment: built and opened the same 15 responsive states; comp
 Rendered solid-color measurements: white/action 12.43:1; white/hover 14.76:1; navy/white workspace and links 12.43:1; navy/soft initials 10.96:1; focused navy border/white 12.43:1; input ink/white 17.77:1; white/red danger 7.47:1. The light accent border is a tint, not a standalone focus indicator; the solid navy boundary carries focus. The browser profile reports `hover: none` even with mouse events, so the hover **color** was rendered by applying the implemented hover token for measurement; native hover media-query behavior on physical desktop hardware is a remaining manual check. Disabled/error states retain textual meaning. No page errors, broken images, overflow, or external image/font requests.
 
 Rollback for Phase 3: revert its commit to restore the cobalt action family, near-white foreground, and prior primary-button shadow. No media or data is affected.
+
+### Phase 4 — documentation, hero, and secondary identity
+
+Phase 3 commit: `1707942`.
+
+Changes:
+- `web/public/brand/brightpath-hero.webp`: optimized original-resolution 1916×821 hero, quality 0.94, 57,502 bytes. Preserves supplied composition and texture; the first 1440px export was improved after a direct visual comparison showed softer rays. `brand-assets/README.md` now records the final export.
+- `web/src/routes/login.tsx`: added the decorative, dimensioned hero to a desktop-only left column; preserved the 416px form in the right column and the centered tablet/phone form. Illustration is 512px high with a left crop and existing panel radius. No new marketing copy or working-screen imagery.
+- `web/src/features/auth/sign-in-again.tsx`: small shared wordmark above the existing session-expiry title, preserving dialog width, password autofocus, focus trap, and resumption behavior.
+- `web/src/routes/__root.tsx`: shared standalone identity/title wrapper for missing-page and error states; contextual icons and recovery messages retained. Also fixed the existing Try again action to reset the error boundary **and invalidate the router**, so a failed loader is retried. This extra behavior change is isolated in `StandaloneError` and can be reverted independently by restoring the prior error component.
+- `DESIGN.md`: finished prepared name edits, synchronized frontmatter and all active cobalt prose to navy/hover/tints, corrected contrast figures, described the shared workspace token, and documented artwork/authentication dimensions and the primary shadow.
+- `.impeccable/design.json`: finished prepared title edit; synchronized canonical accent values, display names, derived tonal ramps, all embedded preview CSS (including focus halo and primary shadow), narrative, shadow metadata, and brand provenance/paths. Neutral/status metadata remains stable. Preview ramps are clearly identified as derived values, not official corporate colors.
+- `PRODUCT.md`: recorded the corporate identity, supplied artwork, navy palette, canonical URL, and local evidence; removed the missing-artwork assumptions.
+- `.impeccable/surfaces/web-src-routes-app-tsx.md`: finished title edit and synchronized artwork assumptions, direction contract, and branding placements.
+- `README.md`: finished name edit, added a restrained 280px signature/domain, and replaced the obsolete placeholder-logo gap with provenance/rollback information.
+- `RUNBOOK.md`, `DEPLOY-GUIDE.md`: finished name edits and added a compatibility explanation preserving repository, checkout, image, container, service, backup callers, and volume bindings.
+- `featureplan.md`: included the prepared app-name statement. `implementation.md`: finished the browser-title example and corrected the current shared workspace accent; retained the historical note rejecting an orange workspace theme.
+- `BRAND-UPDATE.md`: synchronized delivered export inventory/current inputs, recorded optional deferrals, and added this ledger.
+- Added `design-qa.md` and visual/evidence files `docs/brand-review/phase4.png`, `phase4-details.png`, `phase4-details-before.png`, `login-desktop.png`, `login-phone.png`, `standalone-error-phone.png`, and `extra-checks.json`.
+
+Validation/visual judgment: build/typecheck pass; 15 representative responsive states plus focused artwork, error, and session checks pass. Compared source hero/signature and rendered elements in one normalized input; the higher-quality hero resolves the earlier softness finding. Desktop layout is balanced and the fields stay prominent; tablet/phone match the prior centered form. Session dialog identity stays secondary to its task and fits the phone viewport. Verified Password autofocus, tab containment, Escape behavior, successful reauthentication to the same record, missing-page return, and actual error retry after restoring a synthetic failed endpoint. Source CSS, DESIGN frontmatter, design metadata, tonal ramps, and embedded preview colors agree. Local visual QA passes; release environment gaps remain open.
+
+Rollback for Phase 4: revert its commit to remove the hero and secondary identities and restore prior documentation. To undo only the recovery fix, restore the prior error component in `__root.tsx` (the reset-only handler) while keeping `StandaloneState`. No record, print, backup, or infrastructure behavior is otherwise changed.

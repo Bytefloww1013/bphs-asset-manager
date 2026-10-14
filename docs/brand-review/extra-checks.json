@@ -1,0 +1,6 @@
+{
+  "retryToSignIn": true,
+  "passwordFocused": true,
+  "resumedSamePage": true,
+  "notFoundReturnsToRememberedWorkspace": true
+}

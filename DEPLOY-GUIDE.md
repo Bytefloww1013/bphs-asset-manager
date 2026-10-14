@@ -1,4 +1,6 @@
-# Deploy BPHS Connect to your VPS
+# Deploy BPHS-Connect to your VPS
+
+**Brand compatibility:** the application is BPHS-Connect (https://bphs-connect.com), with Brightpath Human Services artwork. The repository/checkout `bphs-asset-manager`, image `bphs-asset-manager:latest`, container `bphs-assets`, service `assets`, and existing data-volume bindings are retained working identifiers. Branding does not rename them. Keep deployed Compose overrides and backup callers aligned; use BRAND-UPDATE.md for code/artwork rollback. No infrastructure-name migration is included.
 
 This guide deploys this repository on **Ubuntu Server 26.04 LTS** at **50.6.205.113**, with the web app available at **https://bphs-connect.com**. It also enables **https://www.bphs-connect.com**.
 

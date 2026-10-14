@@ -52,67 +52,72 @@ function LoginPage() {
 
   return (
     <div className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">
-      <main className="w-full max-w-[26rem]">
-        <div className="mb-8 flex justify-center">
-          <AuthBrand />
+      <main className="grid w-full max-w-[26rem] items-center lg:max-w-[72rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-12">
+        <div className="hidden lg:block" aria-hidden>
+          <img src="/brand/brightpath-hero.webp" width="1916" height="821" alt="" className="h-[32rem] w-full rounded-panel object-cover object-left" />
         </div>
-        <div className="rounded-panel border border-line bg-surface p-7 shadow-pop">
-          <h1 className="text-xl font-semibold tracking-[-0.015em]">Sign in</h1>
-          <p className="mt-1 text-sm text-ink-3">Use your {APP_NAME} account.</p>
+        <div className="w-full">
+          <div className="mb-8 flex justify-center">
+            <AuthBrand />
+          </div>
+          <div className="rounded-panel border border-line bg-surface p-7 shadow-pop">
+            <h1 className="text-xl font-semibold tracking-[-0.015em]">Sign in</h1>
+            <p className="mt-1 text-sm text-ink-3">Use your {APP_NAME} account.</p>
 
-          {error && (
-            <Alert tone={locked ? 'warn' : 'bad'} className="mt-5" title={locked ? 'Account locked' : 'Could not sign in'}>
-              {locked
-                ? `Too many incorrect attempts. Try again after ${formatTime(error.details?.lockedUntil)}, or ask a Super Admin to clear the lock.`
-                : error.message}
-            </Alert>
-          )}
+            {error && (
+              <Alert tone={locked ? 'warn' : 'bad'} className="mt-5" title={locked ? 'Account locked' : 'Could not sign in'}>
+                {locked
+                  ? `Too many incorrect attempts. Try again after ${formatTime(error.details?.lockedUntil)}, or ask a Super Admin to clear the lock.`
+                  : error.message}
+              </Alert>
+            )}
 
-          <form
-            className="mt-5 flex flex-col gap-4"
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              void form.handleSubmit()
-            }}
-          >
-            <form.Field name="email">
-              {(field) => (
-                <Field label="Email" error={fieldError(field, undefined, form.state.submissionAttempts > 0)}>
-                  <Input
-                    type="email"
-                    autoComplete="username"
-                    autoFocus
-                    inputMode="email"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                </Field>
-              )}
-            </form.Field>
-            <form.Field name="password">
-              {(field) => (
-                <Field label="Password" error={fieldError(field, undefined, form.state.submissionAttempts > 0)}>
-                  <PasswordInput
-                    autoComplete="current-password"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                </Field>
-              )}
-            </form.Field>
-            <Button type="submit" variant="primary" size="lg" loading={login.isPending} className="mt-1">
-              Sign in
-            </Button>
-          </form>
+            <form
+              className="mt-5 flex flex-col gap-4"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                void form.handleSubmit()
+              }}
+            >
+              <form.Field name="email">
+                {(field) => (
+                  <Field label="Email" error={fieldError(field, undefined, form.state.submissionAttempts > 0)}>
+                    <Input
+                      type="email"
+                      autoComplete="username"
+                      autoFocus
+                      inputMode="email"
+                      value={field.state.value}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+              <form.Field name="password">
+                {(field) => (
+                  <Field label="Password" error={fieldError(field, undefined, form.state.submissionAttempts > 0)}>
+                    <PasswordInput
+                      autoComplete="current-password"
+                      value={field.state.value}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+              <Button type="submit" variant="primary" size="lg" loading={login.isPending} className="mt-1">
+                Sign in
+              </Button>
+            </form>
+          </div>
+          <p className="mt-5 flex items-start justify-center gap-2 px-4 text-center text-sm text-ink-3">
+            <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>Office network only. Five incorrect attempts lock an account for 15 minutes; only a Super Admin can clear a lock or reset a password.</span>
+          </p>
         </div>
-        <p className="mt-5 flex items-start justify-center gap-2 px-4 text-center text-sm text-ink-3">
-          <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          <span>Office network only. Five incorrect attempts lock an account for 15 minutes; only a Super Admin can clear a lock or reset a password.</span>
-        </p>
       </main>
     </div>
   )

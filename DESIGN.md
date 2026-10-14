@@ -1,6 +1,6 @@
 ---
-name: BPHS Asset Management
-description: A calm, comfortable ledger for company IT equipment: cool paper-white surfaces, one cobalt accent, Geist type, rows as the primary object.
+name: BPHS-Connect
+description: A calm, comfortable ledger for company IT equipment: cool paper-white surfaces, one navy accent, Geist type, rows as the primary object.
 colors:
   canvas: "oklch(0.975 0.004 262)"
   surface: "oklch(1 0 0)"
@@ -12,11 +12,11 @@ colors:
   ink-2: "oklch(0.37 0.02 262)"
   ink-3: "oklch(0.49 0.018 262)"
   ink-4: "oklch(0.62 0.014 262)"
-  accent: "oklch(0.5 0.19 262)"
-  accent-hover: "oklch(0.44 0.19 262)"
-  accent-soft: "oklch(0.96 0.025 262)"
-  accent-line: "oklch(0.88 0.06 262)"
-  on-accent: "oklch(0.99 0 0)"
+  accent: "#08384F"
+  accent-hover: "#062B3E"
+  accent-soft: "#EAF2F5"
+  accent-line: "#B8CED9"
+  on-accent: "#FFFFFF"
   ok: "oklch(0.43 0.11 155)"
   ok-soft: "oklch(0.955 0.04 155)"
   ok-line: "oklch(0.87 0.07 155)"
@@ -153,7 +153,7 @@ components:
     padding: "8px 16px"
 ---
 
-# Design System: BPHS Asset Management
+# Design System: BPHS-Connect
 
 ## Overview
 
@@ -164,7 +164,7 @@ A well-kept ledger on a daylit desk: quiet, ruled, trustworthy, and easy to read
 It replaces a dense, spreadsheet-style skin (9.5-11px type, 19px controls, a border on every cell, greys at 1.7-2.6:1) with a comfortable, modern one: 14px text, 36px controls, 56px rows, horizontal rules only, and every text pairing measured at 5.5:1 or better. The scene is an office desk in daylight, hours of repetitive entry on a 1440px monitor, which is why the system is light, restrained, and keyboard-first. Dark is deliberately not shipped yet; the tokens are semantic so it is additive.
 
 **Key Characteristics:**
-- One cool neutral family (hue 262) and one cobalt accent. The accent marks primary action, selection and focus, nothing else.
+- One cool neutral family (hue 262) and one navy accent. The accent marks primary action, selection and focus, nothing else.
 - Status always travels with a word plus a dot or icon. Colour is never the only signal.
 - Mono type is reserved for identifiers and measurements: asset tags, serials, employee IDs, timestamps, audit details.
 - Permissions are visible: a control the user cannot use stays on screen, disabled, with the rule beside it.
@@ -172,12 +172,12 @@ It replaces a dense, spreadsheet-style skin (9.5-11px type, 19px controls, a bor
 
 ## Colors
 
-A restrained palette: cool paper neutrals, one cobalt accent, and three status hues that appear only as tinted badges, bars and alerts.
+A restrained palette: cool paper neutrals, one navy accent, and three status hues that appear only as tinted badges, bars and alerts.
 
 ### Primary
-- **Cobalt Action** (oklch(0.5 0.19 262), about #1e59cd): The primary button, text links, focus rings, the "Assigned" segment of the inventory bar, active nav icon. White text on it measures 6.1:1.
-- **Cobalt Deep** (oklch(0.44 0.19 262)): Primary button hover.
-- **Cobalt Mist** (oklch(0.96 0.025 262)) and **Cobalt Edge** (oklch(0.88 0.06 262)): Tinted fills and borders for accent badges, selected rows, the highlighted combobox option and text selection.
+- **Navy Action** (#08384F): The primary button, text links, focus rings, the "Assigned" segment of the inventory bar, active nav icon. White text on it measures 12.43:1.
+- **Navy Deep** (#062B3E): Primary button hover; white text measures 14.76:1.
+- **Navy Mist** (#EAF2F5) and **Navy Edge** (#B8CED9): Tinted fills and borders for accent badges, selected rows, the highlighted combobox option and text selection. Navy on the soft fill measures 10.96:1. The light border tint is decorative; the solid navy focus border/outline supplies the meaningful boundary.
 
 ### Neutral
 - **Paper** (oklch(0.975 0.004 262)): The page canvas behind everything.
@@ -193,7 +193,7 @@ A restrained palette: cool paper neutrals, one cobalt accent, and three status h
 - **Alert Red** (oklch(0.47 0.17 25)) on **Red Tint** (oklch(0.96 0.03 25)): Poor, Damaged, Delete, errors and the race-conflict banner.
 
 ### Named Rules
-**The One Accent Rule.** Cobalt is for the thing you can do next and the thing that is selected. It never decorates, never colours a heading, and never fills a status.
+**The One Accent Rule.** Navy is for the thing you can do next and the thing that is selected. It never decorates, never colours a heading, and never fills a status.
 **The Words Beside Colour Rule.** Every status tint is paired with its word and a dot or icon. A greyscale screenshot must still say Assigned, In storage, Retired, Poor.
 **The Measured Grey Rule.** Text greys are chosen from measured contrast, not by eye. Nothing carrying meaning goes below 4.5:1; `ink-4` is decoration only.
 
@@ -227,7 +227,7 @@ Rows are 56px in comfortable density. Controls are 36px (32px inside a row); ico
 
 ## Elevation & Depth
 
-Mostly flat with soft, offset shadows, and layering by tone. Panels sit on the paper canvas with a hairline border and a barely-there two-layer shadow; the sidebar is a cooler tone rather than a shadow. Only things that float above the page get real shadows: menus, popovers, toasts and dialogs (`pop`), and the right-hand sheet (`sheet`). The primary button carries a 1px inner highlight and a short cobalt shadow so it reads as pressable without a gradient.
+Mostly flat with soft, offset shadows, and layering by tone. Panels sit on the paper canvas with a hairline border and a barely-there two-layer shadow; the sidebar is a cooler tone rather than a shadow. Only things that float above the page get real shadows: menus, popovers, toasts and dialogs (`pop`), and the right-hand sheet (`sheet`). The primary button carries a 1px inner highlight and a short navy shadow so it reads as pressable without a gradient.
 
 ### Shadow Vocabulary
 - **Panel** (`box-shadow: 0 1px 2px oklch(0.2 0.02 262 / 0.05), 0 0 0 1px oklch(0.2 0.02 262 / 0.015)`): Panels, tables, secondary buttons, selected nav item and selected filter tab.
@@ -240,20 +240,20 @@ Mostly flat with soft, offset shadows, and layering by tone. Panels sit on the p
 
 ## Shapes
 
-Gently rounded and consistent: 8px on controls (buttons, inputs, selects, chips, nav items; 6px on items inside menus and the filter-tab thumb), 12px on panels, tables, popovers and centred dialogs (the sheet is a full-height slab with no rounding), full pills for badges and the active-switch track, 5px on keycaps. Borders are 1px hairlines; the focus ring is a 2px cobalt outline with a 2px offset on every focusable element, with a 3px soft cobalt halo on text fields. Tables carry horizontal rules only, never vertical cell borders. Icons are Lucide at 1.75 stroke and 16-18px, drawn, never glyphs.
+Gently rounded and consistent: 8px on controls (buttons, inputs, selects, chips, nav items; 6px on items inside menus and the filter-tab thumb), 12px on panels, tables, popovers and centred dialogs (the sheet is a full-height slab with no rounding), full pills for badges and the active-switch track, 5px on keycaps. Borders are 1px hairlines; the focus ring is a 2px navy outline with a 2px offset on every focusable element, with a 3px soft navy halo on text fields. Tables carry horizontal rules only, never vertical cell borders. Icons are Lucide at 1.75 stroke and 16-18px, drawn, never glyphs.
 
 ## Components
 
 ### Buttons
 - **Shape:** 8px radius, 36px high (32px small, 40px large), label weight 500.
-- **Primary:** Cobalt Action fill, white text, a 1px inner highlight. Hover deepens to Cobalt Deep. One per view or sheet.
+- **Primary:** Navy Action fill, white text, a 1px inner highlight. Hover deepens to Navy Deep. One per view or sheet.
 - **Secondary:** Record White, Hairline Strong border, panel shadow; hover fills Sunken. The default for row actions (Issue, Return).
 - **Ghost / Danger:** Ghost is Ink Two on transparent; danger variants use Alert Red text on a Red Tint hover, or a solid red fill only inside a confirmation dialog.
 - **Disabled with a reason:** Never hidden. A rule-based disable (Super Admin only, has history, holds assets) keeps the button focusable, greys it, and shows the reason in a tooltip or beneath a menu item.
 
 ### Inputs / Fields
 - **Style:** Record White, 1px Hairline Strong border, 8px radius, a faint inset shadow; label above in Label weight, hint or error beneath in Caption.
-- **Focus:** Border turns Cobalt Action with a 3px soft cobalt halo. **Error:** border and message in Alert Red, announced with `role="alert"`. **Disabled:** Sunken fill, Ink Three text.
+- **Focus:** Border turns Navy Action with a 3px soft navy halo. **Error:** border and message in Alert Red, announced with `role="alert"`. **Disabled:** Sunken fill, Ink Three text.
 - **Combobox:** The same field with a type-ahead list in a portal; opens on click or typing, not on focus; arrows move, Enter or Tab accepts.
 - **Chip picker:** The combobox for several items, used to pick people. The field grows to as many rows as it needs; each choice is a 28px chip (Sunken, Hairline, 6px radius) with the name and an X, and the text box shares the last row. Items already chosen leave the list. Enter or Tab adds the highlighted match; the list closes after Enter and stays open after a click, so several can be clicked in a row. Backspace in the empty text box removes the last chip. Left arrow from the start of the text walks back through the chips, where Backspace or Delete removes the one in focus and focus stays in place. The whole field is one tab stop, and each addition and removal is announced. A disabled picker shows its chips with no X.
 - **Rating chips:** A radio group of chips. The selected chip shows a check and takes its rating's tint, so selection never relies on colour.
@@ -262,12 +262,12 @@ Gently rounded and consistent: 8px on controls (buttons, inputs, selects, chips,
 Pill, 1px tinted border, Caption weight, a leading dot or icon. Tones: neutral, accent, ok, warn, bad. Ratings map New to accent, Good to ok, Fair to warn, Poor and Damaged to bad; user-added ratings stay neutral.
 
 ### Data grid (TanStack Table)
-Record White panel with a Sunken header band, Caption headers in Ink Three, 56px rows separated by Hairline, hover and selected rows tinted (Paper, Cobalt Mist). Sortable headers are buttons with an arrow; identifiers are mono and link to their record; two-line cells put the name above and its code and department beneath. The footer shows the count and pager. After you add, issue or return, the affected row settles from a Cobalt Mist tint over 1.8 seconds.
+Record White panel with a Sunken header band, Caption headers in Ink Three, 56px rows separated by Hairline, hover and selected rows tinted (Paper, Navy Mist). Sortable headers are buttons with an arrow; identifiers are mono and link to their record; two-line cells put the name above and its code and department beneath. The footer shows the count and pager. After you add, issue or return, the affected row settles from a Navy Mist tint over 1.8 seconds.
 
 ### Navigation
-Left rail on Slate Rail. Items are 36px, Label weight, Ink Two with an Ink Three icon. The active item becomes a Record White pill with a hairline ring and a cobalt icon. Locked destinations (Users for an Admin) stay in the list with a lock icon and screen-reader text.
+Left rail on Slate Rail. Items are 36px, Label weight, Ink Two with an Ink Three icon. The active item becomes a Record White pill with a hairline ring and a navy icon. Locked destinations (Users for an Admin) stay in the list with a lock icon and screen-reader text.
 
-**Workspaces.** Under the product name sits a two-part switcher, Assets and Grievances: a Hairline-grey track with the chosen half as a Record White pill. Each workspace has a sidebar of its own. The chosen half and the active nav icon are cobalt on both sides; Grievances is told apart by its own sidebar, its name beside BPHS, and a small "Confidential" line with a lock. The colour comes from the token `--color-workspace`, which is cobalt for now and is the one place to change if Grievances is later given a colour of its own.
+**Workspaces.** Under the product name BPHS-Connect sits a two-part switcher, Assets and Grievances: a Hairline-grey track with the chosen half as a Record White pill. Each workspace has a sidebar of its own. The chosen half and the active nav icon are navy on both sides; Grievances is told apart by its own sidebar, the selected workspace in the switcher, and a small "Confidential" line with a lock. The colour comes from the token `--color-workspace`, which aliases the shared navy accent on both sides.
 
 ### Sheets and dialogs
 Issue, Return and edit forms open as a right-hand sheet (480px, full-width on phones) so the table stays visible behind a 35% ink scrim. The header carries title and one-line consequence, the body scrolls, and the footer is pinned on a Paper band with the primary action last. Focus lands on the first field of the task, not on Close. Centred dialogs are reserved for confirmations, the one-time password, and signing in again when a session ends. The last two must be answered, so Escape and a click outside do not close them.
@@ -277,10 +277,10 @@ A Record White panel above the register with labelled fields in one row. Enter a
 
 ### Rich text
 The body of a grievance, an action or a note. One field, the "ruled field", chosen over a floating toolbar because every allowed format stays in view and nothing depends on making a selection first.
-- **Frame:** the Inputs shape at full size: Record White, 1px Strong Hairline, 8px radius, and the same cobalt border and 3px halo when focus is anywhere inside. In error the border turns Alert Red and the message sits beneath with `role="alert"`, as for any field.
+- **Frame:** the Inputs shape at full size: Record White, 1px Strong Hairline, 8px radius, and the same navy border and 3px halo when focus is anywhere inside. In error the border turns Alert Red and the message sits beneath with `role="alert"`, as for any field.
 - **Bar:** fixed along the top on a Sunken band with a Hairline rule beneath; it sticks to the top of the scroll area in a long body. 32px ghost icon buttons (Lucide, 16px, 1.75 stroke) in groups split by a short Strong Hairline: bold, italic, underline, strikethrough, link; heading, subheading; bulleted list, numbered list, quote; undo and redo at the far right. A format that applies at the cursor shows Accent Soft with an Accent Line ring and `aria-pressed`. Each button has a tooltip naming it and its shortcut. On a narrow screen the bar wraps to a second row; it never scrolls sideways.
 - **Link:** the link button swaps the bar for one address input with Add link, Remove link and Cancel. Enter applies, Escape cancels. A bare address gets `https://`, a bare email `mailto:`; anything else is refused in words.
-- **Text:** Body size (14px on a 22px line) at a 65ch measure, blocks 10px apart. Heading 18px/600 and subheading 15px/600, each with more room above than below. Lists indent 24px with Ink 3 markers. A quote is Ink 2 behind a 2px Strong Hairline rule: neutral, never a coloured stripe. Links are cobalt and underlined.
+- **Text:** Body size (14px on a 22px line) at a 65ch measure, blocks 10px apart. Heading 18px/600 and subheading 15px/600, each with more room above than below. Lists indent 24px with Ink 3 markers. A quote is Ink 2 behind a 2px Strong Hairline rule: neutral, never a coloured stripe. Links are navy and underlined.
 - **Footer:** a Canvas strip with a Hairline rule above: a one-line reminder of what is allowed on the left, the character count against the limit in mono tabular figures on the right. Past the limit the count turns Alert Red and says "over the limit".
 - **Reading it back:** the read-only view is the same text rules with no frame, so what was typed looks exactly like what is later read. It only ever shows HTML the server has sanitised.
 - **Keyboard:** the bar is a single tab stop; arrow keys, Home and End move along it. Alt+F10 goes from the text to the bar and Escape back. Tab leaves the field, except in a list, where it indents the item.
@@ -301,7 +301,7 @@ A grievance's actions and events, read down one rail. Chosen on 2026-10-12 from 
 Attachments on a grievance or an entry. Once saved a file is never changed or removed, and the hint under every picker says so.
 - **Picking:** a dashed Strong Hairline box labelled "Choose files" wraps the real file input, which is visually hidden but keeps its keyboard focus and label. Choosing again adds to the list rather than replacing it. Each chosen file is a row with its name, its size and a Remove icon button. The hint names the allowed types and the limits (10 MB each, 10 at a time).
 - **Attaching later:** on a grievance that is not sealed, a secondary "Attach files" button with a paperclip, which turns into a spinner while the files go up. A refusal arrives as a toast in the server's words.
-- **List:** one row per file: a file icon, the filename as a cobalt download link, and a meta line in Ink 3 with size, who added it, when, and "with E03" when it came with an entry. Files always download; nothing opens in the page.
+- **List:** one row per file: a file icon, the filename as a navy download link, and a meta line in Ink 3 with size, who added it, when, and "with E03" when it came with an entry. Files always download; nothing opens in the page.
 - **Withdrawn:** the name is struck through in Ink 3 with no link, a warn "Withdrawn" badge, and a line giving the date and the reason. The row stays, so the list still shows everything that was ever added.
 - **Withdraw:** a danger-ghost button per file, shown disabled with the reason for an Admin and absent on a Closed or Voided grievance. It opens a sheet with a warn alert ("This cannot be undone") and a required reason, which is also shown on the timeline.
 
@@ -330,3 +330,13 @@ A grievance printed whole, saved as a PDF from the browser's print dialog. Decid
 - **Don't** put a mono face on labels or sentences, or a display face on UI text.
 - **Don't** hide a control the user may not use. Disable it and say why.
 - **Don't** add motion beyond sheet entry, menu pop-ins and the row settle, and honour `prefers-reduced-motion`.
+
+## Brand artwork and authentication
+
+BPHS-Connect is the app identity in both workspaces; the canonical URL is https://bphs-connect.com. Brightpath Human Services is the corporate identity. The original PNGs and reconstructed SVG masters live in `brand-assets/`; curated exports are self-hosted from `web/public/`. See `BRAND-UPDATE.md` for provenance and per-phase rollback.
+
+Use the 32px compact lighthouse beside live app text in the rail, mobile header, drawer, session dialog, and standalone states. Its image is decorative when text is adjacent. Authentication uses a 260px corporate signature named Brightpath Human Services above the live app name. Preserve intrinsic dimensions and aspect ratios. Browser icons use a separate simplified lighthouse with a cream backing.
+
+Only desktop sign-in (1024px and above) adds the supplied landscape hero in the left column. A left-aligned crop preserves the lighthouse, orange path, and waves in a 512px-high illustration; the form stays 416px wide in the right column. Tablet/phone sign-in retains the centered form and omits the illustration from layout. Password change stays a centered task. Orange is confined to authored artwork; it is not functional text, focus, or a status role. Reading surfaces, neutral grounds, Geist type, component sizes, and all status colors stay stable.
+
+Primary button shadow: `inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 2px rgb(8 56 79 / 0.25)` (`--shadow-primary`). The danger fill remains red with white text (7.47:1 measured). Rendered navy input focus borders on white measure 12.43:1. The `docs/brand-review/` evidence and `design-qa.md` record visual checks and remaining environment gaps.
