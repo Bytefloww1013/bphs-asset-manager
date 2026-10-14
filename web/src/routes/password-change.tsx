@@ -9,7 +9,7 @@ import type { SessionUser } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Input } from '@/components/ui/form.tsx'
-import { Wordmark } from '@/components/ui/logo.tsx'
+import { AuthBrand } from '@/components/ui/logo.tsx'
 import { cn } from '@/lib/cn.ts'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
@@ -60,7 +60,7 @@ function PasswordChangePage() {
     <div className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">
       <main className="w-full max-w-[26rem]">
         <div className="mb-8 flex justify-center">
-          <Wordmark />
+          <AuthBrand />
         </div>
         <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-pop">
           {forced && (

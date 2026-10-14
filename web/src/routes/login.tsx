@@ -7,7 +7,7 @@ import type { SessionUser } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Input, PasswordInput } from '@/components/ui/form.tsx'
-import { Wordmark } from '@/components/ui/logo.tsx'
+import { AuthBrand } from '@/components/ui/logo.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { meQuery } from '@/lib/queries.ts'
@@ -54,7 +54,7 @@ function LoginPage() {
     <div className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">
       <main className="w-full max-w-[26rem]">
         <div className="mb-8 flex justify-center">
-          <Wordmark />
+          <AuthBrand />
         </div>
         <div className="rounded-panel border border-line bg-surface p-7 shadow-pop">
           <h1 className="text-xl font-semibold tracking-[-0.015em]">Sign in</h1>

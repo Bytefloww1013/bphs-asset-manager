@@ -122,7 +122,7 @@ Suggested export names are placeholders, not claims that these files exist:
 | `web/public/icon-192.png`, `icon-512.png` | Optional home-screen icon set |
 | `web/public/brand/bphs-connect-social.png` | Optional 1200×630 generic sharing image |
 
-Use optimized PNG/WebP derivatives for the supplied raster artwork; use SVG if a real vector original is supplied later. Replace the existing `web/public/favicon.svg` link with the actual new icon links and retire the placeholder in the future media slice. Preserve proportions with explicit dimensions and `object-fit: contain`; do not stretch or crop lettering. The corporate artwork does not say `BPHS-Connect`, so retain the live app name even where a corporate signature is shown. Prefer the compact lighthouse + app name for everyday navigation and reserve the long corporate signature for the larger authentication slot.
+Use the cleaned SVG mark/signature reconstructed from the supplied outlines, as authorized by the implementation request. Keep the textured hero as optimized WebP. The original PNGs remain the source references; reconstructed vectors are derivatives, not official vector originals. Replace the existing `web/public/favicon.svg` link with the actual new icon links and retire the placeholder in the future media slice. Preserve proportions with explicit dimensions and `object-fit: contain`; do not stretch or crop lettering. The corporate artwork does not say `BPHS-Connect`, so retain the live app name even where a corporate signature is shown. Prefer the compact lighthouse + app name for everyday navigation and reserve the long corporate signature for the larger authentication slot.
 
 Proposed export budgets: compact mark under 25 KiB, horizontal signature under 80 KiB, and optional hero under 150 KiB, where quality permits. These are targets for derivatives, not measurements of the originals. Export appropriately sized 1×/2× variants and avoid enlarging smaller artwork. Lazy-load only optional offscreen images; the visible auth wordmark should load immediately.
 
@@ -233,10 +233,10 @@ Acceptance: visible application identity and browser-title suffixes consistently
 
 ### Phase 2 — Publish logos and browser icons
 
-- [ ] **2.1 Curated exports:** Add the cleaned compact mark and horizontal corporate signature derivatives under `web/public/brand/` (or imported component-media directory), and size-specific browser icons under `web/public/`. Correct the misleading favicon filename in the export inventory, remove fringe/stray pixels in approved derivatives, check light/dark backgrounds, and meet the stated size budgets where quality permits. Preserve and separately commit the original sources.
-- [ ] **2.2 Shared components:** Implement compact-mark and full-lockup rendering in `logo.tsx`, including explicit dimensions, meaningful accessible naming, and decorative treatment when text is adjacent.
-- [ ] **2.3 Existing placements:** Apply the shared artwork to desktop rail, mobile header, mobile drawer, sign-in, and password change. Check narrow screens and drawer-close clearance without changing the layout structure.
-- [ ] **2.4 Browser identity:** Update favicon/fallback/touch-icon links in `web/index.html`. Check 16px/32px favicon legibility and the touch icon at its intended size. Choose and document the browser theme color.
+- [x] **2.1 Curated exports:** Add the cleaned compact mark and horizontal corporate signature derivatives under `web/public/brand/` (or imported component-media directory), and size-specific browser icons under `web/public/`. Correct the misleading favicon filename in the export inventory, remove fringe/stray pixels in approved derivatives, check light/dark backgrounds, and meet the stated size budgets where quality permits. Preserve and separately commit the original sources.
+- [x] **2.2 Shared components:** Implement compact-mark and full-lockup rendering in `logo.tsx`, including explicit dimensions, meaningful accessible naming, and decorative treatment when text is adjacent.
+- [x] **2.3 Existing placements:** Apply the shared artwork to desktop rail, mobile header, mobile drawer, sign-in, and password change. Check narrow screens and drawer-close clearance without changing the layout structure.
+- [x] **2.4 Browser identity:** Update favicon/fallback/touch-icon links in `web/index.html`. Check 16px/32px favicon legibility and the touch icon at its intended size. Choose and document the browser theme color.
 - [ ] **2.5 Delivery verification:** Build and confirm each referenced image exists in `dist/web` and in the Docker runtime output. Fetch the URLs while signed out and confirm the correct image MIME type and bytes, including a nested client route and a reload. A `200` response alone is insufficient: the current server falls back to SPA HTML for missing public paths outside `/static/`.
 
 Acceptance: all existing branding slots show the approved artwork without distortion, duplicated names, layout shifts, or missing-resource fallbacks. Icons refresh in a browser with prior site data.
@@ -317,3 +317,23 @@ Changes:
 Validation/visual judgment: typecheck/build and frozen offline lockfile install pass. Fifteen production-rendered states pass; sign-in, voluntary and forced password change, rail, mobile heading/drawer, and both workspace titles consistently use BPHS-Connect. Grievance detail retains its page-specific title prefix. Full comparisons and phone captures show unchanged fonts, spacing, form geometry, and navigation clearance; this phase consolidates the already-prepared name. Legacy scan finds only documented repository/image/container/path identifiers outside the audit's historical wording. No page errors, broken images, external requests, or horizontal overflow.
 
 Rollback for Phase 1: revert its commit to restore the previous app/package names, workspace-dependent wordmarks, and title suffixes; rebuild. Documentation rename edits remain for Phase 4.
+
+### Phase 2 — shared artwork and browser identity
+
+Phase 1 commit: `dc25662`. Original-source preservation has its own commit, followed by this phase's implementation commit.
+
+Changes:
+- Committed the five unchanged originals: `brand-assets/logo-header-wide.png`, `favicon-1024.png`, `logo-light-bg.png`, `logo-dark-bg.png`, and `hero-banner.png`. The misleading favicon filename is retained only for source provenance; its actual dimensions are 1254×1254.
+- Added editable SVG masters `brand-assets/brightpath-mark.svg` (328×471), `brightpath-header.svg` (1002×295), and `brightpath-browser-icon.svg` (32×32). The mark/signature preserve traced source outlines and lettering with flat navy/orange fills; the browser icon deliberately simplifies the lantern, tower, rays, and orange path for 16px legibility. `brand-assets/README.md` records the derivation and intended backgrounds.
+- Published identical mark/signature copies at `web/public/brand/brightpath-mark.svg` (6,160 bytes) and `brightpath-header.svg` (9,608 bytes).
+- Replaced the placeholder `web/public/favicon.svg` (518 bytes); added `favicon-16.png` (621 bytes), `favicon-32.png` (1,092 bytes), `favicon.ico` (16/32/48 embedded PNGs; 3,577 bytes), and `apple-touch-icon.png` (180×180; 7,369 bytes).
+- `web/src/components/ui/logo.tsx`: shared dimensioned image mark, decorative by default with an optional standalone label; retained live app wordmark; added `AuthBrand` with the 260px corporate signature named Brightpath Human Services and live BPHS-Connect text below it.
+- `web/src/routes/login.tsx`, `password-change.tsx`: replaced their shared authentication identity with `AuthBrand`. The existing rail, mobile header, and drawer inherit the compact artwork through `LogoMark`/`Wordmark` without layout changes.
+- `web/index.html`: versioned SVG/PNG/ICO favicon and touch-icon links (`v=20261014`). Kept neutral browser theme `#f5f7f9`, checked with the light phone shell.
+- Added `docs/brand-review/phase2.png`, `artwork.png`, and `icons.png` as visual evidence.
+
+Validation/visual judgment: build/typecheck pass. Fifteen rendered states have no overflow, broken artwork, external requests, or page errors. Full comparison plus full-size phone sign-in/drawer views show crisp, proportionate marks and corporate lettering, one readable application identity, stable form width/spacing, and clear drawer-close space. The corporate signature intentionally increases only the authentication identity area's height; all fields fit the 390px phone view. Simplified icons are recognizable at 16/32px and the touch icon is crisp at 180px. All seven published files match source and built bytes by SHA-256 when fetched signed out, return image MIME types and `no-cache`, and load after a protected nested-route redirect/reload. Versioned URLs avoid reusing the previous placeholder's cache key.
+
+Slice 2.5 is **partially verified**: production `dist/web` delivery and MIME/byte checks passed; the Dockerfile copies that exact directory to its runtime stage, but Docker execution remains unavailable in WSL. The box remains open for an actual runtime-image check. No live deployment has occurred.
+
+Rollback for Phase 2: revert the implementation commit to restore the previous tag mark and favicon links. The separate original-source commit can remain for reference, or be reverted independently. Rebuild to remove published derivatives from deployment.
