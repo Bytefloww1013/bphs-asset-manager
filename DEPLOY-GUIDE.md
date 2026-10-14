@@ -1,6 +1,6 @@
 # Deploy BPHS-Connect to your VPS
 
-**Brand compatibility:** the application is BPHS-Connect (https://bphs-connect.com), with Brightpath Human Services artwork. The repository/checkout `bphs-asset-manager`, image `bphs-asset-manager:latest`, container `bphs-assets`, service `assets`, and existing data-volume bindings are retained working identifiers. Branding does not rename them. Keep deployed Compose overrides and backup callers aligned; use BRAND-UPDATE.md for code/artwork rollback. No infrastructure-name migration is included.
+**Names:** the application is BPHS-Connect, but the technical names predate the rebrand and are unchanged: repository `bphs-asset-manager`, image `bphs-asset-manager:latest`, container `bphs-assets`, Compose service `assets`. The backup script and [RUNBOOK.md](RUNBOOK.md) depend on them, so do not rename them.
 
 This guide deploys this repository on **Ubuntu Server 26.04 LTS** at **50.6.205.113**, with the web app available at **https://bphs-connect.com**. It also enables **https://www.bphs-connect.com**.
 
@@ -105,15 +105,26 @@ If Docker was preinstalled, check the official instructions for conflicting pack
 
 ## 5. Put the repository on the VPS
 
+The repository is private, so the VPS needs its own read-only **deploy key**. Do not put access tokens in the clone URL. Create the key as your normal SSH user (not root), because that user runs `git pull` in step 13:
+
+```bash
+ssh-keygen -t ed25519 -N '' -C 'bphs-connect VPS' -f ~/.ssh/bphs_deploy
+cat ~/.ssh/bphs_deploy.pub
+```
+
+On GitHub, open the repository's **Settings → Deploy keys → Add deploy key**, paste that public key, and leave **Allow write access** unticked. Then clone:
+
 ```bash
 sudo install -d -o "$(id -un)" -g "$(id -gn)" /opt/bphs-asset-manager
-git clone https://github.com/Bytefloww1013/bphs-asset-manager.git /opt/bphs-asset-manager
+GIT_SSH_COMMAND='ssh -i ~/.ssh/bphs_deploy -o IdentitiesOnly=yes' \
+  git clone git@github.com:Bytefloww1013/bphs-asset-manager.git /opt/bphs-asset-manager
 cd /opt/bphs-asset-manager
+git config core.sshCommand 'ssh -i ~/.ssh/bphs_deploy -o IdentitiesOnly=yes'
 git switch main
 git log -1 --oneline
 ```
 
-If the repository is private, give the VPS a read-only GitHub deploy key and clone using `git@github.com:Bytefloww1013/bphs-asset-manager.git` instead. Use an SSH remote for later pulls too. Do not put access tokens in the clone URL.
+The first connection asks you to confirm GitHub's host key; compare it with [GitHub's published fingerprints](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints). The `core.sshCommand` setting makes later pulls use the same key.
 
 Push the version you want to deploy to GitHub before cloning or updating. The VPS receives committed, pushed files; it will not receive uncommitted files from your computer. Docker installs Bun and Node inside its build stages, so neither needs to be installed on the VPS host.
 
@@ -167,7 +178,7 @@ Always include `-f /etc/bphs-connect/compose.yml` in Compose commands for this d
 
 The loopback binding matters: [Docker-published ports can bypass UFW rules](https://docs.docker.com/engine/install/ubuntu/#firewall-limitations). The volume's explicit name keeps the data location stable across rebuilds and Git updates. Keep it on the VPS's local disk.
 
-## 7. Build the image and optionally bring over existing data
+## 7. Build the image
 
 ```bash
 sudo docker compose -f /etc/bphs-connect/compose.yml build
@@ -175,33 +186,7 @@ sudo docker compose -f /etc/bphs-connect/compose.yml build
 
 The build installs dependencies from `bun.lock`, builds the frontend, and creates the production image. A first build can take several minutes.
 
-**For a new, empty deployment:** skip to step 8. Do not run the demo seed script on the VPS.
-
-**To keep data from an existing installation:** make a consistent backup at the source, then import it before the VPS app's first start. Do not copy a running installation's raw `bphs.sqlite` file; recent writes can still be in its WAL file.
-
-For an existing local installation, **on your computer**, from this repository:
-
-```bash
-bun run db:backup
-```
-
-Use the exact backup path printed by that command. For an existing Docker installation, use its `server/backup.ts` tool or `scripts/backup-offbox.sh` instead; see [RUNBOOK.md](RUNBOOK.md#4-backups).
-
-**On your computer**, copy that backup to the VPS, replacing the example filename:
-
-```bash
-scp ./data/backups/YOUR-BACKUP.sqlite YOUR_SSH_USER@50.6.205.113:~/bphs-transfer.sqlite
-```
-
-**On the VPS**, import into the new volume. Run this only for an initial migration into an empty deployment:
-
-```bash
-sudo docker compose -f /etc/bphs-connect/compose.yml run --rm --no-deps -T assets \
-  sh -c 'test ! -e /data/bphs.sqlite && cat > /data/bphs.sqlite' \
-  < ~/bphs-transfer.sqlite
-```
-
-Existing accounts, passwords, records and grievance files come with the database. A migrated database will not create a new bootstrap account.
+The deployment starts with an empty database: the app creates it, its tables and the first Super Admin on first start. Do not run the demo seed script (`db:seed`) on the VPS.
 
 ## 8. Start the app and check its health
 
@@ -214,7 +199,7 @@ sudo docker port bphs-assets
 
 Expect a healthy container, `{"ok":true}`, and `3000/tcp -> 127.0.0.1:8080`. Migrations run automatically at startup. The app serves both the API and the built frontend; no Vite development server is needed.
 
-On a fresh database, retrieve the first Super Admin's one-time password:
+Retrieve the first Super Admin's one-time password:
 
 ```bash
 sudo docker compose -f /etc/bphs-connect/compose.yml logs --tail 100 assets
@@ -303,13 +288,13 @@ Expect an HTTP-to-HTTPS redirect, successful health responses, and a successful 
 
 ## 11. Sign in and verify the application
 
-Open **https://bphs-connect.com**. For a fresh database, sign in as `admin@bphs-connect.com` (or your configured bootstrap email) with the one-time password from step 8. Choose a permanent password when prompted. For a migrated database, use an existing account.
+Open **https://bphs-connect.com**. Sign in as `admin@bphs-connect.com` (or your configured bootstrap email) with the one-time password from step 8. Choose a permanent password when prompted.
 
 Before inviting users:
 
 - Create a second Super Admin from **Users** so account recovery has a second route.
 - Confirm you can sign out and back in, and refresh a direct URL such as `/assets`.
-- Check the Assets and Grievances workspaces and the expected records if you migrated data.
+- Check that the Assets and Grievances workspaces open.
 - Try an import/export and, when appropriate, a grievance attachment upload/download through HTTPS.
 - In browser developer tools, confirm the session cookie has `Secure`, `HttpOnly` and `SameSite=Lax`.
 
@@ -348,7 +333,7 @@ Check the backup log and alert if the newest successful backup becomes more than
 
 ## 13. Deploy later updates
 
-Push your tested changes to `main` first. On the VPS, back up before changing versions and record the old commit:
+Push your tested changes to `main` first. If a change alters the database tables (`server/db/schema.ts`), generate its migration with `bun run db:generate` and commit the new files in `server/db/migrations/` with it; the app applies them at startup and keeps existing rows. On the VPS, back up before changing versions and record the old commit:
 
 ```bash
 cd /opt/bphs-asset-manager
@@ -359,9 +344,10 @@ sudo docker compose -f /etc/bphs-connect/compose.yml build
 sudo docker compose -f /etc/bphs-connect/compose.yml up -d --wait --wait-timeout 120
 sudo docker compose -f /etc/bphs-connect/compose.yml logs --tail 100 assets
 curl -fsS https://bphs-connect.com/api/health
+sudo docker image prune -f
 ```
 
-Keep the old commit ID and the backup filename printed by the script. Stop if the backup, pull or build fails. The app stays available during the build, with a brief interruption when Compose replaces the container. Database migrations run on startup.
+The last command removes the untagged image each rebuild leaves behind (never volumes), so old images do not fill the disk. Keep the old commit ID and the backup filename printed by the script. Stop if the backup, pull or build fails. The app stays available during the build, with a brief interruption when Compose replaces the container. Database migrations run on startup.
 
 Changing settings in `/etc/bphs-connect/compose.yml` requires `up -d` to recreate the container; `restart` alone does not apply changed environment values.
 
