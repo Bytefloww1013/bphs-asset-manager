@@ -24,6 +24,8 @@ bun run dev            # API on :3000, app on http://localhost:5173
 
 The seed prints the demo sign-ins (a Super Admin, an Admin, an account that must change its password, a locked account, a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin and prints a one-time password in the terminal.
 
+The development API runs on Node through `tsx watch`, which restarts it when an imported file changes. This avoids the native file-watcher crash seen with Node 24's `--watch` mode when stopping the server.
+
 Other scripts:
 
 | Script | What it does |

@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,magenta \"bun:dev:api\" \"bun:dev:web\"",
-    "dev:api": "node --watch --env-file-if-exists=.env server/index.ts",
+    "dev:api": "tsx watch --clear-screen=false --env-file-if-exists=.env server/index.ts",
     "dev:web": "vite",
     "build": "vite build",
     "prestart": "vite build",
@@ -64,6 +64,7 @@
     "concurrently": "^10.0.6",
     "drizzle-kit": "^0.31.11",
     "tailwindcss": "^4.3.3",
+    "tsx": "4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
