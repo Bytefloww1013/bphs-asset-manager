@@ -4,7 +4,7 @@ Audit date: 2026-10-14. Baseline: `main` at `4a6bf8a`, including the existing lo
 
 ## Objective and status
 
-**Current status:** Phases 0–4 and local Phase 5 checks pass, including Docker runtime delivery (2.5), native desktop hover, and favicon cache refresh. Production release (5.5) remains pending the SSH target/release-scope response and live DNS/TLS verification. Current environment resolution returns `204.11.56.246` for both names, whereas DEPLOY-GUIDE.md targets `50.6.205.113`. Public HTTPS probes have not passed. No push or live deployment is claimed. Optional print, sharing/manifest, and infrastructure-name work is deferred.
+**Current status: brand update complete.** All required brand slices are implemented, visually reviewed, validated, and committed, including Docker media delivery, native desktop hover, and favicon cache refresh. The user clarified on 2026-10-14 that this task is a brand update only and VPS access is not available yet. Deployment, public DNS/TLS changes, and live-domain verification are outside this task and deferred to separate operational work. Optional print, sharing/manifest, and infrastructure-name work is also deferred.
 
 Use **BPHS-Connect** as the application name, matching **https://bphs-connect.com**. Incorporate the supplied logos, favicons, and related media, then introduce their colors through the existing design tokens while retaining the current layouts, typography, spacing, and component behavior.
 
@@ -265,15 +265,15 @@ Selection: 4.3 standalone/session identity and the 4.5 desktop hero are delivere
 
 Acceptance: documentation describes the delivered brand and approved assets. Optional slices are explicitly selected or deferred; they do not block the core identity release.
 
-### Phase 5 — Validate and release
+### Phase 5 — Validate and record the brand update
 
 - [x] **5.1 Source checks:** Run the final legacy-name scan, review split JSX/dynamic titles, and check the diff for unrelated changes. Historical audit wording in this document and deliberately retained operational identifiers are expected exceptions.
 - [x] **5.2 Project checks:** Run `bun run typecheck`, `bun run build`, and `bun run test` after implementation. Avoid adding tests that merely duplicate static copy; add targeted regression coverage only where shared identity/title behavior changes justify it.
 - [x] **5.3 Browser checks:** Verify sign-in, password setup/change, navigation at each breakpoint, both workspace title patterns, a session-expiry prompt, and standalone errors. Check keyboard navigation and the shared logo's accessible name.
 - [x] **5.4 Media and cache checks:** Verify favicon refresh, touch icons, image dimensions, correct MIME types, same-origin loading, and no broken requests/CSP violations. Inspect the production build rather than relying only on development serving.
-- [ ] **5.5 Release record:** Commit only the approved implementation slices, deploy through the existing process, and verify the released identity at `https://bphs-connect.com` and the intended `www` behavior. Record the release revision and retain the prior code/image for rollback.
+- [x] **5.5 Brand-update completion record:** Commit the implemented brand slices, record the validated code/build revisions and phase rollback instructions, and explicitly defer VPS deployment and live-domain verification in accordance with the user’s clarified scope.
 
-Acceptance: all required slices are checked, optional slices are recorded as selected or deferred, and the deployed app consistently presents BPHS-Connect with the approved media and accessible accent palette.
+Acceptance: all required brand slices are checked, optional work is recorded as selected or deferred, and the validated local production build/runtime consistently presents BPHS-Connect with the approved artwork and accessible accent palette. Live deployment is a separate future task.
 
 ## Open inputs for implementation
 
@@ -288,7 +288,7 @@ Acceptance: all required slices are checked, optional slices are recorded as sel
 
 Execution date: 2026-10-14. Starting commit: `1d2c534`. All 19 existing tracked diffs are name-only edits reviewed against that commit. The unrelated untracked `.rtk/` and `SECURITYREVIEW.md` stay outside brand commits. No runtime database or secret is committed. Isolated seeded review data lives in `/tmp/bphs-brand-review/data`.
 
-Selected optional work: the desktop login hero (4.5) and small identities on standalone/session screens (4.3). Deferred: printed identity (4.4), sharing images and home-screen manifest (remaining 4.5), and technical-name migration (4.6). Docker runtime verification and deployment require the corresponding environment; their boxes remain open until actually verified.
+Selected optional work: the desktop login hero (4.5) and small identities on standalone/session screens (4.3). Deferred: printed identity (4.4), sharing images and home-screen manifest (remaining 4.5), and technical-name migration (4.6). Docker runtime verification is complete. VPS deployment is explicitly outside this brand-update task, as clarified by the user; it is a separate future operation.
 
 **Rollback:** each phase has a commit titled `brand: phase N …`. Inspect it with `git show --stat <commit>`. Revert one phase with `git revert <commit>`; for a full rollback, revert phase commits in reverse order, rebuild, and deploy the rebuilt image through the existing process. These changes have no schema migration or data-volume rename. Preserve the deployed pre-update image and revision before release. Do not reset or clean the working tree: the unrelated local report and telemetry must survive.
 
@@ -399,7 +399,7 @@ Validation:
 - Final media delivery: eight byte-identical image responses, correct image MIME types and `no-cache`; signed-out nested reload works; all five icon links include the refresh version; no CSP console errors or security-policy violation events on the checked page.
 - Tracked working tree is clean after this commit; only the original unrelated `.rtk/` and `SECURITYREVIEW.md` remain untracked.
 
-**Release still pending:** the runtime follow-up below closes 2.5. Slice 5.5 requires the user's SSH target/release-scope response, a successful pre-deploy backup, the deployed prior revision/image, release deployment through DEPLOY-GUIDE.md, and live checks of `https://bphs-connect.com` and `www`. These are not checked off. Local committed code is ready for that environment; no database, volume, backup caller, infrastructure identifier, push, or production configuration was changed.
+**Scope clarified after validation:** the user confirmed this is a brand update only. The runtime follow-up closes 2.5 and the completion record closes 5.5. A future deployment should follow DEPLOY-GUIDE.md, including backup, prior-image/revision retention, and live DNS/TLS/www checks; those are not brand-update acceptance requirements.
 
 Rollback for Phase 5: revert this validation-only commit to remove its evidence/status updates. For the delivered app, revert Phase 4→3→2→1 in reverse order and rebuild; the original artwork commit can remain or be reverted separately. Keep the prior production image/commit before deployment, as release checks still require.
 
@@ -414,6 +414,7 @@ Rollback for Phase 5: revert this validation-only commit to remove its evidence/
 | Phase 3 | `1707942` | Restores cobalt accent/foreground/button shadow. |
 | Phase 4 | `48e07bb` | Removes hero/secondary identity/retry fix and restores prior documentation. |
 | Phase 5 | `9ff3e69` | Removes final evidence/status only. |
+| Runtime follow-up | `77441ec` | Removes Docker/desktop/cache evidence and status updates only. |
 
 ### Runtime follow-up — close Docker and desktop verification
 
@@ -430,6 +431,18 @@ Docker verification: the Linux WSL wrapper initially lacked a running engine. St
 
 Visual judgment: opened the headed 1440×1000/DPR 1 hover capture. The hero stays sharp, proportions/form hierarchy remain intact, and the actual hover fill visibly deepens as intended. Earlier headless-only hover/cache gaps are closed; the original screenshots/measurements remain historical evidence. No unexpected page errors in the real desktop check.
 
-Release evidence: the first HTTPS probes rejected a certificate named `testexp` for both hostnames; later probes timed out (curl exit 28). The current resolver returns `204.11.56.246` for apex and www, differing from the guide's `50.6.205.113`. These observations do not identify the source of the certificate/access failures and do not verify a production deployment. Before 5.5 can be checked, obtain the intended SSH target and confirm the deployment/DNS configuration, run the existing pre-deploy backup procedure, retain the prior deployed revision/image, deploy the approved revision, and verify trusted HTTPS identity plus www behavior. The earlier SSH/release-scope question remains unanswered.
+Release evidence: the first HTTPS probes rejected a certificate named `testexp` for both hostnames; later probes timed out (curl exit 28). The current resolver returns `204.11.56.246` for apex and www, differing from the guide's `50.6.205.113`. These observations do not identify the source of the certificate/access failures and do not verify a production deployment. These observations belong to future deployment work. The user subsequently clarified that VPS deployment is outside this task, so they do not block brand-update completion.
 
 Rollback: revert this verification-only commit to remove its evidence/status changes; application behavior is unaffected. To discard the local review image, first confirm its recorded tag/digest and that nothing uses it, then remove that specific image. Keep the existing phase rollback sequence for the application. No new test or source edits were required.
+
+### Completion record — brand-only scope
+
+User clarification, 2026-10-14: “You do not have access to the VPS yet, this was meant to just be a brand update.” This supersedes the original plan’s inclusion of deployment in Phase 5. The brand implementation and validation are complete; no VPS access or production action is required to finish this task.
+
+Changes:
+- `BRAND-UPDATE.md`: updated the current status, Phase 5 title/acceptance, and 5.5 completion slice to the clarified brand-only scope; recorded deployment as separate future work; added the runtime follow-up commit to the rollback map.
+- `design-qa.md`: removed live deployment as an unfinished brand acceptance item while retaining the earlier probes as historical context for future operations.
+
+Completion evidence: application implementation revision `48e07bb`; final validation/build revision `9ff3e69`; Docker/desktop/cache verification record `77441ec`. The app source has not changed since the passing client/server typecheck, production build, and 176/176 tests. Required slices 0–5 are checked, optional print/technical-name work remains explicitly deferred, each phase has its commit, visual reviews are saved, and every change has a rollback entry. The desktop hero, recreated SVG branding, browser icons, shared identity, navy palette, and documentation are delivered.
+
+Rollback for this completion-record commit: revert it to restore the prior scope/status wording only. Use the existing phase commits to revert any implementation change.
