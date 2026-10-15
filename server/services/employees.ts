@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
-import type { Role } from '../../shared/constants.ts'
+import { WORKSPACES, type Role } from '../../shared/constants.ts'
 import { canUseWorkspace } from '../../shared/permissions.ts'
 import type { EmployeeCreateInput, EmployeeUpdateInput } from '../../shared/schemas.ts'
 import type { EmployeeRow } from '../../shared/types.ts'
@@ -25,6 +25,7 @@ interface RawEmployee {
   assessed: number
   grievances: number
   grievancesOpenOwned: number
+  maintenance: number
   account: string | null
 }
 
@@ -36,6 +37,7 @@ function deleteBlocked(row: RawEmployee): { code: string; reason: string } | nul
   }
   // Says no more than that: which grievance, and what it is about, is not for the asset side to show.
   if (row.grievances > 0) return { code: 'has_history', reason: 'Named on a grievance. Archive instead; history is never deleted.' }
+  if (row.maintenance > 0) return { code: 'has_history', reason: 'Dispatched on a maintenance request. Archive instead; history is never deleted.' }
   if (row.account) return { code: 'linked_user', reason: `Linked to the account ${row.account}. Unlink it on Users first.` }
   return null
 }
@@ -72,6 +74,7 @@ const listRaw = (db: DbLike, id?: number) =>
              (select count(*) from grievances g where g.owner_id = e.id) + (select count(*) from grievance_people p where p.employee_id = e.id)
                + (select count(*) from grievance_entries x join users du on du.id = x.documented_by_user_id where du.employee_id = e.id) as grievances,
              (select count(*) from grievances g where g.owner_id = e.id and g.status not in ('closed', 'voided')) as grievancesOpenOwned,
+             (select count(*) from maintenance_requests m where m.assigned_employee_id = e.id) as maintenance,
              (select min(u.email) from users u where u.employee_id = e.id) as account
       from employees e left join assignments a on a.employee_id = e.id
       ${id ? sql`where e.id = ${id}` : sql``}
@@ -82,7 +85,7 @@ const listRaw = (db: DbLike, id?: number) =>
 export function employeeFor(role: Role, row: EmployeeRow): EmployeeRow {
   const assets = canUseWorkspace(role, 'assets')
   const grievances = canUseWorkspace(role, 'grievances')
-  if (assets && grievances) return row
+  if (WORKSPACES.every((workspace) => canUseWorkspace(role, workspace))) return row
   return {
     ...row,
     ...(assets ? {} : { assetsHeld: 0, digitalHeld: 0, hasHistory: false }),
