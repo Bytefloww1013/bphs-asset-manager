@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Trash2, Wrench } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, maintenanceStatusLabel, type MaintenanceStatus } from '@shared/constants.ts'
+import { formatUsDate } from '@shared/dates.ts'
 import type { EmployeeRow, MaintenanceDetail } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
@@ -109,9 +110,9 @@ function RequestPage() {
           <Fact label="Location">{request.location}</Fact>
         </dl>
         <dl className="grid divide-line border-t border-line max-sm:divide-y sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">
-          <Fact label="Date">{request.requestDate}</Fact>
-          <Fact label="Noticed">{request.noticedDate}</Fact>
-          <Fact label="Submitted in Zoho">{request.zohoAddedTime}</Fact>
+          <Fact label="Date">{formatUsDate(request.requestDate)}</Fact>
+          <Fact label="Noticed">{formatUsDate(request.noticedDate)}</Fact>
+          <Fact label="Submitted in Zoho">{formatUsDate(request.zohoAddedTime)}</Fact>
           <Fact label="Received">{formatDateTime(request.receivedAt)}</Fact>
         </dl>
       </Panel>
