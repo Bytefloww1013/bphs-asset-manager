@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -379,3 +379,23 @@ export type AuditQuery = z.infer<typeof auditQuerySchema>
 /** The Grievance Audit Log takes the same filters, over its own actions. */
 export const grievanceAuditQuerySchema = auditQuerySchema.extend({ action: z.enum(GRIEVANCE_AUDIT_ACTIONS).optional() })
 export type GrievanceAuditQuery = z.infer<typeof grievanceAuditQuerySchema>
+
+// ---- Maintenance ----------------------------------------------------------------
+// A request entered by hand. Zoho's come in through the webhook, which reads them leniently on its own.
+export const maintenanceCreateSchema = z.object({
+  firstName: requiredText(100, 'First name'),
+  lastName: optionalText(100, 'Last name'),
+  // Optional, for a request phoned in, but a real address when given.
+  email: z.string().trim().toLowerCase().pipe(z.union([z.literal(''), z.email('Enter a valid email address')])).optional(),
+  program: optionalText(100, 'Program'),
+  location: requiredText(200, 'Location'),
+  description: requiredText(MAINTENANCE_DESCRIPTION_MAX, 'Description'),
+  urgent: z.enum(['No', 'Yes']).default('No'),
+  noticedDate: calendarDate('date noticed').optional(),
+})
+export type MaintenanceCreateInput = z.infer<typeof maintenanceCreateSchema>
+
+/** Who the request is dispatched to; null clears it. */
+export const maintenanceDispatchSchema = z.object({ employeeId: z.number({ error: 'Choose an employee' }).int().positive().nullable() })
+export const maintenanceStatusSchema = z.object({ status: z.enum(MAINTENANCE_STATUSES, { error: 'Choose a status' }) })
+export const maintenanceNoteSchema = z.object({ body: requiredText(MAINTENANCE_NOTE_MAX, 'Note') })

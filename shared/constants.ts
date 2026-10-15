@@ -123,3 +123,7 @@ const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
 export const maintenanceStatusLabel = (status: MaintenanceStatus) => MAINTENANCE_STATUS_LABELS[status]
 /** A maintenance request's ID, from its row id, as in MR-0042. */
 export const maintenanceCode = (id: number) => `MR-${String(id).padStart(4, '0')}`
+/** The longest note on a request's timeline. */
+export const MAINTENANCE_NOTE_MAX = 5000
+/** The longest description a request keeps: far more than the form produces. */
+export const MAINTENANCE_DESCRIPTION_MAX = 50_000

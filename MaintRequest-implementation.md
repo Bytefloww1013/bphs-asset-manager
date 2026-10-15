@@ -304,7 +304,7 @@ Each item is ticked when it is done, and each has its own commit on the `mainten
 1. **Server.**
    - [x] Constants, schema and migration, config
    - [x] Workspace access
-   - [ ] Webhook, service and routes
+   - [x] Webhook, service and routes
    - [ ] The employee-delete rule
    - [ ] Tests
 2. **Web.**

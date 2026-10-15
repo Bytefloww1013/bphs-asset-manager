@@ -21,7 +21,9 @@ import { employeeRoutes, userRoutes } from './routes/people.ts'
 import { digitalAssetRoutes } from './routes/digital-assets.ts'
 import { grievanceRoutes } from './routes/grievances.ts'
 import { importRoutes } from './routes/imports.ts'
+import { maintenanceRoutes } from './routes/maintenance.ts'
 import { programRoutes } from './routes/programs.ts'
+import { webhookRoutes } from './routes/webhooks.ts'
 
 export interface AppOptions {
   /** Serve the built SPA (production). */
@@ -29,6 +31,8 @@ export interface AppOptions {
   /** Where the built SPA is. Defaults to config.webDir; tests point it at a folder of their own. */
   webDir?: string
   quiet?: boolean
+  /** Defaults to config.maintenanceWebhookSecret; tests set their own. */
+  maintenanceWebhookSecret?: string
 }
 
 // The largest thing anyone sends is an import: 2,000 rows of at most five 300-character cells as JSON, which fits with room to spare; signing in and changing a password send two short strings.
@@ -92,6 +96,8 @@ export function createApp(db: Db, options: AppOptions = {}) {
 
   app.get('/api/health', (c) => c.json({ ok: true }))
   app.route('/api/auth', authRoutes(db))
+  // Zoho's calls carry a shared secret, not a session, so they are answered before the sign-in check below.
+  app.route('/api/webhooks', webhookRoutes(db, options.maintenanceWebhookSecret ?? config.maintenanceWebhookSecret))
 
   // Everything below needs a signed-in user.
   const api = new Hono<Env>()
@@ -112,6 +118,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/import', importRoutes(db))
   api.route('/digital-assets', digitalAssetRoutes(db))
   api.route('/grievances', grievanceRoutes(db))
+  api.route('/maintenance', maintenanceRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requirePermission('users.manage'))
   api.use('/users', requirePermission('users.manage'))
