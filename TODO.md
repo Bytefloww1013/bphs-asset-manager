@@ -4,13 +4,14 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 ## Production (https://bphs-connect.com)
 
-- [ ] **Change the first Super Admin's password, urgently.** Sign in as `admin@bphs-connect.com` with the starting password from [DEPLOY-GUIDE.md step 8](DEPLOY-GUIDE.md#8-start-the-app-and-check-its-health), and choose a permanent one. Every new install starts with that same password, and the site is public.
+- [x] **Change the first Super Admin's password, urgently.** Sign in as `admin@bphs-connect.com` with the starting password from [DEPLOY-GUIDE.md step 8](DEPLOY-GUIDE.md#8-start-the-app-and-check-its-health), and choose a permanent one. Every new install starts with that same password, and the site is public.
 - [ ] Create a second Super Admin under **Users**, so there is another way back in if one account is locked out.
 - [ ] Run the rest of the sign-in checks in [DEPLOY-GUIDE.md step 11](DEPLOY-GUIDE.md#11-sign-in-and-verify-the-application): sign out and back in, refresh a direct URL, open each workspace, and try an import/export and a grievance attachment.
-- [ ] Connect the Zoho maintenance form ([DEPLOY-GUIDE.md step 15](DEPLOY-GUIDE.md#15-connect-the-zoho-maintenance-form)).
+- [x] Connect the Zoho maintenance form ([DEPLOY-GUIDE.md step 15](DEPLOY-GUIDE.md#15-connect-the-zoho-maintenance-form)).
   - URL: `https://bphs-connect.com/api/webhooks/maintenance`
   - Header: `X-Webhook-Secret`, set to the secret the server already has.
   - Press **Test Webhook**, then submit one real entry and check it appears under Maintenance.
+  - 2026-10-15: Test Webhook and a real form entry both arrived (201), with every field mapped.
 - [ ] Remove the `MAINTENANCE_WEBHOOK_SECRET` export from `/root/.bash_aliases` on the VPS. The app reads the secret from `/etc/bphs-connect/compose.yml`, so it no longer needs to be there.
 
 ## Backups
@@ -24,6 +25,7 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 ## Development requests
 
+- [ ] Show a maintenance request's Date, Noticed and Zoho time in US format (10/15/2026 12:40 PM). Zoho sends day first and has no setting for it. Built and checked locally; not yet deployed.
 - [ ] _Add requests here._ Build and check each one locally, then redeploy with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first.
 
 ## Maybe
