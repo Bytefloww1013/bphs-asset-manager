@@ -141,9 +141,38 @@ describe('authentication', () => {
     expect((await t.call('GET', '/api/assets', { cookie })).status).toBe(200)
   })
 
-  it('moves the cookie forward whenever the server moves the session, so an active person is not signed out', async () => {
+  it('ends the cookie with the browser and the session after 12 idle hours, unless asked to keep the person signed in for 30 days', async () => {
     const t = await setup()
+    const hour = 3_600_000
     const signedIn = await t.signIn('m.oyelaran@bphs.local')
+    expect(signedIn.headers.get('set-cookie')).not.toMatch(/expires|max-age/i)
+    const [session] = t.db.select().from(sessions).all()
+    expect(session!.remember).toBe(false)
+    expect(Math.abs(session!.expiresAt.getTime() - Date.now() - 12 * hour)).toBeLessThan(60_000)
+
+    const kept = await t.signIn('p.raghunathan@bphs.local', PASSWORD, true)
+    const remembered = t.db.select().from(sessions).where(eq(sessions.remember, true)).get()!
+    expect(Math.abs(remembered.expiresAt.getTime() - Date.now() - 30 * 24 * hour)).toBeLessThan(60_000)
+    expect(Math.abs(cookieExpiry(kept.headers.get('set-cookie')).getTime() - remembered.expiresAt.getTime())).toBeLessThan(1000)
+
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      // The server still slides the short session, but its cookie has no expiry to send again.
+      vi.setSystemTime(Date.now() + 3 * hour)
+      const slid = await t.call('GET', '/api/auth/me', { cookie: signedIn.cookie })
+      expect(slid.status).toBe(200)
+      expect(slid.headers.get('set-cookie')).toBeNull()
+      vi.setSystemTime(Date.now() + 13 * hour)
+      expect((await t.call('GET', '/api/auth/me', { cookie: signedIn.cookie })).status).toBe(401)
+      expect((await t.call('GET', '/api/auth/me', { cookie: kept.cookie })).status).toBe(200)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('moves the cookie forward whenever the server moves a remembered session, so an active person is not signed out', async () => {
+    const t = await setup()
+    const signedIn = await t.signIn('m.oyelaran@bphs.local', PASSWORD, true)
     const issued = cookieExpiry(signedIn.headers.get('set-cookie'))
     expect(issued.getTime()).toBeGreaterThan(Date.now())
 

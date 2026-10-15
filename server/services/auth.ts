@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { and, eq, gt, lt, ne, sql } from 'drizzle-orm'
-import { LOCK_MINUTES, LOCK_THRESHOLD, type Role } from '../../shared/constants.ts'
+import { LOCK_MINUTES, LOCK_THRESHOLD, REMEMBER_DAYS, type Role } from '../../shared/constants.ts'
 import type { SessionUser } from '../../shared/types.ts'
 import { config } from '../config.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -38,20 +38,21 @@ function toAuthUser(row: typeof users.$inferSelect): AuthUser {
   }
 }
 
-function sessionExpiry(now: Date) {
-  return new Date(now.getTime() + config.sessionIdleHours * 60 * MINUTE)
+function sessionExpiry(now: Date, remember: boolean) {
+  return new Date(now.getTime() + (remember ? REMEMBER_DAYS * 24 : config.sessionIdleHours) * 60 * MINUTE)
 }
 
-export function createSession(db: DbLike, userId: number, now = new Date()) {
+export function createSession(db: DbLike, userId: number, remember: boolean, now = new Date()) {
   const token = randomBytes(32).toString('base64url')
-  const expiresAt = sessionExpiry(now)
-  db.insert(sessions).values({ id: sha256(token), userId, lastSeenAt: now, expiresAt }).run()
+  const expiresAt = sessionExpiry(now, remember)
+  db.insert(sessions).values({ id: sha256(token), userId, lastSeenAt: now, expiresAt, remember }).run()
   return { token, expiresAt }
 }
 
 /**
  * Resolve a cookie token to its user, sliding the expiry forward. Null if unknown, expired or deactivated.
- * `extendedTo` is the new expiry when this lookup moved it, which the cookie in the browser has to follow.
+ * `extendedTo` is the new expiry when this lookup moved a remembered session, which the cookie in the browser has to follow.
+ * Any other session's cookie ends with the browser, so it has no expiry to move.
  */
 export function findSession(db: DbLike, token: string, now = new Date()): { user: AuthUser; extendedTo: Date | null } | null {
   const id = sha256(token)
@@ -64,8 +65,9 @@ export function findSession(db: DbLike, token: string, now = new Date()): { user
   if (!row) return null
   let extendedTo: Date | null = null
   if (now.getTime() - row.session.lastSeenAt.getTime() > 5 * MINUTE) {
-    extendedTo = sessionExpiry(now)
-    db.update(sessions).set({ lastSeenAt: now, expiresAt: extendedTo }).where(eq(sessions.id, id)).run()
+    const expiresAt = sessionExpiry(now, row.session.remember)
+    db.update(sessions).set({ lastSeenAt: now, expiresAt }).where(eq(sessions.id, id)).run()
+    if (row.session.remember) extendedTo = expiresAt
   }
   return { user: toAuthUser(row.user), extendedTo }
 }
@@ -91,7 +93,7 @@ const LOCKED = (until: Date) =>
     lockedUntil: until.toISOString(),
   })
 
-export async function login(db: Db, email: string, password: string, now = new Date()) {
+export async function login(db: Db, email: string, password: string, remember = false, now = new Date()) {
   const row = db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).get()
   if (!row || !row.isActive) {
     await verifyDecoy(password)
@@ -153,7 +155,7 @@ export async function login(db: Db, email: string, password: string, now = new D
   const session = db.transaction((tx) => {
     tx.update(users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: now }).where(eq(users.id, row.id)).run()
     writeAudit(tx, user, { action: 'sign_in', entityType: 'user', entityId: row.id, details: `${row.email} · signed in`, at: now })
-    return createSession(tx, row.id, now)
+    return createSession(tx, row.id, remember, now)
   })
   return { user, ...session }
 }

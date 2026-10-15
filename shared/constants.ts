@@ -56,6 +56,8 @@ export function defaultRating<T extends { score: number }>(ratings: readonly T[]
 export const LOCK_THRESHOLD = 5
 /** Minutes an account stays locked. */
 export const LOCK_MINUTES = 15
+/** Idle days before a session signed in with "Keep me signed in" ends. */
+export const REMEMBER_DAYS = 30
 /** Assets out longer than this are flagged as overdue in the UI. */
 export const OVERDUE_DAYS = 365
 

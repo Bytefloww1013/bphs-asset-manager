@@ -8,8 +8,11 @@ import { findSession } from './services/auth.ts'
 
 export const COOKIE = 'bphs_session'
 
-/** The cookie lasts as long as the session does, so it is sent again whenever the session is moved forward. */
-export function setSessionCookie(c: Context, token: string, expiresAt: Date) {
+/**
+ * A remembered session's cookie lasts as long as the session does, so it is sent again whenever the session is moved forward.
+ * Without `expiresAt` the cookie ends when the browser closes.
+ */
+export function setSessionCookie(c: Context, token: string, expiresAt?: Date) {
   setCookie(c, COOKIE, token, { httpOnly: true, sameSite: 'Lax', secure: config.cookieSecure, path: '/', expires: expiresAt })
 }
 

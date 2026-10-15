@@ -10,9 +10,9 @@ export function authRoutes(db: Db) {
   const app = new Hono<Env>()
 
   app.post('/login', json(loginSchema), async (c) => {
-    const { email, password } = c.req.valid('json')
-    const result = await login(db, email, password)
-    setSessionCookie(c, result.token, result.expiresAt)
+    const { email, password, remember } = c.req.valid('json')
+    const result = await login(db, email, password, remember)
+    setSessionCookie(c, result.token, remember ? result.expiresAt : undefined)
     return c.json({ user: toSessionUser(result.user) })
   })
 

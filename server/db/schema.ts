@@ -55,6 +55,8 @@ export const sessions = sqliteTable(
     createdAt: createdAt(),
     lastSeenAt: ms('last_seen_at').notNull(),
     expiresAt: ms('expires_at').notNull(),
+    /** Signed in with "Keep me signed in": a longer idle limit, and a cookie that outlives the browser. */
+    remember: integer('remember', { mode: 'boolean' }).notNull().default(false),
   },
   (t) => [index('ix_sessions_user').on(t.userId)],
 )

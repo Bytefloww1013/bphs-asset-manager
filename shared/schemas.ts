@@ -28,6 +28,7 @@ export const password = z
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().min(1, 'Enter your email'),
   password: z.string().min(1, 'Enter your password').max(MAX_PASSWORD, tooLong('Password', MAX_PASSWORD)),
+  remember: z.boolean().optional(),
 })
 export type LoginInput = z.infer<typeof loginSchema>
 

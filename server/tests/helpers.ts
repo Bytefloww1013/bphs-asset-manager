@@ -44,8 +44,8 @@ export async function setup() {
     return { status: res.status, data, headers: res.headers }
   }
 
-  async function signIn(email: string, password = PASSWORD) {
-    const res = await call('POST', '/api/auth/login', { body: { email, password } })
+  async function signIn(email: string, password = PASSWORD, remember = false) {
+    const res = await call('POST', '/api/auth/login', { body: { email, password, remember } })
     const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
     return { ...res, cookie }
   }

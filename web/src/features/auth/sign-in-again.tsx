@@ -1,10 +1,11 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { REMEMBER_DAYS } from '@shared/constants.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
-import { Field, Input, PasswordInput } from '@/components/ui/form.tsx'
+import { Checkbox, Field, Input, PasswordInput } from '@/components/ui/form.tsx'
 import { Wordmark } from '@/components/ui/logo.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { formatTime } from '@/lib/format.ts'
@@ -28,6 +29,7 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
   // Whatever had focus when the session ended, usually a field of the form being filled in. Focus goes back there afterwards.
   const cameFrom = useRef<Element | null>(null)
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
   const [missing, setMissing] = useState(false)
@@ -74,7 +76,7 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
     if (!password) return
     setBusy(true)
     try {
-      const result = await api.post<{ user: SessionUser }>('/auth/login', { email: user.email, password })
+      const result = await api.post<{ user: SessionUser }>('/auth/login', { email: user.email, password, remember })
       await resume(result.user)
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(0, null, 'Could not sign in. Try again.'))
@@ -140,6 +142,10 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
                 }}
               />
             </Field>
+            <label className="flex items-center gap-2 text-sm text-ink-2">
+              <Checkbox checked={remember} onChange={(event) => setRemember(event.target.checked)} />
+              Keep me signed in for {REMEMBER_DAYS} days
+            </label>
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
               <Button variant="ghost" onClick={signInAsSomeoneElse}>
                 Sign in as someone else

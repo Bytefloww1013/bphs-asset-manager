@@ -2,11 +2,12 @@ import { useForm } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { Lock } from 'lucide-react'
-import { loginSchema } from '@shared/schemas.ts'
+import { REMEMBER_DAYS } from '@shared/constants.ts'
+import { loginSchema, type LoginInput } from '@shared/schemas.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
-import { Field, Input, PasswordInput } from '@/components/ui/form.tsx'
+import { Checkbox, Field, Input, PasswordInput } from '@/components/ui/form.tsx'
 import { AuthBrand } from '@/components/ui/logo.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
@@ -32,7 +33,7 @@ function LoginPage() {
   const { redirect: cameFrom } = Route.useSearch()
 
   const login = useMutation({
-    mutationFn: (value: { email: string; password: string }) => api.post<{ user: SessionUser }>('/auth/login', value),
+    mutationFn: (value: LoginInput) => api.post<{ user: SessionUser }>('/auth/login', value),
     onSuccess: async ({ user }) => {
       queryClient.setQueryData(meQuery.queryKey, user)
       await (user.mustChangePassword ? router.navigate({ to: '/password-change' }) : router.navigate({ href: cameFrom ?? '/' }))
@@ -40,7 +41,7 @@ function LoginPage() {
   })
 
   const form = useForm({
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: '', password: '', remember: false } as LoginInput,
     validators: { onSubmit: loginSchema },
     onSubmit: async ({ value }) => {
       await login.mutateAsync(value).catch(() => undefined)
@@ -108,6 +109,14 @@ function LoginPage() {
                   </Field>
                 )}
               </form.Field>
+              <form.Field name="remember">
+                {(field) => (
+                  <label className="flex items-center gap-2 text-sm text-ink-2">
+                    <Checkbox checked={field.state.value} onChange={(event) => field.handleChange(event.target.checked)} />
+                    Keep me signed in for {REMEMBER_DAYS} days
+                  </label>
+                )}
+              </form.Field>
               <Button type="submit" variant="primary" size="lg" loading={login.isPending} className="mt-1">
                 Sign in
               </Button>
@@ -115,7 +124,7 @@ function LoginPage() {
           </div>
           <p className="mt-5 flex items-start justify-center gap-2 px-4 text-center text-sm text-ink-3">
             <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>Office network only. Five incorrect attempts lock an account for 15 minutes; only a Super Admin can clear a lock or reset a password.</span>
+            <span>Five incorrect attempts lock an account for 15 minutes; only a Super Admin can clear a lock or reset a password.</span>
           </p>
         </div>
       </main>
