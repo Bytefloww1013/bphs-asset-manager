@@ -22,7 +22,7 @@ bun run db:seed        # optional: synthetic demo data (employees, programs, 116
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
-The seed prints the demo sign-ins (a Super Admin, an Admin, an account that must change its password, a locked account, a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
+The seed prints the demo sign-ins (a Super Admin, an Admin, a Grievance Admin who must change their password, a locked Asset Admin, a deactivated account). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
 
 The development API runs on Node through `tsx watch`, which restarts it when an imported file changes. This avoids the native file-watcher crash seen with Node 24's `--watch` mode when stopping the server.
 
@@ -121,7 +121,7 @@ Two workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 - Only the owner's account or a Super Admin can edit a grievance, change its status or give it a new owner; voiding a grievance and withdrawing a file are Super Admin only. A Closed or Voided grievance takes no new entries or files. An edit made from an older version than the one saved is refused.
 - Grievance files: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by content, up to 10 MB each and 10 at a time, stored inside the database. Downloads are always a file to save, never shown in the page.
 - The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download, print and workbook export, by ID, title and filename only, never body text. The case file prints, and the workbook downloads, only after that entry is written.
-- Roles: **Admin** adds and changes records. **Super Admin** can also delete, archive employees and manage accounts.
+- Roles: **Asset Admin** adds and changes records in Assets and cannot see Grievances. **Grievance Admin** does the same in Grievances and cannot see Assets. **Admin (both workspaces)** does both. **Super Admin** can also delete, archive employees and manage accounts. Employees are shared: both workspaces list them, each showing only its own counts.
 
 ## Project layout
 
@@ -154,7 +154,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).
 - The audit log export caps at 50,000 rows per download, and is CSV only.
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
-- Every account can read every grievance; there is no limit to named people or an HR-only role.
+- Every account that works in Grievances can read every grievance; there is no limit to named people.
 - The case-file PDF comes from the browser's print dialog, so its page header and footer are the browser's.
 - Grievance files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
 - An import takes one file of at most 2,000 rows and 5 MB, reads the first sheet of a workbook, and does not read the old `.xls` format.

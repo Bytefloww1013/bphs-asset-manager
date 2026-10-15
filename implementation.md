@@ -33,7 +33,7 @@ A slice is ticked when it is finished and committed.
 
 | # | Question | Decision |
 |---|---|---|
-| G1 | Who can use it | **Both roles see every grievance** (confirmed 2026-10-12: only trusted management and IT staff have accounts). Any Admin can create a grievance and add actions, events and attachments to any grievance. Voiding a grievance and withdrawing an attachment are Super Admin only. |
+| G1 | Who can use it | **Every role that works in Grievances sees every grievance** (Grievance Admin, Admin and Super Admin; an Asset Admin cannot open the workspace, and the API answers 403) (confirmed 2026-10-12: only trusted management and IT staff have accounts). Any Admin can create a grievance and add actions, events and attachments to any grievance. Voiding a grievance and withdrawing an attachment are Super Admin only. |
 | G1a | Who can change a grievance | **Only the owner's account and Super Admins** can edit a grievance's details, change its status or reassign its owner. "The owner's account" is the account linked to the employee named as Owner. Everyone else sees those controls disabled with the reason. |
 | G2 | Editing and deleting | **Append-only trail.** An action/event is never edited or deleted; a mistake is fixed with a Correction entry linked to the original. A grievance can be edited, and every earlier version is kept and viewable. Nothing is deleted: a grievance is closed, or voided with a reason. |
 | G3 | IDs | **Generated.** Grievance `GR-2026-0001`; its entries `GR-2026-0001-E01`, `-E02`, ... Shown read-only, never typed, never edited, never reused. |
@@ -58,7 +58,7 @@ The app becomes two **workspaces** behind one sign-in: **Assets** (everything th
 - **What stays shared:** sign-in, the account menu, and the Users screen (an account is app-wide). People are picked from the one Employees directory; employees are still added and archived on the asset side.
 - **URLs and code:** everything lives under `/grievances/...` and `/api/grievances/...`, with its own layout route, `web/src/features/grievances/`, and its own server routes and services. All grievance code, including the editor, is loaded only when the workspace is opened.
 - **Data:** new tables only, all prefixed `grievance_`. No existing table changes shape.
-- **Nothing crosses over:** grievances do not appear on Overview, Lists, Import/Export, the Employees page or the existing Audit Log, and no asset screen links into the Grievances workspace.
+- **Nothing crosses over:** grievances do not appear on Overview, Lists, Import/Export or the existing Audit Log, and no asset screen links into the Grievances workspace. Employees are the one shared list: each workspace has an Employees page over the same records, showing only its own counts.
 
 Considered and not chosen: a fourth group in the existing sidebar (cheapest, but grievances would sit one click from laptop assignments on every screen, which is the opposite of isolated); and a second app on its own port with its own sign-in (strongest separation, but two sets of accounts, two deployments and two backups for the same five people).
 
@@ -273,7 +273,7 @@ Shared pieces every later phase needs. No grievance screen exists at the end of 
 
 **As built (2026-10-12).**
 
-- `POST /api/grievances/:code/status` (`{ status, note }`), `/owner` (`{ ownerId, note }`) and `/void` (`{ reason }`, Super Admin) each answer with the grievance as it now is. `GET /api/grievances/account-holders` lists the employees an active account is linked to.
+- `POST /api/grievances/:code/status` (`{ status, note }`), `/owner` (`{ ownerId, note }`) and `/void` (`{ reason }`, Super Admin) each answer with the grievance as it now is. `GET /api/grievances/account-holders` lists the employees an active account that works in Grievances is linked to.
 - `findToManage` in `server/services/grievances.ts` is the one check of who may: 403 with the words from `grievanceManageReason` in `shared/permissions.ts`, and 409 `grievance_voided` for a voided grievance. `applyChange` writes the update, the automatic entry and the audit entry in one transaction.
 - A status can move to any of the other three, in any order; moving to the status it already has is 409 `status_unchanged`.
 - A Closed grievance takes no change of owner (409 `grievance_sealed`); it is reopened first. The new owner must be an active employee, and not the current one.

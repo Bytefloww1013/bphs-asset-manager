@@ -1,4 +1,4 @@
-import type { AuditAction } from '../../shared/constants.ts'
+import type { AuditAction, Role } from '../../shared/constants.ts'
 import type { DbLike } from '../db/client.ts'
 import { auditLog } from '../db/schema.ts'
 
@@ -7,7 +7,7 @@ export interface Actor {
   id: number
   email: string
   name: string
-  role: 'admin' | 'super_admin'
+  role: Role
   employeeId: number | null
 }
 

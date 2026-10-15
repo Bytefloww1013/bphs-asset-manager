@@ -1,6 +1,6 @@
 import { eq, inArray, sql, type SQL } from 'drizzle-orm'
 import { GRIEVANCE_PREVIEW_LENGTH, GRIEVANCE_STATUSES, grievanceCode, grievanceStatusLabel, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
-import { canManageGrievance, grievanceManageReason } from '../../shared/permissions.ts'
+import { canManageGrievance, grievanceManageReason, rolesIn } from '../../shared/permissions.ts'
 import type { GrievanceCreateInput, GrievanceExportInput, GrievanceListQuery, GrievanceOwnerChangeInput, GrievanceStatusChangeInput, GrievanceVoidInput } from '../../shared/schemas.ts'
 import type { GrievanceDetail, GrievanceList, GrievancePerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -77,6 +77,9 @@ interface RawGrievance {
   recordedBy: string | null
 }
 
+/** The roles that work in Grievances, for an SQL `in (...)`. */
+const grievanceRoles = () => sql.join(rolesIn('grievances').map((role) => sql`${role}`), sql`, `)
+
 /** One grievance in full, found by its row id or by its Grievance ID. */
 export function getGrievance(db: DbLike, key: { id: number } | { code: string }): GrievanceDetail {
   const row = db.get<RawGrievance>(sql`
@@ -84,7 +87,7 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
            g.date_made as dateMade, g.status as status, g.version as version, g.created_at as createdAt, g.last_activity_at as lastActivityAt,
            c.id as categoryId, c.name as categoryName,
            o.id as ownerId, o.code as ownerCode, o.first_name as ownerFirstName, o.last_name as ownerLastName, o.archived_at as ownerArchivedAt,
-           exists (select 1 from users a where a.employee_id = o.id and a.is_active = 1) as ownerHasAccount,
+           exists (select 1 from users a where a.employee_id = o.id and a.is_active = 1 and a.role in (${grievanceRoles()})) as ownerHasAccount,
            u.name as recordedBy
     from grievances g
       join grievance_categories c on c.id = g.category_id
@@ -225,9 +228,14 @@ export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInpu
   return getGrievance(db, { id })
 }
 
-/** The employees an account that can sign in is linked to. Only one of these, as owner, can change a grievance without a Super Admin. */
+/**
+ * The employees linked to an account that can sign in and works in Grievances. Only one of these, as owner, can change a
+ * grievance without a Super Admin.
+ */
 export function listGrievanceAccountHolders(db: DbLike): number[] {
-  return db.all<{ id: number }>(sql`select employee_id as id from users where employee_id is not null and is_active = 1 order by employee_id`).map((row) => row.id)
+  return db
+    .all<{ id: number }>(sql`select employee_id as id from users where employee_id is not null and is_active = 1 and role in (${grievanceRoles()}) order by employee_id`)
+    .map((row) => row.id)
 }
 
 /**

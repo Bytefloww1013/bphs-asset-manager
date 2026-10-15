@@ -18,6 +18,7 @@ import { fieldError } from '@/lib/form.ts'
 import { formatDate, plural } from '@/lib/format.ts'
 import { assetsQuery, digitalAssetsQuery } from '@/lib/queries.ts'
 import { useCan } from '@/lib/session.ts'
+import { useWorkspace } from '@/lib/workspace.ts'
 
 interface Body {
   code: string
@@ -101,6 +102,8 @@ export function QuickAddEmployee({ onAdded }: { onAdded: (id: number) => void })
 
 export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   const sheets = useSheetActions()
+  // In Grievances, an employee is a person to name, not someone who holds equipment.
+  const assets = useWorkspace() === 'assets'
   const canArchive = useCan('employee.archive')
   const canDelete = useCan('record.delete')
   const [editing, setEditing] = useState(false)
@@ -111,7 +114,7 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   const remove = useWrite(() => api.delete(`/employees/${employee.id}`), { success: `${employee.name} deleted` })
 
   const items: MenuItem[] = [
-    { label: 'What they hold', icon: PackageSearch, onSelect: () => setHoldings(true) },
+    ...(assets ? [{ label: 'What they hold', icon: PackageSearch, onSelect: () => setHoldings(true) }] : []),
     { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true) },
     employee.state === 'archived'
       ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => restore.mutate(undefined), disabledReason: canArchive ? undefined : SUPER_ADMIN_ONLY }
@@ -141,9 +144,11 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
 
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined} onClick={() => sheets.issue(undefined, employee.id)}>
-        Issue to
-      </Button>
+      {assets && (
+        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined} onClick={() => sheets.issue(undefined, employee.id)}>
+          Issue to
+        </Button>
+      )}
       <Menu label={`More actions for ${employee.name}`} items={items} />
       {editing && <EmployeeEditSheet employee={employee} onClose={() => setEditing(false)} />}
       {holdings && <EmployeeHoldingsSheet employee={employee} onClose={() => setHoldings(false)} />}

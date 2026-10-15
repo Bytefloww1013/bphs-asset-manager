@@ -1,10 +1,17 @@
-export const ROLES = ['admin', 'super_admin'] as const
+export const ROLES = ['asset_admin', 'grievance_admin', 'admin', 'super_admin'] as const
 export type Role = (typeof ROLES)[number]
 
 export const ROLE_LABEL: Record<Role, string> = {
-  admin: 'Admin',
+  asset_admin: 'Asset Admin',
+  grievance_admin: 'Grievance Admin',
+  admin: 'Admin (both workspaces)',
   super_admin: 'Super Admin',
 }
+
+/** The app is two workspaces behind one sign-in. A person is in one or the other, never looking at a mix. */
+export const WORKSPACES = ['assets', 'grievances'] as const
+export type Workspace = (typeof WORKSPACES)[number]
+export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances' }
 
 export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import', 'lock', 'sign_in'] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { can, canManageGrievance } from './permissions.ts'
+import { can, canManageGrievance, canUseWorkspace, rolesIn } from './permissions.ts'
 
 describe('grievance permissions', () => {
   it('lets only a Super Admin void', () => {
@@ -23,8 +23,28 @@ describe('grievance permissions', () => {
     expect(canManageGrievance({ role: 'admin', employeeId: null }, null)).toBe(false)
   })
 
+  it('lets a Grievance Admin manage their own grievance, and never an Asset Admin', () => {
+    expect(canManageGrievance({ role: 'grievance_admin', employeeId: 7 }, 7)).toBe(true)
+    expect(canManageGrievance({ role: 'asset_admin', employeeId: 7 }, 7)).toBe(false)
+  })
+
   it('refuses when nobody is signed in', () => {
     expect(canManageGrievance(null, 7)).toBe(false)
     expect(canManageGrievance(undefined, 7)).toBe(false)
+  })
+})
+
+describe('workspaces', () => {
+  it('keeps each workspace admin to their own workspace', () => {
+    expect(canUseWorkspace('asset_admin', 'assets')).toBe(true)
+    expect(canUseWorkspace('asset_admin', 'grievances')).toBe(false)
+    expect(canUseWorkspace('grievance_admin', 'grievances')).toBe(true)
+    expect(canUseWorkspace('grievance_admin', 'assets')).toBe(false)
+    expect(canUseWorkspace(null, 'assets')).toBe(false)
+  })
+
+  it('gives Admins and Super Admins both', () => {
+    expect(rolesIn('grievances')).toEqual(['grievance_admin', 'admin', 'super_admin'])
+    expect(rolesIn('assets')).toEqual(['asset_admin', 'admin', 'super_admin'])
   })
 })

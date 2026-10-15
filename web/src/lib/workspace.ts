@@ -1,9 +1,7 @@
 import { useRouterState } from '@tanstack/react-router'
+import { WORKSPACE_LABEL, type Workspace } from '@shared/constants.ts'
 
-/** The app is two workspaces behind one sign-in. A person is in one or the other, never looking at a mix. */
-export type Workspace = 'assets' | 'grievances'
-
-export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances' }
+export { WORKSPACE_LABEL, type Workspace }
 
 /** The address decides the workspace, so a link, a reload and the back button always land on the right side. */
 export const workspaceOf = (pathname: string): Workspace => (/^\/grievances(?:\/|$)/.test(pathname) ? 'grievances' : 'assets')

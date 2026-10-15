@@ -7,11 +7,12 @@ import { HTTPException } from 'hono/http-exception'
 import { csrf } from 'hono/csrf'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST } from '../shared/constants.ts'
+import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST, WORKSPACE_LABEL, type Workspace } from '../shared/constants.ts'
+import { canUseWorkspace } from '../shared/permissions.ts'
 import { config } from './config.ts'
 import type { Db } from './db/client.ts'
 import { requirePermission, type Env } from './http.ts'
-import { describeError } from './lib/errors.ts'
+import { describeError, forbidden } from './lib/errors.ts'
 import { authenticate } from './middleware.ts'
 import { assetRoutes, assignmentRoutes } from './routes/assets.ts'
 import { authRoutes } from './routes/auth.ts'
@@ -36,6 +37,10 @@ const MAX_AUTH_BODY_BYTES = 16 * 1024
 // The routes that take a grievance's files, as multipart: ten files at their limit, and room for the form beside them.
 const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
 const UPLOAD_PATH = /^\/api\/grievances(\/[^/]+\/(entries|attachments))?$/
+
+/** The workspace an API path belongs to. Employees serve both, and Users answers to its own permission; everything else is Assets. */
+const workspaceOfPath = (path: string): Workspace | null =>
+  /^\/api\/grievances(\/|$)/.test(path) ? 'grievances' : /^\/api\/(employees|users)(\/|$)/.test(path) ? null : 'assets'
 
 const limitBody = (maxSize: number) =>
   bodyLimit({ maxSize, onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413) })
@@ -85,6 +90,13 @@ export function createApp(db: Db, options: AppOptions = {}) {
   // Everything below needs a signed-in user.
   const api = new Hono<Env>()
   api.use('*', authenticate(db))
+  api.use('*', async (c, next) => {
+    const workspace = workspaceOfPath(c.req.path)
+    if (workspace && !canUseWorkspace(c.get('user').role, workspace)) {
+      throw forbidden(`Your account does not have access to ${WORKSPACE_LABEL[workspace]}.`)
+    }
+    await next()
+  })
   api.use('*', (c, next) => (isUpload(c) ? uploadLimit(c, next) : next()))
   api.route('/', reportRoutes(db))
   api.route('/assets', assetRoutes(db))

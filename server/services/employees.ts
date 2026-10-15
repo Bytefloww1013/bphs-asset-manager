@@ -1,4 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
+import type { Role } from '../../shared/constants.ts'
+import { canUseWorkspace } from '../../shared/permissions.ts'
 import type { EmployeeCreateInput, EmployeeUpdateInput } from '../../shared/schemas.ts'
 import type { EmployeeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -75,6 +77,20 @@ const listRaw = (db: DbLike, id?: number) =>
       ${id ? sql`where e.id = ${id}` : sql``}
       group by e.id
       order by e.last_name collate nocase, e.first_name collate nocase`)
+
+/** An employee as this role may see them: what they hold or own in a workspace the role is not in reads as nothing. */
+export function employeeFor(role: Role, row: EmployeeRow): EmployeeRow {
+  const assets = canUseWorkspace(role, 'assets')
+  const grievances = canUseWorkspace(role, 'grievances')
+  if (assets && grievances) return row
+  return {
+    ...row,
+    ...(assets ? {} : { assetsHeld: 0, digitalHeld: 0, hasHistory: false }),
+    ...(grievances ? {} : { openGrievancesOwned: 0 }),
+    // The reason can name either workspace, and deleting is a Super Admin's, who sees it.
+    deleteBlocked: null,
+  }
+}
 
 export function listEmployees(db: DbLike, id?: number): EmployeeRow[] {
   return listRaw(db, id).map(toRow)

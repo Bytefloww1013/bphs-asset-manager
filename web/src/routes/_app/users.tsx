@@ -2,9 +2,9 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Copy, KeyRound, Lock, LockOpen, ShieldCheck, ShieldOff, Unlink, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
+import { Copy, KeyRound, Lock, LockOpen, Shield, ShieldCheck, Unlink, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
-import { ROLE_LABEL, type Role } from '@shared/constants.ts'
+import { ROLE_LABEL, ROLES, type Role } from '@shared/constants.ts'
 import type { UserRow, UserWithPassword } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
@@ -126,6 +126,13 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
   )
 }
 
+const ROLE_HINT: Record<Role, string> = {
+  asset_admin: 'Can add and change records in Assets. Cannot see Grievances, delete or manage accounts.',
+  grievance_admin: 'Can add and change grievances. Cannot see Assets, delete or manage accounts.',
+  admin: 'Can add and change records in both workspaces. Cannot delete or manage accounts.',
+  super_admin: 'Can delete records, archive employees and manage accounts.',
+}
+
 const RoleBadge = ({ role }: { role: Role }) => <Badge tone={role === 'super_admin' ? 'accent' : 'neutral'}>{ROLE_LABEL[role]}</Badge>
 
 function StateBadge({ user }: { user: UserRow }) {
@@ -147,16 +154,16 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
   const unlock = useWrite(() => api.post(`/users/${user.id}/clear-lock`), { success: `Lock cleared for ${user.name}` })
   const deactivate = useWrite(() => api.post(`/users/${user.id}/deactivate`), { success: `${user.name} deactivated` })
   const reactivate = useWrite(() => api.post(`/users/${user.id}/reactivate`), { success: `${user.name} reactivated` })
-  const changeRole = useWrite((role: Role) => api.patch(`/users/${user.id}`, { role }), { success: `${user.name} is now ${ROLE_LABEL[user.role === 'admin' ? 'super_admin' : 'admin']}` })
+  const changeRole = useWrite((role: Role) => api.patch(`/users/${user.id}`, { role }), { success: (_, role) => `${user.name} is now ${ROLE_LABEL[role]}` })
   const unlink = useWrite(() => api.patch(`/users/${user.id}`, { employeeId: null }), { success: `${user.name} is no longer linked to an employee` })
   const isMe = user.id === me.id
 
   const items: MenuItem[] = [
     { label: 'Reset password', icon: KeyRound, onSelect: () => setConfirm('reset'), disabledReason: isMe ? 'Use "Change password" in your user menu.' : undefined },
     { label: 'Clear lock', icon: LockOpen, onSelect: () => unlock.mutate(undefined), disabledReason: user.state === 'locked' || user.failedLogins > 0 ? undefined : 'This account is not locked.' },
-    user.role === 'admin'
-      ? { label: 'Make Super Admin', icon: ShieldCheck, onSelect: () => changeRole.mutate('super_admin') }
-      : { label: 'Make Admin', icon: ShieldOff, onSelect: () => changeRole.mutate('admin'), disabledReason: isMe ? 'You cannot change your own role.' : undefined },
+    ...(isMe
+      ? [{ label: 'Change role', icon: Shield, onSelect: () => undefined, disabledReason: 'You cannot change your own role.' }]
+      : ROLES.filter((role) => role !== user.role).map((role) => ({ label: `Make ${ROLE_LABEL[role]}`, icon: role === 'super_admin' ? ShieldCheck : Shield, onSelect: () => changeRole.mutate(role) }))),
     { label: 'Unlink employee', icon: Unlink, onSelect: () => unlink.mutate(undefined), disabledReason: user.employeeId == null ? 'This account is not linked to an employee.' : undefined },
     user.state === 'deactivated'
       ? { label: 'Reactivate', icon: UserRoundCheck, onSelect: () => reactivate.mutate(undefined), separatorBefore: true }
@@ -319,16 +326,8 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
         </form.Field>
         <form.Field name="role">
           {(field) => (
-            <Field label="Role" hint={field.state.value === 'super_admin' ? 'Can delete records, archive employees and manage accounts.' : 'Can add and change records. Cannot delete or manage accounts.'}>
-              <Segmented
-                label="Role"
-                value={field.state.value}
-                onChange={field.handleChange}
-                options={[
-                  { value: 'admin', label: 'Admin', tone: 'accent' },
-                  { value: 'super_admin', label: 'Super Admin', tone: 'accent' },
-                ]}
-              />
+            <Field label="Role" hint={ROLE_HINT[field.state.value]}>
+              <Segmented label="Role" value={field.state.value} onChange={field.handleChange} options={ROLES.map((role) => ({ value: role, label: ROLE_LABEL[role] }))} />
             </Field>
           )}
         </form.Field>

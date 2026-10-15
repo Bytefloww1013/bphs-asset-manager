@@ -15,10 +15,10 @@ import { ApiError, api } from '@/lib/api.ts'
 import { employeesQuery, grievanceAccountHoldersQuery } from '@/lib/queries.ts'
 import { useCan, useUser } from '@/lib/session.ts'
 
-/** What to say under an Owner field when the person chosen has no account: nobody but a Super Admin could then change the grievance. */
+/** What to say under an Owner field when the person chosen has no account that works in Grievances: nobody but a Super Admin could then change the grievance. */
 export function ownerAccountNote(owner: { id: number; name: string } | null, accountHolders: number[] | undefined): string | null {
   if (!owner || !accountHolders || accountHolders.includes(owner.id)) return null
-  return `${owner.name} has no account here, so only a Super Admin will be able to change this grievance.`
+  return `${owner.name} has no account with access to Grievances, so only a Super Admin will be able to change this grievance.`
 }
 
 type Task = 'status' | 'owner' | 'void'

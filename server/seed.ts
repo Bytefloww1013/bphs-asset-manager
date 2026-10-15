@@ -114,8 +114,8 @@ const [priya, marcus] = db
   .values(([
     { name: 'Priya Raghunathan', email: 'p.raghunathan@bphs.local', role: 'super_admin', employeeId: byCode('E-1042').id, lastLoginAt: daysAgo(0) },
     { name: 'Marcus Oyelaran', email: 'm.oyelaran@bphs.local', role: 'admin', employeeId: byCode('E-0988').id, lastLoginAt: daysAgo(0) },
-    { name: 'Dana Whitfield', email: 'd.whitfield@bphs.local', role: 'admin', employeeId: byCode('E-1130').id, mustChangePassword: true },
-    { name: 'Ops Account', email: 'ops@bphs.local', role: 'admin', failedLogins: 5, lockedUntil: new Date(now + 11 * 60_000), lastLoginAt: daysAgo(1) },
+    { name: 'Dana Whitfield', email: 'd.whitfield@bphs.local', role: 'grievance_admin', employeeId: byCode('E-1130').id, mustChangePassword: true },
+    { name: 'Ops Account', email: 'ops@bphs.local', role: 'asset_admin', failedLogins: 5, lockedUntil: new Date(now + 11 * 60_000), lastLoginAt: daysAgo(1) },
     { name: 'Neil Abernathy', email: 'n.abernathy@bphs.local', role: 'admin', employeeId: byCode('E-0442').id, isActive: false, lastLoginAt: daysAgo(150) },
   ] satisfies Partial<typeof users.$inferInsert>[]).map((u) => ({ passwordHash, mustChangePassword: false, ...u }) as typeof users.$inferInsert))
   .returning()

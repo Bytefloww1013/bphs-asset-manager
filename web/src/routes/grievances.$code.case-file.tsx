@@ -21,7 +21,9 @@ import { requireSession, useUser } from '@/lib/session.ts'
 
 // Outside the app shell: the page is the case file as it prints, with only a toolbar above it that the print leaves out.
 export const Route = createFileRoute('/grievances/$code/case-file')({
-  beforeLoad: ({ context, location }) => requireSession(context.queryClient, location.href),
+  beforeLoad: async ({ context, location }) => {
+    await requireSession(context.queryClient, location.href, 'grievances')
+  },
   loader: ({ context, params }) =>
     Promise.all([
       context.queryClient.ensureQueryData(grievanceQuery(params.code)),

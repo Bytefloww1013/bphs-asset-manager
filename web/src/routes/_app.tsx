@@ -1,10 +1,11 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
+import { canUseWorkspace } from '@shared/permissions.ts'
 import { AppShell } from '@/components/shell/app-shell.tsx'
 import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
 import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
 import { lookupsQuery } from '@/lib/queries.ts'
-import { requireSession } from '@/lib/session.ts'
-import { workspaceToReopen } from '@/lib/workspace.ts'
+import { requireSession, useUser } from '@/lib/session.ts'
+import { workspaceOf, workspaceToReopen } from '@/lib/workspace.ts'
 
 export interface SheetSearch {
   /** Open the Issue sheet for this asset id, or 'new' to pick one. */
@@ -30,19 +31,26 @@ export const Route = createFileRoute('/_app')({
     program: search.program === 'pick' ? 'pick' : toId(search.program),
   }),
   beforeLoad: async ({ context, location }) => {
-    await requireSession(context.queryClient, location.href)
+    const user = await requireSession(context.queryClient, location.href, workspaceOf(location.pathname))
     // Opening the app at its front page goes back to the workspace last used. Asked on every first load, wherever it lands,
     // so that choosing Assets in the switcher later is never undone.
     const reopen = workspaceToReopen()
-    if (location.href === '/' && reopen === 'grievances') throw redirect({ to: '/grievances' })
+    if (location.href === '/' && reopen === 'grievances' && canUseWorkspace(user.role, 'grievances')) throw redirect({ to: '/grievances' })
+    return { assets: canUseWorkspace(user.role, 'assets') }
   },
   // Pickers in the Issue and Return sheets need these; fetch once, up front.
-  loader: ({ context }) => context.queryClient.ensureQueryData(lookupsQuery),
-  component: () => (
+  loader: ({ context }) => (context.assets ? context.queryClient.ensureQueryData(lookupsQuery) : undefined),
+  component: AppLayout,
+})
+
+function AppLayout() {
+  // The Issue and Return sheets are Assets work; an account outside Assets is never shown them.
+  const assets = canUseWorkspace(useUser().role, 'assets')
+  return (
     <AppShell>
       <Outlet />
-      <IssueSheet />
-      <ReturnSheet />
+      {assets && <IssueSheet />}
+      {assets && <ReturnSheet />}
     </AppShell>
-  ),
-})
+  )
+}

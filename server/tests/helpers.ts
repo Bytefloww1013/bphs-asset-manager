@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import type { Role } from '../../shared/constants.ts'
 import { createApp } from '../app.ts'
 import { ensureDefaultLists } from '../bootstrap.ts'
 import { createDb, runMigrations, type Db } from '../db/client.ts'
@@ -19,7 +20,7 @@ export async function setup() {
     .values({ code: 'E-1042', firstName: 'Priya', lastName: 'Raghunathan', department: 'IT' })
     .returning()
     .get()
-  const add = (name: string, email: string, role: 'admin' | 'super_admin', extra: Partial<typeof users.$inferInsert> = {}) =>
+  const add = (name: string, email: string, role: Role, extra: Partial<typeof users.$inferInsert> = {}) =>
     db.insert(users).values({ name, email, passwordHash, role, mustChangePassword: false, ...extra }).returning().get()
   const superUser = add('Priya Raghunathan', 'p.raghunathan@bphs.local', 'super_admin', { employeeId: person.id })
   const adminUser = add('Marcus Oyelaran', 'm.oyelaran@bphs.local', 'admin')

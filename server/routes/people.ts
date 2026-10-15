@@ -10,6 +10,7 @@ import { intParam, json, requirePermission, type Env } from '../http.ts'
 import {
   createEmployee,
   deleteEmployee,
+  employeeFor,
   listEmployees,
   setEmployeeArchived,
   updateEmployee,
@@ -19,10 +20,13 @@ import { clearLock, createUser, listUsers, resetPassword, setActive, updateUser 
 export function employeeRoutes(db: Db) {
   const app = new Hono<Env>()
 
-  app.get('/', (c) => c.json(listEmployees(db)))
-  app.post('/', json(employeeCreateSchema), (c) => c.json(createEmployee(db, c.get('user'), c.req.valid('json')), 201))
+  // Employees serve both workspaces; Archive, Restore and Delete are a Super Admin's, who sees every count.
+  app.get('/', (c) => c.json(listEmployees(db).map((row) => employeeFor(c.get('user').role, row))))
+  app.post('/', json(employeeCreateSchema), (c) =>
+    c.json(employeeFor(c.get('user').role, createEmployee(db, c.get('user'), c.req.valid('json'))), 201),
+  )
   app.patch('/:id', json(employeeUpdateSchema), (c) =>
-    c.json(updateEmployee(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
+    c.json(employeeFor(c.get('user').role, updateEmployee(db, c.get('user'), intParam(c, 'id'), c.req.valid('json')))),
   )
   app.post('/:id/archive', requirePermission('employee.archive'), (c) =>
     c.json(setEmployeeArchived(db, c.get('user'), intParam(c, 'id'), true)),
