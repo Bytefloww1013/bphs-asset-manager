@@ -52,10 +52,10 @@ docker compose up -d --build
 docker compose logs assets          # find the FIRST RUN box
 ```
 
-The first start finds no users and creates one Super Admin (`BOOTSTRAP_ADMIN_EMAIL`, default `admin@bphs.local`). The log shows a one-time password for it. Sign in at `http://<server>:8080`; the app makes you choose a new password straight away.
+The first start finds no users and creates one Super Admin (`BOOTSTRAP_ADMIN_EMAIL`, default `admin@bphs.local`). Its starting password is `Brightpath1!`. Sign in at `http://<server>:8080`; the app makes you choose a new password straight away.
 
 - This only happens when the database has **no users**. Starting against an existing database never creates or changes accounts.
-- The one-time password is written to the container log. It is worthless once changed, but until the log rotates, treat the log as sensitive.
+- The starting password is the same for every new install, so sign in and change it as soon as the server is reachable. It is worthless once changed.
 - Then: create a second Super Admin on the Users screen, so one lost password is never an outage (the app always keeps at least one active Super Admin).
 - Set up the off-box backups in section 4 the same day.
 
@@ -277,13 +277,13 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 - **Imported files stay in the browser.** A `.csv` or `.xlsx` chosen on Import/Export is opened by the page, and only its rows are sent, as JSON, to be validated again by the server. The server never opens a workbook. Reading and writing Excel files of any size zips in a Web Worker the page starts from a `blob:` URL, so the Content-Security-Policy carries `worker-src 'self' blob:`. Scripts are still limited to the app's own (`script-src 'self'`), and only a script the page already runs can create such a URL.
 - **Grievance files are never shown in the page.** Uploads are accepted only as PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by their content as well as their name, up to 10 MB each. Downloads are always sent as a file to save (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`), so a file cannot run as part of the app. Files are not virus-scanned: the staff who open them rely on their own machine's protection.
 - **No credentials in digital assets.** The License/Account field refuses values that label themselves a password, key or token. That catches the obvious cases; it cannot recognise a bare secret, so tell staff the field is for naming a seat.
-- **Secrets.** There are no API keys or secrets to rotate. The only sensitive value in the config is the one-time bootstrap password in the first-run log.
+- **Secrets.** There are no API keys or secrets to rotate. The first Super Admin's starting password (`Brightpath1!`) is known in advance, so it must be changed at first sign-in, which the app enforces.
 
 ## 11. What has been verified
 
 Checked by running them against a real container and scratch Docker volumes while building this project and writing this runbook:
 
-- Health check, one-time-password bootstrap, and password change.
+- Health check, first-run Super Admin, and password change.
 - Online backup (`server/backup.ts`) producing a single self-contained file, and the off-box script: success, wrong container name (exits 1, no file left), integrity check, host-side pruning, owner-only permissions.
 - Restore into a volume holding a damaged database with stale `-wal`/`-shm` files: old files moved aside, backup loaded, `integrity_check` ok, accounts listed.
 - Account recovery commands, including audit entries and exit codes (automated tests in `server/tests/admin-cli.test.ts`).

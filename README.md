@@ -22,7 +22,7 @@ bun run db:seed        # optional: synthetic demo data (employees, programs, 116
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
-The seed prints the demo sign-ins (a Super Admin, an Admin, an account that must change its password, a locked account, a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin and prints a one-time password in the terminal.
+The seed prints the demo sign-ins (a Super Admin, an Admin, an account that must change its password, a locked account, a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
 
 The development API runs on Node through `tsx watch`, which restarts it when an imported file changes. This avoids the native file-watcher crash seen with Node 24's `--watch` mode when stopping the server.
 
@@ -44,10 +44,10 @@ Bun only installs packages and runs these scripts; every script still executes o
 
 ```bash
 docker compose up -d --build
-docker compose logs assets      # first run: shows the Super Admin email and one-time password
+docker compose logs assets      # first run: shows the Super Admin email and starting password
 ```
 
-Then open `http://<this-machine>:8080`, sign in with the one-time password, and choose a new one when asked. The database lives in the `bphs-data` volume at `/data/bphs.sqlite`. Migrations run automatically on start.
+Then open `http://<this-machine>:8080`, sign in with the starting password `Brightpath1!`, and choose a new one when asked. The database lives in the `bphs-data` volume at `/data/bphs.sqlite`. Migrations run automatically on start.
 
 Configuration (environment variables, set in `docker-compose.yml`):
 

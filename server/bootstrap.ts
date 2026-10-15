@@ -2,7 +2,7 @@ import { count } from 'drizzle-orm'
 import type { Db } from './db/client.ts'
 import { assetTypes, conditionRatings, users } from './db/schema.ts'
 import { config } from './config.ts'
-import { generateOneTimePassword, hashPassword } from './lib/password.ts'
+import { hashPassword } from './lib/password.ts'
 
 export const DEFAULT_TYPES = ['Laptop', 'Phone', 'Monitor', 'Keyboard', 'Mouse']
 /** Best condition first, each with its score out of 100. */
@@ -28,18 +28,17 @@ export function ensureDefaultLists(db: Db) {
   }
 }
 
-/**
- * With no users there is no way in, so create the first Super Admin and print a
- * one-time password to the log. It must be changed at first login.
- */
+/** The first Super Admin's starting password, fixed so the first sign-in needs no log. It must be changed at first login. */
+const BOOTSTRAP_PASSWORD = 'Brightpath1!'
+
+/** With no users there is no way in, so create the first Super Admin with the starting password. */
 export async function ensureBootstrapAdmin(db: Db, log: (message: string) => void = console.log) {
   if ((db.select({ n: count() }).from(users).get()?.n ?? 0) > 0) return
-  const password = generateOneTimePassword()
   db.insert(users)
     .values({
       name: config.bootstrapName,
       email: config.bootstrapEmail,
-      passwordHash: await hashPassword(password),
+      passwordHash: await hashPassword(BOOTSTRAP_PASSWORD),
       role: 'super_admin',
       mustChangePassword: true,
     })
@@ -50,7 +49,7 @@ export async function ensureBootstrapAdmin(db: Db, log: (message: string) => voi
       line,
       'FIRST RUN: created the initial Super Admin account.',
       `  email:    ${config.bootstrapEmail}`,
-      `  password: ${password}   (one-time; you must change it at first login)`,
+      `  password: ${BOOTSTRAP_PASSWORD}   (you must change it at first login)`,
       line,
     ].join('\n'),
   )

@@ -199,13 +199,13 @@ sudo docker port bphs-assets
 
 Expect a healthy container, `{"ok":true}`, and `3000/tcp -> 127.0.0.1:8080`. Migrations run automatically at startup. The app serves both the API and the built frontend; no Vite development server is needed.
 
-Retrieve the first Super Admin's one-time password:
+The first Super Admin's starting password is `Brightpath1!`. The log shows it along with the email:
 
 ```bash
 sudo docker compose -f /etc/bphs-connect/compose.yml logs --tail 100 assets
 ```
 
-Keep that password private and wait until HTTPS is ready before signing in. `COOKIE_SECURE=true` is already enabled, so browser sign-in over plain HTTP will not work.
+Every new install starts with that same password, so sign in and change it (step 11) as soon as HTTPS works; do not leave the site public with it unchanged. Wait until HTTPS is ready before signing in. `COOKIE_SECURE=true` is already enabled, so browser sign-in over plain HTTP will not work.
 
 ## 9. Configure Nginx
 
@@ -309,7 +309,7 @@ Expect an HTTP-to-HTTPS redirect, successful health responses, and a successful 
 
 ## 11. Sign in and verify the application
 
-Open **https://bphs-connect.com**. Sign in as `admin@bphs-connect.com` (or your configured bootstrap email) with the one-time password from step 8. Choose a permanent password when prompted.
+Open **https://bphs-connect.com**. Sign in as `admin@bphs-connect.com` (or your configured bootstrap email) with the starting password `Brightpath1!`. Choose a permanent password when prompted.
 
 Before inviting users:
 
