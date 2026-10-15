@@ -26,7 +26,7 @@ Commands assume you are in the project folder on the server (the one with `docke
 | --- | --- |
 | Server / host name | |
 | Owner of this system | |
-| Where off-box backups go | |
+| Where off-box backups go | Google Drive, encrypted, through the rclone remote `bphs-backup:` (DEPLOY-GUIDE.md step 12) |
 | Who to call if the owner is out | |
 
 ## 2. Everyday operations
@@ -94,12 +94,14 @@ Then schedule it (`crontab -e` for a user who may run `docker`; adjust the path)
 | `CONTAINER` | `bphs-assets` | Container to back up |
 | `DEST` | `/srv/backups/bphs` | Host folder for the copies |
 | `KEEP_DAYS` | `30` | Host copies older than this are deleted |
+| `REMOTE` | none | rclone remote that each copy is also uploaded to, for example `bphs-backup:`. Empty means no upload. A failed upload exits non-zero |
+| `REMOTE_KEEP_DAYS` | `180` | Remote copies older than this are deleted |
 
 Copies kept inside the volume are pruned after 7 days. Files are created owner-only (mode 600) because they contain password hashes and employee records, and, from the Grievance Tracker, the full text of every grievance and every attached file. Treat every copy, including the off-box ones, with the same care as HR files: limit who can read them, and keep them off shared drives.
 
 **Watch the size.** Every copy is the whole database, and 30 of them are kept on the host. The Grievance Tracker stores file attachments inside the database (see `implementation.md`, G10), and nothing is ever deleted (a withdrawn file keeps its bytes), so each nightly copy contains every attachment ever added and the copies only grow: 1 GB of attachments is about 30 GB of backups. Check now and then with `du -sh /srv/backups/bphs`. If size becomes a problem, review other ways of storing attachments, such as keeping the files on the data volume with only their details in the database, so a backup run copies just the files that are new or changed instead of all of them every night.
 
-Then get `DEST` off the machine too (rsync to another host, your backup tool, a USB rotation). One copy on the same disk is not a backup.
+Then get the copies off the machine too: set `REMOTE` (DEPLOY-GUIDE.md step 12 sets up an encrypted Google Drive remote), or use rsync to another host, your backup tool, or a USB rotation. One copy on the same disk is not a backup.
 
 **Know when it stops working.** Cron fails silently. Alert on a stale backup, for example from your monitoring tool:
 
@@ -129,7 +131,11 @@ docker compose run --rm -T assets sh -c \
   'set -e; d=/data/pre-restore-$(date -u +%Y%m%d-%H%M%S); mkdir "$d"; mv /data/bphs.sqlite* "$d"/; cat > /data/bphs.sqlite' \
   < /srv/backups/bphs/bphs-20261011-021500.sqlite
 
-# 3. Start and check.
+# 3. End every session in the restored copy. Otherwise a browser that still holds a cookie from before the backup
+#    is signed in again, even for an account that was deactivated or reset since. Everyone signs in afresh.
+docker compose run --rm -T assets node -e "new (require('better-sqlite3'))('/data/bphs.sqlite').exec('delete from sessions')"
+
+# 4. Start and check.
 docker compose start assets
 curl -fsS http://localhost:8080/api/health
 docker compose exec assets node server/admin.ts list     # the accounts you expect

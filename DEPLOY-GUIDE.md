@@ -213,6 +213,8 @@ Create the initial HTTP site. The quoted `EOF` preserves Nginx's `$host` and oth
 
 ```bash
 sudo tee /etc/nginx/sites-available/bphs-connect.com > /dev/null <<'EOF'
+limit_req_zone $binary_remote_addr zone=bphs_login:10m rate=10r/m;
+
 server {
     listen 80;
     listen [::]:80;
@@ -235,6 +237,18 @@ server {
         client_max_body_size 101m;
         proxy_pass http://127.0.0.1:8080;
     }
+
+    location ~ ^/api/auth/(login|password-change)$ {
+        limit_req zone=bphs_login burst=30 nodelay;
+        limit_req_status 429;
+        error_page 429 = @too_many_attempts;
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location @too_many_attempts {
+        default_type application/json;
+        return 429 '{"error":"rate_limited","message":"Too many sign-in attempts from this network. Wait a minute and try again."}';
+    }
 }
 EOF
 
@@ -246,6 +260,8 @@ sudo systemctl reload nginx
 Reload only if `nginx -t` succeeds. If the symlink already exists, skip the `ln` command.
 
 The API permits 4 MiB for normal requests, and up to 101 MiB for grievance uploads (ten files of up to 10 MiB plus form data). Nginx's default 1 MiB limit would reject valid imports and attachments. The app still enforces its own per-file and route limits. These settings use Nginx's [body-size directive](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size) and [proxy module](https://nginx.org/en/docs/http/ngx_http_proxy_module.html).
+
+The two `/api/auth/` locations limit password guessing. The app locks one account after five wrong passwords. Nginx also slows down a single address that tries many accounts: after 30 quick attempts, it allows 10 per minute. A whole office signing in at once from one shared address stays under that. Users who go over it see the message above instead of a sign-in error. If a CDN or other proxy is ever put in front of this server, every request arrives from its addresses, and this limit then applies to everyone together. Remove or adapt it before doing that.
 
 Leave the application's `Content-Security-Policy` header intact; Excel import/export needs its `worker-src 'self' blob:` allowance.
 
@@ -265,13 +281,18 @@ Follow the [Certbot Nginx instructions](https://certbot.eff.org/instructions?ws=
 ```bash
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/local/bin/certbot
-sudo certbot --nginx --redirect -d bphs-connect.com -d www.bphs-connect.com
+sudo certbot --nginx --redirect --hsts -m jshope@bphumanservices.com --agree-tos --no-eff-email \
+  -d bphs-connect.com -d www.bphs-connect.com
 sudo nginx -t
 sudo certbot renew --dry-run
 sudo systemctl list-timers --all 'snap.certbot.renew*'
 ```
 
-Supply a monitored email address and accept the certificate terms when prompted. If Certbot was installed previously, use one installation method rather than mixing snap and Ubuntu packages. If its symlink already exists, skip that `ln` command.
+The email address receives Let's Encrypt account notices. `--agree-tos` accepts its subscriber agreement, and `--no-eff-email` declines the EFF newsletter. Let's Encrypt no longer sends expiry reminders, so the renewal timer and the dry run are what keep the certificate current.
+
+`--hsts` adds a `Strict-Transport-Security` header, valid for one year, to the HTTPS site only. After a browser has seen it, that browser refuses plain HTTP for this domain, so nobody on the network can downgrade a returning user. Do not remove HTTPS later: those browsers will not open the site over HTTP until the year runs out.
+
+If Certbot was installed previously, use one installation method rather than mixing snap and Ubuntu packages. If its symlink already exists, skip that `ln` command.
 
 Certbot updates the Nginx site to serve HTTPS and redirect HTTP. Its scheduled renewal should be present, and the dry run should succeed. Keep port 80 reachable for later certificate validation. After Certbot edits the site, preserve its TLS configuration when making future Nginx changes; do not overwrite it with the initial HTTP block from step 9.
 
@@ -284,7 +305,7 @@ curl -fsS https://www.bphs-connect.com/api/health
 curl -I https://bphs-connect.com/login
 ```
 
-Expect an HTTP-to-HTTPS redirect, successful health responses, and a successful login page with a trusted certificate. Do not use `curl -k`; certificate validation is part of this check.
+Expect an HTTP-to-HTTPS redirect, successful health responses, and a successful login page with a trusted certificate and a `Strict-Transport-Security` header. Do not use `curl -k`; certificate validation is part of this check.
 
 ## 11. Sign in and verify the application
 
@@ -315,19 +336,77 @@ sudo ls -lh /srv/backups/bphs
 
 The script uses SQLite's online backup API, checks the resulting database, and writes an owner-only copy to the host. Its defaults retain host copies for about 30 days and in-volume copies for about seven days.
 
-Schedule it daily at 02:15 in the VPS's timezone:
+Copies in `/srv/backups/bphs` survive container replacement, but if the VPS is lost, they are lost with it. The script can also send each copy to Google Drive. It encrypts the copy on the VPS first, so Google stores only scrambled files.
+
+### Connect Google Drive
+
+Install [rclone](https://rclone.org/drive/) and create a remote named `gdrive`:
+
+```bash
+sudo apt install -y rclone
+sudo rclone config
+```
+
+Answer the prompts:
+
+- `n` (new remote). Name: `gdrive`. Storage: `drive` (Google Drive).
+- `client_id` and `client_secret`: leave both blank.
+- Scope: `drive.file`, which is "access to files created by rclone only". The VPS can then see only the backups it uploads, not the rest of your Drive.
+- `service_account_file`: leave blank. Edit advanced config: `n`.
+- **Use web browser to automatically authenticate: `n`.** The VPS has no browser. Rclone prints a command that starts `rclone authorize "drive"`.
+- **On your computer**, install rclone (on Windows, run `winget install Rclone.Rclone` in PowerShell, then open a new PowerShell window). Run the printed `rclone authorize ...` command there. Sign in to the Google account that should hold the backups and allow access. Copy the token it prints back into the VPS prompt.
+- Configure as a Shared Drive: `n`. Then confirm with `y` and quit with `q`.
+
+Add an encrypting remote, `bphs-backup`, over a `bphs-backups` folder in that Drive:
+
+```bash
+PASS1=$(openssl rand -base64 33); PASS2=$(openssl rand -base64 33)
+sudo rclone config create bphs-backup crypt remote=gdrive:bphs-backups password="$PASS1" password2="$PASS2" --obscure
+printf 'BPHS backup encryption\n  password:  %s\n  password2: %s\n' "$PASS1" "$PASS2"
+unset PASS1 PASS2
+```
+
+**Save both passwords in your password manager now, somewhere other than this VPS.** Nothing else can decrypt the Drive copies: not you, not Google and not rclone. If the VPS is lost, these passwords are what make the backups usable.
+
+Send one backup and check it arrived:
+
+```bash
+sudo env DEST=/srv/backups/bphs CONTAINER=bphs-assets REMOTE=bphs-backup: \
+  /opt/bphs-asset-manager/scripts/backup-offbox.sh
+sudo rclone ls bphs-backup:
+sudo rclone lsf gdrive:bphs-backups
+```
+
+The first listing shows `bphs-<date>.sqlite`. The second is what Google holds: the same file under a scrambled name. Send the server's own settings there too, and again whenever you change them:
+
+```bash
+sudo rclone copy /etc/bphs-connect bphs-backup:server-config/bphs-connect
+sudo rclone copy /etc/nginx/sites-available bphs-backup:server-config/nginx
+```
+
+### Schedule it
+
+Run it daily at 02:15 in the VPS's timezone:
 
 ```bash
 timedatectl
 sudo tee /etc/cron.d/bphs-connect-backup > /dev/null <<'EOF'
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-15 2 * * * root DEST=/srv/backups/bphs CONTAINER=bphs-assets /opt/bphs-asset-manager/scripts/backup-offbox.sh >> /var/log/bphs-backup.log 2>&1
+15 2 * * * root DEST=/srv/backups/bphs CONTAINER=bphs-assets REMOTE=bphs-backup: /opt/bphs-asset-manager/scripts/backup-offbox.sh >> /var/log/bphs-backup.log 2>&1
 EOF
 sudo chmod 0644 /etc/cron.d/bphs-connect-backup
 ```
 
-**Also arrange a daily encrypted copy to storage outside this VPS**, using your backup service or another server. Copies in `/srv/backups/bphs` survive container replacement, but losing the VPS loses those copies too. Include `/etc/bphs-connect/compose.yml` and the Nginx site configuration in your server configuration backups.
+The VPS keeps 30 days of copies. Drive keeps 180, which you can change with `REMOTE_KEEP_DAYS`. Each copy is the whole database, so 180 copies of a 1 GB database take 180 GB. Expired copies go to Drive's trash, and Google empties the trash after 30 days. If an upload fails, the script exits with an error, and that night's copy stays on the VPS.
+
+**Restoring from Drive:** list the copies with `sudo rclone ls bphs-backup:`. Fetch one with `sudo rclone copy bphs-backup:bphs-<date>.sqlite /srv/backups/bphs/`, then follow [RUNBOOK.md section 5.1](RUNBOOK.md#51-restore-into-the-live-system). On a replacement VPS, install rclone, create `gdrive` again as above, and recreate `bphs-backup` with the saved passwords instead of new ones:
+
+```bash
+sudo rclone config create bphs-backup crypt remote=gdrive:bphs-backups password='<saved password>' password2='<saved password2>' --obscure
+```
+
+Rclone may lose sight of the files, for example after its access is removed in your Google account settings. In that case, download the `bphs-backups` folder from drive.google.com, and create `bphs-backup` with `remote=` pointing at the downloaded folder instead.
 
 Check the backup log and alert if the newest successful backup becomes more than a day old. Budget disk space for multiple full copies of all attachments. Practise a restore into a scratch volume using [RUNBOOK.md section 5.3](RUNBOOK.md#53-restore-into-a-scratch-volume-drill-or-to-inspect-old-data); the image name remains `bphs-asset-manager:latest`.
 
@@ -385,6 +464,8 @@ df -h
 | Nginx returns 502 | Container logs and `curl -fsS http://127.0.0.1:8080/api/health`; check that Nginx and Compose both use port 8080. |
 | Certificate issuance fails | Both requested names must reach this server on port 80; check AAAA records and any restrictive CAA records. |
 | Sign-in returns to the login page | Use `https://bphs-connect.com`; verify `COOKIE_SECURE: 'true'`, then recreate with the production Compose file after any setting change. |
+| Sign-in says "Too many sign-in attempts from this network" | The Nginx limit from step 9. It clears within minutes. If a whole office keeps hitting it, raise `burst` in the site file and reload Nginx. |
+| Backup log shows `invalid_grant` or `couldn't fetch token` | Google withdrew rclone's access. Run `sudo rclone config reconnect gdrive:`, answer `n` to the browser question, and repeat the `rclone authorize` step from step 12. |
 | Upload/import fails with 413 | Preserve the 4m and 101m Nginx limits after Certbot changes; the app also limits each attachment to 10 MiB. |
 | Excel import/export stalls | Check whether a proxy or browser policy changed the app's Content-Security-Policy or blocked its blob workers. |
 | Build is killed or reports no space | Check `free -h`, `df -h` and `sudo docker system df`; provide enough RAM/disk for the frontend build. Do not delete the data volume. |

@@ -5,12 +5,16 @@
 #   CONTAINER   container name                       (default: bphs-assets)
 #   DEST        host folder for the copies           (default: /srv/backups/bphs)
 #   KEEP_DAYS   delete host copies older than this   (default: 30)
+#   REMOTE      rclone remote to copy each backup to, e.g. bphs-backup:   (default: none)
+#   REMOTE_KEEP_DAYS  delete remote copies older than this   (default: 180)
 set -euo pipefail
 umask 077   # backups hold password hashes and employee data: owner-only
 
 CONTAINER=${CONTAINER:-bphs-assets}
 DEST=${DEST:-/srv/backups/bphs}
 KEEP_DAYS=${KEEP_DAYS:-30}
+REMOTE=${REMOTE:-}
+REMOTE_KEEP_DAYS=${REMOTE_KEEP_DAYS:-180}
 
 mkdir -p "$DEST"
 name="bphs-$(date -u +%Y%m%d-%H%M%S).sqlite"
@@ -43,3 +47,10 @@ mv "$file.partial" "$file"
 prune
 
 echo "backup ok: $file ($(stat -c %s "$file") bytes)"
+
+# 4. Copy it off the server. A failed upload exits non-zero; the host copy above is kept either way.
+if [ -n "$REMOTE" ]; then
+  rclone copy "$file" "$REMOTE"
+  rclone delete "$REMOTE" --include 'bphs-*.sqlite' --min-age "${REMOTE_KEEP_DAYS}d"
+  echo "uploaded: $REMOTE$name"
+fi
