@@ -310,7 +310,7 @@ Each item is ticked when it is done, and each has its own commit on the `mainten
 2. **Web.**
    - [x] Workspace plumbing (switcher, guard, nav)
    - [x] List, new-request and detail pages
-   - [ ] Visual check
+   - [x] Visual check
 3. **Go live.**
    - [ ] Update the docs.
    - [ ] *(you)* Set the secret on the VPS and deploy.

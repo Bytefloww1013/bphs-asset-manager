@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { useMaintenancePageTitle } from '@/features/maintenance/page-title.ts'
-import { MaintenanceStatusBadge, UrgentBadge, isUrgent } from '@/features/maintenance/status.tsx'
+import { MaintenanceStatusBadge, UrgentBadge } from '@/features/maintenance/status.tsx'
 import { formatDate, formatDateTime } from '@/lib/format.ts'
 import { maintenanceQuery } from '@/lib/queries.ts'
 
@@ -39,20 +39,31 @@ const c = columnsFor<MaintenanceRow>()
 const getRowId = (row: MaintenanceRow) => String(row.id)
 const searchText = (row: MaintenanceRow) => [row.code, row.requestedBy, row.email, row.program, row.location, row.description].join(' ')
 
-/** A cell's text on one line, cut short, with the whole of it as the tooltip. */
-const Clipped = ({ text, width }: { text: string; width: string }) => (
-  <span className={`block truncate text-ink-2 ${width}`} title={text}>
-    {text}
-  </span>
+/** A cell's text cut to one line, with what goes with it on a smaller second line, as the grievance list shows a title and its category. */
+const TwoLines = ({ text, under, width }: { text: string; under?: string; width: string }) => (
+  <div className={`leading-5 ${width}`}>
+    <div className="truncate text-ink-2" title={text}>
+      {text}
+    </div>
+    {under && (
+      <div className="truncate text-xs text-ink-3" title={under}>
+        {under}
+      </div>
+    )}
+  </div>
 )
 
 const columns = [
   c.accessor('code', {
     header: 'Request',
+    // Urgent shows under the ID rather than in a column of its own, so the list fits beside the sidebar.
     cell: (info) => (
-      <Link to="/maintenance/$id" params={{ id: String(info.row.original.id) }} className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline">
-        {info.getValue()}
-      </Link>
+      <div className="flex flex-col items-start gap-1">
+        <Link to="/maintenance/$id" params={{ id: String(info.row.original.id) }} className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline">
+          {info.getValue()}
+        </Link>
+        <UrgentBadge urgent={info.row.original.urgent} />
+      </div>
     ),
   }),
   c.accessor('receivedAt', {
@@ -62,15 +73,12 @@ const columns = [
         {formatDate(info.getValue())}
       </span>
     ),
-    meta: { hideBelow: 'sm' },
+    meta: { hideBelow: 'xl' },
   }),
-  c.accessor((row) => (isUrgent(row.urgent) ? 1 : 0), { id: 'urgent', header: 'Urgent', cell: (info) => <UrgentBadge urgent={info.row.original.urgent} />, meta: { hideBelow: 'md' } }),
-  c.accessor('requestedBy', { header: 'Requested by', cell: (info) => <Clipped text={info.getValue()} width="max-w-40" /> }),
-  c.accessor('program', { header: 'Program', cell: (info) => <Clipped text={info.getValue()} width="max-w-36" />, meta: { hideBelow: 'xl' } }),
-  c.accessor('location', { header: 'Location', cell: (info) => <Clipped text={info.getValue()} width="max-w-40" />, meta: { hideBelow: 'lg' } }),
-  c.accessor('description', { header: 'Description', cell: (info) => <Clipped text={info.getValue()} width="max-w-72" />, enableSorting: false, meta: { hideBelow: 'md' } }),
+  c.accessor('requestedBy', { header: 'Requested by', cell: (info) => <TwoLines text={info.getValue()} under={info.row.original.program} width="max-w-40" />, meta: { hideBelow: 'xl' } }),
+  c.accessor('location', { header: 'Location', cell: (info) => <TwoLines text={info.getValue()} under={info.row.original.description} width="min-w-40 max-w-64" /> }),
   c.accessor('status', { header: 'Status', cell: (info) => <MaintenanceStatusBadge status={info.getValue()} /> }),
-  c.accessor((row) => row.assignee?.name ?? '', { id: 'assignee', header: 'Dispatched to', cell: (info) => <Clipped text={info.getValue()} width="max-w-40" />, meta: { hideBelow: 'lg' } }),
+  c.accessor((row) => row.assignee?.name ?? '', { id: 'assignee', header: 'Dispatched to', cell: (info) => <TwoLines text={info.getValue()} width="max-w-40" />, meta: { hideBelow: 'lg' } }),
 ]
 
 function MaintenancePage() {

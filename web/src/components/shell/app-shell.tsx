@@ -105,17 +105,22 @@ function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const current = useWorkspace()
   const usable: readonly Workspace[] = workspacesOf(useUser().role)
   const both = usable.length > 1
+  // Three across the sidebar leave each about 72px, too narrow for "Maintenance", so three or more stack.
+  const across = usable.length < 3
   return (
     <div>
       {both && (
-        <nav aria-label="Workspace" className="grid gap-0.5 rounded-control bg-line/70 p-0.5" style={{ gridTemplateColumns: `repeat(${usable.length}, minmax(0, 1fr))` }}>
+        <nav aria-label="Workspace" className="grid gap-0.5 rounded-control bg-line/70 p-0.5" style={{ gridTemplateColumns: `repeat(${across ? usable.length : 1}, minmax(0, 1fr))` }}>
           {usable.map((workspace) => (
             <Link
               key={workspace}
               to={WORKSPACE_HOME[workspace]}
               onClick={onNavigate}
               aria-current={workspace === current ? 'true' : undefined}
-              className="flex h-8 items-center justify-center rounded-[0.375rem] text-sm font-medium text-ink-2 transition-colors duration-150 hover:text-ink aria-[current]:bg-surface aria-[current]:text-workspace aria-[current]:shadow-panel"
+              className={cn(
+                'flex h-8 items-center rounded-[0.375rem] text-sm font-medium text-ink-2 transition-colors duration-150 hover:text-ink aria-[current]:bg-surface aria-[current]:text-workspace aria-[current]:shadow-panel',
+                across ? 'justify-center' : 'px-2.5',
+              )}
             >
               {WORKSPACE_LABEL[workspace]}
             </Link>
