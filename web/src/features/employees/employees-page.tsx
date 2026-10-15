@@ -39,8 +39,8 @@ const searchText = (row: EmployeeRow) => [row.name, row.code, row.department, ro
 
 export function EmployeesPage() {
   usePageTitle('Employees')
-  const workspace = useWorkspace()
-  const assets = workspace === 'assets'
+  // The page is only in Assets and Grievances.
+  const assets = useWorkspace() === 'assets'
   const { show = 'active' } = useSearch({ strict: false }) as { show?: Show }
   const navigate = useNavigate()
   const { data = [], isPending } = useQuery(employeesQuery)
@@ -55,7 +55,7 @@ export function EmployeesPage() {
 
   const active = data.filter((e) => e.state === 'active').length
   const rows = useMemo(() => (show === 'all' ? data : data.filter((e) => e.state === (show === 'active' ? 'active' : 'archived'))), [data, show])
-  const table = useGrid({ data: rows, columns: COLUMNS[workspace], getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'name', desc: false }] })
+  const table = useGrid({ data: rows, columns: COLUMNS[assets ? 'assets' : 'grievances'], getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'name', desc: false }] })
 
   return (
     <div className="flex flex-col gap-6">

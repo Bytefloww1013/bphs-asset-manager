@@ -12,6 +12,14 @@ function int(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number
   return parsed
 }
 
+/** A shared secret, or undefined when it is not set. One that is set but short is a mistake worth stopping for. */
+function secret(env: NodeJS.ProcessEnv, name: string) {
+  const value = env[name]?.trim()
+  if (!value) return undefined
+  if (value.length < 32) throw new Error(`${name} must be at least 32 characters; make one with: openssl rand -hex 32`)
+  return value
+}
+
 export function readConfig(env: NodeJS.ProcessEnv) {
   return {
     env: env.NODE_ENV ?? 'development',
@@ -24,6 +32,7 @@ export function readConfig(env: NodeJS.ProcessEnv) {
     sessionIdleHours: int(env, 'SESSION_IDLE_HOURS', 12, 1, 8760),
     bootstrapEmail: (env.BOOTSTRAP_ADMIN_EMAIL ?? 'admin@bphs.local').toLowerCase(),
     bootstrapName: env.BOOTSTRAP_ADMIN_NAME ?? 'Super Admin',
+    maintenanceWebhookSecret: secret(env, 'MAINTENANCE_WEBHOOK_SECRET'),
   } as const
 }
 

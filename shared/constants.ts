@@ -8,10 +8,10 @@ export const ROLE_LABEL: Record<Role, string> = {
   super_admin: 'Super Admin',
 }
 
-/** The app is two workspaces behind one sign-in. A person is in one or the other, never looking at a mix. */
-export const WORKSPACES = ['assets', 'grievances'] as const
+/** The app is separate workspaces behind one sign-in. A person is in one at a time, never looking at a mix. */
+export const WORKSPACES = ['assets', 'grievances', 'maintenance'] as const
 export type Workspace = (typeof WORKSPACES)[number]
-export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances' }
+export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances', maintenance: 'Maintenance' }
 
 export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import', 'lock', 'sign_in'] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
@@ -107,3 +107,19 @@ export const fileExtension = (name: string) => (name.includes('.') ? name.slice(
 
 /** A grievance's ID: the year it was entered and its number within that year, as in GR-2026-0001. */
 export const grievanceCode = (year: number, seq: number) => `GR-${year}-${String(seq).padStart(4, '0')}`
+
+/** A maintenance request is Not Started until someone is dispatched to it. */
+export const MAINTENANCE_STATUSES = ['not_started', 'dispatched', 'on_hold', 'rejected', 'finished'] as const
+export type MaintenanceStatus = (typeof MAINTENANCE_STATUSES)[number]
+/** The statuses on the Open tab: everything still to be done. */
+export const MAINTENANCE_OPEN: readonly MaintenanceStatus[] = ['not_started', 'dispatched', 'on_hold']
+const MAINTENANCE_STATUS_LABELS: Record<MaintenanceStatus, string> = {
+  not_started: 'Not Started',
+  dispatched: 'Dispatched',
+  on_hold: 'On Hold',
+  rejected: 'Rejected',
+  finished: 'Finished',
+}
+export const maintenanceStatusLabel = (status: MaintenanceStatus) => MAINTENANCE_STATUS_LABELS[status]
+/** A maintenance request's ID, from its row id, as in MR-0042. */
+export const maintenanceCode = (id: number) => `MR-${String(id).padStart(4, '0')}`
