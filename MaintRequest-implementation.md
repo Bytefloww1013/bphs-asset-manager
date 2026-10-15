@@ -306,7 +306,7 @@ Each item is ticked when it is done, and each has its own commit on the `mainten
    - [x] Workspace access
    - [x] Webhook, service and routes
    - [x] The employee-delete rule
-   - [ ] Tests
+   - [x] Tests
 2. **Web.**
    - [ ] Workspace plumbing (switcher, guard, nav)
    - [ ] List, new-request and detail pages

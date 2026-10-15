@@ -44,6 +44,15 @@ describe('workspace roles', () => {
     for (const cookie of [assetAdmin, grievanceAdmin]) expect(await status(t, cookie, 'GET', '/api/users')).toBe(403)
   })
 
+  it('keeps everyone but a Super Admin out of Maintenance', async () => {
+    const { t, superAdmin, assetAdmin, grievanceAdmin } = await workspaces()
+    expect(await status(t, superAdmin, 'GET', '/api/maintenance')).toBe(200)
+    for (const cookie of [assetAdmin, grievanceAdmin, await t.asAdmin()]) {
+      expect(await status(t, cookie, 'GET', '/api/maintenance')).toBe(403)
+      expect(await status(t, cookie, 'POST', '/api/maintenance', { firstName: 'A', location: 'B', description: 'C' })).toBe(403)
+    }
+  })
+
   it('shows both the employees, each with only the counts of their own workspace', async () => {
     const { t, superAdmin, assetAdmin, grievanceAdmin } = await workspaces()
     const priya = async (cookie: string) => ((await t.call('GET', '/api/employees', { cookie })).data as { id: number }[]).find((row) => row.id === t.person.id)

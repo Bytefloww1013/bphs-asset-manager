@@ -17,4 +17,11 @@ describe('configuration from the environment', () => {
   it('refuses a port that cannot be listened on', () => {
     for (const value of ['0', '70000', 'http']) expect(() => readConfig({ PORT: value })).toThrow(/^PORT must be a whole number from 1 to 65535/)
   })
+
+  it('turns the maintenance webhook on only with a secret long enough to resist guessing', () => {
+    expect(readConfig({}).maintenanceWebhookSecret).toBeUndefined()
+    expect(readConfig({ MAINTENANCE_WEBHOOK_SECRET: '  ' }).maintenanceWebhookSecret).toBeUndefined()
+    expect(readConfig({ MAINTENANCE_WEBHOOK_SECRET: 'k'.repeat(32) }).maintenanceWebhookSecret).toBe('k'.repeat(32))
+    expect(() => readConfig({ MAINTENANCE_WEBHOOK_SECRET: 'short' })).toThrow(/^MAINTENANCE_WEBHOOK_SECRET must be at least 32 characters/)
+  })
 })

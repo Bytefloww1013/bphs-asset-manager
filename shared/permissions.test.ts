@@ -47,4 +47,9 @@ describe('workspaces', () => {
     expect(rolesIn('grievances')).toEqual(['grievance_admin', 'admin', 'super_admin'])
     expect(rolesIn('assets')).toEqual(['asset_admin', 'admin', 'super_admin'])
   })
+
+  it('keeps Maintenance to Super Admins', () => {
+    expect(rolesIn('maintenance')).toEqual(['super_admin'])
+    expect(canUseWorkspace('admin', 'maintenance')).toBe(false)
+  })
 })
