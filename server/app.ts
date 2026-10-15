@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
 import { csrf } from 'hono/csrf'
@@ -72,11 +72,12 @@ export function createApp(db: Db, options: AppOptions = {}) {
     c.header('Cache-Control', 'no-store')
   })
   // A body is refused before anything reads it, signed in or not: the smaller limit first, so it answers for the sign-in routes.
+  // An upload is the exception: its larger limit buffers the body, so it waits until the session is checked (below).
   app.use('/api/auth/*', limitBody(MAX_AUTH_BODY_BYTES))
   const [uploadLimit, bodyLimitAll] = [limitBody(MAX_UPLOAD_BODY_BYTES), limitBody(MAX_BODY_BYTES)]
-  app.use('/api/*', (c, next) =>
-    c.req.method === 'POST' && UPLOAD_PATH.test(c.req.path) && /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '') ? uploadLimit(c, next) : bodyLimitAll(c, next),
-  )
+  const isUpload = (c: Context) =>
+    c.req.method === 'POST' && UPLOAD_PATH.test(c.req.path) && /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '')
+  app.use('/api/*', (c, next) => (isUpload(c) ? next() : bodyLimitAll(c, next)))
 
   app.get('/api/health', (c) => c.json({ ok: true }))
   app.route('/api/auth', authRoutes(db))
@@ -84,6 +85,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   // Everything below needs a signed-in user.
   const api = new Hono<Env>()
   api.use('*', authenticate(db))
+  api.use('*', (c, next) => (isUpload(c) ? uploadLimit(c, next) : next()))
   api.route('/', reportRoutes(db))
   api.route('/assets', assetRoutes(db))
   api.route('/assignments', assignmentRoutes(db))

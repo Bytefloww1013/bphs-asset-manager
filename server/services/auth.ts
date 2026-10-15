@@ -145,7 +145,8 @@ export async function login(db: Db, email: string, password: string, now = new D
   }
 
   const current = db.select().from(users).where(eq(users.id, row.id)).get()
-  if (!current || !current.isActive) throw INVALID()
+  // A reset or change that landed during the check makes the checked password stale.
+  if (!current || !current.isActive || current.passwordHash !== row.passwordHash) throw INVALID()
   if (current.lockedUntil && current.lockedUntil > now) throw LOCKED(current.lockedUntil)
 
   const user = toAuthUser({ ...current, failedLogins: 0, lockedUntil: null })
@@ -175,7 +176,15 @@ export async function changePassword(
   }
   const passwordHash = await hashPassword(newPassword)
   db.transaction((tx) => {
-    tx.update(users).set({ passwordHash, mustChangePassword: false }).where(eq(users.id, user.id)).run()
+    // Only over the password checked above: a reset that landed meanwhile must stand, with its sessions ended.
+    const { changes } = tx
+      .update(users)
+      .set({ passwordHash, mustChangePassword: false })
+      .where(and(eq(users.id, user.id), eq(users.passwordHash, row.passwordHash)))
+      .run()
+    if (changes === 0) {
+      throw new HttpError(409, 'password_changed', 'Your password was changed or reset while this was being saved. Sign in again.')
+    }
     deleteUserSessions(tx, user.id, keepToken)
     writeAudit(tx, user, { action: 'update', entityType: 'user', entityId: user.id, details: `${row.email} · password changed` })
   })

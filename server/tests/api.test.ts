@@ -8,7 +8,7 @@ import { createApp } from '../app.ts'
 import { DEFAULT_RATINGS, DEFAULT_TYPES, ensureDefaultLists } from '../bootstrap.ts'
 import { createDb, runMigrations } from '../db/client.ts'
 import { assetTypes, assets, auditLog, conditionRatings, employees, sessions, users } from '../db/schema.ts'
-import { login } from '../services/auth.ts'
+import { changePassword, login } from '../services/auth.ts'
 import { PASSWORD, findUser, setup } from './helpers.ts'
 
 /** When a Set-Cookie header says the cookie expires. */
@@ -101,6 +101,22 @@ describe('authentication', () => {
       .run()
     await expect(pending).rejects.toMatchObject({ status: 423, code: 'account_locked' })
     expect(t.db.select().from(sessions).all()).toHaveLength(0)
+  })
+
+  it('lets a password reset win over a sign-in or password change still checking the old password', async () => {
+    const t = await setup()
+    const reset = (id: number) => t.db.update(users).set({ passwordHash: 'reset-by-admin' }).where(eq(users.id, id)).run()
+
+    // Each has read the old password and is hashing when the reset lands.
+    const signingIn = login(t.db, 'p.raghunathan@bphs.local', PASSWORD)
+    reset(t.superUser.id)
+    await expect(signingIn).rejects.toMatchObject({ status: 401, code: 'invalid_credentials' })
+    expect(t.db.select().from(sessions).all()).toHaveLength(0)
+
+    const changing = changePassword(t.db, t.adminUser, PASSWORD, 'Brand-new-1!', undefined)
+    reset(t.adminUser.id)
+    await expect(changing).rejects.toMatchObject({ status: 409, code: 'password_changed' })
+    expect(findUser(t.db, 'm.oyelaran@bphs.local')?.passwordHash).toBe('reset-by-admin')
   })
 
   it('walls off every page until a required password change is done', async () => {
@@ -208,6 +224,22 @@ describe('request limits', () => {
     expect(((await tooBig.json()) as { message: string }).message).toMatch(/too large/i)
     // The same before sign-in: refused as too large, not read and answered with a 401.
     expect((await post('/api/assets', JSON.stringify({ tag: 'x'.repeat(4 * 1024 * 1024) }))).status).toBe(413)
+  })
+
+  it('refuses an upload from someone not signed in without reading any of it', async () => {
+    const t = await setup()
+    let read = 0
+    // No Content-Length, and no end: anything that buffers it shows up in `read`.
+    const endless = new ReadableStream({ pull: (c) => { read += 65536; c.enqueue(new Uint8Array(65536)) } }, { highWaterMark: 0 })
+    const res = await t.app.request('/api/grievances', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=x', origin: 'http://localhost' },
+      body: endless,
+      duplex: 'half',
+    } as RequestInit)
+    expect(res.status).toBe(401)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(read).toBe(0)
   })
 })
 
