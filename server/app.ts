@@ -38,9 +38,15 @@ const MAX_AUTH_BODY_BYTES = 16 * 1024
 const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
 const UPLOAD_PATH = /^\/api\/grievances(\/[^/]+\/(entries|attachments))?$/
 
-/** The workspace an API path belongs to. Employees serve both, and Users answers to its own permission; everything else is Assets. */
+/** The workspace an API path belongs to. Employees serve all of them, and Users answers to its own permission; everything else is Assets. */
 const workspaceOfPath = (path: string): Workspace | null =>
-  /^\/api\/grievances(\/|$)/.test(path) ? 'grievances' : /^\/api\/(employees|users)(\/|$)/.test(path) ? null : 'assets'
+  /^\/api\/grievances(\/|$)/.test(path)
+    ? 'grievances'
+    : /^\/api\/maintenance(\/|$)/.test(path)
+      ? 'maintenance'
+      : /^\/api\/(employees|users)(\/|$)/.test(path)
+        ? null
+        : 'assets'
 
 const limitBody = (maxSize: number) =>
   bodyLimit({ maxSize, onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413) })

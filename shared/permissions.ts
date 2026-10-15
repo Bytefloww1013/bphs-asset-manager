@@ -23,7 +23,7 @@ const WORKSPACE_ACCESS: Record<Role, readonly Workspace[]> = {
   asset_admin: ['assets'],
   grievance_admin: ['grievances'],
   admin: ['assets', 'grievances'],
-  super_admin: ['assets', 'grievances'],
+  super_admin: ['assets', 'grievances', 'maintenance'],
 }
 
 export const workspacesOf = (role: Role): readonly Workspace[] => WORKSPACE_ACCESS[role]
