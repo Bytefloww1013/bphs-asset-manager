@@ -20,6 +20,7 @@ import { Route as AppDigitalAssetsRouteImport } from './routes/_app/digital-asse
 import { Route as AppGrievancesRouteImport } from './routes/_app/grievances'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
+import { Route as AppMaintenanceRouteImport } from './routes/_app/maintenance'
 import { Route as AppProgramsRouteImport } from './routes/_app/programs'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
 import { Route as AppAssetsIndexRouteImport } from './routes/_app/assets.index'
@@ -32,6 +33,8 @@ import { Route as AppGrievancesCategoriesRouteImport } from './routes/_app/griev
 import { Route as AppGrievancesEmployeesRouteImport } from './routes/_app/grievances.employees'
 import { Route as AppGrievancesNewRouteImport } from './routes/_app/grievances.new'
 import { Route as AppMaintenanceIndexRouteImport } from './routes/_app/maintenance.index'
+import { Route as AppMaintenanceIdRouteImport } from './routes/_app/maintenance.$id'
+import { Route as AppMaintenanceNewRouteImport } from './routes/_app/maintenance.new'
 import { Route as GrievancesCodeCaseFileRouteImport } from './routes/grievances.$code.case-file'
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
 import { Route as AppGrievancesCodeEditRouteImport } from './routes/_app/grievances.$code.edit'
@@ -93,6 +96,11 @@ const AppListsRoute = AppListsRouteImport.update({
   path: '/lists',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMaintenanceRoute = AppMaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProgramsRoute = AppProgramsRouteImport.update({
   id: '/programs',
   path: '/programs',
@@ -149,9 +157,19 @@ const AppGrievancesNewRoute = AppGrievancesNewRouteImport.update({
   getParentRoute: () => AppGrievancesRoute,
 } as any)
 const AppMaintenanceIndexRoute = AppMaintenanceIndexRouteImport.update({
-  id: '/maintenance/',
-  path: '/maintenance/',
-  getParentRoute: () => AppRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppMaintenanceRoute,
+} as any)
+const AppMaintenanceIdRoute = AppMaintenanceIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppMaintenanceRoute,
+} as any)
+const AppMaintenanceNewRoute = AppMaintenanceNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppMaintenanceRoute,
 } as any)
 const GrievancesCodeCaseFileRoute = GrievancesCodeCaseFileRouteImport.update({
   id: '/grievances/$code/case-file',
@@ -198,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/grievances': typeof AppGrievancesRouteWithChildren
   '/import-export': typeof AppImportExportRoute
   '/lists': typeof AppListsRoute
+  '/maintenance': typeof AppMaintenanceRouteWithChildren
   '/programs': typeof AppProgramsRoute
   '/users': typeof AppUsersRoute
   '/assets/$tag': typeof AppAssetsTagRoute
@@ -206,6 +225,8 @@ export interface FileRoutesByFullPath {
   '/grievances/categories': typeof AppGrievancesCategoriesRoute
   '/grievances/employees': typeof AppGrievancesEmployeesRoute
   '/grievances/new': typeof AppGrievancesNewRoute
+  '/maintenance/$id': typeof AppMaintenanceIdRoute
+  '/maintenance/new': typeof AppMaintenanceNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/assets/': typeof AppAssetsIndexRoute
   '/employees/': typeof AppEmployeesIndexRoute
@@ -235,6 +256,8 @@ export interface FileRoutesByTo {
   '/grievances/categories': typeof AppGrievancesCategoriesRoute
   '/grievances/employees': typeof AppGrievancesEmployeesRoute
   '/grievances/new': typeof AppGrievancesNewRoute
+  '/maintenance/$id': typeof AppMaintenanceIdRoute
+  '/maintenance/new': typeof AppMaintenanceNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/assets': typeof AppAssetsIndexRoute
   '/employees': typeof AppEmployeesIndexRoute
@@ -258,6 +281,7 @@ export interface FileRoutesById {
   '/_app/grievances': typeof AppGrievancesRouteWithChildren
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/lists': typeof AppListsRoute
+  '/_app/maintenance': typeof AppMaintenanceRouteWithChildren
   '/_app/programs': typeof AppProgramsRoute
   '/_app/users': typeof AppUsersRoute
   '/_app/': typeof AppIndexRoute
@@ -267,6 +291,8 @@ export interface FileRoutesById {
   '/_app/grievances/categories': typeof AppGrievancesCategoriesRoute
   '/_app/grievances/employees': typeof AppGrievancesEmployeesRoute
   '/_app/grievances/new': typeof AppGrievancesNewRoute
+  '/_app/maintenance/$id': typeof AppMaintenanceIdRoute
+  '/_app/maintenance/new': typeof AppMaintenanceNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/_app/assets/': typeof AppAssetsIndexRoute
   '/_app/employees/': typeof AppEmployeesIndexRoute
@@ -291,6 +317,7 @@ export interface FileRouteTypes {
     | '/grievances'
     | '/import-export'
     | '/lists'
+    | '/maintenance'
     | '/programs'
     | '/users'
     | '/assets/$tag'
@@ -299,6 +326,8 @@ export interface FileRouteTypes {
     | '/grievances/categories'
     | '/grievances/employees'
     | '/grievances/new'
+    | '/maintenance/$id'
+    | '/maintenance/new'
     | '/grievances/$code/case-file'
     | '/assets/'
     | '/employees/'
@@ -328,6 +357,8 @@ export interface FileRouteTypes {
     | '/grievances/categories'
     | '/grievances/employees'
     | '/grievances/new'
+    | '/maintenance/$id'
+    | '/maintenance/new'
     | '/grievances/$code/case-file'
     | '/assets'
     | '/employees'
@@ -350,6 +381,7 @@ export interface FileRouteTypes {
     | '/_app/grievances'
     | '/_app/import-export'
     | '/_app/lists'
+    | '/_app/maintenance'
     | '/_app/programs'
     | '/_app/users'
     | '/_app/'
@@ -359,6 +391,8 @@ export interface FileRouteTypes {
     | '/_app/grievances/categories'
     | '/_app/grievances/employees'
     | '/_app/grievances/new'
+    | '/_app/maintenance/$id'
+    | '/_app/maintenance/new'
     | '/grievances/$code/case-file'
     | '/_app/assets/'
     | '/_app/employees/'
@@ -457,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppListsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/maintenance': {
+      id: '/_app/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof AppMaintenanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/programs': {
       id: '/_app/programs'
       path: '/programs'
@@ -536,10 +577,24 @@ declare module '@tanstack/react-router' {
     }
     '/_app/maintenance/': {
       id: '/_app/maintenance/'
-      path: '/maintenance'
+      path: '/'
       fullPath: '/maintenance/'
       preLoaderRoute: typeof AppMaintenanceIndexRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppMaintenanceRoute
+    }
+    '/_app/maintenance/$id': {
+      id: '/_app/maintenance/$id'
+      path: '/$id'
+      fullPath: '/maintenance/$id'
+      preLoaderRoute: typeof AppMaintenanceIdRouteImport
+      parentRoute: typeof AppMaintenanceRoute
+    }
+    '/_app/maintenance/new': {
+      id: '/_app/maintenance/new'
+      path: '/new'
+      fullPath: '/maintenance/new'
+      preLoaderRoute: typeof AppMaintenanceNewRouteImport
+      parentRoute: typeof AppMaintenanceRoute
     }
     '/grievances/$code/case-file': {
       id: '/grievances/$code/case-file'
@@ -616,6 +671,22 @@ const AppGrievancesRouteWithChildren = AppGrievancesRoute._addFileChildren(
   AppGrievancesRouteChildren,
 )
 
+interface AppMaintenanceRouteChildren {
+  AppMaintenanceIdRoute: typeof AppMaintenanceIdRoute
+  AppMaintenanceNewRoute: typeof AppMaintenanceNewRoute
+  AppMaintenanceIndexRoute: typeof AppMaintenanceIndexRoute
+}
+
+const AppMaintenanceRouteChildren: AppMaintenanceRouteChildren = {
+  AppMaintenanceIdRoute: AppMaintenanceIdRoute,
+  AppMaintenanceNewRoute: AppMaintenanceNewRoute,
+  AppMaintenanceIndexRoute: AppMaintenanceIndexRoute,
+}
+
+const AppMaintenanceRouteWithChildren = AppMaintenanceRoute._addFileChildren(
+  AppMaintenanceRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAssignmentsRoute: typeof AppAssignmentsRoute
   AppAuditRoute: typeof AppAuditRoute
@@ -624,6 +695,7 @@ interface AppRouteChildren {
   AppGrievancesRoute: typeof AppGrievancesRouteWithChildren
   AppImportExportRoute: typeof AppImportExportRoute
   AppListsRoute: typeof AppListsRoute
+  AppMaintenanceRoute: typeof AppMaintenanceRouteWithChildren
   AppProgramsRoute: typeof AppProgramsRoute
   AppUsersRoute: typeof AppUsersRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -631,7 +703,6 @@ interface AppRouteChildren {
   AppEmployeesImportRoute: typeof AppEmployeesImportRoute
   AppAssetsIndexRoute: typeof AppAssetsIndexRoute
   AppEmployeesIndexRoute: typeof AppEmployeesIndexRoute
-  AppMaintenanceIndexRoute: typeof AppMaintenanceIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -642,6 +713,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGrievancesRoute: AppGrievancesRouteWithChildren,
   AppImportExportRoute: AppImportExportRoute,
   AppListsRoute: AppListsRoute,
+  AppMaintenanceRoute: AppMaintenanceRouteWithChildren,
   AppProgramsRoute: AppProgramsRoute,
   AppUsersRoute: AppUsersRoute,
   AppIndexRoute: AppIndexRoute,
@@ -649,7 +721,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppEmployeesImportRoute: AppEmployeesImportRoute,
   AppAssetsIndexRoute: AppAssetsIndexRoute,
   AppEmployeesIndexRoute: AppEmployeesIndexRoute,
-  AppMaintenanceIndexRoute: AppMaintenanceIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

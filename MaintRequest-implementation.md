@@ -309,7 +309,7 @@ Each item is ticked when it is done, and each has its own commit on the `mainten
    - [x] Tests
 2. **Web.**
    - [x] Workspace plumbing (switcher, guard, nav)
-   - [ ] List, new-request and detail pages
+   - [x] List, new-request and detail pages
    - [ ] Visual check
 3. **Go live.**
    - [ ] Update the docs.

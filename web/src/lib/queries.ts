@@ -19,6 +19,8 @@ import type {
   GrievanceList,
   GrievanceVersion,
   Lookups,
+  MaintenanceDetail,
+  MaintenanceRow,
   ProgramRow,
   SessionUser,
   UserRow,
@@ -82,6 +84,17 @@ export const assetTypesQuery = queryOptions({
   queryKey: ['asset-types'],
   queryFn: () => api.get<AssetTypeRow[]>('/asset-types'),
 })
+
+export const maintenanceQuery = queryOptions({
+  queryKey: ['maintenance', 'list'],
+  queryFn: () => api.get<MaintenanceRow[]>('/maintenance'),
+})
+
+export const maintenanceRequestQuery = (id: number) =>
+  queryOptions({
+    queryKey: ['maintenance', 'detail', id],
+    queryFn: () => api.get<MaintenanceDetail>(`/maintenance/${id}`),
+  })
 
 export const grievanceCategoriesQuery = queryOptions({
   queryKey: ['grievances', 'categories'],
