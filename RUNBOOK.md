@@ -250,6 +250,16 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Disk filling up | `docker system df`, then `du` the volume. Logs rotate by themselves, in-volume backups are pruned after 7 days by the backup script (if you do not run the script, delete old files in `/data/backups`), and `/data/pre-restore-*` folders are yours to delete |
 | Server reboot, app not back | `docker compose ps`. If Docker itself did not start, fix that first. If the container was stopped on purpose earlier, `docker compose start assets` |
 
+### Maintenance requests from Zoho
+
+Zoho Forms posts each *Maintenance Work Order Request* entry to `POST /api/webhooks/maintenance` with the shared secret in `X-Webhook-Secret`. Setup and the first test are in [DEPLOY-GUIDE.md step 15](DEPLOY-GUIDE.md#15-connect-the-zoho-maintenance-form).
+
+- **A request is missing.** Zoho does not retry, so an entry submitted while the app was down or restarting never arrives. Find it in Zoho Forms under the form's **Entries** and enter it by hand: **Maintenance → New request**. A request entered by hand has no Submitted in Zoho time; its timeline says who entered it.
+- **None arrive.** Open the webhook in Zoho and press **Test Webhook**. The response says why: `401`, the header and the server's `MAINTENANCE_WEBHOOK_SECRET` differ; `404`, the server has no secret set; `400`, no `description` arrived, and `docker compose logs assets | grep -i maintenance` lists the parameter names that did (never their values).
+- **A field is empty on every request.** Its Parameter Name in Zoho is misspelled or missing (they are case-sensitive; the list is in DEPLOY-GUIDE step 15). Fixing it fills in new requests only.
+- **Rotating the secret** (someone who should not have it might, or as routine). Make a new one with `openssl rand -hex 32`, put it in `MAINTENANCE_WEBHOOK_SECRET` and run `docker compose up -d`, then paste the same value into the Zoho webhook's `X-Webhook-Secret` header and save. Do the two back to back: entries submitted in between are refused and must be entered by hand. Press **Test Webhook** to confirm, and delete any request it creates.
+- **Turning it off.** Remove `MAINTENANCE_WEBHOOK_SECRET` and `docker compose up -d`. The webhook then answers 404; requests already stored stay, and hand entry still works.
+
 ### "Why can't I...?" (rules the system enforces, not faults)
 
 | Request | Why it is refused |
@@ -266,18 +276,21 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Delete an attached file | Files are never deleted. A Super Admin can withdraw one, with a reason: it stops downloading but stays listed |
 | Save an edit: "was edited by … while you had it open" | Someone else saved first and nothing of yours was saved. Reload, check their change, and edit again |
 | Delete an employee named on a grievance, or archive one who owns an open grievance | The grievance needs them. Give it a new owner, or close or void it, before archiving |
+| See Maintenance | Only Super Admins can open it, or see it in the workspace switcher |
+| Set a maintenance request to Dispatched | Choose who it is dispatched to first. Choosing someone sets Dispatched by itself |
+| Delete an employee dispatched on a maintenance request | The request's history needs them. Archive them instead |
 
 ## 10. Security notes
 
-- **Who can do what.** Roles are Admin and Super Admin. Deleting, archiving and managing users are Super Admin only. **Every account can read every grievance**: there are no per-grievance limits, so give accounts only to people who may see all of them.
+- **Who can do what.** Roles are Admin and Super Admin. Deleting, archiving, managing users and everything in Maintenance are Super Admin only. **Every account can read every grievance**: there are no per-grievance limits, so give accounts only to people who may see all of them.
 - **The audit logs are append-only inside the app and inside the database** (triggers refuse `UPDATE` and `DELETE` on them). There are two: the Audit Log for assets, employees and accounts, and the Grievance Audit Log, which records every grievance change, file download and export with IDs, titles and filenames but never body text. The grievance entries, earlier versions and file contents are append-only the same way; a file can be withdrawn once, which keeps its bytes. That guards against mistakes and misuse of the app. It does not stop someone with access to the server or the volume, who can replace the whole file. Restrict shell and Docker access to the server accordingly, and keep off-box backups: they are your independent record.
-- **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), hashed session tokens, and every grievance's text and attached files. Keep them owner-only and out of shared folders.
+- **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), hashed session tokens, every grievance's text and attached files, and every maintenance request with the requester's name and email. Keep them owner-only and out of shared folders.
 - **Passwords** are stored as scrypt hashes; sessions as hashes in the database, so a copy of the database does not hand over working sessions.
-- **No outbound calls.** The app needs no internet access, and sends nothing anywhere.
+- **No outbound calls.** The app needs no internet access, and sends nothing anywhere. The one thing that comes in from outside is the Zoho maintenance webhook. It only creates requests: it cannot read, change or delete anything, and it is refused without the shared secret, which is compared in constant time and travels in a header, so it never appears in the Nginx access log.
 - **Imported files stay in the browser.** A `.csv` or `.xlsx` chosen on Import/Export is opened by the page, and only its rows are sent, as JSON, to be validated again by the server. The server never opens a workbook. Reading and writing Excel files of any size zips in a Web Worker the page starts from a `blob:` URL, so the Content-Security-Policy carries `worker-src 'self' blob:`. Scripts are still limited to the app's own (`script-src 'self'`), and only a script the page already runs can create such a URL.
 - **Grievance files are never shown in the page.** Uploads are accepted only as PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by their content as well as their name, up to 10 MB each. Downloads are always sent as a file to save (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`), so a file cannot run as part of the app. Files are not virus-scanned: the staff who open them rely on their own machine's protection.
 - **No credentials in digital assets.** The License/Account field refuses values that label themselves a password, key or token. That catches the obvious cases; it cannot recognise a bare secret, so tell staff the field is for naming a seat.
-- **Secrets.** There are no API keys or secrets to rotate. The first Super Admin's starting password (`Brightpath1!`) is known in advance, so it must be changed at first sign-in, which the app enforces.
+- **Secrets.** The one secret is `MAINTENANCE_WEBHOOK_SECRET`, shared with the Zoho webhook. Anyone who can edit the form's integrations in Zoho can read it, and anyone who has it can create maintenance requests; rotate it as in section 9 when that is a worry. There are no API keys. The first Super Admin's starting password (`Brightpath1!`) is known in advance, so it must be changed at first sign-in, which the app enforces.
 
 ## 11. What has been verified
 
@@ -306,6 +319,7 @@ Checked by running them against a real container and scratch Docker volumes whil
   - The audit log showed no grievance ID on file entries.
   - In Firefox, a date being typed was wiped.
   - Zod's eval probe broke the Content-Security-Policy.
+- Maintenance in headless Chromium (Playwright) against the production build, Oct 15 2026, on a scratch data directory and a throwaway secret: entries posted to the webhook as Zoho would, the list's tabs and search, dispatching through the employee picker, a status change and a note, hand entry with its validation, delete with its confirmation, an unknown ID, and phone width. The webhook's secret checks, lenient reading, duplicates and rules are covered by `server/tests/maintenance.test.ts`, and the Super Admin limit by `server/tests/workspaces.test.ts`. **A real Zoho post was not seen**: do the test in DEPLOY-GUIDE step 15 the first time.
 - Graceful shutdown on SIGTERM (exit 0), log rotation settings (accepted by `docker compose config`), and that the cookie is `HttpOnly; Secure; SameSite=Lax` when `COOKIE_SECURE=true`.
 
 **Not exercised**, so check them the first time you use them:

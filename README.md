@@ -4,11 +4,11 @@
 
 Application: [BPHS-Connect](https://bphs-connect.com).
 
-An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
+An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to, and a third, **Maintenance**, tracks the work order requests staff send from a Zoho form. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
 
 - **Front end:** React 19, Vite, Tailwind v4, TanStack Router, Query, Table (v9) and Form, Radix primitives, Lucide icons, Geist type (self-hosted).
 - **Back end:** Hono on Node 24+, Drizzle ORM over `better-sqlite3`, Zod validation, scrypt password hashing, cookie sessions stored in SQLite.
-- **No Django, no external services.** It runs on an office network with no internet.
+- **No Django, no external services.** It runs on an office network with no internet. The one exception is optional: Maintenance requests arrive from Zoho Forms through an inbound webhook, which needs the server reachable from the internet. The app itself makes no outbound calls.
 
 The design system lives in [DESIGN.md](DESIGN.md) and the product brief in [PRODUCT.md](PRODUCT.md). **Running it in production** (backups, restore, upgrades, account recovery, HTTPS, troubleshooting): [RUNBOOK.md](RUNBOOK.md).
 
@@ -30,7 +30,7 @@ Other scripts:
 
 | Script | What it does |
 | --- | --- |
-| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files) against an in-memory database |
+| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files, maintenance and its webhook) against an in-memory database |
 | `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
 | `bun run build` | Builds the SPA to `dist/web` |
 | `bun run start` | Production mode: builds the SPA first, so it is never an older one, then the API serves it from `dist/web` |
@@ -58,6 +58,7 @@ Configuration (environment variables, set in `docker-compose.yml`):
 | `COOKIE_SECURE` | `false` | Set `true` only when users reach the app over HTTPS. On plain HTTP a Secure cookie is never stored and nobody can sign in |
 | `SESSION_IDLE_HOURS` | `12` | Idle time before a session expires. A whole number of hours, 1 or more; the server will not start with anything else. A sign-in with "Keep me signed in" ticked lasts 30 idle days instead, with a cookie that survives closing the browser; untick it and the cookie ends with the browser |
 | `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_NAME` | `admin@bphs.local`, `Super Admin` | Used once, when the database has no users |
+| `MAINTENANCE_WEBHOOK_SECRET` | unset | The shared secret Zoho Forms sends in the `X-Webhook-Secret` header with each maintenance request. Unset, the webhook answers 404 and requests can only be entered by hand. At least 32 characters (`openssl rand -hex 32`); the server will not start with a shorter one. Setup: DEPLOY-GUIDE step 15 |
 
 Put a reverse proxy with TLS in front if you want HTTPS (and then set `COOKIE_SECURE=true`).
 
@@ -71,7 +72,7 @@ This uses SQLite's backup API, so it is safe while the app is running. `scripts/
 
 ## What it does
 
-Two workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
+Three workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 
 | Screen | Route |
 | --- | --- |
@@ -107,6 +108,16 @@ Two workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 | Grievance categories | `/grievances/categories` |
 | Grievance audit log (filter, search, CSV export) | `/grievances/audit` |
 
+**Maintenance**, Super Admins only, three screens:
+
+| Screen | Route |
+| --- | --- |
+| Requests: Open, Finished, Rejected and All tabs, search | `/maintenance` |
+| New request, for one that did not come through Zoho | `/maintenance/new` |
+| Request detail: facts, description, who it is dispatched to, status, notes timeline, delete | `/maintenance/1` |
+
+Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
+
 ### Rules the system enforces
 
 - One open assignment per asset, in the app **and** by a partial unique index in the database.
@@ -121,7 +132,9 @@ Two workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 - Only the owner's account or a Super Admin can edit a grievance, change its status or give it a new owner; voiding a grievance and withdrawing a file are Super Admin only. A Closed or Voided grievance takes no new entries or files. An edit made from an older version than the one saved is refused.
 - Grievance files: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by content, up to 10 MB each and 10 at a time, stored inside the database. Downloads are always a file to save, never shown in the page.
 - The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download, print and workbook export, by ID, title and filename only, never body text. The case file prints, and the workbook downloads, only after that entry is written.
-- Roles: **Asset Admin** adds and changes records in Assets and cannot see Grievances. **Grievance Admin** does the same in Grievances and cannot see Assets. **Admin (both workspaces)** does both. **Super Admin** can also delete, archive employees and manage accounts. Employees are shared: both workspaces list them, each showing only its own counts.
+- A maintenance request gets its ID from the system (`MR-0001`) and starts Not Started. Choosing an employee dispatches it; clearing the employee on a Dispatched request returns it to Not Started. Statuses are Not Started, Dispatched, On Hold, Rejected and Finished. Every dispatch, status change and note adds a line to its timeline, and a delete (Super Admin, after a confirmation) is recorded in the Audit Log by ID only. An employee dispatched on a request can be archived but not deleted.
+- The webhook needs the shared secret in `X-Webhook-Secret` and a non-empty `description`; every other field may be missing, over-long text is cut rather than refused (Zoho does not retry), and the same entry sent twice (same email and Added Time) is stored once.
+- Roles: **Asset Admin** adds and changes records in Assets and cannot see Grievances. **Grievance Admin** does the same in Grievances and cannot see Assets. **Admin (both workspaces)** does both. **Super Admin** can also delete, archive employees and manage accounts, and is the only role that sees Maintenance. Employees are shared: both workspaces list them, each showing only its own counts.
 
 ## Project layout
 
@@ -134,7 +147,7 @@ web/src/           React app: routes/ (file-based), components/ui (kit), compone
 dist/web/          Built SPA (generated)
 ```
 
-Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances, `server/tests/grievances.test.ts`.
+Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances and maintenance, `server/tests/grievances.test.ts` and `server/tests/maintenance.test.ts`.
 
 ## How it differs from the design spec
 
@@ -157,4 +170,6 @@ The design was reworked for legibility and comfort, not just restyled:
 - Every account that works in Grievances can read every grievance; there is no limit to named people.
 - The case-file PDF comes from the browser's print dialog, so its page header and footer are the browser's.
 - Grievance files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
+- Zoho Forms does not retry a webhook. A request sent while the app is down never arrives; it is still in the form's Entries in Zoho, and can be entered by hand (RUNBOOK section 9).
+- Maintenance dates (Date, Noticed, Submitted in Zoho) are kept as the text Zoho sends, so they are shown but not sorted or filtered as dates.
 - An import takes one file of at most 2,000 rows and 5 MB, reads the first sheet of a workbook, and does not read the old `.xls` format.

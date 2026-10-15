@@ -312,7 +312,7 @@ Each item is ticked when it is done, and each has its own commit on the `mainten
    - [x] List, new-request and detail pages
    - [x] Visual check
 3. **Go live.**
-   - [ ] Update the docs.
+   - [x] Update the docs.
    - [ ] *(you)* Set the secret on the VPS and deploy.
    - [ ] *(you)* Configure the Zoho webhook as in §2.
    - [ ] *(you)* Send one test submission, check it, then delete it.

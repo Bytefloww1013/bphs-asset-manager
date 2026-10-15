@@ -315,7 +315,7 @@ Before inviting users:
 
 - Create a second Super Admin from **Users** so account recovery has a second route.
 - Confirm you can sign out and back in, and refresh a direct URL such as `/assets`.
-- Check that the Assets and Grievances workspaces open.
+- Check that the Assets and Grievances workspaces open, and, as a Super Admin, Maintenance.
 - Try an import/export and, when appropriate, a grievance attachment upload/download through HTTPS.
 - In browser developer tools, confirm the session cookie has `Secure`, `HttpOnly` and `SameSite=Lax`.
 
@@ -474,3 +474,80 @@ df -h
 | App does not return after a VPS reboot | Check `sudo systemctl status docker nginx`. A deliberately stopped container needs `start assets`; its restart policy does not undo a manual stop. |
 
 The HTTPS URL to share with users is **https://bphs-connect.com**.
+
+## 15. Connect the Zoho maintenance form
+
+Maintenance requests come from the Zoho Forms form *Maintenance Work Order Request*. When someone submits it, Zoho posts the entry to the app with a shared secret in a header. Nothing is sent the other way. Until this step is done, the webhook answers 404 and Super Admins can still enter requests by hand under **Maintenance → New request**.
+
+**1. The secret.** One value goes in two places: the server and Zoho's custom header. If you do not have one yet, make one with:
+
+```bash
+openssl rand -hex 32
+```
+
+It must be at least 32 characters. Keep it in `/etc/bphs-connect/compose.yml` (readable only by root and the `root` group, step 6), never in the Git checkout.
+
+**2. Give it to the server.** Open the production Compose file:
+
+```bash
+sudo nano /etc/bphs-connect/compose.yml
+```
+
+Under `environment:`, below `BOOTSTRAP_ADMIN_NAME`, add this line with the same indentation, putting the secret between the quotes:
+
+```yaml
+      MAINTENANCE_WEBHOOK_SECRET: 'the-secret'
+```
+
+Then recreate the container and check the endpoint:
+
+```bash
+sudo docker compose -f /etc/bphs-connect/compose.yml up -d --wait --wait-timeout 120
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://bphs-connect.com/api/webhooks/maintenance -H 'Content-Type: application/json' -d '{}'
+```
+
+Expect `401`: the endpoint is on and refused a request without the secret. `404` means the setting did not reach the container (check the indentation and that you ran `up -d`, not `restart`). If the container will not start and its log says the secret must be at least 32 characters, the value is too short.
+
+**3. Configure the webhook in Zoho.** In Zoho Forms, open *Maintenance Work Order Request* → **Integrations → Webhooks**:
+
+| Setting | Value |
+| --- | --- |
+| Webhook URL | `https://bphs-connect.com/api/webhooks/maintenance` |
+| HTTP method | `POST` |
+| Payload Content Type | `application/json` |
+| Authorization Type | `General` |
+| URL Parameters | Leave empty |
+| Custom Headers | Name `X-Webhook-Secret`, value: the secret from part 1 |
+
+Use JSON, not the other two content types: the app refuses form-encoded and multipart posts that carry no `Origin` header, which Zoho's do not.
+
+Under **Payload → Form Fields**, add one row per field, with the Parameter Name typed exactly as shown (they are case-sensitive):
+
+| Form field | Parameter Name | Shown in the app as |
+| --- | --- | --- |
+| Name – First Name | `firstName` | Requested by |
+| Name – Last Name | `lastName` | Requested by |
+| Email | `email` | Email |
+| Program Selection | `program` | Program, as Zoho's text |
+| Location/Room of Request | `location` | Location |
+| Describe the Request in Detail | `description` | Description (the only field that must arrive) |
+| Urgent? | `urgent` | Urgent badge, unless the value is empty or `No` |
+| Date | `requestDate` | Date |
+| Date Maintenance Issue was Noticed | `noticedDate` | Noticed |
+| Added Time | `addedTime` | Submitted in Zoho |
+
+Leave out Upload Image(s), Verify, Signature and CAPTCHA. Any other parameter is ignored, so adding fields to the form later breaks nothing.
+
+**4. Test it.** Press **Test Webhook** in Zoho and read the response it shows:
+
+| Response | Meaning |
+| --- | --- |
+| `201` with an `id` | Stored. It is under **Maintenance** in the app |
+| `200` with `"duplicate": true` | Already stored: the same email and Added Time arrived before. Nothing new was added |
+| `400` "The entry has no description" | No `description` arrived. Check that Parameter Name. The container log lists the parameter names that did arrive (never their values): `sudo docker compose -f /etc/bphs-connect/compose.yml logs --tail 100 assets \| grep -i maintenance` |
+| `401` | The header is missing, misnamed, or its value differs from the server's |
+| `404` | The server has no secret set (part 2) |
+
+Then submit one real entry through the form, with quotes and a line break in the description, and open it in the app. Check that the name, email, program, location, dates and Urgent all came through as you typed them. Afterwards, delete the test requests (open each one → **Delete**).
+
+Zoho does not retry a failed post. If a request is ever missing, it is still in the form's Entries in Zoho; see [RUNBOOK.md section 9](RUNBOOK.md#9-troubleshooting).
