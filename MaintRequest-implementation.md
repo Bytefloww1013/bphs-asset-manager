@@ -308,7 +308,7 @@ Each item is ticked when it is done, and each has its own commit on the `mainten
    - [x] The employee-delete rule
    - [x] Tests
 2. **Web.**
-   - [ ] Workspace plumbing (switcher, guard, nav)
+   - [x] Workspace plumbing (switcher, guard, nav)
    - [ ] List, new-request and detail pages
    - [ ] Visual check
 3. **Go live.**

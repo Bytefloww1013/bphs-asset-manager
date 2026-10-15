@@ -21,24 +21,25 @@ import {
   ShieldCheck,
   Tags,
   Users,
+  Wrench,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { can, canUseWorkspace } from '@shared/permissions.ts'
+import { can, workspacesOf } from '@shared/permissions.ts'
 import { ROLE_LABEL } from '@shared/constants.ts'
 import { cn } from '@/lib/cn.ts'
 import { api } from '@/lib/api.ts'
 import { initials } from '@/lib/format.ts'
 import { useUser } from '@/lib/session.ts'
-import { WORKSPACE_LABEL, rememberWorkspace, useWorkspace, type Workspace } from '@/lib/workspace.ts'
+import { WORKSPACE_HOME, WORKSPACE_LABEL, rememberWorkspace, useWorkspace, type Workspace } from '@/lib/workspace.ts'
 import { IconButton } from '../ui/button.tsx'
 import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -47,6 +48,7 @@ interface NavEntry {
 /** Each workspace has a sidebar of its own; nothing from one appears in the other. */
 function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] {
   const user = useUser()
+  if (workspace === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
   if (workspace === 'grievances') {
     return [
       {
@@ -95,27 +97,22 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
   ]
 }
 
-const WORKSPACES: { workspace: Workspace; to: '/' | '/grievances' }[] = [
-  { workspace: 'assets', to: '/' },
-  { workspace: 'grievances', to: '/grievances' },
-]
-
 /**
- * The two-part control under the product name. Choosing a side replaces the whole sidebar and opens that side's first page.
- * An account that works in one workspace only has nothing to switch to.
+ * The control under the product name, a part for each workspace the account works in. Choosing one replaces the whole sidebar
+ * and opens that workspace's first page. An account that works in one workspace only has nothing to switch to.
  */
 function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const current = useWorkspace()
-  const { role } = useUser()
-  const both = WORKSPACES.every(({ workspace }) => canUseWorkspace(role, workspace))
+  const usable: readonly Workspace[] = workspacesOf(useUser().role)
+  const both = usable.length > 1
   return (
     <div>
       {both && (
-        <nav aria-label="Workspace" className="grid grid-cols-2 gap-0.5 rounded-control bg-line/70 p-0.5">
-          {WORKSPACES.map(({ workspace, to }) => (
+        <nav aria-label="Workspace" className="grid gap-0.5 rounded-control bg-line/70 p-0.5" style={{ gridTemplateColumns: `repeat(${usable.length}, minmax(0, 1fr))` }}>
+          {usable.map((workspace) => (
             <Link
               key={workspace}
-              to={to}
+              to={WORKSPACE_HOME[workspace]}
               onClick={onNavigate}
               aria-current={workspace === current ? 'true' : undefined}
               className="flex h-8 items-center justify-center rounded-[0.375rem] text-sm font-medium text-ink-2 transition-colors duration-150 hover:text-ink aria-[current]:bg-surface aria-[current]:text-workspace aria-[current]:shadow-panel"

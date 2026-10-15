@@ -2,10 +2,11 @@ import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { useEffect, useSyncExternalStore } from 'react'
 import type { Workspace } from '@shared/constants.ts'
-import { can, canUseWorkspace, type Permission } from '@shared/permissions.ts'
+import { can, canUseWorkspace, workspacesOf, type Permission } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { meQuery } from './queries.ts'
 import { APP_NAME } from './brand.ts'
+import { WORKSPACE_HOME } from './workspace.ts'
 
 /** The signed-in user. Only call inside routes below the auth guard. */
 export function useUser(): SessionUser {
@@ -36,13 +37,13 @@ export function returnPath(value: unknown): string | undefined {
 
 /**
  * The auth guard for a page that needs a signed-in user with a usable password; a route's `beforeLoad` calls it with the
- * workspace the page is in. An account that does not work there is taken to the workspace it does work in.
+ * workspace the page is in. An account that does not work there is taken to the first workspace it does work in.
  */
 export async function requireSession(queryClient: QueryClient, href: string, workspace: Workspace): Promise<SessionUser> {
   const user = await queryClient.ensureQueryData(meQuery)
   if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(href) } })
   if (user.mustChangePassword) throw redirect({ to: '/password-change' })
-  if (!canUseWorkspace(user.role, workspace)) throw redirect({ to: workspace === 'assets' ? '/grievances' : '/' })
+  if (!canUseWorkspace(user.role, workspace)) throw redirect({ to: WORKSPACE_HOME[workspacesOf(user.role)[0]!] })
   return user
 }
 
