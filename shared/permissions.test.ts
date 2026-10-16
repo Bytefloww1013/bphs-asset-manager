@@ -29,7 +29,7 @@ describe('access levels', () => {
   })
 
   it('describes access in words', () => {
-    expect(describeAccess(user({ employees: 'edit', assets: 'read' }))).toBe('Assets: Read · Employees: Edit')
+    expect(describeAccess(user({ employees: 'edit', assets: 'read' }))).toBe('Assets: Read Only · Employees: Edit')
     expect(describeAccess(user({ assets: 'read' }, null, true))).toBe('Super Admin')
     expect(describeAccess(user({}))).toBe('No access')
   })

@@ -24,7 +24,7 @@ export const canUseWorkspace = (user: Grantee | undefined | null, workspace: Wor
 export const needsAccess = (section: Section, level: AccessLevel) =>
   level === 'read' ? `Your account does not have access to ${SECTION_LABEL[section]}.` : `You need ${ACCESS_LEVEL_LABEL[level]} access to ${SECTION_LABEL[section]} for this.`
 
-/** An account's access in words: "Super Admin", or "Assets: Edit · Employees: Read". */
+/** An account's access in words: "Super Admin", or "Assets: Edit · Employees: Read Only". */
 export function describeAccess(user: Grantee): string {
   if (user.superAdmin) return 'Super Admin'
   const granted = SECTIONS.filter((section) => user.access[section]).map((section) => `${SECTION_LABEL[section]}: ${ACCESS_LEVEL_LABEL[user.access[section]!]}`)

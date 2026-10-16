@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Copy, KeyRound, Lock, LockOpen, Shield, Unlink, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
+import { Copy, KeyRound, Lock, LockOpen, Link2, Shield, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
 import { ACCESS_LEVEL_LABEL, ACCESS_LEVELS, SECTION_LABEL, SECTIONS, type Access, type AccessLevel, type Section } from '@shared/constants.ts'
 import { describeAccess, type Grantee } from '@shared/permissions.ts'
@@ -14,10 +14,12 @@ import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert, EmptyState, useToast } from '@/components/ui/feedback.tsx'
 import { Field, Input, Segmented, Switch } from '@/components/ui/form.tsx'
+import { InfoPopover } from '@/components/ui/info-popover.tsx'
 import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overlay.tsx'
 import { Stacked } from '@/features/common/status.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
+import { LEVEL_HELP } from '@/features/users/level-help.ts'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { formatDateTime, formatRelative, formatTime } from '@/lib/format.ts'
@@ -138,6 +140,27 @@ function withLevel(access: Access, sections: readonly Section[], level: AccessLe
   return next
 }
 
+/** A section's levels, with the "i" button after them. The button sits outside the group, so the arrow keys still move only between levels. */
+function SectionLevels({ id, section, value, onChange }: { id?: string; section: Section; value: AccessLevel; onChange: (level: AccessLevel) => void }) {
+  const label = `What each level means in ${SECTION_LABEL[section]}`
+  return (
+    <div className="flex items-start gap-1.5">
+      <Segmented id={id} label={SECTION_LABEL[section]} value={value} onChange={onChange} options={LEVEL_OPTIONS} />
+      <InfoPopover label={label}>
+        <p className="mb-2 font-medium">{label}</p>
+        <dl className="flex flex-col gap-2">
+          {ACCESS_LEVELS.map((level) => (
+            <div key={level}>
+              <dt className="text-xs font-semibold text-ink">{ACCESS_LEVEL_LABEL[level]}</dt>
+              <dd className="text-xs text-ink-2">{LEVEL_HELP[section][level]}</dd>
+            </div>
+          ))}
+        </dl>
+      </InfoPopover>
+    </div>
+  )
+}
+
 /** A level for each section, a control that sets them all at once, and the Super Admin switch, which overrides them. */
 function AccessFields({ value, onChange, error }: { value: Grantee; onChange: (next: Grantee) => void; error?: string }) {
   const levels = SECTIONS.map((section) => value.access[section] ?? 'none')
@@ -153,12 +176,12 @@ function AccessFields({ value, onChange, error }: { value: Grantee; onChange: (n
       </div>
       {!value.superAdmin && (
         <>
-          <Field label="Set all to" hint="Read sees a section. Edit also adds and changes records. Full also deletes, archives and voids.">
+          <Field label="Set all to" hint="Read Only sees a section. Edit also adds and changes records. Full also deletes, archives and voids.">
             <Segmented label="Set all to" value={all} onChange={(level) => onChange({ ...value, access: withLevel(value.access, SECTIONS, level) })} options={LEVEL_OPTIONS} />
           </Field>
           {SECTIONS.map((section) => (
             <Field key={section} label={SECTION_LABEL[section]} hint={section === 'employees' ? 'None hides the Employees page. Every account can still choose employees in a form.' : undefined}>
-              <Segmented label={SECTION_LABEL[section]} value={value.access[section] ?? 'none'} onChange={(level) => onChange({ ...value, access: withLevel(value.access, [section], level) })} options={LEVEL_OPTIONS} />
+              <SectionLevels section={section} value={value.access[section] ?? 'none'} onChange={(level) => onChange({ ...value, access: withLevel(value.access, [section], level) })} />
             </Field>
           ))}
           {error && (
@@ -237,6 +260,70 @@ function AccessSheet({ user, onClose }: { user: UserRow; onClose: () => void }) 
   )
 }
 
+/** Employees an account can be linked to. An employee may be linked to one account only, so those who already have one are not offered. */
+function useLinkablePeople() {
+  const { data: lookups } = useQuery(lookupsQuery)
+  const { data: accounts = [] } = useQuery(usersQuery)
+  const linked = new Set(accounts.map((account) => account.employeeId))
+  const everyone = lookups?.employees ?? []
+  return { everyone, people: everyone.filter((person) => !linked.has(person.id)) }
+}
+
+const LINK_HINT = 'Every account belongs to one employee. An employee can be linked to one account only.'
+const personLabel = (p: { name: string; code: string }) => `${p.name} · ${p.code}`
+
+function LinkSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
+  const { everyone, people } = useLinkablePeople()
+  const current = everyone.find((person) => person.id === user.employeeId)
+  const [employee, setEmployee] = useState<(typeof people)[number] | null>(null)
+  const [missing, setMissing] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  const save = useWrite((employeeId: number) => api.patch(`/users/${user.id}`, { employeeId }), { silent: true, success: `${user.name} is linked to ${employee?.name}` })
+
+  async function submit() {
+    setError(null)
+    setMissing(!employee)
+    if (!employee) return
+    try {
+      await save.mutateAsync(employee.id)
+      onClose()
+    } catch (e) {
+      if (e instanceof ApiError) setError(e)
+    }
+  }
+
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={user.employeeId == null ? `Link ${user.name} to an employee` : `Change the employee linked to ${user.name}`}
+      description={current ? `Linked now to ${personLabel(current)}.` : user.employeeId == null ? 'This account is not linked to an employee yet.' : undefined}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" type="submit" form="link-form" loading={save.isPending}>
+            Save link
+          </Button>
+        </>
+      }
+    >
+      <form
+        id="link-form"
+        noValidate
+        className="flex flex-col gap-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void submit()
+        }}
+      >
+        <Field label="Linked employee" hint={LINK_HINT} error={(missing ? 'Choose the employee this account belongs to.' : null) ?? error?.message}>
+          <Combobox items={people} value={employee} onChange={(person) => { setEmployee(person); setMissing(false) }} getKey={(p) => p.id} getLabel={personLabel} getSearch={(p) => p.department ?? ''} placeholder="Search employees" />
+        </Field>
+      </form>
+    </Sheet>
+  )
+}
+
 function StateBadge({ user }: { user: UserRow }) {
   if (user.state === 'locked') return <Badge tone="warn">Locked until {user.lockedUntil ? formatTime(user.lockedUntil) : ''}</Badge>
   if (user.state === 'deactivated') return <Badge tone="neutral">Deactivated</Badge>
@@ -245,7 +332,7 @@ function StateBadge({ user }: { user: UserRow }) {
 
 function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: UserWithPassword) => void }) {
   const me = useUser()
-  const [confirm, setConfirm] = useState<'reset' | 'access' | 'deactivate' | null>(null)
+  const [confirm, setConfirm] = useState<'reset' | 'access' | 'link' | 'deactivate' | null>(null)
   const reset = useWrite(async () => {
     const result = await api.post<UserWithPassword>(`/users/${user.id}/reset-password`)
     // Handed over before useWrite refetches the lists: a password that is shown only once must not wait on a refetch.
@@ -256,14 +343,13 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
   const unlock = useWrite(() => api.post(`/users/${user.id}/clear-lock`), { success: `Lock cleared for ${user.name}` })
   const deactivate = useWrite(() => api.post(`/users/${user.id}/deactivate`), { success: `${user.name} deactivated` })
   const reactivate = useWrite(() => api.post(`/users/${user.id}/reactivate`), { success: `${user.name} reactivated` })
-  const unlink = useWrite(() => api.patch(`/users/${user.id}`, { employeeId: null }), { success: `${user.name} is no longer linked to an employee` })
   const isMe = user.id === me.id
 
   const items: MenuItem[] = [
     { label: 'Reset password', icon: KeyRound, onSelect: () => setConfirm('reset'), disabledReason: isMe ? 'Use "Change password" in your user menu.' : undefined },
     { label: 'Clear lock', icon: LockOpen, onSelect: () => unlock.mutate(undefined), disabledReason: user.state === 'locked' || user.failedLogins > 0 ? undefined : 'This account is not locked.' },
     { label: 'Change access', icon: Shield, onSelect: () => setConfirm('access'), disabledReason: isMe ? 'You cannot change your own access.' : undefined },
-    { label: 'Unlink employee', icon: Unlink, onSelect: () => unlink.mutate(undefined), disabledReason: user.employeeId == null ? 'This account is not linked to an employee.' : undefined },
+    { label: user.employeeId == null ? 'Link employee' : 'Change linked employee', icon: Link2, onSelect: () => setConfirm('link'), disabledReason: isMe ? 'You cannot change the employee linked to your own account.' : undefined },
     user.state === 'deactivated'
       ? { label: 'Reactivate', icon: UserRoundCheck, onSelect: () => reactivate.mutate(undefined), separatorBefore: true }
       : { label: 'Deactivate', icon: UserRoundX, tone: 'danger', separatorBefore: true, onSelect: () => setConfirm('deactivate'), disabledReason: isMe ? 'You cannot deactivate your own account.' : undefined },
@@ -280,6 +366,7 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
         onConfirm={() => reset.mutateAsync(undefined)}
       />
       {confirm === 'access' && <AccessSheet user={user} onClose={() => setConfirm(null)} />}
+      {confirm === 'link' && <LinkSheet user={user} onClose={() => setConfirm(null)} />}
       <ConfirmDialog
         open={confirm === 'deactivate'}
         onOpenChange={(open) => !open && setConfirm(null)}
@@ -345,13 +432,9 @@ function UsersTable() {
 }
 
 function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (result: UserWithPassword) => void }) {
-  const { data: lookups } = useQuery(lookupsQuery)
-  const { data: accounts = [] } = useQuery(usersQuery)
-  // An employee may be linked to one account only, so those who already have one are not offered.
-  const linked = new Set(accounts.map((account) => account.employeeId))
-  const people = (lookups?.employees ?? []).filter((person) => !linked.has(person.id))
+  const { people } = useLinkablePeople()
   const [error, setError] = useState<ApiError | null>(null)
-  const create = useWrite((body: Grantee & { name: string; email: string; employeeId: number | null }) => api.post<UserWithPassword>('/users', body), { silent: true })
+  const create = useWrite((body: Grantee & { name: string; email: string; employeeId: number }) => api.post<UserWithPassword>('/users', body), { silent: true })
 
   const form = useForm({
     defaultValues: { name: '', email: '', grant: { access: {}, superAdmin: false } as Grantee, employee: null as (typeof people)[number] | null },
@@ -360,13 +443,15 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
         const fields: Record<string, string> = {}
         if (!value.name.trim()) fields.name = 'Enter their name.'
         if (!/^\S+@\S+\.\S+$/.test(value.email.trim())) fields.email = 'Enter a valid email address.'
+        if (!value.employee) fields.employee = 'Choose the employee this account belongs to.'
         return Object.keys(fields).length ? { fields } : undefined
       },
     },
     onSubmit: async ({ value }) => {
       setError(null)
+      if (!value.employee) return
       try {
-        const result = await create.mutateAsync({ name: value.name, email: value.email, ...value.grant, employeeId: value.employee?.id ?? null })
+        const result = await create.mutateAsync({ name: value.name, email: value.email, ...value.grant, employeeId: value.employee.id })
         onClose()
         onCreated(result)
       } catch (e) {
@@ -405,7 +490,7 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
           void form.handleSubmit()
         }}
       >
-        {error && error.code !== 'duplicate_email' && !error.fields.email && !error.fields.access && (
+        {error && error.code !== 'duplicate_email' && !error.fields.email && !error.fields.access && !error.fields.employeeId && (
           <Alert tone="bad" title="Could not create the account">
             {error.message}
           </Alert>
@@ -427,8 +512,8 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
         <form.Field name="grant">{(field) => <AccessFields value={field.state.value} onChange={field.handleChange} error={error?.fields.access} />}</form.Field>
         <form.Field name="employee">
           {(field) => (
-            <Field label="Linked employee" optional hint="Fills in “Assessed by” for them when issuing and returning. An employee can be linked to one account only.">
-              <Combobox items={people} value={field.state.value} onChange={field.handleChange} getKey={(p) => p.id} getLabel={(p) => `${p.name} · ${p.code}`} getSearch={(p) => p.department ?? ''} placeholder="Search employees" />
+            <Field label="Linked employee" hint={LINK_HINT} error={(error?.fields.employeeId ? error.message : null) ?? fieldError(field, undefined, submitted)}>
+              <Combobox items={people} value={field.state.value} onChange={field.handleChange} getKey={(p) => p.id} getLabel={personLabel} getSearch={(p) => p.department ?? ''} placeholder="Search employees" />
             </Field>
           )}
         </form.Field>

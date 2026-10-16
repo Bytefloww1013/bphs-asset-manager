@@ -84,10 +84,11 @@ describe('section access', () => {
   it('gives every account somewhere to land: at least Read in a workspace, or Super Admin', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
-    const made = await t.call('POST', '/api/users', { cookie, body: { name: 'Emp Only', email: 'emp@bphs.local', access: { employees: 'edit' }, superAdmin: false } })
+    const employeeId = (code: string) => t.db.insert(employees).values({ code, firstName: 'Ana', lastName: code }).returning().get().id
+    const made = await t.call('POST', '/api/users', { cookie, body: { name: 'Emp Only', email: 'emp@bphs.local', access: { employees: 'edit' }, superAdmin: false, employeeId: employeeId('E-5001') } })
     expect(made.status).toBe(422)
-    expect(made.data.details.fields.access).toBe('Give at least Read access to Assets, Grievances or Maintenance, or make the account a Super Admin.')
-    expect((await t.call('POST', '/api/users', { cookie, body: { name: 'Boss', email: 'boss@bphs.local', access: {}, superAdmin: true } })).status).toBe(201)
+    expect(made.data.details.fields.access).toBe('Give at least Read Only access to Assets, Grievances or Maintenance, or make the account a Super Admin.')
+    expect((await t.call('POST', '/api/users', { cookie, body: { name: 'Boss', email: 'boss@bphs.local', access: {}, superAdmin: true, employeeId: employeeId('E-5002') } })).status).toBe(201)
     expect((await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { access: { employees: 'full' } } })).status).toBe(422)
     const lowered = await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { access: { maintenance: 'read' } } })
     expect(lowered.data).toMatchObject({ access: { maintenance: 'read' }, superAdmin: false })

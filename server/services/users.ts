@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
+import { ACCESS_LEVEL_LABEL, WORKSPACE_LABEL, WORKSPACES } from '../../shared/constants.ts'
 import { describeAccess, workspacesOf, type Grantee } from '../../shared/permissions.ts'
 import type { UserCreateInput, UserUpdateInput } from '../../shared/schemas.ts'
 import type { UserRow, UserState, UserWithPassword } from '../../shared/types.ts'
@@ -51,7 +52,7 @@ function assertEmployee(db: DbLike, id: number | null | undefined) {
   // An employee is one person, and so is an account. Only called when the link changes, so the account found is another one.
   const taken = db.select({ email: users.email }).from(users).where(eq(users.employeeId, id)).get()
   if (taken) {
-    throw conflict('employee_linked', `${fullName(employee.firstName, employee.lastName)} is already linked to the account ${taken.email}. Unlink that account first.`, { field: 'employeeId' })
+    throw conflict('employee_linked', `${fullName(employee.firstName, employee.lastName)} is already linked to the account ${taken.email}. Link that account to someone else first.`, { field: 'employeeId' })
   }
   // The pickers do not offer archived employees, and an account linked to one would record them as the assessor on what it issues.
   if (employee.archivedAt) throw invalid('That employee is archived. Restore them first, or choose someone else.', { field: 'employeeId' })
@@ -60,7 +61,9 @@ function assertEmployee(db: DbLike, id: number | null | undefined) {
 /** An account must be able to open something, or the app has nowhere to land it. */
 function assertWorkspace(grantee: Grantee) {
   if (workspacesOf(grantee).length === 0) {
-    throw invalid('Give at least Read access to Assets, Grievances or Maintenance, or make the account a Super Admin.', { field: 'access' })
+    const names = WORKSPACES.map((w) => WORKSPACE_LABEL[w])
+    const list = `${names.slice(0, -1).join(', ')} or ${names.at(-1)}`
+    throw invalid(`Give at least ${ACCESS_LEVEL_LABEL.read} access to ${list}, or make the account a Super Admin.`, { field: 'access' })
   }
 }
 
@@ -86,7 +89,7 @@ export async function createUser(db: Db, actor: Actor, input: UserCreateInput): 
         passwordHash,
         access: input.access,
         superAdmin: input.superAdmin,
-        employeeId: input.employeeId ?? null,
+        employeeId: input.employeeId,
         mustChangePassword: true,
       })
       .returning({ id: users.id })
@@ -119,6 +122,9 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
       changes.push(`access: ${describeAccess(was)} → ${describeAccess(next)}`)
     }
     if (input.employeeId !== undefined && (input.employeeId ?? null) !== current.employeeId) {
+      // Otherwise someone could unlink themselves to see an Administrative Review about them.
+      if (id === actor.id) throw conflict('self_link', 'You cannot change the employee linked to your own account.')
+      if (input.employeeId == null && id !== firstAccountId(tx)) throw invalid('Every account must be linked to an employee.', { field: 'employeeId' })
       assertEmployee(tx, input.employeeId)
       patch.employeeId = input.employeeId ?? null
       changes.push(`linked employee: ${employeeLabel(tx, current.employeeId)} → ${employeeLabel(tx, patch.employeeId)}`)
@@ -128,6 +134,11 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${current.email} · ${changes.join('; ')}` })
   })
   return toRow(requireUser(db, id))
+}
+
+/** The account made on first run. Accounts are deactivated, never deleted, so it keeps the lowest ID. It is the one account that may have no employee. */
+export function firstAccountId(db: DbLike): number | undefined {
+  return db.get<{ id: number | null }>(sql`select min(id) as id from users`)?.id ?? undefined
 }
 
 function activeSuperAdmins(db: DbLike): number {

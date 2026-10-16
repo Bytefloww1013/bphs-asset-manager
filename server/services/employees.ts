@@ -38,7 +38,7 @@ function deleteBlocked(row: RawEmployee): { code: string; reason: string } | nul
   // Says no more than that: which grievance, and what it is about, is not for the asset side to show.
   if (row.grievances > 0) return { code: 'has_history', reason: 'Named on a grievance. Archive instead; history is never deleted.' }
   if (row.maintenance > 0) return { code: 'has_history', reason: 'Dispatched on a maintenance request. Archive instead; history is never deleted.' }
-  if (row.account) return { code: 'linked_user', reason: `Linked to the account ${row.account}. Unlink it on Users first.` }
+  if (row.account) return { code: 'linked_user', reason: `Linked to the account ${row.account}. Link that account to someone else on Users first.` }
   return null
 }
 

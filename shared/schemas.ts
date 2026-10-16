@@ -356,7 +356,8 @@ export const userCreateSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address')),
   access: accessSchema,
   superAdmin: z.boolean(),
-  employeeId: id.nullable().optional(),
+  /** Every account belongs to one employee. Only the first account, made on first run, may have none. */
+  employeeId: z.number({ error: 'Choose the employee this account belongs to' }).int().positive(),
 })
 export type UserCreateInput = z.infer<typeof userCreateSchema>
 
