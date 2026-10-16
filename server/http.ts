@@ -2,7 +2,8 @@ import { zValidator } from '@hono/zod-validator'
 import type { Context, MiddlewareHandler } from 'hono'
 import { validator } from 'hono/validator'
 import type { z, ZodType } from 'zod'
-import { can, type Permission, SUPER_ADMIN_ONLY } from '../shared/permissions.ts'
+import type { Section } from '../shared/constants.ts'
+import { canAt, needsAccess } from '../shared/permissions.ts'
 import type { AuthUser } from './services/auth.ts'
 import { HttpError, forbidden } from './lib/errors.ts'
 
@@ -61,11 +62,17 @@ export function query<T extends ZodType>(schema: T) {
   })
 }
 
-export function requirePermission(permission: Permission): MiddlewareHandler<Env> {
+/** Deleting, voiding, withdrawing and archiving: what a Super Admin can do, within one section. */
+export function requireFull(section: Section): MiddlewareHandler<Env> {
   return async (c, next) => {
-    if (!can(c.get('user').role, permission)) throw forbidden(SUPER_ADMIN_ONLY)
+    if (!canAt(c.get('user'), section, 'full')) throw forbidden(needsAccess(section, 'full'))
     await next()
   }
+}
+
+export const requireSuperAdmin: MiddlewareHandler<Env> = async (c, next) => {
+  if (!c.get('user').superAdmin) throw forbidden('Only a Super Admin can do this.')
+  await next()
 }
 
 export function intParam(c: Context, name: string): number {

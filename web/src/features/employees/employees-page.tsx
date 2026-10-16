@@ -15,7 +15,7 @@ import { EmployeeRowActions, QuickAddEmployee } from '@/features/employees/emplo
 import { Stacked } from '@/features/common/status.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { employeesQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 import { useWorkspace } from '@/lib/workspace.ts'
 
 type Show = 'active' | 'archived' | 'all'
@@ -39,6 +39,7 @@ const searchText = (row: EmployeeRow) => [row.name, row.code, row.department, ro
 
 export function EmployeesPage() {
   usePageTitle('Employees')
+  const readOnly = useDenied('employees', 'edit')
   // The page is only in Assets and Grievances.
   const assets = useWorkspace() === 'assets'
   const { show = 'active' } = useSearch({ strict: false }) as { show?: Show }
@@ -70,15 +71,17 @@ export function EmployeesPage() {
           assets && (
             <>
               <ExportButton dataset={EXPORTS.employees} items={data} />
-              <Link to="/import-export" search={{ type: 'employees' }} className={buttonStyles()}>
-                <Upload className="size-4" aria-hidden />
-                Import
-              </Link>
+              {!readOnly && (
+                <Link to="/import-export" search={{ type: 'employees' }} className={buttonStyles()}>
+                  <Upload className="size-4" aria-hidden />
+                  Import
+                </Link>
+              )}
             </>
           )
         }
       />
-      <QuickAddEmployee onAdded={setFlash} />
+      {!readOnly && <QuickAddEmployee onAdded={setFlash} />}
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
@@ -101,7 +104,7 @@ export function EmployeesPage() {
           rowClassName={(row) => (row.original.id === flash ? 'animate-row-flash' : undefined)}
           empty={
             assets ? (
-              <EmptyState icon={Users} title="No employees yet" description="Add one above, or import your HR export as a CSV or Excel file." action={<Link to="/import-export" search={{ type: 'employees' }} className={buttonStyles('primary')}>Import employees</Link>} />
+              <EmptyState icon={Users} title="No employees yet" description="Add one above, or import your HR export as a CSV or Excel file." action={readOnly ? undefined : <Link to="/import-export" search={{ type: 'employees' }} className={buttonStyles('primary')}>Import employees</Link>} />
             ) : (
               <EmptyState icon={Users} title="No employees yet" description="Add one above." />
             )

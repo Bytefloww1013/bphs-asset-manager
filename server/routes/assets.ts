@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { assetBulkSchema, assetCreateSchema, assetUpdateSchema, issueSchema, returnBulkSchema, returnSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
-import { intParam, json, requirePermission, type Env } from '../http.ts'
+import { intParam, json, requireFull, type Env } from '../http.ts'
 import {
   createAsset,
   createAssetsBulk,
@@ -25,7 +25,7 @@ export function assetRoutes(db: Db) {
   )
   app.post('/:id/retire', (c) => c.json(setAssetStatus(db, c.get('user'), intParam(c, 'id'), 'retired')))
   app.post('/:id/reinstate', (c) => c.json(setAssetStatus(db, c.get('user'), intParam(c, 'id'), 'in_service')))
-  app.delete('/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/:id', requireFull('assets'), (c) => {
     deleteAsset(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })

@@ -1,8 +1,8 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { useEffect, useSyncExternalStore } from 'react'
-import type { Workspace } from '@shared/constants.ts'
-import { can, canUseWorkspace, workspacesOf, type Permission } from '@shared/permissions.ts'
+import type { AccessLevel, Section, Workspace } from '@shared/constants.ts'
+import { canAt, canUseWorkspace, needsAccess, workspacesOf } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { meQuery } from './queries.ts'
 import { APP_NAME } from './brand.ts'
@@ -15,8 +15,9 @@ export function useUser(): SessionUser {
   return data
 }
 
-export function useCan(permission: Permission): boolean {
-  return can(useUser().role, permission)
+/** Why this account may not do something that needs this level in this section, or undefined when it may: fits a `disabledReason`. */
+export function useDenied(section: Section, level: AccessLevel): string | undefined {
+  return canAt(useUser(), section, level) ? undefined : needsAccess(section, level)
 }
 
 /** Sets the browser tab title for the current screen. */
@@ -43,7 +44,7 @@ export async function requireSession(queryClient: QueryClient, href: string, wor
   const user = await queryClient.ensureQueryData(meQuery)
   if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(href) } })
   if (user.mustChangePassword) throw redirect({ to: '/password-change' })
-  if (!canUseWorkspace(user.role, workspace)) throw redirect({ to: WORKSPACE_HOME[workspacesOf(user.role)[0]!] })
+  if (!canUseWorkspace(user, workspace)) throw redirect({ to: WORKSPACE_HOME[workspacesOf(user)[0]!] })
   return user
 }
 

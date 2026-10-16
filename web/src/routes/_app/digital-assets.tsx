@@ -15,7 +15,7 @@ import { ExportButton } from '@/features/common/export-button.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { formatDate } from '@/lib/format.ts'
 import { digitalAssetsQuery, lookupsQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 type Show = 'all' | DigitalAssetState
 const STATES: DigitalAssetState[] = ['active', 'not_issued', 'inactive']
@@ -44,6 +44,7 @@ const searchText = (row: DigitalAssetRow) => [row.code, row.type, row.account, r
 
 function DigitalAssetsPage() {
   usePageTitle('Digital Assets')
+  const readOnly = useDenied('assets', 'edit')
   const { show = 'all' } = Route.useSearch() as { show?: Show }
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(digitalAssetsQuery)
@@ -69,7 +70,7 @@ function DigitalAssetsPage() {
           <ExportButton dataset={EXPORTS.digitalAssets} items={data} />
         }
       />
-      <QuickAddDigitalAsset onAdded={setFlash} />
+      {!readOnly && <QuickAddDigitalAsset onAdded={setFlash} />}
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs

@@ -8,7 +8,7 @@ import {
 } from '../../shared/schemas.ts'
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
-import { intParam, json, query, requirePermission, type Env } from '../http.ts'
+import { intParam, json, query, requireFull, type Env } from '../http.ts'
 import {
   createAssetType,
   createDigitalAssetType,
@@ -36,7 +36,7 @@ export function listRoutes(db: Db) {
   app.patch('/asset-types/:id', json(assetTypeUpdateSchema), (c) =>
     c.json(updateAssetType(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
   )
-  app.delete('/asset-types/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/asset-types/:id', requireFull('assets'), (c) => {
     deleteAssetType(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
@@ -48,7 +48,7 @@ export function listRoutes(db: Db) {
   app.patch('/digital-asset-types/:id', json(assetTypeUpdateSchema), (c) =>
     c.json(updateDigitalAssetType(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
   )
-  app.delete('/digital-asset-types/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/digital-asset-types/:id', requireFull('assets'), (c) => {
     deleteDigitalAssetType(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
@@ -60,7 +60,7 @@ export function listRoutes(db: Db) {
   app.patch('/condition-ratings/:id', json(ratingUpdateSchema), (c) =>
     c.json(updateRating(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
   )
-  app.delete('/condition-ratings/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/condition-ratings/:id', requireFull('assets'), (c) => {
     deleteRating(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })

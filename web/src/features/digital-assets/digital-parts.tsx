@@ -2,7 +2,6 @@ import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { Ban, CornerDownLeft, History, Pencil, RotateCcw, Send, Trash2, Undo2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import { looksLikeSecret } from '@shared/secrets.ts'
 import type { DigitalAssetRow, DigitalAssetState, EmployeeRef } from '@shared/types.ts'
 import { Badge, type Tone } from '@/components/ui/badge.tsx'
@@ -17,7 +16,7 @@ import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { formatDate, formatDateTime, plural } from '@/lib/format.ts'
 import { digitalAssetDetailQuery, lookupsQuery } from '@/lib/queries.ts'
-import { useCan } from '@/lib/session.ts'
+import { useDenied } from '@/lib/session.ts'
 
 /** Said wherever the License/Account field is filled in. The server refuses a value that labels itself as a credential. */
 export const ACCOUNT_HINT = 'Email address or license reference. Never a password or key.'
@@ -144,7 +143,8 @@ export function DigitalAssetIdCell({ asset }: { asset: DigitalAssetRow }) {
 }
 
 export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
-  const canDelete = useCan('record.delete')
+  const noEdit = useDenied('assets', 'edit')
+  const noFull = useDenied('assets', 'full')
   const [sheet, setSheet] = useState<'issue' | 'edit' | 'detail' | null>(null)
   const [confirm, setConfirm] = useState<'unassign' | 'deactivate' | 'delete' | null>(null)
   const unassign = useWrite((assignmentId: number | null) => api.post(`/digital-assets/${asset.id}/unassign`, { assignmentId }), { success: `${asset.code} unassigned` })
@@ -154,14 +154,14 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
 
   const items: MenuItem[] = [
     { label: 'Assignment history', icon: History, onSelect: () => setSheet('detail') },
-    { label: 'Edit details', icon: Pencil, onSelect: () => setSheet('edit') },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setSheet('edit'), disabledReason: noEdit },
     asset.state === 'inactive'
-      ? { label: 'Reactivate', icon: RotateCcw, onSelect: () => reactivate.mutate(undefined) }
+      ? { label: 'Reactivate', icon: RotateCcw, onSelect: () => reactivate.mutate(undefined), disabledReason: noEdit }
       : {
           label: 'Mark inactive',
           icon: Ban,
           onSelect: () => setConfirm('deactivate'),
-          disabledReason: asset.employee ? `Issued to ${asset.employee.name}. Unassign it first.` : undefined,
+          disabledReason: noEdit ?? (asset.employee ? `Issued to ${asset.employee.name}. Unassign it first.` : undefined),
         },
     {
       label: 'Delete',
@@ -169,18 +169,18 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: !canDelete ? SUPER_ADMIN_ONLY : asset.hasHistory ? 'Has assignment history. Mark it inactive instead.' : undefined,
+      disabledReason: noFull ?? (asset.hasHistory ? 'Has assignment history. Mark it inactive instead.' : undefined),
     },
   ]
 
   return (
     <div className="flex items-center justify-end gap-1.5">
       {asset.state === 'active' ? (
-        <Button size="sm" icon={<Undo2 className="size-3.5" />} onClick={() => setConfirm('unassign')}>
+        <Button size="sm" icon={<Undo2 className="size-3.5" />} disabledReason={noEdit} onClick={() => setConfirm('unassign')}>
           Unassign
         </Button>
       ) : (
-        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={asset.state === 'inactive' ? 'Inactive. Reactivate it before issuing.' : undefined} onClick={() => setSheet('issue')}>
+        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={noEdit ?? (asset.state === 'inactive' ? 'Inactive. Reactivate it before issuing.' : undefined)} onClick={() => setSheet('issue')}>
           Issue
         </Button>
       )}

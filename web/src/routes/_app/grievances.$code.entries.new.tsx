@@ -19,6 +19,7 @@ import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/entries/new')({
   // `corrects` is set by "Add correction" on an entry: the number of the entry being corrected.
@@ -45,6 +46,7 @@ const KIND_HINTS = { action: 'Something done about the grievance: a meeting held
 function NewEntryPage() {
   const { code } = Route.useParams()
   const { corrects } = Route.useSearch()
+  const readOnly = useDenied('grievances', 'edit')
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
   // A correction is this same form with its type fixed and the entry it corrects named; that entry is never touched.
@@ -207,7 +209,7 @@ function NewEntryPage() {
               {blocked ? 'Back to the grievance' : 'Cancel'}
             </Link>
             {!blocked && (
-              <Button variant="primary" type="submit" loading={save.isPending}>
+              <Button variant="primary" type="submit" loading={save.isPending} disabledReason={readOnly}>
                 {correcting ? 'Save correction' : 'Save entry'}
               </Button>
             )}

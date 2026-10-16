@@ -12,6 +12,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
+import { describeAccess } from '../shared/permissions.ts'
 import { config } from './config.ts'
 import { createDb, type DbLike } from './db/client.ts'
 import { auditLog, users } from './db/schema.ts'
@@ -49,7 +50,7 @@ if (command === 'list') {
   const rows = db.select().from(users).orderBy(users.email).all()
   for (const u of rows) {
     const state = !u.isActive ? 'deactivated' : u.lockedUntil && u.lockedUntil > now ? `locked until ${u.lockedUntil.toISOString()}` : 'active'
-    console.log([u.email.padEnd(32), u.role.padEnd(15), state, u.mustChangePassword ? '(must change password)' : ''].join('  ').trimEnd())
+    console.log([u.email.padEnd(32), describeAccess(u).padEnd(15), state, u.mustChangePassword ? '(must change password)' : ''].join('  ').trimEnd())
   }
 } else if (command === 'unlock') {
   const user = findUser(db, emailArg)

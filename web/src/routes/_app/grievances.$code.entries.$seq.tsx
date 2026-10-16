@@ -14,6 +14,7 @@ import { AttachmentList } from '@/features/grievances/files.tsx'
 import { EntryMarker } from '@/features/grievances/timeline.tsx'
 import { formatDateTime } from '@/lib/format.ts'
 import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/entries/$seq')({
   loader: ({ context, params }) =>
@@ -52,6 +53,7 @@ function EntryLink({ code, entry, className, children }: { code: string; entry: 
 
 function EntryPage() {
   const { code, seq: named } = Route.useParams()
+  const readOnly = useDenied('grievances', 'edit')
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
   const { data: attachments } = useQuery(grievanceAttachmentsQuery(code))
@@ -107,7 +109,7 @@ function EntryPage() {
             <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{entry.title}</h1>
             {entry.shortDescription && <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{entry.shortDescription}</p>}
           </div>
-          {correctable && (
+          {correctable && !readOnly && (
             <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} search={{ corrects: entry.seq }} className={buttonStyles('secondary')}>
               <PencilLine className="size-4" aria-hidden /> Add correction
             </Link>

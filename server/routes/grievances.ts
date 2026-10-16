@@ -15,7 +15,7 @@ import {
 } from '../../shared/schemas.ts'
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
-import { formFiles, intParam, json, jsonOrFiles, query, requirePermission, type Env } from '../http.ts'
+import { formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
 import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, recordGrievanceExport, voidGrievance } from '../services/grievances.ts'
 import {
   addGrievanceAttachments,
@@ -48,7 +48,7 @@ export function grievanceRoutes(db: Db) {
   app.patch('/categories/:id', json(grievanceCategoryUpdateSchema), (c) =>
     c.json(updateGrievanceCategory(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
   )
-  app.delete('/categories/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/categories/:id', requireFull('grievances'), (c) => {
     deleteGrievanceCategory(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
@@ -77,7 +77,7 @@ export function grievanceRoutes(db: Db) {
   // Who may make these three is decided in the service, where the grievance's owner is known. Voiding needs the permission as well.
   app.post('/:code/status', json(grievanceStatusChangeSchema), (c) => c.json(changeGrievanceStatus(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
   app.post('/:code/owner', json(grievanceOwnerChangeSchema), (c) => c.json(changeGrievanceOwner(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
-  app.post('/:code/void', requirePermission('grievance.void'), json(grievanceVoidSchema), (c) =>
+  app.post('/:code/void', requireFull('grievances'), json(grievanceVoidSchema), (c) =>
     c.json(voidGrievance(db, c.get('user'), c.req.param('code'), c.req.valid('json'))),
   )
   // The case file is printed by the browser; the page reports it here so the copy is logged.
@@ -102,7 +102,7 @@ export function grievanceRoutes(db: Db) {
       'X-Content-Type-Options': 'nosniff',
     })
   })
-  app.post('/:code/attachments/:id/withdraw', requirePermission('grievance.void'), json(grievanceAttachmentWithdrawSchema), (c) =>
+  app.post('/:code/attachments/:id/withdraw', requireFull('grievances'), json(grievanceAttachmentWithdrawSchema), (c) =>
     c.json(withdrawGrievanceAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'), c.req.valid('json'))),
   )
 

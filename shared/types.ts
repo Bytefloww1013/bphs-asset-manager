@@ -1,11 +1,11 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, Role } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus } from './constants.ts'
+import type { Grantee } from './permissions.ts'
 
 // ---- Auth ---------------------------------------------------------------
-export interface SessionUser {
+export interface SessionUser extends Grantee {
   id: number
   name: string
   email: string
-  role: Role
   mustChangePassword: boolean
   /** Employee record this user is linked to; used to prefill "Assessed by". */
   employeeId: number | null
@@ -403,11 +403,10 @@ export interface GrievanceAuditPage {
 // ---- Users ------------------------------------------------------------------
 export type UserState = 'active' | 'locked' | 'deactivated'
 
-export interface UserRow {
+export interface UserRow extends Grantee {
   id: number
   name: string
   email: string
-  role: Role
   employeeId: number | null
   mustChangePassword: boolean
   failedLogins: number

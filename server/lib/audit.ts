@@ -1,13 +1,13 @@
-import type { AuditAction, Role } from '../../shared/constants.ts'
+import type { AuditAction } from '../../shared/constants.ts'
+import type { Grantee } from '../../shared/permissions.ts'
 import type { DbLike } from '../db/client.ts'
 import { auditLog } from '../db/schema.ts'
 
 /** Who is doing something. Their email is what the audit log records: it is unique, and the part before the @ is not. */
-export interface Actor {
+export interface Actor extends Grantee {
   id: number
   email: string
   name: string
-  role: Role
   employeeId: number | null
 }
 

@@ -1,7 +1,6 @@
 import { useForm } from '@tanstack/react-form'
 import { Archive, ArchiveRestore, CornerDownLeft, Pencil, Send, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import type { ProgramRow } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -14,7 +13,7 @@ import { useWrite } from '@/features/common/hooks.ts'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { plural } from '@/lib/format.ts'
-import { useCan } from '@/lib/session.ts'
+import { useDenied } from '@/lib/session.ts'
 
 interface Body {
   name: string
@@ -93,7 +92,8 @@ export function QuickAddProgram({ onAdded }: { onAdded: (id: number) => void }) 
 /** The program's status and what it holds, then its actions. The grid keeps its three columns for the program itself. */
 export function ProgramRowActions({ program }: { program: ProgramRow }) {
   const sheets = useSheetActions()
-  const canDelete = useCan('record.delete')
+  const noEdit = useDenied('assets', 'edit')
+  const noFull = useDenied('assets', 'full')
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null)
   const deactivate = useWrite(() => api.post(`/programs/${program.id}/deactivate`), { success: `${program.name} deactivated` })
@@ -101,22 +101,22 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
   const remove = useWrite(() => api.delete(`/programs/${program.id}`), { success: `${program.name} deleted` })
 
   const items: MenuItem[] = [
-    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true) },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
     program.isActive
       ? {
           label: 'Deactivate',
           icon: Archive,
           onSelect: () => setConfirm('deactivate'),
-          disabledReason: program.assetsHeld > 0 ? `Holds ${plural(program.assetsHeld, 'asset')}. Return them first.` : undefined,
+          disabledReason: noEdit ?? (program.assetsHeld > 0 ? `Holds ${plural(program.assetsHeld, 'asset')}. Return them first.` : undefined),
         }
-      : { label: 'Reactivate', icon: ArchiveRestore, onSelect: () => reactivate.mutate(undefined) },
+      : { label: 'Reactivate', icon: ArchiveRestore, onSelect: () => reactivate.mutate(undefined), disabledReason: noEdit },
     {
       label: 'Delete',
       icon: Trash2,
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: !canDelete ? SUPER_ADMIN_ONLY : (program.deleteBlocked ?? undefined),
+      disabledReason: noFull ?? program.deleteBlocked ?? undefined,
     },
   ]
 
@@ -126,7 +126,7 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
         <span className={program.assetsHeld ? 'text-sm tabular-nums text-ink-2' : 'text-sm tabular-nums text-ink-3'}>{program.assetsHeld} held</span>
         <ProgramStatus program={program} />
       </span>
-      <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={program.isActive ? undefined : 'A deactivated program cannot be assigned assets.'} onClick={() => sheets.issueToProgram(undefined, program.id)}>
+      <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={noEdit ?? (program.isActive ? undefined : 'A deactivated program cannot be assigned assets.')} onClick={() => sheets.issueToProgram(undefined, program.id)}>
         Assign to
       </Button>
       <Menu label={`More actions for ${program.name}`} items={items} />

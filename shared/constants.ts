@@ -1,17 +1,19 @@
-export const ROLES = ['asset_admin', 'grievance_admin', 'admin', 'super_admin'] as const
-export type Role = (typeof ROLES)[number]
-
-export const ROLE_LABEL: Record<Role, string> = {
-  asset_admin: 'Asset Admin',
-  grievance_admin: 'Grievance Admin',
-  admin: 'Admin (both workspaces)',
-  super_admin: 'Super Admin',
-}
-
 /** The app is separate workspaces behind one sign-in. A person is in one at a time, never looking at a mix. */
 export const WORKSPACES = ['assets', 'grievances', 'maintenance'] as const
 export type Workspace = (typeof WORKSPACES)[number]
 export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances', maintenance: 'Maintenance' }
+
+/** What an account is given access to: every workspace, and Employees, which serves all of them. */
+export const SECTIONS = [...WORKSPACES, 'employees'] as const
+export type Section = (typeof SECTIONS)[number]
+export const SECTION_LABEL: Record<Section, string> = { ...WORKSPACE_LABEL, employees: 'Employees' }
+
+/** Each level includes the ones before it. Full is what a Super Admin can do, within that section. */
+export const ACCESS_LEVELS = ['none', 'read', 'edit', 'full'] as const
+export type AccessLevel = (typeof ACCESS_LEVELS)[number]
+export const ACCESS_LEVEL_LABEL: Record<AccessLevel, string> = { none: 'None', read: 'Read', edit: 'Edit', full: 'Full' }
+/** An account's level in each section. A section that is not named is None, so a section added later starts closed. */
+export type Access = Partial<Record<Section, Exclude<AccessLevel, 'none'>>>
 
 export const AUDIT_ACTIONS = ['create', 'update', 'delete', 'issue', 'return', 'import', 'lock', 'sign_in'] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]

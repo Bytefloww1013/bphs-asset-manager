@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
+import { describeAccess, workspacesOf, type Grantee } from '../../shared/permissions.ts'
 import type { UserCreateInput, UserUpdateInput } from '../../shared/schemas.ts'
 import type { UserRow, UserState, UserWithPassword } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -16,7 +17,8 @@ function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
     id: row.id,
     name: row.name,
     email: row.email,
-    role: row.role,
+    access: row.access,
+    superAdmin: row.superAdmin,
     employeeId: row.employeeId,
     mustChangePassword: row.mustChangePassword,
     failedLogins: row.failedLogins,
@@ -55,6 +57,13 @@ function assertEmployee(db: DbLike, id: number | null | undefined) {
   if (employee.archivedAt) throw invalid('That employee is archived. Restore them first, or choose someone else.', { field: 'employeeId' })
 }
 
+/** An account must be able to open something, or the app has nowhere to land it. */
+function assertWorkspace(grantee: Grantee) {
+  if (workspacesOf(grantee).length === 0) {
+    throw invalid('Give at least Read access to Assets, Grievances or Maintenance, or make the account a Super Admin.', { field: 'access' })
+  }
+}
+
 /** An employee as the audit log names one: ID and name, or "none". */
 function employeeLabel(db: DbLike, id: number | null) {
   const row = id == null ? undefined : db.select().from(employees).where(eq(employees.id, id)).get()
@@ -65,6 +74,7 @@ function employeeLabel(db: DbLike, id: number | null) {
 export async function createUser(db: Db, actor: Actor, input: UserCreateInput): Promise<UserWithPassword> {
   const oneTimePassword = generateOneTimePassword()
   const passwordHash = await hashPassword(oneTimePassword)
+  assertWorkspace(input)
   const id = db.transaction((tx) => {
     assertEmailFree(tx, input.email)
     assertEmployee(tx, input.employeeId)
@@ -74,13 +84,14 @@ export async function createUser(db: Db, actor: Actor, input: UserCreateInput): 
         name: input.name,
         email: input.email,
         passwordHash,
-        role: input.role,
+        access: input.access,
+        superAdmin: input.superAdmin,
         employeeId: input.employeeId ?? null,
         mustChangePassword: true,
       })
       .returning({ id: users.id })
       .get()
-    writeAudit(tx, actor, { action: 'create', entityType: 'user', entityId: row.id, details: `${input.email} · ${input.role}` })
+    writeAudit(tx, actor, { action: 'create', entityType: 'user', entityId: row.id, details: `${input.email} · ${describeAccess(input)}` })
     return row.id
   })
   return { user: toRow(requireUser(db, id)), oneTimePassword }
@@ -95,13 +106,17 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
       patch.name = input.name
       changes.push(`name: ${current.name} → ${input.name}`)
     }
-    if (input.role !== undefined && input.role !== current.role) {
-      if (id === actor.id) throw conflict('self_role', 'You cannot change your own role.')
-      if (current.role === 'super_admin' && activeSuperAdmins(tx) <= 1 && current.isActive) {
+    const was = { access: current.access, superAdmin: current.superAdmin }
+    const next = { access: input.access ?? was.access, superAdmin: input.superAdmin ?? was.superAdmin }
+    if (describeAccess(next) !== describeAccess(was)) {
+      if (id === actor.id) throw conflict('self_access', 'You cannot change your own access.')
+      if (was.superAdmin && !next.superAdmin && activeSuperAdmins(tx) <= 1 && current.isActive) {
         throw conflict('last_super_admin', 'There must always be at least one active Super Admin.')
       }
-      patch.role = input.role
-      changes.push(`role: ${current.role} → ${input.role}`)
+      assertWorkspace(next)
+      patch.access = next.access
+      patch.superAdmin = next.superAdmin
+      changes.push(`access: ${describeAccess(was)} → ${describeAccess(next)}`)
     }
     if (input.employeeId !== undefined && (input.employeeId ?? null) !== current.employeeId) {
       assertEmployee(tx, input.employeeId)
@@ -116,7 +131,7 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
 }
 
 function activeSuperAdmins(db: DbLike): number {
-  return db.get<{ n: number }>(sql`select count(*) as n from users where role = 'super_admin' and is_active = 1`)?.n ?? 0
+  return db.get<{ n: number }>(sql`select count(*) as n from users where is_super_admin = 1 and is_active = 1`)?.n ?? 0
 }
 
 export async function resetPassword(db: Db, actor: Actor, id: number): Promise<UserWithPassword> {
@@ -148,7 +163,7 @@ export function setActive(db: Db, actor: Actor, id: number, active: boolean): Us
     if (current.isActive === active) return
     if (!active) {
       if (id === actor.id) throw conflict('self_deactivate', 'You cannot deactivate your own account.')
-      if (current.role === 'super_admin' && activeSuperAdmins(tx) <= 1) {
+      if (current.superAdmin && activeSuperAdmins(tx) <= 1) {
         throw conflict('last_super_admin', 'There must always be at least one active Super Admin.')
       }
       deleteUserSessions(tx, id)

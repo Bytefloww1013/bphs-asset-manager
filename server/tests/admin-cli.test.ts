@@ -26,7 +26,7 @@ async function fixture() {
       name: 'Super Admin',
       email: 'admin@bphs.local',
       passwordHash: await hashPassword('Forgotten-1!'),
-      role: 'super_admin',
+      superAdmin: true,
       mustChangePassword: false,
       failedLogins: 5,
       lockedUntil: new Date(Date.now() + 15 * 60_000),

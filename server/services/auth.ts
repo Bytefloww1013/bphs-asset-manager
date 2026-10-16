@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { and, eq, gt, lt, ne, sql } from 'drizzle-orm'
-import { LOCK_MINUTES, LOCK_THRESHOLD, REMEMBER_DAYS, type Role } from '../../shared/constants.ts'
+import { LOCK_MINUTES, LOCK_THRESHOLD, REMEMBER_DAYS } from '../../shared/constants.ts'
 import type { SessionUser } from '../../shared/types.ts'
 import { config } from '../config.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -21,7 +21,8 @@ export function toSessionUser(user: AuthUser): SessionUser {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role,
+    access: user.access,
+    superAdmin: user.superAdmin,
     mustChangePassword: user.mustChangePassword,
     employeeId: user.employeeId,
   }
@@ -32,7 +33,8 @@ function toAuthUser(row: typeof users.$inferSelect): AuthUser {
     id: row.id,
     name: row.name,
     email: row.email,
-    role: row.role as Role,
+    access: row.access,
+    superAdmin: row.superAdmin,
     employeeId: row.employeeId,
     mustChangePassword: row.mustChangePassword,
   }

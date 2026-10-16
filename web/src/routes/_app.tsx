@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { canUseWorkspace } from '@shared/permissions.ts'
+import { canAt, canUseWorkspace } from '@shared/permissions.ts'
 import { AppShell } from '@/components/shell/app-shell.tsx'
 import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
 import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
@@ -35,8 +35,8 @@ export const Route = createFileRoute('/_app')({
     // Opening the app at its front page goes back to the workspace last used. Asked on every first load, wherever it lands,
     // so that choosing Assets in the switcher later is never undone.
     const reopen = workspaceToReopen()
-    if (location.href === '/' && reopen !== 'assets' && canUseWorkspace(user.role, reopen)) throw redirect({ to: WORKSPACE_HOME[reopen] })
-    return { assets: canUseWorkspace(user.role, 'assets') }
+    if (location.href === '/' && reopen !== 'assets' && canUseWorkspace(user, reopen)) throw redirect({ to: WORKSPACE_HOME[reopen] })
+    return { user, assets: canUseWorkspace(user, 'assets') }
   },
   // Pickers in the Issue and Return sheets need these; fetch once, up front.
   loader: ({ context }) => (context.assets ? context.queryClient.ensureQueryData(lookupsQuery) : undefined),
@@ -44,8 +44,8 @@ export const Route = createFileRoute('/_app')({
 })
 
 function AppLayout() {
-  // The Issue and Return sheets are Assets work; an account outside Assets is never shown them.
-  const assets = canUseWorkspace(useUser().role, 'assets')
+  // The Issue and Return sheets change Assets; an account that cannot is never shown them.
+  const assets = canAt(useUser(), 'assets', 'edit')
   return (
     <AppShell>
       <Outlet />

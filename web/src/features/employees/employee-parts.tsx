@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 
 import { Archive, ArchiveRestore, CornerDownLeft, PackageSearch, Pencil, Send, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import type { EmployeeRow } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
@@ -17,7 +16,7 @@ import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { formatDate, plural } from '@/lib/format.ts'
 import { assetsQuery, digitalAssetsQuery } from '@/lib/queries.ts'
-import { useCan } from '@/lib/session.ts'
+import { useDenied } from '@/lib/session.ts'
 import { useWorkspace } from '@/lib/workspace.ts'
 
 interface Body {
@@ -104,8 +103,9 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   const sheets = useSheetActions()
   // In Grievances, an employee is a person to name, not someone who holds equipment.
   const assets = useWorkspace() === 'assets'
-  const canArchive = useCan('employee.archive')
-  const canDelete = useCan('record.delete')
+  const noEdit = useDenied('employees', 'edit')
+  const noFull = useDenied('employees', 'full')
+  const noIssue = useDenied('assets', 'edit')
   const [editing, setEditing] = useState(false)
   const [holdings, setHoldings] = useState(false)
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null)
@@ -115,15 +115,15 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
 
   const items: MenuItem[] = [
     ...(assets ? [{ label: 'What they hold', icon: PackageSearch, onSelect: () => setHoldings(true) }] : []),
-    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true) },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
     employee.state === 'archived'
-      ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => restore.mutate(undefined), disabledReason: canArchive ? undefined : SUPER_ADMIN_ONLY }
+      ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => restore.mutate(undefined), disabledReason: noFull }
       : {
           label: 'Archive',
           icon: Archive,
           onSelect: () => setConfirm('archive'),
-          disabledReason: !canArchive
-            ? SUPER_ADMIN_ONLY
+          disabledReason: noFull
+            ? noFull
             : employee.assetsHeld > 0
               ? `Holds ${employee.assetsHeld} asset${employee.assetsHeld === 1 ? '' : 's'}. Return them first.`
               : employee.digitalHeld > 0
@@ -138,14 +138,14 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: !canDelete ? SUPER_ADMIN_ONLY : (employee.deleteBlocked ?? undefined),
+      disabledReason: noFull ?? employee.deleteBlocked ?? undefined,
     },
   ]
 
   return (
     <div className="flex items-center justify-end gap-1.5">
       {assets && (
-        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined} onClick={() => sheets.issue(undefined, employee.id)}>
+        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={noIssue ?? (employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined)} onClick={() => sheets.issue(undefined, employee.id)}>
           Issue to
         </Button>
       )}

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, ROLES } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -348,17 +348,22 @@ export const grievanceListQuerySchema = z.object({
 export type GrievanceListQuery = z.infer<typeof grievanceListQuerySchema>
 
 // ---- Users ------------------------------------------------------------------------
+/** None is left out rather than stored. */
+export const accessSchema = z.partialRecord(z.enum(SECTIONS), z.enum(['read', 'edit', 'full']))
+
 export const userCreateSchema = z.object({
   name: requiredText(120, 'Name'),
   email: z.string().trim().toLowerCase().pipe(z.email('Enter a valid email address')),
-  role: z.enum(ROLES),
+  access: accessSchema,
+  superAdmin: z.boolean(),
   employeeId: id.nullable().optional(),
 })
 export type UserCreateInput = z.infer<typeof userCreateSchema>
 
 export const userUpdateSchema = z.object({
   name: requiredText(120, 'Name').optional(),
-  role: z.enum(ROLES).optional(),
+  access: accessSchema.optional(),
+  superAdmin: z.boolean().optional(),
   employeeId: id.nullable().optional(),
 })
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>

@@ -11,7 +11,7 @@ import { ActionBadge, AssetTagLink, DaysOut, RatingBadge, Stacked } from '@/feat
 import { cn } from '@/lib/cn.ts'
 import { formatRelative, plural } from '@/lib/format.ts'
 import { dashboardQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(dashboardQuery),
@@ -22,6 +22,7 @@ function Overview() {
   usePageTitle('Overview')
   const { data } = useQuery(dashboardQuery)
   const sheets = useSheetActions()
+  const readOnly = useDenied('assets', 'edit')
 
   return (
     <div className="flex flex-col gap-7">
@@ -29,15 +30,17 @@ function Overview() {
         title="Overview"
         description="Where the equipment is, and what needs a decision."
         actions={
-          <>
-            <Link to="/assets" className={buttonStyles()}>
-              <Plus className="size-4" aria-hidden />
-              Add physical asset
-            </Link>
-            <Button variant="primary" icon={<Send className="size-4" />} onClick={() => sheets.issue()}>
-              Issue physical asset
-            </Button>
-          </>
+          !readOnly && (
+            <>
+              <Link to="/assets" className={buttonStyles()}>
+                <Plus className="size-4" aria-hidden />
+                Add physical asset
+              </Link>
+              <Button variant="primary" icon={<Send className="size-4" />} onClick={() => sheets.issue()}>
+                Issue physical asset
+              </Button>
+            </>
+          )
         }
       />
 

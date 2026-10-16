@@ -22,7 +22,7 @@ bun run db:seed        # optional: synthetic demo data (employees, programs, 116
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
-The seed prints the demo sign-ins (a Super Admin, an Admin, a Grievance Admin who must change their password, a locked Asset Admin, a deactivated account). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
+The seed prints the demo sign-ins (a Super Admin, an account with Edit access, a read-only account; it also makes one that must change its password, a locked one and a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
 
 The development API runs on Node through `tsx watch`, which restarts it when an imported file changes. This avoids the native file-watcher crash seen with Node 24's `--watch` mode when stopping the server.
 
@@ -134,7 +134,7 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 - The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download, print and workbook export, by ID, title and filename only, never body text. The case file prints, and the workbook downloads, only after that entry is written.
 - A maintenance request gets its ID from the system (`MR-0001`) and starts Not Started. Choosing an employee dispatches it; clearing the employee on a Dispatched request returns it to Not Started. Statuses are Not Started, Dispatched, On Hold, Rejected and Finished. Every dispatch, status change and note adds a line to its timeline, and a delete (Super Admin, after a confirmation) is recorded in the Audit Log by ID only. An employee dispatched on a request can be archived but not deleted.
 - The webhook needs the shared secret in `X-Webhook-Secret` and a non-empty `description`; every other field may be missing, over-long text is cut rather than refused (Zoho does not retry), and the same entry sent twice (same email and Added Time) is stored once.
-- Roles: **Asset Admin** adds and changes records in Assets and cannot see Grievances. **Grievance Admin** does the same in Grievances and cannot see Assets. **Admin (both workspaces)** does both. **Super Admin** can also delete, archive employees and manage accounts, and is the only role that sees Maintenance. Employees are shared: both workspaces list them, each showing only its own counts.
+- Access: each account has a level in each of Assets, Grievances, Maintenance and Employees. **None** hides the section, **Read** sees it, **Edit** also adds and changes records, **Full** also deletes, archives, voids and withdraws. **Super Admin** is Full everywhere, including sections added later, and is the only way to manage accounts. The owner of a grievance can edit it, change its status and hand it on with Read; Grievances Edit can do that to any grievance. Employees are shared: every account can choose them in a form, Employees None only hides the Employees page, and each workspace shows only its own counts.
 
 ## Project layout
 
@@ -157,7 +157,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - The spec's Dashboard combined a metrics rail and the asset grid. Here **Overview** answers "what needs a decision" and **Physical Assets** is the register.
 - The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once, after showing them for a last look.
 - Issue and Return open as right-hand sheets rather than centred modals, and are still linkable.
-- The design-time "viewing as" toggle is gone: the role comes from the signed-in account, and unavailable actions are shown disabled with the reason.
+- The design-time "viewing as" toggle is gone: access comes from the signed-in account, and unavailable actions are shown disabled with the reason.
 
 ## Known gaps and next steps
 

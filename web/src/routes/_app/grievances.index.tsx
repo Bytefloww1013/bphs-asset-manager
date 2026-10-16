@@ -14,6 +14,7 @@ import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { formatDateTime, formatRelative, startOfLocalDay } from '@/lib/format.ts'
 import { grievanceCategoriesQuery, grievancesQuery } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 // The longest search the server accepts.
 const MAX_SEARCH = 100
@@ -70,6 +71,7 @@ const getRowId = (row: GrievanceRow) => String(row.id)
 
 function GrievancesPage() {
   useGrievancePageTitle()
+  const readOnly = useDenied('grievances', 'edit')
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const setFilter = (patch: GrievanceSearch, replace = false) => void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
@@ -173,7 +175,7 @@ function GrievancesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Grievances" description="Employee grievances and what was done about each one. Confidential." actions={newGrievance} />
+      <PageHeader title="Grievances" description="Employee grievances and what was done about each one. Confidential." actions={readOnly ? undefined : newGrievance} />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
@@ -244,7 +246,7 @@ function GrievancesPage() {
               ) : counts?.all && tab !== 'all' ? (
                 <EmptyState icon={Scale} title={`No ${grievanceStatusLabel(tab).toLowerCase()} grievances`} description="Grievances in other statuses are under their own tabs, and all of them are under All." />
               ) : (
-                <EmptyState icon={Scale} title="No grievances yet" description="Grievances recorded here will be listed on this page." action={newGrievance} />
+                <EmptyState icon={Scale} title="No grievances yet" description="Grievances recorded here will be listed on this page." action={readOnly ? undefined : newGrievance} />
               )
             }
           />

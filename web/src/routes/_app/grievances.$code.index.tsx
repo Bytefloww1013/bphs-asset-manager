@@ -18,6 +18,7 @@ import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { downloadGrievanceWorkbook } from '@/features/grievances/workbook.ts'
 import { formatDateTime } from '@/lib/format.ts'
+import { useDenied } from '@/lib/session.ts'
 import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/')({
@@ -67,6 +68,7 @@ function GrievancePage() {
   const queryClient = useQueryClient()
   const workbook = useWrite(() => downloadGrievanceWorkbook(queryClient, code))
   useGrievancePageTitle(grievance?.code ?? code.toUpperCase())
+  const readOnly = useDenied('grievances', 'edit')
   if (!grievance || !entries || !files) return null
   // A grievance that is finished takes nothing more on its timeline; the server refuses it whatever the page shows.
   const sealed = grievance.status === 'closed' || grievance.status === 'voided'
@@ -109,7 +111,7 @@ function GrievancePage() {
           </Fact>
           <Fact label="Owner">
             <People people={[grievance.owner]} />
-            {!grievance.ownerHasAccount && <div className="mt-1 text-xs font-normal text-ink-3">No account here, so only a Super Admin can change this grievance.</div>}
+            {!grievance.ownerHasAccount && <div className="mt-1 text-xs font-normal text-ink-3">No account here, so only someone with Edit access to Grievances can change this grievance.</div>}
           </Fact>
           <Fact label="Employees involved">
             <People people={grievance.employees} />
@@ -157,7 +159,7 @@ function GrievancePage() {
             title="Timeline"
             description="Actions taken and events, by when they happened."
             actions={
-              sealed ? null : (
+              sealed || readOnly ? null : (
                 <>
                   <AttachFiles code={grievance.code} />
                   <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('primary')}>

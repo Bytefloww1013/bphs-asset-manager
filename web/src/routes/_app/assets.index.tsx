@@ -15,7 +15,7 @@ import { AssetStateBadge, AssetTagLink, DaysOut, HolderCell, RatingBadge, assetS
 import { ExportButton } from '@/features/common/export-button.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { assetsQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 type StateFilter = 'all' | 'assigned' | 'in_storage' | 'retired'
 
@@ -57,6 +57,7 @@ const getRowId = (row: AssetRow) => String(row.id)
 
 function AssetsPage() {
   usePageTitle('Physical Assets')
+  const readOnly = useDenied('assets', 'edit')
   const { state = 'all' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(assetsQuery)
@@ -92,7 +93,7 @@ function AssetsPage() {
         }
       />
 
-      <QuickAddAsset onAdded={setFlash} />
+      {!readOnly && <QuickAddAsset onAdded={setFlash} />}
 
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">

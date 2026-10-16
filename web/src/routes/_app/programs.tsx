@@ -14,7 +14,7 @@ import { ProgramRowActions, QuickAddProgram } from '@/features/programs/program-
 import { ExportButton } from '@/features/common/export-button.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { programsQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 type Show = 'active' | 'deactivated' | 'all'
 
@@ -49,6 +49,7 @@ const searchText = (row: ProgramRow) => [row.name, row.code, row.address].filter
 
 function ProgramsPage() {
   usePageTitle('Programs')
+  const readOnly = useDenied('assets', 'edit')
   const { show = 'active' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(programsQuery)
@@ -68,7 +69,7 @@ function ProgramsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Programs" description="A program can hold equipment the same way an employee does. One that has held an asset is deactivated, never deleted." actions={<ExportButton dataset={EXPORTS.programs} items={data} />} />
-      <QuickAddProgram onAdded={setFlash} />
+      {!readOnly && <QuickAddProgram onAdded={setFlash} />}
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs

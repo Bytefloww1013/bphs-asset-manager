@@ -12,6 +12,7 @@ import { useMaintenancePageTitle } from '@/features/maintenance/page-title.ts'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { maintenanceQuery } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/maintenance/new')({ component: NewRequestPage })
 
@@ -25,6 +26,7 @@ const blank = { firstName: '', lastName: '', email: '', program: '', location: '
 /** For a request that came another way, by phone or in person, or one Zoho never delivered. */
 function NewRequestPage() {
   useMaintenancePageTitle('New request')
+  const readOnly = useDenied('maintenance', 'edit')
   const navigate = useNavigate()
   const toast = useToast()
   const programsId = useId()
@@ -115,7 +117,7 @@ function NewRequestPage() {
             </Field>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" loading={save.isPending}>
+            <Button type="submit" variant="primary" loading={save.isPending} disabledReason={readOnly}>
               Save request
             </Button>
             <Link to="/maintenance" className={buttonStyles('ghost')}>

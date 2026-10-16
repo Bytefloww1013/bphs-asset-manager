@@ -9,7 +9,7 @@ import { DEFAULT_RATINGS, DEFAULT_TYPES, ensureDefaultLists } from '../bootstrap
 import { createDb, runMigrations } from '../db/client.ts'
 import { assetTypes, assets, auditLog, conditionRatings, employees, sessions, users } from '../db/schema.ts'
 import { changePassword, login } from '../services/auth.ts'
-import { PASSWORD, findUser, setup } from './helpers.ts'
+import { ADMIN, PASSWORD, findUser, setup } from './helpers.ts'
 
 /** When a Set-Cookie header says the cookie expires. */
 const cookieExpiry = (header: string | null) => new Date(/expires=([^;]+)/i.exec(header ?? '')?.[1] ?? NaN)
@@ -20,7 +20,7 @@ describe('authentication', () => {
     const ok = await t.signIn('p.raghunathan@bphs.local')
     expect(ok.status).toBe(200)
     expect(ok.headers.get('set-cookie')).toMatch(/HttpOnly/i)
-    expect(ok.data.user.role).toBe('super_admin')
+    expect(ok.data.user.superAdmin).toBe(true)
 
     const bad = await t.signIn('p.raghunathan@bphs.local', 'nope')
     expect(bad.status).toBe(401)
@@ -864,7 +864,7 @@ describe('importing employees and programs', () => {
     const linked = await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: gone.id } })
     expect(linked.status).toBe(422)
     expect(linked.data).toMatchObject({ message, details: { field: 'employeeId' } })
-    const created = await t.call('POST', '/api/users', { cookie, body: { name: 'New Person', email: 'new@bphs.local', role: 'admin', employeeId: gone.id } })
+    const created = await t.call('POST', '/api/users', { cookie, body: { name: 'New Person', email: 'new@bphs.local', access: ADMIN, superAdmin: false, employeeId: gone.id } })
     expect(created.status).toBe(422)
     // An account already linked keeps working on its other fields after its employee is archived.
     await t.call('POST', `/api/employees/${gone.id}/restore`, { cookie })
@@ -1028,7 +1028,7 @@ describe('lists, users and audit', () => {
     const t = await setup()
     const cookie = await t.asSuper()
     const fields = (res: { data: any }) => res.data.details.fields
-    const user = await t.call('POST', '/api/users', { cookie, body: { name: 'N'.repeat(121), email: 'new.person@bphs.local', role: 'admin' } })
+    const user = await t.call('POST', '/api/users', { cookie, body: { name: 'N'.repeat(121), email: 'new.person@bphs.local', access: ADMIN, superAdmin: false } })
     expect(fields(user)).toEqual({ name: 'Name can be at most 120 characters' })
     expect(fields(await t.call('POST', '/api/asset-types', { cookie, body: { name: 'T'.repeat(61) } }))).toEqual({ name: 'Name can be at most 60 characters' })
     expect(fields(await t.call('POST', '/api/condition-ratings', { cookie, body: { name: 'R'.repeat(41), score: 50 } }))).toEqual({ name: 'Name can be at most 40 characters' })
@@ -1036,7 +1036,7 @@ describe('lists, users and audit', () => {
     const duplicate = await t.call('POST', '/api/asset-types', { cookie, body: { name: 'laptop' } })
     expect(duplicate.status).toBe(409)
     expect(fields(duplicate)).toEqual({ name: 'An asset type named "laptop" already exists.' })
-    const email = await t.call('POST', '/api/users', { cookie, body: { name: 'Another Marcus', email: 'M.Oyelaran@bphs.local', role: 'admin' } })
+    const email = await t.call('POST', '/api/users', { cookie, body: { name: 'Another Marcus', email: 'M.Oyelaran@bphs.local', access: ADMIN, superAdmin: false } })
     expect(fields(email)).toEqual({ email: 'An account for m.oyelaran@bphs.local already exists.' })
   })
 
@@ -1048,7 +1048,7 @@ describe('lists, users and audit', () => {
 
     const created = await t.call('POST', '/api/users', {
       cookie,
-      body: { name: 'New Person', email: 'New.Person@bphs.local', role: 'admin' },
+      body: { name: 'New Person', email: 'New.Person@bphs.local', access: ADMIN, superAdmin: false },
     })
     expect(created.status).toBe(201)
     expect(created.data.user.mustChangePassword).toBe(true)
@@ -1076,26 +1076,26 @@ describe('lists, users and audit', () => {
     expect((await t.call('GET', '/api/auth/me', { cookie })).status).toBe(200)
   })
 
-  it('will not change your own role, even with another Super Admin present', async () => {
+  it('will not change your own access, even with another Super Admin present', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
-    const promoted = await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { role: 'super_admin' } })
-    expect(promoted.data.role).toBe('super_admin')
+    const promoted = await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { superAdmin: true } })
+    expect(promoted.data.superAdmin).toBe(true)
 
-    const own = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { role: 'admin' } })
+    const own = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { superAdmin: false, access: ADMIN } })
     expect(own.status).toBe(409)
-    expect(own.data.error).toBe('self_role')
-    expect(findUser(t.db, 'p.raghunathan@bphs.local')?.role).toBe('super_admin')
+    expect(own.data.error).toBe('self_access')
+    expect(findUser(t.db, 'p.raghunathan@bphs.local')?.superAdmin).toBe(true)
 
-    // The rest of your own account can still be edited, and sending the role you already have is not a change.
-    const renamed = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { name: 'Priya R.', role: 'super_admin' } })
+    // The rest of your own account can still be edited, and sending the access you already have is not a change.
+    const renamed = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie, body: { name: 'Priya R.', superAdmin: true } })
     expect(renamed.status).toBe(200)
     expect(renamed.data.name).toBe('Priya R.')
 
     // The other Super Admin can still do it.
     const other = await t.asAdmin()
-    const demoted = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie: other, body: { role: 'admin' } })
-    expect(demoted.data.role).toBe('admin')
+    const demoted = await t.call('PATCH', `/api/users/${t.superUser.id}`, { cookie: other, body: { superAdmin: false, access: ADMIN } })
+    expect(demoted.data).toMatchObject({ superAdmin: false, access: ADMIN })
   })
 
   it('will not deactivate yourself or the last Super Admin, and a lock can be cleared', async () => {
@@ -1120,8 +1120,8 @@ describe('lists, users and audit', () => {
     const latest = async () => (await entries())[0]!
 
     // Two accounts whose emails share the part before the @ are two actors.
-    const one = await t.call('POST', '/api/users', { cookie, body: { name: 'Pat One', email: 'pat@a.example', role: 'admin' } })
-    const two = await t.call('POST', '/api/users', { cookie, body: { name: 'Pat Two', email: 'pat@b.example', role: 'admin' } })
+    const one = await t.call('POST', '/api/users', { cookie, body: { name: 'Pat One', email: 'pat@a.example', access: ADMIN, superAdmin: false } })
+    const two = await t.call('POST', '/api/users', { cookie, body: { name: 'Pat Two', email: 'pat@b.example', access: ADMIN, superAdmin: false } })
     for (const made of [one, two]) {
       const signedIn = await t.signIn(made.data.user.email, made.data.oneTimePassword)
       expect((await t.call('POST', '/api/auth/password-change', { cookie: signedIn.cookie, body: { currentPassword: made.data.oneTimePassword, newPassword: 'Brand-new-1!' } })).status).toBe(200)
@@ -1135,8 +1135,8 @@ describe('lists, users and audit', () => {
     // Changes to an account say which account, and what it was linked to before and after.
     const other = t.db.insert(employees).values({ code: 'E-2000', firstName: 'Lee', lastName: 'Okoro' }).returning().get()
     const patId = one.data.user.id
-    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { name: 'Pat First', role: 'super_admin', employeeId: other.id } })
-    expect(await latest()).toMatchObject({ actor: 'p.raghunathan@bphs.local', details: 'pat@a.example · name: Pat One → Pat First; role: admin → super_admin; linked employee: none → E-2000 Lee Okoro' })
+    await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { name: 'Pat First', superAdmin: true, employeeId: other.id } })
+    expect(await latest()).toMatchObject({ actor: 'p.raghunathan@bphs.local', details: 'pat@a.example · name: Pat One → Pat First; access: Assets: Edit · Grievances: Edit · Employees: Edit → Super Admin; linked employee: none → E-2000 Lee Okoro' })
     const third = t.db.insert(employees).values({ code: 'E-2002', firstName: 'Ana', lastName: 'Reyes' }).returning().get()
     await t.call('PATCH', `/api/users/${patId}`, { cookie, body: { employeeId: third.id } })
     expect((await latest()).details).toBe('pat@a.example · linked employee: E-2000 Lee Okoro → E-2002 Ana Reyes')
@@ -1322,7 +1322,7 @@ describe('sign-ins in the audit log, and one account per employee', () => {
     const cookie = await t.asSuper()
     const refused = { status: 409, data: { error: 'employee_linked', message: 'Priya Raghunathan is already linked to the account p.raghunathan@bphs.local. Unlink that account first.', details: { field: 'employeeId' } } }
 
-    expect(await t.call('POST', '/api/users', { cookie, body: { name: 'Second Priya', email: 'second@bphs.local', role: 'admin', employeeId: t.person.id } })).toMatchObject(refused)
+    expect(await t.call('POST', '/api/users', { cookie, body: { name: 'Second Priya', email: 'second@bphs.local', access: ADMIN, superAdmin: false, employeeId: t.person.id } })).toMatchObject(refused)
     expect(findUser(t.db, 'second@bphs.local')).toBeUndefined()
     expect(await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: t.person.id } })).toMatchObject(refused)
     // Sending the link an account already has changes nothing and is not refused.
@@ -1333,7 +1333,7 @@ describe('sign-ins in the audit log, and one account per employee', () => {
     expect((await t.call('PATCH', `/api/users/${t.adminUser.id}`, { cookie, body: { employeeId: t.person.id } })).data.employeeId).toBe(t.person.id)
     // The database holds the rule as well, and any number of accounts may be linked to nobody.
     expect(() => t.sqlite.prepare('update users set employee_id = ? where id = ?').run(t.person.id, t.superUser.id)).toThrow(/UNIQUE/)
-    expect((await t.call('POST', '/api/users', { cookie, body: { name: 'No Link', email: 'nolink@bphs.local', role: 'admin' } })).status).toBe(201)
+    expect((await t.call('POST', '/api/users', { cookie, body: { name: 'No Link', email: 'nolink@bphs.local', access: ADMIN, superAdmin: false } })).status).toBe(201)
   })
 
   it('on upgrade, leaves a shared employee with one account and says which accounts were unlinked', () => {

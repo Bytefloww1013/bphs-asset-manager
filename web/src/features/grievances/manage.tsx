@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
 import { grievanceStatusLabel } from '@shared/constants.ts'
-import { SUPER_ADMIN_ONLY, canManageGrievance, grievanceManageReason } from '@shared/permissions.ts'
+import { canManageGrievance, grievanceManageReason } from '@shared/permissions.ts'
 import { GRIEVANCE_NOTE_MAX, GRIEVANCE_OPEN_STATUSES } from '@shared/schemas.ts'
 import type { EmployeeRow, GrievanceDetail } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -13,12 +13,12 @@ import { Sheet } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { ApiError, api } from '@/lib/api.ts'
 import { employeesQuery, grievanceAccountHoldersQuery } from '@/lib/queries.ts'
-import { useCan, useUser } from '@/lib/session.ts'
+import { useDenied, useUser } from '@/lib/session.ts'
 
-/** What to say under an Owner field when the person chosen has no account that works in Grievances: nobody but a Super Admin could then change the grievance. */
+/** What to say under an Owner field when the person chosen has no account that works in Grievances: only Grievances Edit could then change the grievance. */
 export function ownerAccountNote(owner: { id: number; name: string } | null, accountHolders: number[] | undefined): string | null {
   if (!owner || !accountHolders || accountHolders.includes(owner.id)) return null
-  return `${owner.name} has no account with access to Grievances, so only a Super Admin will be able to change this grievance.`
+  return `${owner.name} has no account with access to Grievances, so only someone with Edit access to Grievances will be able to change this grievance.`
 }
 
 type Task = 'status' | 'owner' | 'void'
@@ -30,7 +30,7 @@ type Task = 'status' | 'owner' | 'void'
 export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) {
   const user = useUser()
   const navigate = useNavigate()
-  const canVoid = useCan('grievance.void')
+  const noVoid = useDenied('grievances', 'full')
   const [task, setTask] = useState<Task | null>(null)
   if (grievance.status === 'voided') return null
   const notOwner = canManageGrievance(user, grievance.owner.id) ? undefined : grievanceManageReason(grievance.owner.name)
@@ -47,7 +47,7 @@ export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) 
       <Button disabledReason={notOwner ?? (grievance.status === 'closed' ? 'Reopen it before changing its owner.' : undefined)} onClick={() => setTask('owner')}>
         Change owner
       </Button>
-      <Button variant="danger-ghost" disabledReason={canVoid ? undefined : SUPER_ADMIN_ONLY} onClick={() => setTask('void')}>
+      <Button variant="danger-ghost" disabledReason={noVoid} onClick={() => setTask('void')}>
         Void
       </Button>
       {task === 'status' && <StatusSheet grievance={grievance} onClose={close} />}
@@ -168,7 +168,7 @@ function OwnerSheet({ grievance, onClose }: { grievance: GrievanceDetail; onClos
   const [missing, setMissing] = useState<string>()
   const change = useChange(grievance, 'owner', (next) => `${next.code} is now owned by ${next.owner.name}`, onClose)
   const candidates = employees.filter((person) => person.state === 'active' && person.id !== grievance.owner.id)
-  // Handing it on ends the say of whoever hands it, unless they are a Super Admin.
+  // Handing it on ends the say of whoever hands it, unless they have Edit access to Grievances.
   const losesIt = owner && !canManageGrievance(user, owner.id)
   const noAccount = ownerAccountNote(owner, accountHolders)
 

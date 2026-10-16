@@ -17,6 +17,7 @@ import { PeoplePicker } from '@/features/grievances/people-picker.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { employeesQuery, grievanceAccountHoldersQuery, grievanceCategoriesQuery, refreshData } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 const employeeKey = (person: EmployeeRow) => person.id
 const employeeLabel = (person: EmployeeRow) => person.name
@@ -44,6 +45,8 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
   const { data: employees = [] } = useQuery(employeesQuery)
   const { data: categories = [] } = useQuery(grievanceCategoriesQuery)
   const { data: accountHolders } = useQuery(grievanceAccountHoldersQuery)
+  // Recording one needs Edit; an owner with Read may still edit their own.
+  const noCreate = useDenied('grievances', 'edit')
   // What the form started from. It is read once: a grievance that changes underneath is for the save to refuse, not for the form to follow.
   const [was] = useState(grievance)
   const named = (people: GrievancePerson[] = []) => people.flatMap((person) => employees.find((row) => row.id === person.id) ?? [])
@@ -197,7 +200,7 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
           {!was && (
             <Field
               label="Owner"
-              hint={[ownerAccountNote(owner, accountHolders), ownerNamed ? `${owner.name} is also named on this grievance.` : null].filter(Boolean).join(' ') || 'Who is responsible for seeing it through. Only the owner and Super Admins can change a grievance later.'}
+              hint={[ownerAccountNote(owner, accountHolders), ownerNamed ? `${owner.name} is also named on this grievance.` : null].filter(Boolean).join(' ') || 'Who is responsible for seeing it through. Only the owner and those with Edit access to Grievances can change a grievance later.'}
               error={error('ownerId')}
             >
               <Combobox items={active} value={owner} onChange={edit('ownerId', setOwner)} getKey={employeeKey} getLabel={employeeLabel} getSearch={employeeSearch} placeholder="Search by name or Employee ID" emptyText="No active employee matches" />
@@ -230,7 +233,7 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
                 Cancel
               </Link>
             )}
-            <Button variant="primary" type="submit" loading={save.isPending} disabledReason={stale ? 'This grievance was edited by someone else. Reload it first.' : was && !dirty ? 'Nothing has been changed yet.' : undefined}>
+            <Button variant="primary" type="submit" loading={save.isPending} disabledReason={(grievance ? undefined : noCreate) ?? (stale ? 'This grievance was edited by someone else. Reload it first.' : was && !dirty ? 'Nothing has been changed yet.' : undefined)}>
               {was ? 'Save changes' : 'Save grievance'}
             </Button>
           </div>

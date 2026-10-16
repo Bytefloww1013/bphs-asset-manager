@@ -2,7 +2,6 @@ import { useForm } from '@tanstack/react-form'
 import { useNavigate } from '@tanstack/react-router'
 import { Building2, Eye, Pencil, RotateCcw, Trash2, Archive } from 'lucide-react'
 import { useState } from 'react'
-import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import { assetUpdateSchema } from '@shared/schemas.ts'
 import type { AssetRow } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -15,13 +14,14 @@ import { useWrite } from '@/features/common/hooks.ts'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError, fieldMessages } from '@/lib/form.ts'
 import { lookupsQuery } from '@/lib/queries.ts'
-import { useCan } from '@/lib/session.ts'
+import { useDenied } from '@/lib/session.ts'
 
 /** The row's main action plus an overflow menu; owns the edit sheet and confirmation dialogs. */
 export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { asset: AssetRow; onDeleted?: () => void; onSaved?: (row: AssetRow) => void; hidePrimary?: boolean }) {
   const sheets = useSheetActions()
   const navigate = useNavigate()
-  const canDelete = useCan('record.delete')
+  const noEdit = useDenied('assets', 'edit')
+  const noFull = useDenied('assets', 'full')
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState<'retire' | 'delete' | null>(null)
 
@@ -31,20 +31,20 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
 
   const items: MenuItem[] = [
     { label: 'View details', icon: Eye, onSelect: () => void navigate({ to: '/assets/$tag', params: { tag: asset.tag } }) },
-    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true) },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
     {
       label: 'Assign to program',
       icon: Building2,
       onSelect: () => sheets.issueToProgram(asset.id),
-      disabledReason: asset.state === 'assigned' ? 'Return it first.' : asset.state === 'retired' ? 'Reinstate it first.' : undefined,
+      disabledReason: noEdit ?? (asset.state === 'assigned' ? 'Return it first.' : asset.state === 'retired' ? 'Reinstate it first.' : undefined),
     },
     asset.state === 'retired'
-      ? { label: 'Reinstate', icon: RotateCcw, onSelect: () => reinstate.mutate(undefined) }
+      ? { label: 'Reinstate', icon: RotateCcw, onSelect: () => reinstate.mutate(undefined), disabledReason: noEdit }
       : {
           label: 'Retire',
           icon: Archive,
           onSelect: () => setConfirm('retire'),
-          disabledReason: asset.state === 'assigned' ? `Assigned to ${(asset.holder ?? asset.program)?.name}. Return it first.` : undefined,
+          disabledReason: noEdit ?? (asset.state === 'assigned' ? `Assigned to ${(asset.holder ?? asset.program)?.name}. Return it first.` : undefined),
         },
     {
       label: 'Delete',
@@ -52,7 +52,7 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: !canDelete ? SUPER_ADMIN_ONLY : asset.hasHistory ? 'Has assignment history. Retire it instead; history is never deleted.' : undefined,
+      disabledReason: noFull ?? (asset.hasHistory ? 'Has assignment history. Retire it instead; history is never deleted.' : undefined),
     },
   ]
 
@@ -60,15 +60,15 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
     <div className="flex items-center justify-end gap-1.5">
       {!hidePrimary &&
         (asset.state === 'assigned' ? (
-          <Button size="sm" onClick={() => asset.assignmentId && sheets.returnAsset(asset.assignmentId)}>
+          <Button size="sm" disabledReason={noEdit} onClick={() => asset.assignmentId && sheets.returnAsset(asset.assignmentId)}>
             Return
           </Button>
         ) : asset.state === 'in_storage' ? (
-          <Button size="sm" onClick={() => sheets.issue(asset.id)}>
+          <Button size="sm" disabledReason={noEdit} onClick={() => sheets.issue(asset.id)}>
             Issue
           </Button>
         ) : (
-          <Button size="sm" onClick={() => reinstate.mutate(undefined)} loading={reinstate.isPending}>
+          <Button size="sm" disabledReason={noEdit} onClick={() => reinstate.mutate(undefined)} loading={reinstate.isPending}>
             Reinstate
           </Button>
         ))}

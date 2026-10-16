@@ -1,7 +1,6 @@
 import { FileText, Loader2, Paperclip, X } from 'lucide-react'
 import { useState } from 'react'
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, grievanceEntryCode } from '@shared/constants.ts'
-import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
 import { GRIEVANCE_NOTE_MAX } from '@shared/schemas.ts'
 import type { GrievanceAttachment } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
@@ -12,7 +11,7 @@ import { Sheet } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { ApiError, api } from '@/lib/api.ts'
 import { formatDateTime, plural } from '@/lib/format.ts'
-import { useCan } from '@/lib/session.ts'
+import { useDenied } from '@/lib/session.ts'
 
 const ACCEPT = Object.keys(ATTACHMENT_TYPES).map((extension) => `.${extension}`).join(',')
 const MB = 1024 * 1024
@@ -122,7 +121,7 @@ export function AttachFiles({ code }: { code: string }) {
  * list, with the reason, but no longer downloads.
  */
 export function AttachmentList({ code, files, sealed }: { code: string; files: GrievanceAttachment[]; sealed: boolean }) {
-  const canWithdraw = useCan('grievance.void')
+  const noWithdraw = useDenied('grievances', 'full')
   const [withdrawing, setWithdrawing] = useState<GrievanceAttachment | null>(null)
   return (
     <>
@@ -152,7 +151,7 @@ export function AttachmentList({ code, files, sealed }: { code: string; files: G
               )}
             </div>
             {!sealed && !file.withdrawnAt && (
-              <Button size="sm" variant="danger-ghost" disabledReason={canWithdraw ? undefined : SUPER_ADMIN_ONLY} onClick={() => setWithdrawing(file)}>
+              <Button size="sm" variant="danger-ghost" disabledReason={noWithdraw} onClick={() => setWithdrawing(file)}>
                 Withdraw
               </Button>
             )}

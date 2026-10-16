@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { maintenanceCreateSchema, maintenanceDispatchSchema, maintenanceNoteSchema, maintenanceStatusSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
-import { intParam, json, requirePermission, type Env } from '../http.ts'
+import { intParam, json, requireFull, type Env } from '../http.ts'
 import {
   addMaintenanceNote,
   changeMaintenanceStatus,
@@ -23,7 +23,7 @@ export function maintenanceRoutes(db: Db) {
   )
   app.post('/:id/status', json(maintenanceStatusSchema), (c) => c.json(changeMaintenanceStatus(db, c.get('user'), intParam(c, 'id'), c.req.valid('json').status)))
   app.post('/:id/notes', json(maintenanceNoteSchema), (c) => c.json(addMaintenanceNote(db, c.get('user'), intParam(c, 'id'), c.req.valid('json').body)))
-  app.delete('/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/:id', requireFull('maintenance'), (c) => {
     deleteMaintenanceRequest(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })

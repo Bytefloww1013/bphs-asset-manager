@@ -14,6 +14,7 @@ import { useMaintenancePageTitle } from '@/features/maintenance/page-title.ts'
 import { MaintenanceStatusBadge, UrgentBadge } from '@/features/maintenance/status.tsx'
 import { formatDate, formatDateTime } from '@/lib/format.ts'
 import { maintenanceQuery } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 const TABS = ['open', 'finished', 'rejected', 'all'] as const
 type Tab = (typeof TABS)[number]
@@ -83,6 +84,7 @@ const columns = [
 
 function MaintenancePage() {
   useMaintenancePageTitle()
+  const readOnly = useDenied('maintenance', 'edit')
   const navigate = useNavigate({ from: Route.fullPath })
   const tab = Route.useSearch().status ?? 'open'
   const [search, setSearch] = useState('')
@@ -94,7 +96,7 @@ function MaintenancePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Requests" description="Maintenance work order requests, from the Zoho form or entered here." actions={newRequest} />
+      <PageHeader title="Requests" description="Maintenance work order requests, from the Zoho form or entered here." actions={readOnly ? undefined : newRequest} />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
@@ -134,7 +136,7 @@ function MaintenancePage() {
             counts.all && tab !== 'all' ? (
               <EmptyState icon={Wrench} title={`No ${TAB_LABEL[tab].toLowerCase()} requests`} description="Requests in other statuses are under their own tabs, and all of them are under All." />
             ) : (
-              <EmptyState icon={Wrench} title="No requests yet" description="Requests sent from the Zoho form, or entered here, are listed on this page." action={newRequest} />
+              <EmptyState icon={Wrench} title="No requests yet" description="Requests sent from the Zoho form, or entered here, are listed on this page." action={readOnly ? undefined : newRequest} />
             )
           }
         />

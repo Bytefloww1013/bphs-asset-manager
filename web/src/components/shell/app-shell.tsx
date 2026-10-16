@@ -26,8 +26,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { can, workspacesOf } from '@shared/permissions.ts'
-import { ROLE_LABEL } from '@shared/constants.ts'
+import { canAt, describeAccess, workspacesOf } from '@shared/permissions.ts'
 import { cn } from '@/lib/cn.ts'
 import { api } from '@/lib/api.ts'
 import { initials } from '@/lib/format.ts'
@@ -48,6 +47,8 @@ interface NavEntry {
 /** Each workspace has a sidebar of its own; nothing from one appears in the other. */
 function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] {
   const user = useUser()
+  // The employee list stays readable to every picker; the page itself needs Employees.
+  const employees = canAt(user, 'employees', 'read')
   if (workspace === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
   if (workspace === 'grievances') {
     return [
@@ -55,7 +56,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
         heading: 'Records',
         items: [
           { to: '/grievances', label: 'Grievances', icon: Scale },
-          { to: '/grievances/employees', label: 'Employees', icon: Users },
+          ...(employees ? [{ to: '/grievances/employees', label: 'Employees', icon: Users } as const] : []),
         ],
       },
       {
@@ -81,7 +82,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
       items: [
         { to: '/assets', label: 'Physical Assets', icon: Laptop },
         { to: '/digital-assets', label: 'Digital Assets', icon: AppWindow },
-        { to: '/employees', label: 'Employees', icon: Users },
+        ...(employees ? [{ to: '/employees', label: 'Employees', icon: Users } as const] : []),
         { to: '/programs', label: 'Programs', icon: Building2 },
       ],
     },
@@ -91,7 +92,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
         { to: '/lists', label: 'Lists', icon: ListChecks },
         { to: '/import-export', label: 'Import/Export', icon: ArrowDownUp },
         { to: '/audit', label: 'Audit log', icon: ScrollText },
-        { to: '/users', label: 'Users', icon: ShieldCheck, locked: !can(user.role, 'users.manage') },
+        { to: '/users', label: 'Users', icon: ShieldCheck, locked: !user.superAdmin },
       ],
     },
   ]
@@ -103,7 +104,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
  */
 function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const current = useWorkspace()
-  const usable: readonly Workspace[] = workspacesOf(useUser().role)
+  const usable: readonly Workspace[] = workspacesOf(useUser())
   const both = usable.length > 1
   // Three across the sidebar leave each about 72px, too narrow for "Maintenance", so three or more stack.
   const across = usable.length < 3
@@ -196,7 +197,7 @@ function UserMenu() {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent ring-1 ring-accent-line">{initials(user.name)}</span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-ink">{user.name}</span>
-            <span className="block truncate text-xs text-ink-3">{ROLE_LABEL[user.role]}</span>
+            <span className="block truncate text-xs text-ink-3">{describeAccess(user)}</span>
           </span>
           <ChevronsUpDown className="size-4 shrink-0 text-ink-3" aria-hidden />
         </button>
@@ -213,7 +214,7 @@ function UserMenu() {
             <p className="truncate text-sm font-medium text-ink">{user.name}</p>
             <p className="truncate font-mono text-xs text-ink-3">{user.email}</p>
             <div className="mt-2">
-              <Badge tone={user.role === 'super_admin' ? 'accent' : 'neutral'}>{ROLE_LABEL[user.role]}</Badge>
+              {user.superAdmin ? <Badge tone="accent">Super Admin</Badge> : <p className="text-xs text-ink-2">{describeAccess(user)}</p>}
             </div>
           </div>
           <DropdownMenu.Separator className="-mx-1.5 my-1.5 h-px bg-line" />

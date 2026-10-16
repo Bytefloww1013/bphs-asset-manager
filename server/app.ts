@@ -7,11 +7,11 @@ import { HTTPException } from 'hono/http-exception'
 import { csrf } from 'hono/csrf'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST, WORKSPACE_LABEL, type Workspace } from '../shared/constants.ts'
-import { canUseWorkspace } from '../shared/permissions.ts'
+import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST, type AccessLevel, type Section } from '../shared/constants.ts'
+import { canAt, needsAccess } from '../shared/permissions.ts'
 import { config } from './config.ts'
 import type { Db } from './db/client.ts'
-import { requirePermission, type Env } from './http.ts'
+import { requireSuperAdmin, type Env } from './http.ts'
 import { describeError, forbidden } from './lib/errors.ts'
 import { authenticate } from './middleware.ts'
 import { assetRoutes, assignmentRoutes } from './routes/assets.ts'
@@ -42,15 +42,25 @@ const MAX_AUTH_BODY_BYTES = 16 * 1024
 const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
 const UPLOAD_PATH = /^\/api\/grievances(\/[^/]+\/(entries|attachments))?$/
 
-/** The workspace an API path belongs to. Employees serve all of them, and Users answers to its own permission; everything else is Assets. */
-const workspaceOfPath = (path: string): Workspace | null =>
-  /^\/api\/grievances(\/|$)/.test(path)
-    ? 'grievances'
-    : /^\/api\/maintenance(\/|$)/.test(path)
-      ? 'maintenance'
-      : /^\/api\/(employees|users)(\/|$)/.test(path)
-        ? null
-        : 'assets'
+/**
+ * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
+ * Users answers to Super Admin, and anyone may read the employee list, which every workspace's pickers use.
+ * Grievance owners manage their own with Read, so those routes are left to the service to decide.
+ */
+function accessNeeded(method: string, path: string): { section: Section; level: AccessLevel } | null {
+  const read = method === 'GET' || method === 'HEAD'
+  const at = (section: Section) => ({ section, level: read ? 'read' : 'edit' }) as const
+  if (/^\/api\/users(\/|$)/.test(path)) return null
+  if (/^\/api\/employees(\/|$)/.test(path)) return read ? null : at('employees')
+  // Each importer checks Edit in the section it writes to.
+  if (/^\/api\/import(\/|$)/.test(path)) return null
+  if (/^\/api\/grievances(\/|$)/.test(path)) {
+    const ownerMayDo = (method === 'PATCH' && /^\/api\/grievances\/[^/]+$/.test(path)) || (method === 'POST' && /^\/api\/grievances\/[^/]+\/(status|owner|exports)$/.test(path))
+    return ownerMayDo ? { section: 'grievances', level: 'read' } : at('grievances')
+  }
+  if (/^\/api\/maintenance(\/|$)/.test(path)) return at('maintenance')
+  return at('assets')
+}
 
 const limitBody = (maxSize: number) =>
   bodyLimit({ maxSize, onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413) })
@@ -103,10 +113,8 @@ export function createApp(db: Db, options: AppOptions = {}) {
   const api = new Hono<Env>()
   api.use('*', authenticate(db))
   api.use('*', async (c, next) => {
-    const workspace = workspaceOfPath(c.req.path)
-    if (workspace && !canUseWorkspace(c.get('user').role, workspace)) {
-      throw forbidden(`Your account does not have access to ${WORKSPACE_LABEL[workspace]}.`)
-    }
+    const needed = accessNeeded(c.req.method, c.req.path)
+    if (needed && !canAt(c.get('user'), needed.section, needed.level)) throw forbidden(needsAccess(needed.section, needed.level))
     await next()
   })
   api.use('*', (c, next) => (isUpload(c) ? uploadLimit(c, next) : next()))
@@ -120,8 +128,8 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/grievances', grievanceRoutes(db))
   api.route('/maintenance', maintenanceRoutes(db))
   api.route('/', listRoutes(db))
-  api.use('/users/*', requirePermission('users.manage'))
-  api.use('/users', requirePermission('users.manage'))
+  api.use('/users/*', requireSuperAdmin)
+  api.use('/users', requireSuperAdmin)
   api.route('/users', userRoutes(db))
   app.route('/api', api)
 

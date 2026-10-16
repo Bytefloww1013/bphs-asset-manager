@@ -1,5 +1,5 @@
 import type { ZodType } from 'zod'
-import type { Permission } from './permissions.ts'
+import type { Section } from './constants.ts'
 import { describeRowProblem } from './rows.ts'
 import { employeeCreateSchema, programCreateSchema } from './schemas.ts'
 
@@ -19,7 +19,8 @@ export interface Importer {
   /** Plural, as the screens name the record type. */
   label: string
   singular: string
-  permission: Permission
+  /** The section the records belong to: importing them needs Edit there. */
+  section: Section
   fields: readonly ImportField[]
   /** The field that makes a row a duplicate, compared without regard to case. */
   duplicateKey: string
@@ -36,7 +37,7 @@ export const IMPORTERS = {
     type: 'employees',
     label: 'Employees',
     singular: 'employee',
-    permission: 'record.write',
+    section: 'employees',
     duplicateKey: 'code',
     schema: employeeCreateSchema,
     fields: [
@@ -51,7 +52,7 @@ export const IMPORTERS = {
     type: 'programs',
     label: 'Programs',
     singular: 'program',
-    permission: 'record.write',
+    section: 'assets',
     duplicateKey: 'code',
     schema: programCreateSchema,
     fields: [

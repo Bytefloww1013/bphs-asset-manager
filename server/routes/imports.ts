@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { importerFor } from '../../shared/importers.ts'
-import { can, SUPER_ADMIN_ONLY } from '../../shared/permissions.ts'
+import { canAt, needsAccess } from '../../shared/permissions.ts'
 import { importSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { json, type Env } from '../http.ts'
@@ -12,7 +12,7 @@ import { previewImport, runImport } from '../services/imports.ts'
 function importerOf(c: Context<Env>) {
   const importer = importerFor(c.req.param('type') ?? '')
   if (!importer) throw new HttpError(404, 'not_importable', 'That kind of record cannot be imported.')
-  if (!can(c.get('user').role, importer.permission)) throw forbidden(SUPER_ADMIN_ONLY)
+  if (!canAt(c.get('user'), importer.section, 'edit')) throw forbidden(needsAccess(importer.section, 'edit'))
   return importer
 }
 

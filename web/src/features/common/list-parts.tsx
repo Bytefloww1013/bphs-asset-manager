@@ -1,6 +1,6 @@
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { SUPER_ADMIN_ONLY } from '@shared/permissions.ts'
+import type { Section } from '@shared/constants.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button, IconButton } from '@/components/ui/button.tsx'
 import { Input, Switch } from '@/components/ui/form.tsx'
@@ -8,12 +8,15 @@ import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import type { ratingTone } from '@/features/common/status.tsx'
 import { api, ApiError } from '@/lib/api.ts'
-import { useCan } from '@/lib/session.ts'
+import { useDenied } from '@/lib/session.ts'
 
 // The parts of an editable list of names: the lists on the Lists screen, and the grievance categories.
 
 /** Where the list is served from, under /api. */
 export type ListKind = 'asset-types' | 'digital-asset-types' | 'condition-ratings' | 'grievances/categories'
+
+/** Grievance categories belong to Grievances; the other lists to Assets. */
+const sectionOf = (kind: ListKind): Section => (kind === 'grievances/categories' ? 'grievances' : 'assets')
 
 const itemNoun = (kind: ListKind) => (kind === 'condition-ratings' ? 'rating' : kind === 'grievances/categories' ? 'category' : 'type')
 
@@ -24,6 +27,7 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLInputElement>(null)
   const save = useWrite((value: string) => api.patch(`/${kind}/${id}`, { name: value }), { silent: true })
+  const readOnly = useDenied(sectionOf(kind), 'edit')
 
   async function commit() {
     if (draft.trim() === name) return setEditing(false)
@@ -40,7 +44,7 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
     return (
       <div className="group flex items-center gap-2">
         {tone ? <Badge tone={tone}>{name}</Badge> : <span className="font-medium">{name}</span>}
-        <IconButton
+        {!readOnly && <IconButton
           label={`Rename ${name}`}
           size="sm"
           className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
@@ -51,7 +55,7 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
           }}
         >
           <Pencil className="size-3.5" />
-        </IconButton>
+        </IconButton>}
       </div>
     )
   }
@@ -87,6 +91,7 @@ export function AddRow({ kind, placeholder, noun }: { kind: ListKind; placeholde
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const add = useWrite((value: string) => api.post(`/${kind}`, { name: value }), { silent: true, success: `${noun} added` })
+  if (useDenied(sectionOf(kind), 'edit')) return null
   return (
     <form
       className="px-5 pb-4"
@@ -121,12 +126,12 @@ export const isOnlyActive = <T extends { isActive: boolean }>(info: { row: { ori
   info.row.original.isActive && info.table.getCoreRowModel().rows.filter((row) => row.original.isActive).length === 1
 
 export function DeleteButton({ kind, id, name, inUse, inUseReason, onlyActive }: { kind: ListKind; id: number; name: string; inUse: boolean; inUseReason: string; onlyActive: boolean }) {
-  const can = useCan('record.delete')
+  const noFull = useDenied(sectionOf(kind), 'full')
   const [open, setOpen] = useState(false)
   const remove = useWrite(() => api.delete(`/${kind}/${id}`), { success: `${name} deleted` })
   return (
     <>
-      <IconButton label={`Delete ${name}`} size="sm" variant="danger-ghost" disabledReason={!can ? SUPER_ADMIN_ONLY : inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined} onClick={() => setOpen(true)}>
+      <IconButton label={`Delete ${name}`} size="sm" variant="danger-ghost" disabledReason={noFull ?? (inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined)} onClick={() => setOpen(true)}>
         <Trash2 className="size-4" />
       </IconButton>
       <ConfirmDialog open={open} onOpenChange={setOpen} title={`Delete "${name}"?`} description={`Nothing references it, so no history is lost. This is written to the ${kind === 'grievances/categories' ? 'Grievance Audit Log' : 'audit log'}.`} confirmLabel="Delete" tone="danger" onConfirm={() => remove.mutateAsync(undefined)} />
@@ -136,5 +141,6 @@ export function DeleteButton({ kind, id, name, inUse, inUseReason, onlyActive }:
 
 export function ActiveSwitch({ kind, id, name, active, onlyActive }: { kind: ListKind; id: number; name: string; active: boolean; onlyActive: boolean }) {
   const toggle = useWrite((isActive: boolean) => api.patch(`/${kind}/${id}`, { isActive }))
-  return <Switch label={`${name} is ${active ? 'active' : 'inactive'}`} checked={active} disabled={toggle.isPending} disabledReason={onlyActive ? onlyActiveReason(kind) : undefined} onChange={(next) => toggle.mutate(next)} />
+  const noEdit = useDenied(sectionOf(kind), 'edit')
+  return <Switch label={`${name} is ${active ? 'active' : 'inactive'}`} checked={active} disabled={toggle.isPending} disabledReason={noEdit ?? (onlyActive ? onlyActiveReason(kind) : undefined)} onChange={(next) => toggle.mutate(next)} />
 }

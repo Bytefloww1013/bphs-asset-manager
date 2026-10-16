@@ -16,7 +16,7 @@ import { ExportButton } from '@/features/common/export-button.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { formatDateTime, plural } from '@/lib/format.ts'
 import { assignmentsQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/assignments')({
   loader: ({ context }) => context.queryClient.ensureQueryData(assignmentsQuery),
@@ -87,6 +87,7 @@ function AssignmentsPage() {
   const { data = [], isPending } = useQuery(assignmentsQuery)
   const [search, setSearch] = useState('')
   const [returning, setReturning] = useState<AssignmentRow[] | null>(null)
+  const readOnly = useDenied('assets', 'edit')
   const table = useGrid({ data, columns, getRowId, searchText, search, selectable: true, initialSorting: [{ id: 'daysOut', desc: true }] })
   const selected = table.getSelectedRowModel().rows.map((row) => row.original)
   // A search hides rows without unticking them, so say how many of the ticked rows are out of sight.
@@ -103,7 +104,7 @@ function AssignmentsPage() {
             <Button
               variant="primary"
               icon={<Undo2 className="size-4" />}
-              disabledReason={selected.length === 0 ? 'Tick one or more rows to return them together' : undefined}
+              disabledReason={readOnly ?? (selected.length === 0 ? 'Tick one or more rows to return them together' : undefined)}
               onClick={() => setReturning(selected)}
             >
               {selected.length > 0 ? `Return selected (${selected.length})` : 'Return selected'}

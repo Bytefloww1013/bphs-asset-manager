@@ -15,7 +15,7 @@ import { AssetStateBadge, DaysOut, HolderCell, RatingBadge, stateLabel } from '@
 import { ApiError } from '@/lib/api.ts'
 import { formatDate, formatDateTime, formatDays, plural } from '@/lib/format.ts'
 import { assetDetailQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/assets/$tag')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(assetDetailQuery(params.tag)),
@@ -68,6 +68,7 @@ function AssetDetailPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const sheets = useSheetActions()
+  const readOnly = useDenied('assets', 'edit')
   usePageTitle(tag.toUpperCase())
   const table = useGrid({ data: data?.history ?? [], columns: historyColumns, getRowId: historyId, pageSize: 50, resetKey: tag })
   if (!data) return null
@@ -92,12 +93,12 @@ function AssetDetailPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {asset.state === 'assigned' && asset.assignmentId && (
-              <Button variant="primary" onClick={() => sheets.returnAsset(asset.assignmentId!)}>
+              <Button variant="primary" disabledReason={readOnly} onClick={() => sheets.returnAsset(asset.assignmentId!)}>
                 Return
               </Button>
             )}
             {asset.state === 'in_storage' && (
-              <Button variant="primary" onClick={() => sheets.issue(asset.id)}>
+              <Button variant="primary" disabledReason={readOnly} onClick={() => sheets.issue(asset.id)}>
                 Issue
               </Button>
             )}

@@ -2,9 +2,10 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Copy, KeyRound, Lock, LockOpen, Shield, ShieldCheck, Unlink, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
+import { Copy, KeyRound, Lock, LockOpen, Shield, Unlink, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
-import { ROLE_LABEL, ROLES, type Role } from '@shared/constants.ts'
+import { ACCESS_LEVEL_LABEL, ACCESS_LEVELS, SECTION_LABEL, SECTIONS, type Access, type AccessLevel, type Section } from '@shared/constants.ts'
+import { describeAccess, type Grantee } from '@shared/permissions.ts'
 import type { UserRow, UserWithPassword } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
@@ -12,7 +13,7 @@ import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert, EmptyState, useToast } from '@/components/ui/feedback.tsx'
-import { Field, Input, Segmented } from '@/components/ui/form.tsx'
+import { Field, Input, Segmented, Switch } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overlay.tsx'
 import { Stacked } from '@/features/common/status.tsx'
@@ -21,7 +22,7 @@ import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { formatDateTime, formatRelative, formatTime } from '@/lib/format.ts'
 import { lookupsQuery, usersQuery } from '@/lib/queries.ts'
-import { useCan, usePageTitle, useUser } from '@/lib/session.ts'
+import { usePageTitle, useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/users')({
   component: UsersPage,
@@ -29,8 +30,7 @@ export const Route = createFileRoute('/_app/users')({
 
 function UsersPage() {
   usePageTitle('Users')
-  const allowed = useCan('users.manage')
-  if (!allowed) {
+  if (!useUser().superAdmin) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title="Users" />
@@ -38,7 +38,7 @@ function UsersPage() {
           <EmptyState
             icon={Lock}
             title="Super Admin only"
-            description="Creating accounts, resetting another user's password and deactivating accounts stay with Super Admins. An Admin who could edit accounts could promote themselves."
+            description="Creating accounts, resetting another user's password and deactivating accounts stay with Super Admins. Someone who could edit accounts could give themselves more access."
             className="py-20"
           />
         </Panel>
@@ -126,14 +126,116 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
   )
 }
 
-const ROLE_HINT: Record<Role, string> = {
-  asset_admin: 'Can add and change records in Assets. Cannot see Grievances, delete or manage accounts.',
-  grievance_admin: 'Can add and change grievances. Cannot see Assets, delete or manage accounts.',
-  admin: 'Can add and change records in both workspaces. Cannot delete or manage accounts.',
-  super_admin: 'Can delete records, archive employees and manage accounts.',
+const LEVEL_OPTIONS = ACCESS_LEVELS.map((level) => ({ value: level, label: ACCESS_LEVEL_LABEL[level] }))
+
+/** These sections at this level. None is left out rather than stored. */
+function withLevel(access: Access, sections: readonly Section[], level: AccessLevel): Access {
+  const next = { ...access }
+  for (const section of sections) {
+    if (level === 'none') delete next[section]
+    else next[section] = level
+  }
+  return next
 }
 
-const RoleBadge = ({ role }: { role: Role }) => <Badge tone={role === 'super_admin' ? 'accent' : 'neutral'}>{ROLE_LABEL[role]}</Badge>
+/** A level for each section, a control that sets them all at once, and the Super Admin switch, which overrides them. */
+function AccessFields({ value, onChange, error }: { value: Grantee; onChange: (next: Grantee) => void; error?: string }) {
+  const levels = SECTIONS.map((section) => value.access[section] ?? 'none')
+  const all = levels.every((level) => level === levels[0]) ? levels[0]! : null
+  return (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div className="text-sm leading-5">
+          <p className="font-medium text-ink">Super Admin</p>
+          <p className="text-xs text-ink-3">Full access to every section, including any added later, and the only accounts that can manage accounts.</p>
+        </div>
+        <Switch label="Super Admin" checked={value.superAdmin} onChange={(superAdmin) => onChange({ ...value, superAdmin })} />
+      </div>
+      {!value.superAdmin && (
+        <>
+          <Field label="Set all to" hint="Read sees a section. Edit also adds and changes records. Full also deletes, archives and voids.">
+            <Segmented label="Set all to" value={all} onChange={(level) => onChange({ ...value, access: withLevel(value.access, SECTIONS, level) })} options={LEVEL_OPTIONS} />
+          </Field>
+          {SECTIONS.map((section) => (
+            <Field key={section} label={SECTION_LABEL[section]} hint={section === 'employees' ? 'None hides the Employees page. Every account can still choose employees in a form.' : undefined}>
+              <Segmented label={SECTION_LABEL[section]} value={value.access[section] ?? 'none'} onChange={(level) => onChange({ ...value, access: withLevel(value.access, [section], level) })} options={LEVEL_OPTIONS} />
+            </Field>
+          ))}
+          {error && (
+            <p role="alert" className="text-xs font-medium text-bad">
+              {error}
+            </p>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
+const AccessSummary = ({ user }: { user: UserRow }) =>
+  user.superAdmin ? (
+    <Badge tone="accent">Super Admin</Badge>
+  ) : (
+    <span className="flex flex-col text-sm text-ink-2">
+      {describeAccess(user)
+        .split(' · ')
+        .map((part) => (
+          <span key={part} className="whitespace-nowrap">
+            {part}
+          </span>
+        ))}
+    </span>
+  )
+
+function AccessSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
+  const [grant, setGrant] = useState<Grantee>({ access: user.access, superAdmin: user.superAdmin })
+  const [error, setError] = useState<ApiError | null>(null)
+  const save = useWrite(() => api.patch(`/users/${user.id}`, grant), { silent: true, success: `${user.name}'s access changed` })
+
+  async function submit() {
+    setError(null)
+    try {
+      await save.mutateAsync(undefined)
+      onClose()
+    } catch (e) {
+      if (e instanceof ApiError) setError(e)
+    }
+  }
+
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={`Access for ${user.name}`}
+      description="Applies from their next click. They stay signed in."
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" type="submit" form="access-form" loading={save.isPending}>
+            Save access
+          </Button>
+        </>
+      }
+    >
+      <form
+        id="access-form"
+        noValidate
+        className="flex flex-col gap-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void submit()
+        }}
+      >
+        {error && !error.fields.access && (
+          <Alert tone="bad" title="Could not change their access">
+            {error.message}
+          </Alert>
+        )}
+        <AccessFields value={grant} onChange={setGrant} error={error?.fields.access} />
+      </form>
+    </Sheet>
+  )
+}
 
 function StateBadge({ user }: { user: UserRow }) {
   if (user.state === 'locked') return <Badge tone="warn">Locked until {user.lockedUntil ? formatTime(user.lockedUntil) : ''}</Badge>
@@ -143,7 +245,7 @@ function StateBadge({ user }: { user: UserRow }) {
 
 function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: UserWithPassword) => void }) {
   const me = useUser()
-  const [confirm, setConfirm] = useState<'reset' | 'deactivate' | null>(null)
+  const [confirm, setConfirm] = useState<'reset' | 'access' | 'deactivate' | null>(null)
   const reset = useWrite(async () => {
     const result = await api.post<UserWithPassword>(`/users/${user.id}/reset-password`)
     // Handed over before useWrite refetches the lists: a password that is shown only once must not wait on a refetch.
@@ -154,16 +256,13 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
   const unlock = useWrite(() => api.post(`/users/${user.id}/clear-lock`), { success: `Lock cleared for ${user.name}` })
   const deactivate = useWrite(() => api.post(`/users/${user.id}/deactivate`), { success: `${user.name} deactivated` })
   const reactivate = useWrite(() => api.post(`/users/${user.id}/reactivate`), { success: `${user.name} reactivated` })
-  const changeRole = useWrite((role: Role) => api.patch(`/users/${user.id}`, { role }), { success: (_, role) => `${user.name} is now ${ROLE_LABEL[role]}` })
   const unlink = useWrite(() => api.patch(`/users/${user.id}`, { employeeId: null }), { success: `${user.name} is no longer linked to an employee` })
   const isMe = user.id === me.id
 
   const items: MenuItem[] = [
     { label: 'Reset password', icon: KeyRound, onSelect: () => setConfirm('reset'), disabledReason: isMe ? 'Use "Change password" in your user menu.' : undefined },
     { label: 'Clear lock', icon: LockOpen, onSelect: () => unlock.mutate(undefined), disabledReason: user.state === 'locked' || user.failedLogins > 0 ? undefined : 'This account is not locked.' },
-    ...(isMe
-      ? [{ label: 'Change role', icon: Shield, onSelect: () => undefined, disabledReason: 'You cannot change your own role.' }]
-      : ROLES.filter((role) => role !== user.role).map((role) => ({ label: `Make ${ROLE_LABEL[role]}`, icon: role === 'super_admin' ? ShieldCheck : Shield, onSelect: () => changeRole.mutate(role) }))),
+    { label: 'Change access', icon: Shield, onSelect: () => setConfirm('access'), disabledReason: isMe ? 'You cannot change your own access.' : undefined },
     { label: 'Unlink employee', icon: Unlink, onSelect: () => unlink.mutate(undefined), disabledReason: user.employeeId == null ? 'This account is not linked to an employee.' : undefined },
     user.state === 'deactivated'
       ? { label: 'Reactivate', icon: UserRoundCheck, onSelect: () => reactivate.mutate(undefined), separatorBefore: true }
@@ -180,6 +279,7 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
         confirmLabel="Reset password"
         onConfirm={() => reset.mutateAsync(undefined)}
       />
+      {confirm === 'access' && <AccessSheet user={user} onClose={() => setConfirm(null)} />}
       <ConfirmDialog
         open={confirm === 'deactivate'}
         onOpenChange={(open) => !open && setConfirm(null)}
@@ -206,15 +306,15 @@ function UsersTable() {
       cell: (info) => (
         <div className="min-w-0 leading-5">
           <Stacked primary={<span className="font-medium">{info.getValue()}</span>} secondary={<Mono>{info.row.original.email}</Mono>} />
-          {/* On a phone the Role and Status columns do not fit, so both are shown here. */}
-          <div className="mt-1 flex flex-wrap gap-1.5 sm:hidden">
-            <RoleBadge role={info.row.original.role} />
+          {/* On a phone the Access and Status columns do not fit, so both are shown here. */}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:hidden">
+            <AccessSummary user={info.row.original} />
             <StateBadge user={info.row.original} />
           </div>
         </div>
       ),
     }),
-    c.accessor('role', { header: 'Role', cell: (info) => <RoleBadge role={info.getValue()} />, meta: { hideBelow: 'sm' } }),
+    c.accessor((row) => describeAccess(row), { id: 'access', header: 'Access', cell: (info) => <AccessSummary user={info.row.original} />, meta: { hideBelow: 'sm' } }),
     c.accessor('state', { header: 'Status', cell: (info) => <StateBadge user={info.row.original} />, meta: { hideBelow: 'sm' } }),
     c.accessor('failedLogins', { header: 'Failed logins', cell: (info) => <span className={info.getValue() >= 3 ? 'font-semibold text-warn' : 'text-ink-2'}>{info.getValue()}</span>, meta: { align: 'right', hideBelow: 'lg' } }),
     c.accessor('mustChangePassword', { header: 'Password', cell: (info) => (info.getValue() ? <Badge tone="warn">Must change</Badge> : <span className="text-ink-3">Set</span>), meta: { hideBelow: 'lg' } }),
@@ -251,10 +351,10 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
   const linked = new Set(accounts.map((account) => account.employeeId))
   const people = (lookups?.employees ?? []).filter((person) => !linked.has(person.id))
   const [error, setError] = useState<ApiError | null>(null)
-  const create = useWrite((body: { name: string; email: string; role: Role; employeeId: number | null }) => api.post<UserWithPassword>('/users', body), { silent: true })
+  const create = useWrite((body: Grantee & { name: string; email: string; employeeId: number | null }) => api.post<UserWithPassword>('/users', body), { silent: true })
 
   const form = useForm({
-    defaultValues: { name: '', email: '', role: 'admin' as Role, employee: null as (typeof people)[number] | null },
+    defaultValues: { name: '', email: '', grant: { access: {}, superAdmin: false } as Grantee, employee: null as (typeof people)[number] | null },
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}
@@ -266,7 +366,7 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
     onSubmit: async ({ value }) => {
       setError(null)
       try {
-        const result = await create.mutateAsync({ name: value.name, email: value.email, role: value.role, employeeId: value.employee?.id ?? null })
+        const result = await create.mutateAsync({ name: value.name, email: value.email, ...value.grant, employeeId: value.employee?.id ?? null })
         onClose()
         onCreated(result)
       } catch (e) {
@@ -305,7 +405,7 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
           void form.handleSubmit()
         }}
       >
-        {error && error.code !== 'duplicate_email' && !error.fields.email && (
+        {error && error.code !== 'duplicate_email' && !error.fields.email && !error.fields.access && (
           <Alert tone="bad" title="Could not create the account">
             {error.message}
           </Alert>
@@ -324,13 +424,7 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
             </Field>
           )}
         </form.Field>
-        <form.Field name="role">
-          {(field) => (
-            <Field label="Role" hint={ROLE_HINT[field.state.value]}>
-              <Segmented label="Role" value={field.state.value} onChange={field.handleChange} options={ROLES.map((role) => ({ value: role, label: ROLE_LABEL[role] }))} />
-            </Field>
-          )}
-        </form.Field>
+        <form.Field name="grant">{(field) => <AccessFields value={field.state.value} onChange={field.handleChange} error={error?.fields.access} />}</form.Field>
         <form.Field name="employee">
           {(field) => (
             <Field label="Linked employee" optional hint="Fills in “Assessed by” for them when issuing and returning. An employee can be linked to one account only.">

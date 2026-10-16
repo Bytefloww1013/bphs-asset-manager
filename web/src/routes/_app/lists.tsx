@@ -15,7 +15,7 @@ import { ActiveSwitch, AddRow, DeleteButton, EditableName, isOnlyActive } from '
 import { ratingTone } from '@/features/common/status.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { assetTypesQuery, digitalAssetTypesQuery, ratingsQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/lists')({
   loader: ({ context }) => Promise.all([context.queryClient.ensureQueryData(assetTypesQuery), context.queryClient.ensureQueryData(digitalAssetTypesQuery), context.queryClient.ensureQueryData(ratingsQuery)]),
@@ -47,6 +47,7 @@ function EditableScore({ id, name, score }: { id: number; name: string; score: n
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLInputElement>(null)
   const save = useWrite((value: number) => api.patch(`/condition-ratings/${id}`, { score: value }), { silent: true })
+  const readOnly = useDenied('assets', 'edit')
 
   async function commit() {
     if (draft.trim() === String(score)) return setEditing(false)
@@ -63,7 +64,7 @@ function EditableScore({ id, name, score }: { id: number; name: string; score: n
     return (
       <div className="group flex items-center gap-1">
         <Mono className="w-7 text-right font-medium">{score}</Mono>
-        <IconButton
+        {!readOnly && <IconButton
           label={`Change the score of ${name}`}
           size="sm"
           className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
@@ -75,7 +76,7 @@ function EditableScore({ id, name, score }: { id: number; name: string; score: n
           }}
         >
           <Pencil className="size-3.5" />
-        </IconButton>
+        </IconButton>}
       </div>
     )
   }
@@ -116,6 +117,7 @@ function AddRating() {
   const [score, setScore] = useState('')
   const [error, setError] = useState<string | null>(null)
   const add = useWrite((value: { name: string; score: number | null }) => api.post('/condition-ratings', value), { silent: true, success: 'Rating added' })
+  if (useDenied('assets', 'edit')) return null
   return (
     <form
       className="px-5 pb-4"

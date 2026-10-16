@@ -39,7 +39,7 @@ export async function ensureBootstrapAdmin(db: Db, log: (message: string) => voi
       name: config.bootstrapName,
       email: config.bootstrapEmail,
       passwordHash: await hashPassword(BOOTSTRAP_PASSWORD),
-      role: 'super_admin',
+      superAdmin: true,
       mustChangePassword: true,
     })
     .run()

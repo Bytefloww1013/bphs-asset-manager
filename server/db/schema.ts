@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { blob, check, type AnySQLiteColumn, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, Role } from '../../shared/constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, Access } from '../../shared/constants.ts'
 import type { GrievanceVersionPerson } from '../../shared/types.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
@@ -31,7 +31,10 @@ export const users = sqliteTable(
     name: text('name').notNull(),
     email: text('email').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
-    role: text('role').$type<Role>().notNull(),
+    /** The level in each section; a section left out is None. */
+    access: text('access', { mode: 'json' }).$type<Access>().notNull().default({}),
+    /** Full in every section, including any added later, and the only accounts that manage accounts. */
+    superAdmin: integer('is_super_admin', { mode: 'boolean' }).notNull().default(false),
     employeeId: integer('employee_id').references(() => employees.id, { onDelete: 'restrict' }),
     mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(true),
     failedLogins: integer('failed_logins').notNull().default(0),

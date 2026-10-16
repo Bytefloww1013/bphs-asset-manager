@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { programCreateSchema, programUpdateSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
-import { intParam, json, requirePermission, type Env } from '../http.ts'
+import { intParam, json, requireFull, type Env } from '../http.ts'
 import { createProgram, deleteProgram, listPrograms, setProgramActive, updateProgram } from '../services/programs.ts'
 
 export function programRoutes(db: Db) {
@@ -14,7 +14,7 @@ export function programRoutes(db: Db) {
   )
   app.post('/:id/deactivate', (c) => c.json(setProgramActive(db, c.get('user'), intParam(c, 'id'), false)))
   app.post('/:id/reactivate', (c) => c.json(setProgramActive(db, c.get('user'), intParam(c, 'id'), true)))
-  app.delete('/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/:id', requireFull('assets'), (c) => {
     deleteProgram(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })

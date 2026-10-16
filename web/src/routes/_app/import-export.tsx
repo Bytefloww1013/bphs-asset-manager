@@ -3,7 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { Download, FileSpreadsheet, FileUp, ScrollText, TriangleAlert } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { IMPORTERS, IMPORT_TYPES, autoMap, type ImportType, type Importer } from '@shared/importers.ts'
-import { can } from '@shared/permissions.ts'
+import { canAt, needsAccess } from '@shared/permissions.ts'
 import { IMPORT_MAX_CELL, IMPORT_MAX_ROWS, type ImportInput } from '@shared/schemas.ts'
 import type { ImportPreview, ImportRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -209,8 +209,8 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
   const failed = done?.rows.filter((row) => row.result === 'error') ?? []
   const toCreate = preview?.summary.create ?? 0
   const problems = shown ? shown.summary.duplicates + shown.summary.errors : 0
-  const blocked = !can(user.role, importer.permission)
-    ? 'Your role cannot import these records.'
+  const blocked = !canAt(user, importer.section, 'edit')
+    ? needsAccess(importer.section, 'edit')
     : done
       ? 'This file has been imported. Choose another to import more.'
       : !file

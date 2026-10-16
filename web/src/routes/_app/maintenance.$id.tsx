@@ -18,6 +18,7 @@ import { MaintenanceStatusBadge, UrgentBadge } from '@/features/maintenance/stat
 import { ApiError, api } from '@/lib/api.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { employeesQuery, maintenanceRequestQuery } from '@/lib/queries.ts'
+import { useDenied } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/maintenance/$id')({
   loader: ({ context, params }) =>
@@ -58,6 +59,8 @@ function RequestPage() {
   const [note, setNote] = useState('')
   const [deleting, setDeleting] = useState(false)
   useMaintenancePageTitle(request?.code)
+  const noEdit = useDenied('maintenance', 'edit')
+  const noFull = useDenied('maintenance', 'full')
 
   const dispatch = useWrite((employeeId: number | null) => api.post<MaintenanceDetail>(`/maintenance/${id}/dispatch`, { employeeId }), {
     success: (now) => (now.assignee ? `Dispatched to ${now.assignee.name}` : 'Dispatch cleared'),
@@ -90,7 +93,7 @@ function RequestPage() {
         </div>
         <div className="mt-1.5 flex flex-wrap items-start justify-between gap-3">
           <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{request.location}</h1>
-          <Button variant="danger" icon={<Trash2 className="size-4" aria-hidden />} onClick={() => setDeleting(true)}>
+          <Button variant="danger" icon={<Trash2 className="size-4" aria-hidden />} disabledReason={noFull} onClick={() => setDeleting(true)}>
             Delete
           </Button>
         </div>
@@ -123,7 +126,7 @@ function RequestPage() {
       </Panel>
 
       <Panel className="grid gap-5 p-5 sm:grid-cols-2">
-        <Field label="Dispatched to" hint="Choosing someone makes a Not Started request Dispatched.">
+        <Field label="Dispatched to" hint={noEdit ?? 'Choosing someone makes a Not Started request Dispatched.'}>
           <Combobox
             items={choices}
             value={assignee}
@@ -133,11 +136,11 @@ function RequestPage() {
             getSearch={employeeSearch}
             placeholder="Nobody yet"
             emptyText="No active employee matches"
-            disabled={dispatch.isPending}
+            disabled={!!noEdit || dispatch.isPending}
           />
         </Field>
         <Field label="Status" hint={request.assignee ? undefined : 'Dispatched needs someone chosen first.'}>
-          <Select value={request.status} disabled={status.isPending} onChange={(event) => status.mutate(event.target.value as MaintenanceStatus)}>
+          <Select value={request.status} disabled={!!noEdit || status.isPending} onChange={(event) => status.mutate(event.target.value as MaintenanceStatus)}>
             {MAINTENANCE_STATUSES.map((value) => (
               <option key={value} value={value} disabled={value === 'dispatched' && !request.assignee && request.status !== value}>
                 {maintenanceStatusLabel(value)}
@@ -165,7 +168,7 @@ function RequestPage() {
             </li>
           ))}
         </ol>
-        <form
+        {!noEdit && <form
           className="flex flex-col gap-3 border-t border-line p-5"
           onSubmit={(event) => {
             event.preventDefault()
@@ -180,7 +183,7 @@ function RequestPage() {
               Add note
             </Button>
           </div>
-        </form>
+        </form>}
       </Panel>
 
       <ConfirmDialog

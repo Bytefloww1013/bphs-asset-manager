@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import type { Role } from '../../shared/constants.ts'
+import type { Access } from '../../shared/constants.ts'
 import { createApp } from '../app.ts'
 import { ensureDefaultLists } from '../bootstrap.ts'
 import { createDb, runMigrations, type Db } from '../db/client.ts'
@@ -7,6 +7,11 @@ import { employees, users } from '../db/schema.ts'
 import { hashPassword } from '../lib/password.ts'
 
 export const PASSWORD = 'Sup3r-secret!'
+
+/** The access each of the old roles became, so a test can say which it means. */
+export const ADMIN: Access = { assets: 'edit', grievances: 'edit', employees: 'edit' }
+export const ASSET_ADMIN: Access = { assets: 'edit', employees: 'edit' }
+export const GRIEVANCE_ADMIN: Access = { grievances: 'edit', employees: 'edit' }
 
 export async function setup() {
   const { db, sqlite } = createDb(':memory:')
@@ -20,10 +25,10 @@ export async function setup() {
     .values({ code: 'E-1042', firstName: 'Priya', lastName: 'Raghunathan', department: 'IT' })
     .returning()
     .get()
-  const add = (name: string, email: string, role: Role, extra: Partial<typeof users.$inferInsert> = {}) =>
-    db.insert(users).values({ name, email, passwordHash, role, mustChangePassword: false, ...extra }).returning().get()
-  const superUser = add('Priya Raghunathan', 'p.raghunathan@bphs.local', 'super_admin', { employeeId: person.id })
-  const adminUser = add('Marcus Oyelaran', 'm.oyelaran@bphs.local', 'admin')
+  const add = (name: string, email: string, extra: Partial<typeof users.$inferInsert>) =>
+    db.insert(users).values({ name, email, passwordHash, mustChangePassword: false, ...extra }).returning().get()
+  const superUser = add('Priya Raghunathan', 'p.raghunathan@bphs.local', { superAdmin: true, employeeId: person.id })
+  const adminUser = add('Marcus Oyelaran', 'm.oyelaran@bphs.local', { access: ADMIN })
 
   async function call(method: string, path: string, options: { cookie?: string; body?: unknown } = {}) {
     const headers: Record<string, string> = {}

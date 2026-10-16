@@ -14,7 +14,7 @@ import { useSheetActions } from '@/features/assignments/open.ts'
 import { AssetTagLink, RatingBadge, assetSearchText } from '@/features/common/status.tsx'
 import { formatDate, plural } from '@/lib/format.ts'
 import { assetsQuery, lookupsQuery } from '@/lib/queries.ts'
-import { usePageTitle } from '@/lib/session.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/available')({
   validateSearch: (search: Record<string, unknown>): { type?: string } => ({ type: typeof search.type === 'string' ? search.type : undefined }),
@@ -27,9 +27,10 @@ const c = columnsFor<AssetRow>()
 /** On this page Issue is the point, so it is the primary button and the shortcut is shown on it. */
 function AvailableActions({ asset }: { asset: AssetRow }) {
   const sheets = useSheetActions()
+  const readOnly = useDenied('assets', 'edit')
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Button size="sm" variant="primary" aria-keyshortcuts="I" onClick={() => sheets.issue(asset.id)}>
+      <Button size="sm" variant="primary" aria-keyshortcuts="I" disabledReason={readOnly} onClick={() => sheets.issue(asset.id)}>
         Issue <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none max-sm:hidden">I</Kbd>
       </Button>
       <AssetRowActions asset={asset} hidePrimary />

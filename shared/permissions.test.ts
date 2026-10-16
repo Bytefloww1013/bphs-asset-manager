@@ -1,55 +1,62 @@
 import { describe, expect, it } from 'vitest'
-import { can, canManageGrievance, canUseWorkspace, rolesIn } from './permissions.ts'
+import type { Access } from './constants.ts'
+import { canAt, canManageGrievance, describeAccess, levelOf, workspacesOf } from './permissions.ts'
 
-describe('grievance permissions', () => {
-  it('lets only a Super Admin void', () => {
-    expect(can('super_admin', 'grievance.void')).toBe(true)
-    expect(can('admin', 'grievance.void')).toBe(false)
-    expect(can(null, 'grievance.void')).toBe(false)
+const user = (access: Access, employeeId: number | null = null, superAdmin = false) => ({ access, superAdmin, employeeId })
+
+describe('access levels', () => {
+  it('gives a Super Admin Full everywhere, whatever is stored', () => {
+    expect(levelOf(user({}, null, true), 'maintenance')).toBe('full')
+    expect(canAt(user({ assets: 'read' }, null, true), 'assets', 'full')).toBe(true)
   })
 
-  it('lets a Super Admin manage any grievance, whoever owns it', () => {
-    expect(canManageGrievance({ role: 'super_admin', employeeId: null }, 7)).toBe(true)
-    expect(canManageGrievance({ role: 'super_admin', employeeId: 3 }, null)).toBe(true)
+  it('treats a section that is not named as None', () => {
+    expect(levelOf(user({ assets: 'edit' }), 'grievances')).toBe('none')
+    expect(canAt(user({ assets: 'edit' }), 'grievances', 'read')).toBe(false)
+    expect(levelOf(null, 'assets')).toBe('none')
   })
 
-  it('lets an Admin manage only a grievance owned by the employee their account is linked to', () => {
-    expect(canManageGrievance({ role: 'admin', employeeId: 7 }, 7)).toBe(true)
-    expect(canManageGrievance({ role: 'admin', employeeId: 7 }, 8)).toBe(false)
+  it('includes the levels below', () => {
+    const editor = user({ assets: 'edit' })
+    expect(canAt(editor, 'assets', 'read')).toBe(true)
+    expect(canAt(editor, 'assets', 'edit')).toBe(true)
+    expect(canAt(editor, 'assets', 'full')).toBe(false)
+  })
+
+  it('lists the workspaces an account can read, never Employees', () => {
+    expect(workspacesOf(user({ grievances: 'read', employees: 'full' }))).toEqual(['grievances'])
+    expect(workspacesOf(user({}, null, true))).toEqual(['assets', 'grievances', 'maintenance'])
+  })
+
+  it('describes access in words', () => {
+    expect(describeAccess(user({ employees: 'edit', assets: 'read' }))).toBe('Assets: Read · Employees: Edit')
+    expect(describeAccess(user({ assets: 'read' }, null, true))).toBe('Super Admin')
+    expect(describeAccess(user({}))).toBe('No access')
+  })
+})
+
+describe('managing a grievance', () => {
+  it('lets the owner manage their own with Read, and nobody else at Read', () => {
+    expect(canManageGrievance(user({ grievances: 'read' }, 7), 7)).toBe(true)
+    expect(canManageGrievance(user({ grievances: 'read' }, 7), 8)).toBe(false)
+  })
+
+  it('lets Edit, Full and a Super Admin manage any grievance', () => {
+    expect(canManageGrievance(user({ grievances: 'edit' }), 8)).toBe(true)
+    expect(canManageGrievance(user({ grievances: 'full' }), null)).toBe(true)
+    expect(canManageGrievance(user({}, null, true), 8)).toBe(true)
+  })
+
+  it('refuses an owner with no access to Grievances', () => {
+    expect(canManageGrievance(user({ assets: 'full' }, 7), 7)).toBe(false)
   })
 
   it('never matches an account with no linked employee to a grievance with no owner', () => {
-    expect(canManageGrievance({ role: 'admin', employeeId: null }, 7)).toBe(false)
-    expect(canManageGrievance({ role: 'admin', employeeId: null }, null)).toBe(false)
-  })
-
-  it('lets a Grievance Admin manage their own grievance, and never an Asset Admin', () => {
-    expect(canManageGrievance({ role: 'grievance_admin', employeeId: 7 }, 7)).toBe(true)
-    expect(canManageGrievance({ role: 'asset_admin', employeeId: 7 }, 7)).toBe(false)
+    expect(canManageGrievance(user({ grievances: 'read' }), null)).toBe(false)
   })
 
   it('refuses when nobody is signed in', () => {
     expect(canManageGrievance(null, 7)).toBe(false)
     expect(canManageGrievance(undefined, 7)).toBe(false)
-  })
-})
-
-describe('workspaces', () => {
-  it('keeps each workspace admin to their own workspace', () => {
-    expect(canUseWorkspace('asset_admin', 'assets')).toBe(true)
-    expect(canUseWorkspace('asset_admin', 'grievances')).toBe(false)
-    expect(canUseWorkspace('grievance_admin', 'grievances')).toBe(true)
-    expect(canUseWorkspace('grievance_admin', 'assets')).toBe(false)
-    expect(canUseWorkspace(null, 'assets')).toBe(false)
-  })
-
-  it('gives Admins and Super Admins both', () => {
-    expect(rolesIn('grievances')).toEqual(['grievance_admin', 'admin', 'super_admin'])
-    expect(rolesIn('assets')).toEqual(['asset_admin', 'admin', 'super_admin'])
-  })
-
-  it('keeps Maintenance to Super Admins', () => {
-    expect(rolesIn('maintenance')).toEqual(['super_admin'])
-    expect(canUseWorkspace('admin', 'maintenance')).toBe(false)
   })
 })

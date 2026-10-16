@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { Role } from '../../shared/constants.ts'
+import type { Access } from '../../shared/constants.ts'
 import { employees, users } from '../db/schema.ts'
-import { setup } from './helpers.ts'
+import { ASSET_ADMIN, GRIEVANCE_ADMIN, setup } from './helpers.ts'
 
 /** Priya (Super Admin) owns an open grievance; an Asset Admin and a Grievance Admin are signed in beside her. */
 async function workspaces() {
   const t = await setup()
   const person = (code: string, firstName: string) => t.db.insert(employees).values({ code, firstName, lastName: 'Tester' }).returning().get()
-  const account = async (email: string, role: Role, employeeId: number | null = null) => {
-    t.db.insert(users).values({ name: email, email, passwordHash: t.superUser.passwordHash, role, employeeId, mustChangePassword: false }).run()
+  const account = async (email: string, access: Access, employeeId: number | null = null) => {
+    t.db.insert(users).values({ name: email, email, passwordHash: t.superUser.passwordHash, access, employeeId, mustChangePassword: false }).run()
     return (await t.signIn(email)).cookie
   }
   const [named, manager, assetPerson, grievancePerson] = [person('E-3001', 'Named'), person('E-3002', 'Manager'), person('E-3003', 'Asset'), person('E-3004', 'Grievance')]
@@ -18,8 +18,8 @@ async function workspaces() {
   return {
     t,
     superAdmin,
-    assetAdmin: await account('assets@bphs.local', 'asset_admin', assetPerson.id),
-    grievanceAdmin: await account('grievances@bphs.local', 'grievance_admin', grievancePerson.id),
+    assetAdmin: await account('assets@bphs.local', ASSET_ADMIN, assetPerson.id),
+    grievanceAdmin: await account('grievances@bphs.local', GRIEVANCE_ADMIN, grievancePerson.id),
     assetPerson,
     grievancePerson,
   }
@@ -27,7 +27,7 @@ async function workspaces() {
 
 const status = async (t: Awaited<ReturnType<typeof setup>>, cookie: string, method: string, path: string, body?: unknown) => (await t.call(method, path, { cookie, body })).status
 
-describe('workspace roles', () => {
+describe('workspace access', () => {
   it('keeps an Asset Admin out of Grievances, and a Grievance Admin out of Assets', async () => {
     const { t, assetAdmin, grievanceAdmin } = await workspaces()
     for (const path of ['/api/grievances', '/api/grievances/account-holders', '/api/grievances/categories', '/api/grievances/audit']) {
@@ -57,8 +57,10 @@ describe('workspace roles', () => {
     const { t, superAdmin, assetAdmin, grievanceAdmin } = await workspaces()
     const priya = async (cookie: string) => ((await t.call('GET', '/api/employees', { cookie })).data as { id: number }[]).find((row) => row.id === t.person.id)
     expect(await priya(superAdmin)).toMatchObject({ openGrievancesOwned: 1, deleteBlocked: expect.any(String) })
-    expect(await priya(assetAdmin)).toMatchObject({ openGrievancesOwned: 0, deleteBlocked: null })
-    expect(await priya(grievanceAdmin)).toMatchObject({ openGrievancesOwned: 1, assetsHeld: 0, digitalHeld: 0, hasHistory: false, deleteBlocked: null })
+    // Why delete is refused can name another workspace, so someone who cannot see them all is told less.
+    const hidden = 'Has records you cannot see. Archive instead; history is never deleted.'
+    expect(await priya(assetAdmin)).toMatchObject({ openGrievancesOwned: 0, deleteBlocked: hidden })
+    expect(await priya(grievanceAdmin)).toMatchObject({ openGrievancesOwned: 1, assetsHeld: 0, digitalHeld: 0, hasHistory: false, deleteBlocked: hidden })
     for (const [cookie, code] of [[assetAdmin, 'E-4001'], [grievanceAdmin, 'E-4002']] as const) {
       const made = await t.call('POST', '/api/employees', { cookie, body: { code, firstName: 'New', lastName: 'Starter' } })
       expect(made.status).toBe(201)

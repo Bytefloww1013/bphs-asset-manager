@@ -99,6 +99,13 @@
       "when": 1792077565286,
       "tag": "0013_maintenance",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792155819325,
+      "tag": "0014_section_access",
+      "breakpoints": true
     }
   ]
 }

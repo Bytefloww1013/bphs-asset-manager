@@ -7,7 +7,7 @@ import { employees, users } from '../db/schema.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { get } from '../lib/grievance-files.ts'
 import { nextGrievanceCode } from '../services/grievances.ts'
-import { setup } from './helpers.ts'
+import { ADMIN, setup } from './helpers.ts'
 
 describe('the grievances workspace', () => {
   it('answers 401 to a signed-out request and an empty list to either role while there are none', async () => {
@@ -666,9 +666,11 @@ describe('changing a grievance\'s status and owner', () => {
     const t = await setup()
     const { ines, femi, body } = grievanceFixture(t)
     t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
-    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, role: 'admin', mustChangePassword: false }).returning().get()
+    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, access: ADMIN, mustChangePassword: false }).returning().get()
     const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
     const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
+    // Both read Grievances and no more, so only owning it lets the owner change it.
+    t.sqlite.prepare(`update users set access = '{"grievances":"read"}' where id in (?, ?)`).run(t.adminUser.id, outsider.id)
     return { t, ines, femi, owner, superAdmin, other, made, path: `/api/grievances/${made.code}` }
   }
 
@@ -722,7 +724,7 @@ describe('changing a grievance\'s status and owner', () => {
 
   it('answers 403 to any other account, for a status, an owner or a void, whatever it sends', async () => {
     const { t, femi, other, owner, path } = await one()
-    const reason = 'Only the owner (Ines Carvalho) or a Super Admin can do this.'
+    const reason = 'Only the owner (Ines Carvalho) or someone with Edit access to Grievances can do this.'
     for (const [action, body] of [['status', { status: 'resolved' }], ['owner', { ownerId: femi.id }]] as const) {
       const res = await t.call('POST', `${path}/${action}`, { cookie: other, body })
       expect(res.status, action).toBe(403)
@@ -734,6 +736,18 @@ describe('changing a grievance\'s status and owner', () => {
     expect(statusOf(t)).toBe('open')
     expect(timeline(t)).toHaveLength(1)
     expect(audit(t)).toEqual([])
+  })
+
+  it('lets Edit in Grievances manage any grievance, Full void it, and Read print it', async () => {
+    const { t, femi, other, path } = await one()
+    expect((await t.call('POST', `${path}/exports`, { cookie: other, body: { format: 'pdf' } })).status).toBe(204)
+    t.sqlite.prepare(`update users set access = '{"grievances":"edit"}' where email = 'n.haddad@bphs.local'`).run()
+    expect((await t.call('POST', `${path}/status`, { cookie: other, body: { status: 'in_progress' } })).status).toBe(200)
+    expect((await t.call('POST', `${path}/owner`, { cookie: other, body: { ownerId: femi.id } })).status).toBe(200)
+    const voiding = await t.call('POST', `${path}/void`, { cookie: other, body: { reason: 'Entered twice.' } })
+    expect(voiding.data.message).toBe('You need Full access to Grievances for this.')
+    t.sqlite.prepare(`update users set access = '{"grievances":"full"}' where email = 'n.haddad@bphs.local'`).run()
+    expect((await t.call('POST', `${path}/void`, { cookie: other, body: { reason: 'Entered twice.' } })).data.status).toBe('voided')
   })
 
   it('leaves a grievance whose owner has no account to Super Admins', async () => {
@@ -752,7 +766,7 @@ describe('changing a grievance\'s status and owner', () => {
     expect(audit(t)).toEqual([{ action: 'owner', entity_type: 'grievance', details: 'GR-2026-0001 · Shift swaps refused without a reason · Owner: Ines Carvalho → Femi Adeyemi' }])
     const back = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: ines.id } })
     expect(back.status).toBe(403)
-    expect(back.data.message).toBe('Only the owner (Femi Adeyemi) or a Super Admin can do this.')
+    expect(back.data.message).toBe('Only the owner (Femi Adeyemi) or someone with Edit access to Grievances can do this.')
     expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'resolved' } })).status).toBe(403)
   })
 
@@ -803,10 +817,12 @@ describe('editing a grievance', () => {
     const t = await setup()
     const { dana, ines, femi, body } = grievanceFixture(t)
     t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
-    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, role: 'admin', mustChangePassword: false }).returning().get()
+    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, access: ADMIN, mustChangePassword: false }).returning().get()
     const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
     const { ownerId: _, ...fields } = { ...body, ownerId: ines.id }
     const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
+    // Both read Grievances and no more, so only owning it lets the owner change it.
+    t.sqlite.prepare(`update users set access = '{"grievances":"read"}' where id in (?, ?)`).run(t.adminUser.id, outsider.id)
     const edit = { ...fields, version: 1, reason: 'The title named the wrong month.' }
     return { t, dana, ines, femi, owner, superAdmin, other, made, edit, path: `/api/grievances/${made.code}` }
   }
@@ -853,7 +869,7 @@ describe('editing a grievance', () => {
     const { t, other, edit, path } = await one()
     const res = await t.call('PATCH', path, { cookie: other, body: { ...edit, title: 'Changed' } })
     expect(res.status).toBe(403)
-    expect(res.data.message).toBe('Only the owner (Ines Carvalho) or a Super Admin can do this.')
+    expect(res.data.message).toBe('Only the owner (Ines Carvalho) or someone with Edit access to Grievances can do this.')
     expect((await t.call('PATCH', path, { body: { ...edit, title: 'Changed' } })).status).toBe(401)
     expect(stored(t)).toEqual({ title: 'Shift swaps refused without a reason', version: 1 })
     expect(timeline(t)).toHaveLength(1)

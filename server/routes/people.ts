@@ -6,7 +6,7 @@ import {
   userUpdateSchema,
 } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
-import { intParam, json, requirePermission, type Env } from '../http.ts'
+import { intParam, json, requireFull, type Env } from '../http.ts'
 import {
   createEmployee,
   deleteEmployee,
@@ -20,21 +20,21 @@ import { clearLock, createUser, listUsers, resetPassword, setActive, updateUser 
 export function employeeRoutes(db: Db) {
   const app = new Hono<Env>()
 
-  // Employees serve both workspaces; Archive, Restore and Delete are a Super Admin's, who sees every count.
-  app.get('/', (c) => c.json(listEmployees(db).map((row) => employeeFor(c.get('user').role, row))))
+  // Employees serve every workspace, so anyone may list them; Archive, Restore and Delete need Full.
+  app.get('/', (c) => c.json(listEmployees(db).map((row) => employeeFor(c.get('user'), row))))
   app.post('/', json(employeeCreateSchema), (c) =>
-    c.json(employeeFor(c.get('user').role, createEmployee(db, c.get('user'), c.req.valid('json'))), 201),
+    c.json(employeeFor(c.get('user'), createEmployee(db, c.get('user'), c.req.valid('json'))), 201),
   )
   app.patch('/:id', json(employeeUpdateSchema), (c) =>
-    c.json(employeeFor(c.get('user').role, updateEmployee(db, c.get('user'), intParam(c, 'id'), c.req.valid('json')))),
+    c.json(employeeFor(c.get('user'), updateEmployee(db, c.get('user'), intParam(c, 'id'), c.req.valid('json')))),
   )
-  app.post('/:id/archive', requirePermission('employee.archive'), (c) =>
-    c.json(setEmployeeArchived(db, c.get('user'), intParam(c, 'id'), true)),
+  app.post('/:id/archive', requireFull('employees'), (c) =>
+    c.json(employeeFor(c.get('user'), setEmployeeArchived(db, c.get('user'), intParam(c, 'id'), true))),
   )
-  app.post('/:id/restore', requirePermission('employee.archive'), (c) =>
-    c.json(setEmployeeArchived(db, c.get('user'), intParam(c, 'id'), false)),
+  app.post('/:id/restore', requireFull('employees'), (c) =>
+    c.json(employeeFor(c.get('user'), setEmployeeArchived(db, c.get('user'), intParam(c, 'id'), false))),
   )
-  app.delete('/:id', requirePermission('record.delete'), (c) => {
+  app.delete('/:id', requireFull('employees'), (c) => {
     deleteEmployee(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
@@ -42,7 +42,7 @@ export function employeeRoutes(db: Db) {
   return app
 }
 
-/** Super Admin only (mounted behind requirePermission('users.manage')). */
+/** Super Admin only (mounted behind requireSuperAdmin). */
 export function userRoutes(db: Db) {
   const app = new Hono<Env>()
 

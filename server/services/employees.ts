@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
-import { WORKSPACES, type Role } from '../../shared/constants.ts'
-import { canUseWorkspace } from '../../shared/permissions.ts'
+import { WORKSPACES } from '../../shared/constants.ts'
+import { canUseWorkspace, type Grantee } from '../../shared/permissions.ts'
 import type { EmployeeCreateInput, EmployeeUpdateInput } from '../../shared/schemas.ts'
 import type { EmployeeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -81,17 +81,18 @@ const listRaw = (db: DbLike, id?: number) =>
       group by e.id
       order by e.last_name collate nocase, e.first_name collate nocase`)
 
-/** An employee as this role may see them: what they hold or own in a workspace the role is not in reads as nothing. */
-export function employeeFor(role: Role, row: EmployeeRow): EmployeeRow {
-  const assets = canUseWorkspace(role, 'assets')
-  const grievances = canUseWorkspace(role, 'grievances')
-  if (WORKSPACES.every((workspace) => canUseWorkspace(role, workspace))) return row
+const seesEverything = (user: Grantee) => WORKSPACES.every((workspace) => canUseWorkspace(user, workspace))
+/** Why delete is refused, to someone who cannot see every workspace: the reason itself can name any of them, or an account. */
+const HIDDEN_BLOCK = 'Has records you cannot see. Archive instead; history is never deleted.'
+
+/** An employee as this account may see them: what they hold or own in a workspace it cannot see reads as nothing. */
+export function employeeFor(user: Grantee, row: EmployeeRow): EmployeeRow {
+  if (seesEverything(user)) return row
   return {
     ...row,
-    ...(assets ? {} : { assetsHeld: 0, digitalHeld: 0, hasHistory: false }),
-    ...(grievances ? {} : { openGrievancesOwned: 0 }),
-    // The reason can name either workspace, and deleting is a Super Admin's, who sees it.
-    deleteBlocked: null,
+    ...(canUseWorkspace(user, 'assets') ? {} : { assetsHeld: 0, digitalHeld: 0, hasHistory: false }),
+    ...(canUseWorkspace(user, 'grievances') ? {} : { openGrievancesOwned: 0 }),
+    deleteBlocked: row.deleteBlocked && HIDDEN_BLOCK,
   }
 }
 
@@ -191,7 +192,7 @@ export function deleteEmployee(db: Db, actor: Actor, id: number) {
     if (!raw) throw notFound('Employee')
     const current = toRow(raw)
     const blocked = deleteBlocked(raw)
-    if (blocked) throw conflict(blocked.code, `${current.name} cannot be deleted. ${blocked.reason}`)
+    if (blocked) throw conflict(blocked.code, `${current.name} cannot be deleted. ${seesEverything(actor) ? blocked.reason : HIDDEN_BLOCK}`)
     tx.delete(employees).where(eq(employees.id, id)).run()
     writeAudit(tx, actor, { action: 'delete', entityType: 'employee', entityId: id, details: `employee_id=${current.code}` })
   })
