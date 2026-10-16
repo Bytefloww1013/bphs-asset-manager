@@ -25,7 +25,8 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 ## Development requests
 
-- [ ] Show a maintenance request's Date, Noticed and Zoho time in US format (10/15/2026 12:40 PM). Zoho sends day first and has no setting for it. Built and checked locally; not yet deployed.
+- [x] Show a maintenance request's Date, Noticed and Zoho time in US format (10/15/2026 12:40 PM). Zoho sends day first and has no setting for it. Deployed 2026-10-16.
+- [x] Per-section access (None, Read, Edit or Full in Assets, Grievances, Maintenance and Employees) in place of roles. Deployed 2026-10-16.
 - [ ] _Add requests here._ Build and check each one locally, then redeploy with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first.
 
 ## Maybe
@@ -36,3 +37,4 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 - 2026-10-15: first deploy to the VPS at 50.6.205.113. HTTPS with automatic renewal, nightly local backups.
 - 2026-10-15: SSH is key-only, except the host's web console at 50.87.241.21, which still signs in with a password (`/etc/ssh/sshd_config.d/10-keys-only.conf`).
+- 2026-10-16: deployed `f433cbc` (section access and US maintenance dates) over `3e31bab`. Both accounts stayed Super Admin and every table kept its rows. Pre-deploy backup: `/srv/backups/bphs/bphs-20261016-133431.sqlite`.
