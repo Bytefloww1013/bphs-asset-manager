@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -318,15 +318,17 @@ const entryText = {
   body: z.string().max(BODY_HTML_MAX, 'This is too long').default(''),
 }
 
+/** An instant, as ISO text. The form gives it in local time and the page converts it. */
+const occurredAt = z.iso
+  .datetime({ offset: true, error: 'Enter the date and time it happened' })
+  .refine((value) => Date.parse(value) <= Date.now() + CLOCK_SLACK_MS, 'This cannot be in the future')
+
 export const grievanceEntryCreateSchema = z.discriminatedUnion(
   'kind',
   [
     z.object({
       kind: z.enum(['action', 'event']),
-      /** An instant, as ISO text. The form gives it in local time and the page converts it. */
-      occurredAt: z.iso
-        .datetime({ offset: true, error: 'Enter the date and time it happened' })
-        .refine((value) => Date.parse(value) <= Date.now() + CLOCK_SLACK_MS, 'This cannot be in the future'),
+      occurredAt,
       ...entryText,
     }),
     // A correction happens when it is written, so it is not asked when; it says which entry it corrects, by number.
@@ -346,6 +348,53 @@ export const grievanceListQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
 })
 export type GrievanceListQuery = z.infer<typeof grievanceListQuerySchema>
+
+// ---- Administrative Reviews ---------------------------------------------------------
+export const REVIEW_SUMMARY_MAX = 300
+export const REVIEW_FINDINGS_MAX = 2000
+
+const reviewFields = {
+  title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
+  summary: requiredText(REVIEW_SUMMARY_MAX, 'Summary'),
+  reviewDate: calendarDate('review date').refine((value) => value <= localToday(), 'The review date cannot be in the future'),
+  reviewerId: z.number({ error: 'Choose who conducted the review' }).int().positive(),
+  employeeId: z.number({ error: 'Choose the employee reviewed' }).int().positive(),
+  findings: z.string().trim().max(REVIEW_FINDINGS_MAX, tooLong('Findings', REVIEW_FINDINGS_MAX)).default(''),
+  /** The Review body as HTML from the editor, or nothing yet. The server sanitises it and never stores what it was sent. */
+  body: z.string().max(BODY_HTML_MAX, 'The review body is too long').default(''),
+}
+
+const notTheReviewer = (value: { reviewerId: number; employeeId: number }, ctx: z.RefinementCtx) => {
+  if (value.reviewerId === value.employeeId) ctx.addIssue({ code: 'custom', path: ['employeeId'], message: 'The employee reviewed cannot also be the reviewer' })
+}
+
+export const reviewCreateSchema = z.object(reviewFields).superRefine(notTheReviewer)
+export type ReviewCreateInput = z.infer<typeof reviewCreateSchema>
+
+/** An edit: every field, and the version the editor loaded, so that a save made over someone else's is refused. */
+export const reviewUpdateSchema = z.object({ ...reviewFields, version: z.number().int().positive() }).superRefine(notTheReviewer)
+export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>
+
+export const reviewEntryCreateSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.object({ kind: z.literal('update'), occurredAt, ...entryText }),
+    z.object({ kind: z.literal('correction'), correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(), ...entryText }),
+  ],
+  { error: 'Choose Update or Correction' },
+)
+export type ReviewEntryCreateInput = z.infer<typeof reviewEntryCreateSchema>
+
+// `from` and `to` are days, both inclusive, compared with the review date.
+export const reviewListQuerySchema = z.object({
+  status: z.enum([...REVIEW_STATUSES, 'all']).default('all'),
+  reviewer: z.coerce.number().int().positive().optional(),
+  employee: z.coerce.number().int().positive().optional(),
+  from: calendarDate('start date').optional(),
+  to: calendarDate('end date').optional(),
+  q: z.string().trim().max(100).optional(),
+})
+export type ReviewListQuery = z.infer<typeof reviewListQuerySchema>
 
 // ---- Users ------------------------------------------------------------------------
 /** None is left out rather than stored. */

@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
 import type { Grantee } from './permissions.ts'
 
 // ---- Auth ---------------------------------------------------------------
@@ -363,6 +363,62 @@ export interface GrievanceAttachment {
   /** Set when a Super Admin took it back as added by mistake: it can no longer be downloaded. */
   withdrawnAt: string | null
   withdrawnReason: string | null
+}
+
+// ---- Administrative Reviews ---------------------------------------------
+/** Someone named on a review. They stay named after they are archived. */
+export type ReviewPerson = GrievancePerson
+
+export interface ReviewDetail {
+  id: number
+  /** AR-2026-0001 */
+  code: string
+  title: string
+  summary: string
+  /** Plain text, several lines. */
+  findings: string
+  /** Sanitised by the server; the only form of the Review body a page may display. Empty when none was written. */
+  bodyHtml: string
+  /** `YYYY-MM-DD` */
+  reviewDate: string
+  status: ReviewStatus
+  employee: ReviewPerson
+  reviewer: ReviewPerson
+  version: number
+  /** The account that entered it, by name, or null once that account is gone. */
+  recordedBy: string | null
+  createdAt: string
+  lastActivityAt: string
+  completedAt: string | null
+}
+
+/** One entry on a review's history, in the shape a grievance's takes. Nothing here can be changed once it is written. */
+export type ReviewEntry = Omit<GrievanceEntry, 'kind'> & { kind: ReviewEntryKind }
+
+/** A review as the list shows it. */
+export interface ReviewRow {
+  id: number
+  code: string
+  title: string
+  summary: string
+  reviewDate: string
+  status: ReviewStatus
+  employee: ReviewPerson
+  reviewer: ReviewPerson
+  /** Completed CAPs, out of every CAP that was not cancelled. */
+  caps: { done: number; total: number }
+  /** The earliest due date of a CAP still to be done, or null. */
+  nextDue: string | null
+  lastActivityAt: string
+}
+
+export interface ReviewList {
+  rows: ReviewRow[]
+  /** How many reviews match the other filters in each status, and in all of them, whichever status was asked for. */
+  counts: Record<ReviewStatus | 'all', number>
+  /** Everyone who reviewed, and everyone reviewed, on a review the account can see, in name order: what the filters offer. */
+  reviewers: ReviewPerson[]
+  employees: ReviewPerson[]
 }
 
 export interface ConditionRatingRow {
