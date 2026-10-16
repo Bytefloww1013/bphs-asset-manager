@@ -99,7 +99,7 @@ Three workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 | --- | --- |
 | Grievances: status tabs, filters, search | `/grievances` |
 | New grievance, with files | `/grievances/new` |
-| Grievance detail: facts, body, files, timeline, status, owner, void, Excel workbook | `/grievances/GR-2026-0001` |
+| Grievance detail: facts, body, files, timeline, status, owner, void, case file | `/grievances/GR-2026-0001` |
 | Edit grievance (needs a reason; earlier versions are kept) | `/grievances/GR-2026-0001/edit` |
 | Earlier versions | `/grievances/GR-2026-0001/versions` |
 | Add an action, event or correction, with files | `/grievances/GR-2026-0001/entries/new` |
@@ -131,7 +131,7 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 - A grievance gets its ID from the system (`GR-2026-0001`), and each entry on its timeline one of its own (`GR-2026-0001-E01`). Entries, earlier versions and file contents are never changed or deleted, in the app **and** by triggers in the database; a mistake is fixed by a correction entry linked to it. Status changes, new owners, edits and files add automatic entries.
 - Only the owner's account or a Super Admin can edit a grievance, change its status or give it a new owner; voiding a grievance and withdrawing a file are Super Admin only. A Closed or Voided grievance takes no new entries or files. An edit made from an older version than the one saved is refused.
 - Grievance files: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by content, up to 10 MB each and 10 at a time, stored inside the database. Downloads are always a file to save, never shown in the page.
-- The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download, print and workbook export, by ID, title and filename only, never body text. The case file prints, and the workbook downloads, only after that entry is written.
+- The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download and print, by ID, title and filename only, never body text. The case file prints only after that entry is written.
 - A maintenance request gets its ID from the system (`MR-0001`) and starts Not Started. Choosing an employee dispatches it; clearing the employee on a Dispatched request returns it to Not Started. Statuses are Not Started, Dispatched, On Hold, Rejected and Finished. Every dispatch, status change and note adds a line to its timeline, and a delete (Super Admin, after a confirmation) is recorded in the Audit Log by ID only. An employee dispatched on a request can be archived but not deleted.
 - The webhook needs the shared secret in `X-Webhook-Secret` and a non-empty `description`; every other field may be missing, over-long text is cut rather than refused (Zoho does not retry), and the same entry sent twice (same email and Added Time) is stored once.
 - Access: each account has a level in each of Assets, Grievances, Maintenance and Employees. **None** hides the section, **Read** sees it, **Edit** also adds and changes records, **Full** also deletes, archives, voids and withdraws. **Super Admin** is Full everywhere, including sections added later, and is the only way to manage accounts. The owner of a grievance can edit it, change its status and hand it on with Read; Grievances Edit can do that to any grievance. Employees are shared: every account can choose them in a form, Employees None only hides the Employees page, and each workspace shows only its own counts.

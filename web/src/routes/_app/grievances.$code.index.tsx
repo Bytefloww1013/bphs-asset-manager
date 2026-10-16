@@ -1,22 +1,20 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, FileSpreadsheet, FileText, Plus } from 'lucide-react'
+import { ChevronLeft, FileText, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { grievanceEntryCode } from '@shared/constants.ts'
 import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
-import { Button, buttonStyles } from '@/components/ui/button.tsx'
+import { buttonStyles } from '@/components/ui/button.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { AttachFiles, AttachmentList } from '@/features/grievances/files.tsx'
-import { useWrite } from '@/features/common/hooks.ts'
 import { GrievanceActions } from '@/features/grievances/manage.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
-import { downloadGrievanceWorkbook } from '@/features/grievances/workbook.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { useDenied } from '@/lib/session.ts'
 import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
@@ -65,8 +63,6 @@ function GrievancePage() {
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
   const { data: files } = useQuery(grievanceAttachmentsQuery(code))
-  const queryClient = useQueryClient()
-  const workbook = useWrite(() => downloadGrievanceWorkbook(queryClient, code))
   useGrievancePageTitle(grievance?.code ?? code.toUpperCase())
   const readOnly = useDenied('grievances', 'edit')
   if (!grievance || !entries || !files) return null
@@ -92,9 +88,6 @@ function GrievancePage() {
           <Link to="/grievances/$code/case-file" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
             <FileText className="size-4" aria-hidden /> Case file
           </Link>
-          <Button icon={<FileSpreadsheet className="size-4" aria-hidden />} loading={workbook.isPending} onClick={() => workbook.mutate(undefined)}>
-            Excel
-          </Button>
         </div>
       </div>
 
