@@ -10,8 +10,8 @@ import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
-import { AttachmentList } from '@/features/grievances/files.tsx'
-import { EntryMarker } from '@/features/grievances/timeline.tsx'
+import { AttachmentList } from '@/features/common/files.tsx'
+import { EntryMarker } from '@/features/common/timeline.tsx'
 import { formatDateTime } from '@/lib/format.ts'
 import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery } from '@/lib/queries.ts'
 import { useDenied } from '@/lib/session.ts'
@@ -169,7 +169,7 @@ function EntryPage() {
       {files.length > 0 && (
         <Panel>
           <PanelHeader title="Files" description="Added with this entry. Each one downloads to be opened on your computer." className="border-b border-line" />
-          <AttachmentList code={grievance.code} files={files} sealed={grievance.status === 'closed' || grievance.status === 'voided'} />
+          <AttachmentList section="grievances" code={grievance.code} files={files} sealed={grievance.status === 'closed' || grievance.status === 'voided'} />
         </Panel>
       )}
 

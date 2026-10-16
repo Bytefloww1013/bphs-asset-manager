@@ -16,6 +16,13 @@ import { useDenied } from '@/lib/session.ts'
 const ACCEPT = Object.keys(ATTACHMENT_TYPES).map((extension) => `.${extension}`).join(',')
 const MB = 1024 * 1024
 
+/** The workspaces whose records take files: what one record is called, and how its entries are numbered. Each record's API path is `/<section>/<code>`. */
+const RECORDS = {
+  grievances: { noun: 'grievance', entryCode: grievanceEntryCode },
+}
+type RecordSection = keyof typeof RECORDS
+const recordPath = (section: RecordSection, code: string) => `/${section}/${encodeURIComponent(code)}`
+
 export const FILES_HINT = `PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, up to ${ATTACHMENT_MAX_BYTES / MB} MB each and ${ATTACHMENTS_PER_REQUEST} at a time. Once saved, a file cannot be changed or removed.`
 
 export const fileSize = (bytes: number) => (bytes < MB ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / MB).toFixed(1)} MB`)
@@ -24,7 +31,7 @@ export const fileSize = (bytes: number) => (bytes < MB ? `${Math.max(1, Math.rou
 export function filesProblem(files: File[]): string | null {
   if (files.length > ATTACHMENTS_PER_REQUEST) return `Attach at most ${ATTACHMENTS_PER_REQUEST} files at a time.`
   for (const file of files) {
-    if (!Object.hasOwn(ATTACHMENT_TYPES, fileExtension(file.name))) return `${file.name} is not a file a grievance takes: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML.`
+    if (!Object.hasOwn(ATTACHMENT_TYPES, fileExtension(file.name))) return `${file.name} is not a type that can be attached: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML.`
     if (file.size > ATTACHMENT_MAX_BYTES) return `${file.name} is larger than ${ATTACHMENT_MAX_BYTES / MB} MB.`
     if (file.size === 0) return `${file.name} is empty.`
   }
@@ -87,10 +94,10 @@ export function FilePicker({ value, onChange, disabled, ...rest }: FilePickerPro
   )
 }
 
-/** Adds files to a grievance on their own: the server records them on its timeline as an entry of their own. */
-export function AttachFiles({ code }: { code: string }) {
+/** Adds files to a record on their own: the server records them on its timeline as an entry of their own. */
+export function AttachFiles({ section, code }: { section: RecordSection; code: string }) {
   const toast = useToast()
-  const attach = useWrite((files: File[]) => api.post<GrievanceAttachment[]>(`/grievances/${encodeURIComponent(code)}/attachments`, withFiles({}, files)), {
+  const attach = useWrite((files: File[]) => api.post<GrievanceAttachment[]>(`${recordPath(section, code)}/attachments`, withFiles({}, files)), {
     success: (saved) => `${plural(saved.length, 'file')} attached`,
   })
   return (
@@ -117,11 +124,11 @@ export function AttachFiles({ code }: { code: string }) {
 }
 
 /**
- * A grievance's files, or one entry's. Each downloads as a file to save; the page never shows one. A withdrawn file stays on the
+ * A record's files, or one entry's. Each downloads as a file to save; the page never shows one. A withdrawn file stays on the
  * list, with the reason, but no longer downloads.
  */
-export function AttachmentList({ code, files, sealed }: { code: string; files: GrievanceAttachment[]; sealed: boolean }) {
-  const noWithdraw = useDenied('grievances', 'full')
+export function AttachmentList({ section, code, files, sealed }: { section: RecordSection; code: string; files: GrievanceAttachment[]; sealed: boolean }) {
+  const noWithdraw = useDenied(section, 'full')
   const [withdrawing, setWithdrawing] = useState<GrievanceAttachment | null>(null)
   return (
     <>
@@ -134,7 +141,7 @@ export function AttachmentList({ code, files, sealed }: { code: string; files: G
                 {file.withdrawnAt ? (
                   <span className="text-ink-3 line-through [overflow-wrap:anywhere]">{file.filename}</span>
                 ) : (
-                  <a href={`/api/grievances/${encodeURIComponent(code)}/attachments/${file.id}`} download className="text-accent hover:underline [overflow-wrap:anywhere]">
+                  <a href={`/api${recordPath(section, code)}/attachments/${file.id}`} download className="text-accent hover:underline [overflow-wrap:anywhere]">
                     {file.filename}
                   </a>
                 )}
@@ -142,7 +149,7 @@ export function AttachmentList({ code, files, sealed }: { code: string; files: G
               </div>
               <div className="mt-0.5 text-xs text-ink-3">
                 {fileSize(file.size)} · {file.uploadedBy} · {formatDateTime(file.uploadedAt)}
-                {file.entrySeq !== null && <> · with {grievanceEntryCode(file.entrySeq)}</>}
+                {file.entrySeq !== null && <> · with {RECORDS[section].entryCode(file.entrySeq)}</>}
               </div>
               {file.withdrawnAt && (
                 <p className="mt-1 text-xs text-ink-2 [overflow-wrap:anywhere]">
@@ -158,16 +165,16 @@ export function AttachmentList({ code, files, sealed }: { code: string; files: G
           </li>
         ))}
       </ul>
-      {withdrawing && <WithdrawSheet code={code} file={withdrawing} onClose={() => setWithdrawing(null)} />}
+      {withdrawing && <WithdrawSheet section={section} code={code} file={withdrawing} onClose={() => setWithdrawing(null)} />}
     </>
   )
 }
 
-function WithdrawSheet({ code, file, onClose }: { code: string; file: GrievanceAttachment; onClose: () => void }) {
+function WithdrawSheet({ section, code, file, onClose }: { section: RecordSection; code: string; file: GrievanceAttachment; onClose: () => void }) {
   const [reason, setReason] = useState('')
   const [missing, setMissing] = useState<string>()
   const [error, setError] = useState<ApiError | null>(null)
-  const withdraw = useWrite((body: { reason: string }) => api.post<GrievanceAttachment>(`/grievances/${encodeURIComponent(code)}/attachments/${file.id}/withdraw`, body), {
+  const withdraw = useWrite((body: { reason: string }) => api.post<GrievanceAttachment>(`${recordPath(section, code)}/attachments/${file.id}/withdraw`, body), {
     silent: true,
     success: (withdrawn) => `${withdrawn.filename} withdrawn`,
   })
@@ -215,7 +222,7 @@ function WithdrawSheet({ code, file, onClose }: { code: string; file: GrievanceA
           </Alert>
         )}
         <Alert tone="warn" title="This cannot be undone">
-          A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the grievance. Use it for a file added by mistake.
+          A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the {RECORDS[section].noun}. Use it for a file added by mistake.
         </Alert>
         <Field label="Reason" hint="Shown on the timeline." error={missing ?? error?.fields.reason}>
           <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />

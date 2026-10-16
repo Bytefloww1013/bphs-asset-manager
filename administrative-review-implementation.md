@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Phase 1 built** (slices 1.1 to 1.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Phase 2 built** (slices 1.1 to 2.2). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -17,8 +17,8 @@ A slice is ticked when it is finished and committed.
 - [x] 1.1 "Read Only" in place of "Read"
 - [x] 1.2 The "i" button beside each section's levels
 - [x] 1.3 Every account linked to an employee
-- [ ] 2.1 Shared pieces out of Grievances
-- [ ] 2.2 Workspace, section and audit writer
+- [x] 2.1 Shared pieces out of Grievances
+- [x] 2.2 Workspace and section
 - [ ] 3.1 Review data, create and detail
 - [ ] 3.2 History, edit and updates
 - [ ] 3.3 Browse
@@ -121,12 +121,15 @@ The "i" button for this section shows a shorter version of this table (slice 2.2
   - `POST /api/reviews` (create a review) needs Edit.
   - Every write under `/:code` needs only Read Only, as the grievance routes an owner may use do. The service then decides with `canManageReview`.
   - Void and withdraw also have `requireFull('reviews')`.
+
+  Slice 2.2 gates the whole of `/api/reviews` by method alone (Read Only to read, Edit to write). The Read Only exception for writes under `/:code` comes with `canManageReview` in slice 3.2, the first slice with such a write.
 - **`canManageReview(user, reviewerEmployeeId)`** in `shared/permissions.ts` makes that decision for both the server and the pages. It is a copy of `canManageGrievance`: Edit in Reviews, or the account linked to the reviewer. `reviewManageReason(name)` gives the text shown on a disabled button: "Only the reviewer (name) or someone with Edit access to Administrative Reviews can do this."
 
 ### What adding a workspace touches
 
 - `shared/constants.ts`: `'reviews'` is added to `WORKSPACES`, labelled "Administrative Reviews". `SECTIONS` and `SECTION_LABEL` pick it up from there, so the Users sheets get a row for it with no other change.
-- `shared/permissions.ts`: the linked-account rule in `levelOf`, and `canManageReview` (above).
+- `shared/permissions.ts`: the linked-account rule in `levelOf` (slice 2.2), and `canManageReview` (above, slice 3.2). `Grantee` has optional `employeeId` and `firstAccount`; they are left out where only saved levels are judged, as when the Users sheet checks an account has somewhere to land.
+- `server/services/auth.ts`: `firstAccountId` moved here from `users.ts`, and the session user carries `firstAccount`.
 - `server/services/users.ts`: the message in `assertWorkspace` names the workspaces by hand ("Assets, Grievances or Maintenance"). It is changed to build the list from `WORKSPACE_LABEL`.
 - `web/src/lib/workspace.ts`: `WORKSPACE_HOME.reviews = '/reviews'`, and `reviews` is added to the `workspaceOf` pattern.
 - `web/src/components/shell/app-shell.tsx`:
@@ -146,12 +149,12 @@ The "i" button for this section shows a shorter version of this table (slice 2.2
 
 Each entry is added by the slice that builds its page, so the sidebar never links to a page that does not exist yet.
 
-## 5. Data (migrations 0015 to 0017)
+## 5. Data (migrations 0015 and 0016)
 
 All the tables are new and prefixed `review_`. No existing table changes. Times are stored in milliseconds, like the rest of the schema. Dates the user picks (review date and due date) are stored as `YYYY-MM-DD` text, so time zones cannot shift them.
 
-- **`review_audit_log`** (0015): the same columns as `grievance_audit_log`, plus `review_id`. That column lets an entry about a review be hidden from its employee reviewed. Append-only, enforced by a trigger.
-- **`reviews`** (0016):
+- **`review_audit_log`** (0015, with the review tables so that `review_id` can point at `reviews`): the same columns as `grievance_audit_log`, plus `review_id`. That column lets an entry about a review be hidden from its employee reviewed. Append-only, enforced by a trigger.
+- **`reviews`** (0015):
   - `id`
   - `code` (unique), plus `year` and `seq` (unique together)
   - `title` (up to 150 characters) and `summary` (up to 300)
@@ -162,7 +165,7 @@ All the tables are new and prefixed `review_`. No existing table changes. Times 
   - `reviewer_id` → employees. A check constraint makes it differ from `employee_id`.
   - `status` and `version`
   - `created_by_user_id`, `created_at`, `last_activity_at` and `completed_at`
-- **`review_caps`** (0016): each CAP as it is now.
+- **`review_caps`** (0015): each CAP as it is now.
   - `id`, `review_id`, and `seq` (unique per review)
   - `title` (up to 150 characters) and `short_description` (up to 300)
   - `body_html` and `body_text`, which hold the optional Details
@@ -173,11 +176,11 @@ All the tables are new and prefixed `review_`. No existing table changes. Times 
   - `completed_at`, `completed_by_user_id` and `completed_by_label`. A check constraint allows `completed_at` only when `status = 'completed'`.
 
   Every change to a CAP is also written to `review_entries`, which keeps what the CAP said before.
-- **`review_entries`** (0016): the history.
+- **`review_entries`** (0015): the history.
   - The same columns as `grievance_entries`, plus `cap_id`, which is null when an entry is about the review itself.
   - `kind` is `update`, `correction` or `system`.
   - Append-only, enforced by triggers. One more trigger refuses an entry whose CAP, or whose corrected entry, belongs to a different review.
-- **`review_attachments`** and **`review_attachment_data`** (0017): the same columns as the grievance pair, plus `cap_id`. The bytes are kept in the database, behind `server/lib/review-files.ts`, which is how grievance files are stored (G10 in the Grievances plan).
+- **`review_attachments`** and **`review_attachment_data`** (0016): the same columns as the grievance pair, plus `cap_id`. The bytes are kept in the database, behind `server/lib/review-files.ts`, which is how grievance files are stored (G10 in the Grievances plan).
 
 Every reference to an employee or a user is `ON DELETE RESTRICT`, as on grievances. The migrations are made the same way as 0008 to 0011: generated first, then the triggers added by hand.
 
@@ -278,34 +281,24 @@ This slice changes no behaviour. It moves the grievance pieces that Reviews will
 - **`server/lib/uploads.ts`:** `readUploads` and `Upload`, with their content checks, moved from `server/services/grievance-attachments.ts`. The refusal message no longer mentions grievances: "run.exe is not a type that can be attached: PDF, PNG, …". The test at `server/tests/grievances.test.ts:1178` is updated to match.
 - **`server/http.ts`:** `contentDisposition`, moved from `server/routes/grievances.ts`.
 - **`web/src/features/common/files.tsx`:** `FilePicker`, `filesProblem`, `withFiles`, `fileSize`, `FILES_HINT` and `AttachmentList`.
-  - `AttachmentList` takes its record's API path (`/grievances/GR-…` or `/reviews/AR-…`) and its section, instead of a grievance code. It needs the section to decide who may withdraw a file.
+  - `AttachFiles` and `AttachmentList` take their record's section and code, instead of a grievance code. The API path (`/grievances/GR-…` or `/reviews/AR-…`) is built from the two, and the section also decides who may withdraw a file. A `RECORDS` map in the same file names each section's record and numbers its entries; slice 5.1 adds Reviews to it.
   - `FILES_HINT` no longer mentions grievances either.
 - **`web/src/features/common/people-picker.tsx`:** `PeoplePicker`, moved without changes.
-- **`web/src/features/common/timeline.tsx`:** `Timeline` and `EntryMarker`. They now take, as props, the entry types to filter by and how to display an entry's number. Grievances passes Action and Event, as today. Reviews will pass CAP and Update. `TimelineSummary` stays with Grievances.
-- **The entry form:** the fields that Add entry and Add CAP share (Title, Short description, Details and Files) move to `web/src/features/common/entry-fields.tsx`, so a CAP is added the same way an Action is (Q8).
+- **`web/src/features/common/timeline.tsx`:** `Timeline` and `EntryMarker`. They now take, as props, the entry types to filter by and how to display an entry's number. Grievances passes Action and Event, as today. Reviews will pass CAP and Update. `TimelineSummary` stays with Grievances, in `web/src/features/grievances/timeline-summary.tsx`.
+- **The entry form:** the fields that Add entry and Add CAP share (Title, Short description, Details and Files) move out of the Add entry page (`grievances.$code.entries.new.tsx`) to `EntryFields` in `web/src/features/common/entry-fields.tsx`, so a CAP is added the same way an Action is (Q8).
 - **Done when:**
   - every grievance test passes, with the reworded refusal message;
   - the grievance detail page, entry pages, Add entry page and New grievance page look and behave exactly as before, compared in Playwright before and after the move.
 
-### Slice 2.2: Workspace, section and audit writer
+### Slice 2.2: Workspace and section
 
-- **The workspace itself:** everything listed under "What adding a workspace touches" in section 4, except the employee counts, which come in slice 6.2. That includes:
+- **The workspace itself:** everything listed under "What adding a workspace touches" in section 4, except `canManageReview` (slice 3.2) and the employee counts (slice 6.2). That includes:
   - the linked-account rule in `levelOf`;
   - `firstAccount` on the session.
-- **`web/src/routes/_app/reviews.tsx`:** the workspace's layout route. It sets the tab title ("Administrative Reviews · BPHS-Connect") and loads the workspace's code only when it is opened. `useReviewPageTitle` lives beside it. An empty Reviews page and its sidebar entry are added in this slice too.
-- **`LEVEL_HELP.reviews`:** the texts from section 4, shortened to one line per level. The Read Only line names the reviewer rule, and every line says a review is never shown to the employee it is about.
-- **The audit log:**
-  - Migration `0015_review_audit` creates `review_audit_log`.
-  - `server/lib/review-audit.ts` holds `writeReviewAudit`, which runs inside the same transaction as the change it records.
-  - `REVIEW_AUDIT_ACTIONS` are: create, update, status, void, entry, attach, withdraw, download and export.
-  - `entityType` is one of review, cap, entry or attachment.
-  - The details hold IDs and titles only, never the text of findings, the review body, CAP details or updates.
-- **The test that keeps the logs apart** gets a match in `server/tests/reviews.test.ts`:
-  - server files whose names start with `review` write only to the review log;
-  - no other file writes to it.
-
-  So every Reviews server file must keep the `review` prefix.
+- **`web/src/routes/_app/reviews.tsx`:** the workspace's layout route, a bare `<Outlet />` as for Grievances, so the workspace's code loads only when it is opened. Each page sets its own tab title with `useReviewPageTitle` from `web/src/features/reviews/page-title.ts` ("Administrative Reviews · BPHS-Connect", or the page's name in front). An empty Reviews page and its sidebar entry are added in this slice too.
+- **`LEVEL_HELP.reviews`:** the texts from section 4, shortened to one line per level. The Read Only line names the reviewer rule, that no one is shown a review of themselves, and that an unlinked account is shown none.
 - **`server/routes/reviews.ts`,** mounted at `/api/reviews`. For now it answers with an empty list.
+- **Moved to slice 3.1:** the review audit log, `writeReviewAudit` and the test that keeps the logs apart, so that `review_audit_log.review_id` can have a foreign key to `reviews` in the same migration.
 - **Done when:**
   - an account with Read Only in Reviews sees the workspace in the switcher and lands on an empty Reviews page;
   - an account with None does not see it, and gets 403 from the API;
@@ -318,9 +311,19 @@ This slice changes no behaviour. It moves the grievance pieces that Reviews will
 
 ### Slice 3.1: Review data, create and detail
 
-- **Migration `0016_reviews`:** creates `reviews`, `review_caps` and `review_entries` (section 5), with their append-only triggers.
+- **Migration `0015_reviews`:** creates `reviews`, `review_caps`, `review_entries` and `review_audit_log` (section 5), with their append-only triggers.
   - The CAP table is created now so that the list in slice 3.3 can count CAPs from the start.
   - Only phase 4 writes to it.
+- **The audit log** (moved here from slice 2.2):
+  - `server/lib/review-audit.ts` holds `writeReviewAudit`, which runs inside the same transaction as the change it records.
+  - `REVIEW_AUDIT_ACTIONS` are: create, update, status, void, entry, attach, withdraw, download and export.
+  - `entityType` is one of review, cap, entry or attachment.
+  - The details hold IDs and titles only, never the text of findings, the review body, CAP details or updates.
+- **The test that keeps the logs apart** gets a match in `server/tests/reviews.test.ts`:
+  - server files whose names start with `review` write only to the review log;
+  - no other file writes to it.
+
+  So every Reviews server file must keep the `review` prefix.
 - **IDs:** `nextReviewCode(tx)` returns `AR-<year>-<seq>`, the same way `nextGrievanceCode` works. `reviewCode()` and `reviewCapCode()` go in `shared/constants.ts`.
 - **Statuses:** `REVIEW_STATUSES` (`open`, `in_progress`, `completed`, `voided`) and `REVIEW_CAP_STATUSES` go in `shared/constants.ts` with their labels. The database checks both (Q3, Q4).
 - **`reviewsVisibleTo(user)`** (section 4) is written in this slice. The first review query uses it, and so does every query added after it.
@@ -341,6 +344,7 @@ This slice changes no behaviour. It moves the grievance pieces that Reviews will
 
 ### Slice 3.2: History, edit and updates
 
+- **`canManageReview` and `reviewManageReason`** (section 4) are added here, with the Read Only exception in `accessNeeded` for writes under `/:code`.
 - **The history:** `GET /api/reviews/:code/entries` returns the review's entries. The review page shows them with the shared `Timeline`, filtered by All, CAPs or Updates, with a switch to hide automatic entries. On wide screens the summary sits beside it.
 - **Edit:** `PATCH /api/reviews/:code` is allowed by `canManageReview`, so for Edit or the reviewer's account. It takes an `expectedVersion`. If someone else has saved in the meantime, the edit is refused with 409, as on grievances.
   - Each saved edit writes a system entry naming each changed field, as old → new.
@@ -420,7 +424,7 @@ Everything in this slice is allowed by `canManageReview`, so for Edit or the rev
 
 ### Slice 5.1: Storage and upload
 
-- **Migration `0017_review_attachments`:** the two file tables from section 5.
+- **Migration `0016_review_attachments`:** the two file tables from section 5.
 - **`server/lib/review-files.ts`:** `put` and `get`. This is the only code that reads or writes `review_attachment_data`.
 - **Uploads** go up as multipart and are checked by `readUploads` (slice 2.1), with the same types, sizes and counts as grievance files (Q9). Files are always optional (Q8). They can be added:
   - with a new CAP (`POST /:code/caps`);

@@ -4,10 +4,16 @@ import { ACCESS_LEVEL_LABEL, ACCESS_LEVELS, SECTION_LABEL, SECTIONS, WORKSPACES,
 export interface Grantee {
   access: Access
   superAdmin: boolean
+  /** Who the account is, which Reviews needs. Left out where only the saved levels are judged, as while access is being set. */
+  employeeId?: number | null
+  /** The account made on first run, the one account that need not be linked to an employee. */
+  firstAccount?: boolean
 }
 
 export function levelOf(user: Grantee | undefined | null, section: Section): AccessLevel {
   if (!user) return 'none'
+  // A review is hidden from the employee it is about, so an account that is nobody cannot be shown any (R9).
+  if (section === 'reviews' && user.employeeId === null && !user.firstAccount) return 'none'
   return user.superAdmin ? 'full' : (user.access[section] ?? 'none')
 }
 

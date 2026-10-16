@@ -9,6 +9,7 @@ export interface SessionUser extends Grantee {
   mustChangePassword: boolean
   /** Employee record this user is linked to; used to prefill "Assessed by". */
   employeeId: number | null
+  firstAccount: boolean
 }
 
 // ---- Reference data -----------------------------------------------------

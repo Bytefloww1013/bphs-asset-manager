@@ -22,6 +22,7 @@ async function workspaces() {
     grievanceAdmin: await account('grievances@bphs.local', GRIEVANCE_ADMIN, grievancePerson.id),
     assetPerson,
     grievancePerson,
+    account,
   }
 }
 
@@ -51,6 +52,16 @@ describe('workspace access', () => {
       expect(await status(t, cookie, 'GET', '/api/maintenance')).toBe(403)
       expect(await status(t, cookie, 'POST', '/api/maintenance', { firstName: 'A', location: 'B', description: 'C' })).toBe(403)
     }
+  })
+
+  it('opens Reviews with Read, and to no account that is not linked to an employee but the first', async () => {
+    const { t, superAdmin, assetAdmin, account } = await workspaces()
+    expect(await status(t, assetAdmin, 'GET', '/api/reviews')).toBe(403)
+    const reader = t.db.insert(employees).values({ code: 'E-3005', firstName: 'Reader', lastName: 'Tester' }).returning().get()
+    expect(await status(t, await account('reader@bphs.local', { reviews: 'read' }, reader.id), 'GET', '/api/reviews')).toBe(200)
+    expect(await status(t, await account('nobody@bphs.local', { reviews: 'full' }), 'GET', '/api/reviews')).toBe(403)
+    t.sqlite.prepare('update users set employee_id = null where id = ?').run(t.superUser.id)
+    expect(await status(t, superAdmin, 'GET', '/api/reviews')).toBe(200)
   })
 
   it('shows both the employees, each with only the counts of their own workspace', async () => {

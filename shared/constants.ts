@@ -1,7 +1,7 @@
 /** The app is separate workspaces behind one sign-in. A person is in one at a time, never looking at a mix. */
-export const WORKSPACES = ['assets', 'grievances', 'maintenance'] as const
+export const WORKSPACES = ['assets', 'grievances', 'maintenance', 'reviews'] as const
 export type Workspace = (typeof WORKSPACES)[number]
-export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances', maintenance: 'Maintenance' }
+export const WORKSPACE_LABEL: Record<Workspace, string> = { assets: 'Assets', grievances: 'Grievances', maintenance: 'Maintenance', reviews: 'Administrative Reviews' }
 
 /** What an account is given access to: every workspace, and Employees, which serves all of them. */
 export const SECTIONS = [...WORKSPACES, 'employees'] as const
@@ -92,7 +92,7 @@ export const grievanceEntryCode = (seq: number) => `E${String(seq).padStart(2, '
 /** Files on a grievance (G10): at most this large each, and at most this many in one request. */
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024
 export const ATTACHMENTS_PER_REQUEST = 10
-/** The files a grievance takes, by extension, and the type each is served as. The server checks the content as well. */
+/** The files that can be attached, by extension, and the type each is served as. The server checks the content as well. */
 export const ATTACHMENT_TYPES = {
   pdf: 'application/pdf',
   png: 'image/png',

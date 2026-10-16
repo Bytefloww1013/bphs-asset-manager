@@ -10,7 +10,8 @@ import { conflict, forbidden, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { plainToRichText, requireRichText } from '../lib/richtext.ts'
 import { appendGrievanceEntry, GRIEVANCE_RECORDED } from './grievance-entries.ts'
-import { saveAttachments, type Upload } from './grievance-attachments.ts'
+import type { Upload } from '../lib/uploads.ts'
+import { saveAttachments } from './grievance-attachments.ts'
 import { fullName } from './refs.ts'
 
 /**

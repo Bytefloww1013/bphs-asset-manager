@@ -113,7 +113,7 @@ describe('authentication', () => {
     await expect(signingIn).rejects.toMatchObject({ status: 401, code: 'invalid_credentials' })
     expect(t.db.select().from(sessions).all()).toHaveLength(0)
 
-    const changing = changePassword(t.db, t.adminUser, PASSWORD, 'Brand-new-1!', undefined)
+    const changing = changePassword(t.db, { ...t.adminUser, firstAccount: false }, PASSWORD, 'Brand-new-1!', undefined)
     reset(t.adminUser.id)
     await expect(changing).rejects.toMatchObject({ status: 409, code: 'password_changed' })
     expect(findUser(t.db, 'm.oyelaran@bphs.local')?.passwordHash).toBe('reset-by-admin')

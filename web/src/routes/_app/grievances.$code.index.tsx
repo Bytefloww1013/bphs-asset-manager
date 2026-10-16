@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronLeft, FileSpreadsheet, FileText, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { grievanceEntryCode } from '@shared/constants.ts'
+import { grievanceEntryCode, grievanceEntryKindLabel } from '@shared/constants.ts'
 import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
@@ -10,11 +10,12 @@ import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
-import { AttachFiles, AttachmentList } from '@/features/grievances/files.tsx'
+import { AttachFiles, AttachmentList } from '@/features/common/files.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { GrievanceActions } from '@/features/grievances/manage.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
-import { Timeline, TimelineSummary } from '@/features/grievances/timeline.tsx'
+import { Timeline } from '@/features/common/timeline.tsx'
+import { TimelineSummary } from '@/features/grievances/timeline-summary.tsx'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
 import { downloadGrievanceWorkbook } from '@/features/grievances/workbook.ts'
 import { formatDateTime } from '@/lib/format.ts'
@@ -145,7 +146,7 @@ function GrievancePage() {
       {files.length > 0 && (
         <Panel>
           <PanelHeader title="Files" description="Each one downloads to be opened on your computer. Downloads are logged." className="border-b border-line" />
-          <AttachmentList code={grievance.code} files={files} sealed={sealed} />
+          <AttachmentList section="grievances" code={grievance.code} files={files} sealed={sealed} />
         </Panel>
       )}
 
@@ -161,7 +162,7 @@ function GrievancePage() {
             actions={
               sealed || readOnly ? null : (
                 <>
-                  <AttachFiles code={grievance.code} />
+                  <AttachFiles section="grievances" code={grievance.code} />
                   <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('primary')}>
                     <Plus className="size-4" aria-hidden /> Add action or event
                   </Link>
@@ -172,6 +173,13 @@ function GrievancePage() {
           />
           <Timeline
             entries={entries}
+            filters={[
+              ['action', 'Actions'],
+              ['event', 'Events'],
+            ]}
+            kindLabel={grievanceEntryKindLabel}
+            entryCode={grievanceEntryCode}
+            orderKey="grievance-timeline-order"
             link={(entry, children) => (
               <Link to="/grievances/$code/entries/$seq" params={{ code: grievance.code, seq: grievanceEntryCode(entry.seq) }} className="hover:text-accent hover:underline">
                 {children}

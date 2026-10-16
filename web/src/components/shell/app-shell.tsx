@@ -18,6 +18,7 @@ import {
   PackageCheck,
   Scale,
   ScrollText,
+  ClipboardCheck,
   ShieldCheck,
   Tags,
   Users,
@@ -38,7 +39,7 @@ import { LogoMark, Wordmark } from '../ui/logo.tsx'
 import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -50,6 +51,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
   // The employee list stays readable to every picker; the page itself needs Employees.
   const employees = canAt(user, 'employees', 'read')
   if (workspace === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
+  if (workspace === 'reviews') return [{ heading: 'Records', items: [{ to: '/reviews', label: 'Reviews', icon: ClipboardCheck }] }]
   if (workspace === 'grievances') {
     return [
       {
@@ -128,7 +130,7 @@ function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
           ))}
         </nav>
       )}
-      {current === 'grievances' && (
+      {(current === 'grievances' || current === 'reviews') && (
         <p className={cn('flex items-center gap-1.5 px-1 text-xs font-medium text-workspace', both && 'pt-2.5')}>
           <Lock className="size-3.5" aria-hidden />
           Confidential

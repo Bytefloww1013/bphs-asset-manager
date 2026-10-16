@@ -1175,7 +1175,7 @@ describe('attaching files to a grievance', () => {
       expect(answer.message).toMatch(message)
       expect(answer.details.fields.files).toBe(answer.message)
     }
-    await refused(`${url}/attachments`, undefined, [new File(['MZ'], 'run.exe')], /run\.exe is not a file a grievance takes/)
+    await refused(`${url}/attachments`, undefined, [new File(['MZ'], 'run.exe')], /run\.exe is not a type that can be attached: PDF, PNG/)
     await refused(`${url}/attachments`, undefined, [txt('fake.pdf')], /fake\.pdf is not the PDF file its name says it is/)
     await refused(`${url}/attachments`, undefined, [new File([Buffer.from([0x89, 0x50, 0])], 'notes.txt')], /notes\.txt is not the TXT file/)
     await refused(`${url}/attachments`, undefined, [new File([], 'empty.txt')], /empty\.txt is empty/)

@@ -25,7 +25,16 @@ describe('access levels', () => {
 
   it('lists the workspaces an account can read, never Employees', () => {
     expect(workspacesOf(user({ grievances: 'read', employees: 'full' }))).toEqual(['grievances'])
-    expect(workspacesOf(user({}, null, true))).toEqual(['assets', 'grievances', 'maintenance'])
+    expect(workspacesOf(user({}, 7, true))).toEqual(['assets', 'grievances', 'maintenance', 'reviews'])
+  })
+
+  it('shows Reviews to no account that is not linked to an employee, but the first', () => {
+    expect(levelOf(user({ reviews: 'full' }, null, true), 'reviews')).toBe('none')
+    expect(levelOf(user({ assets: 'full' }, null), 'assets')).toBe('full')
+    expect(levelOf({ ...user({}, null, true), firstAccount: true }, 'reviews')).toBe('full')
+    expect(levelOf(user({ reviews: 'read' }, 7), 'reviews')).toBe('read')
+    // While access is being set there is nobody to judge yet, only the levels.
+    expect(levelOf({ access: { reviews: 'read' }, superAdmin: false }, 'reviews')).toBe('read')
   })
 
   it('describes access in words', () => {

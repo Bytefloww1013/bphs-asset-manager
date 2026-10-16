@@ -15,7 +15,8 @@ import {
 } from '../../shared/schemas.ts'
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
-import { formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
+import { readUploads } from '../lib/uploads.ts'
+import { contentDisposition, formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
 import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, recordGrievanceExport, voidGrievance } from '../services/grievances.ts'
 import {
   addGrievanceAttachments,
@@ -25,14 +26,9 @@ import {
   listGrievanceEntries,
   withdrawGrievanceAttachment,
 } from '../services/grievance-entries.ts'
-import { readUploads } from '../services/grievance-attachments.ts'
 import { listGrievanceVersions, updateGrievance } from '../services/grievance-versions.ts'
 import { listGrievanceAudit, listGrievanceAuditForExport } from '../services/grievance-audit.ts'
 import { createGrievanceCategory, deleteGrievanceCategory, listGrievanceCategories, updateGrievanceCategory } from '../services/grievance-categories.ts'
-
-/** Save as, under the file's own name: plain ASCII for old browsers, the exact name (RFC 5987) for the rest. */
-const contentDisposition = (filename: string) =>
-  `attachment; filename="${filename.replace(/[^ -~]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(filename).replace(/['()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`)}`
 
 export function grievanceRoutes(db: Db) {
   const app = new Hono<Env>()

@@ -22,6 +22,7 @@ import { digitalAssetRoutes } from './routes/digital-assets.ts'
 import { grievanceRoutes } from './routes/grievances.ts'
 import { importRoutes } from './routes/imports.ts'
 import { maintenanceRoutes } from './routes/maintenance.ts'
+import { reviewRoutes } from './routes/reviews.ts'
 import { programRoutes } from './routes/programs.ts'
 import { webhookRoutes } from './routes/webhooks.ts'
 
@@ -59,6 +60,7 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
     return ownerMayDo ? { section: 'grievances', level: 'read' } : at('grievances')
   }
   if (/^\/api\/maintenance(\/|$)/.test(path)) return at('maintenance')
+  if (/^\/api\/reviews(\/|$)/.test(path)) return at('reviews')
   return at('assets')
 }
 
@@ -127,6 +129,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/digital-assets', digitalAssetRoutes(db))
   api.route('/grievances', grievanceRoutes(db))
   api.route('/maintenance', maintenanceRoutes(db))
+  api.route('/reviews', reviewRoutes())
   api.route('/', listRoutes(db))
   api.use('/users/*', requireSuperAdmin)
   api.use('/users', requireSuperAdmin)

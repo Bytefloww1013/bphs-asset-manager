@@ -9,7 +9,8 @@ import { conflict, HttpError, invalid, notFound } from '../lib/errors.ts'
 import { writeGrievanceAudit } from '../lib/grievance-audit.ts'
 import { get } from '../lib/grievance-files.ts'
 import { plainToRichText, requireRichText, type RichText } from '../lib/richtext.ts'
-import { attachmentShape, saveAttachments, type Upload } from './grievance-attachments.ts'
+import type { Upload } from '../lib/uploads.ts'
+import { attachmentShape, saveAttachments } from './grievance-attachments.ts'
 
 // There is no update and no delete in this file, and there must never be: an entry is corrected by another entry.
 // The one update here is a file's withdrawal, which the database allows once and nothing else.

@@ -8,7 +8,7 @@ import { employees, users } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { generateOneTimePassword, hashPassword } from '../lib/password.ts'
-import { deleteUserSessions } from './auth.ts'
+import { deleteUserSessions, firstAccountId } from './auth.ts'
 import { fullName } from './refs.ts'
 
 function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
@@ -134,11 +134,6 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${current.email} · ${changes.join('; ')}` })
   })
   return toRow(requireUser(db, id))
-}
-
-/** The account made on first run. Accounts are deactivated, never deleted, so it keeps the lowest ID. It is the one account that may have no employee. */
-export function firstAccountId(db: DbLike): number | undefined {
-  return db.get<{ id: number | null }>(sql`select min(id) as id from users`)?.id ?? undefined
 }
 
 function activeSuperAdmins(db: DbLike): number {

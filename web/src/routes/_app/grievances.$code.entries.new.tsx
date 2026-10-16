@@ -3,16 +3,16 @@ import { createFileRoute, Link, useBlocker, useNavigate } from '@tanstack/react-
 import { ChevronLeft } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { grievanceEntryCode, grievanceStatusLabel } from '@shared/constants.ts'
-import { GRIEVANCE_SHORT_DESCRIPTION_MAX, GRIEVANCE_TITLE_MAX, grievanceEntryCreateSchema } from '@shared/schemas.ts'
+import { grievanceEntryCreateSchema } from '@shared/schemas.ts'
 import type { GrievanceEntry } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
-import { Field, Input, Select, Textarea } from '@/components/ui/form.tsx'
+import { Field, Input, Select } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
-import { RichTextEditor } from '@/components/ui/rich-text.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
-import { FilePicker, FILES_HINT, filesProblem, withFiles } from '@/features/grievances/files.tsx'
+import { BLANK_ENTRY, EntryFields, type EntryText } from '@/features/common/entry-fields.tsx'
+import { filesProblem, withFiles } from '@/features/common/files.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
@@ -38,8 +38,6 @@ const localNow = (now = new Date()) => `${now.getFullYear()}-${pad(now.getMonth(
 /** The instant a date-and-time input names, or nothing when it is empty or half filled in. */
 const instant = (local: string) => (local && !Number.isNaN(new Date(local).getTime()) ? new Date(local).toISOString() : undefined)
 
-const count = (text: string, max: number) => `${text.trim().length} of ${max} characters`
-
 const KIND_HINTS = { action: 'Something done about the grievance: a meeting held, a letter sent.', event: 'Something that happened: a reply received, a deadline passed.' }
 
 // As on New grievance, nothing typed here is kept in browser storage.
@@ -58,16 +56,13 @@ function NewEntryPage() {
 
   const [kind, setKind] = useState<'action' | 'event'>('action')
   const [occurredAt, setOccurredAt] = useState(localNow)
-  const [title, setTitle] = useState('')
-  const [shortDescription, setShortDescription] = useState('')
-  const [body, setBody] = useState('')
-  const [files, setFiles] = useState<File[]>([])
+  const [entry, setEntry] = useState(BLANK_ENTRY)
   const [problem, setProblem] = useState<{ message: string; fields: Record<string, string> } | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const saved = useRef(false)
 
   const save = useWrite((input: unknown) => api.post<GrievanceEntry>(`/grievances/${encodeURIComponent(code)}/entries`, input), { silent: true })
-  const dirty = Boolean(title.trim() || shortDescription.trim() || body || files.length)
+  const dirty = Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || entry.files.length)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
 
   if (!grievance || !entries) return null
@@ -81,7 +76,8 @@ function NewEntryPage() {
 
   async function commit() {
     setProblem(null)
-    const parsed = grievanceEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, title, shortDescription, body } : { kind, occurredAt: instant(occurredAt), title, shortDescription, body })
+    const { files, ...text } = entry
+    const parsed = grievanceEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, ...text } : { kind, occurredAt: instant(occurredAt), ...text })
     const filesWrong = filesProblem(files)
     if (!parsed.success || filesWrong)
       return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
@@ -96,12 +92,17 @@ function NewEntryPage() {
   }
 
   const error = (name: string) => problem?.fields[name] ?? null
+  const clear = (name: string) => setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
   const edit =
     <T,>(name: string, set: (value: T) => void) =>
     (value: T) => {
       set(value)
-      setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
+      clear(name)
     }
+  const change = <K extends keyof EntryText>(name: K, value: EntryText[K]) => {
+    setEntry((now) => ({ ...now, [name]: value }))
+    clear(name)
+  }
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -189,18 +190,12 @@ function NewEntryPage() {
                 </div>
               )}
 
-              <Field label="Title" hint={count(title, GRIEVANCE_TITLE_MAX)} error={error('title')}>
-                <Input value={title} onChange={(event) => edit('title', setTitle)(event.target.value)} autoComplete="off" autoFocus />
-              </Field>
-              <Field label="Short description" hint={`${correcting ? 'What was wrong and what is right, in one or two sentences.' : 'One or two sentences, shown on the timeline.'} ${count(shortDescription, GRIEVANCE_SHORT_DESCRIPTION_MAX)}`} error={error('shortDescription')}>
-                <Textarea rows={2} className="min-h-0" value={shortDescription} onChange={(event) => edit('shortDescription', setShortDescription)(event.target.value)} />
-              </Field>
-              <Field label="Details" hint="Optional. Anything the short description does not cover." error={error('body')}>
-                <RichTextEditor label="Details" onChange={edit('body', setBody)} />
-              </Field>
-              <Field label="Files" optional hint={FILES_HINT} error={error('files')}>
-                <FilePicker value={files} onChange={edit('files', setFiles)} />
-              </Field>
+              <EntryFields
+                value={entry}
+                onChange={change}
+                error={error}
+                shortDescriptionHint={correcting ? 'What was wrong and what is right, in one or two sentences.' : 'One or two sentences, shown on the timeline.'}
+              />
             </>
           )}
 

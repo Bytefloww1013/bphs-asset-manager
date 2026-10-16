@@ -11,6 +11,7 @@ import { hashPassword, verifyDecoy, verifyPassword } from '../lib/password.ts'
 
 export interface AuthUser extends Actor {
   mustChangePassword: boolean
+  firstAccount: boolean
 }
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
@@ -25,10 +26,16 @@ export function toSessionUser(user: AuthUser): SessionUser {
     superAdmin: user.superAdmin,
     mustChangePassword: user.mustChangePassword,
     employeeId: user.employeeId,
+    firstAccount: user.firstAccount,
   }
 }
 
-function toAuthUser(row: typeof users.$inferSelect): AuthUser {
+/** The account made on first run. Accounts are deactivated, never deleted, so it keeps the lowest ID. It is the one account that may have no employee. */
+export function firstAccountId(db: DbLike): number | undefined {
+  return db.get<{ id: number | null }>(sql`select min(id) as id from users`)?.id ?? undefined
+}
+
+function toAuthUser(db: DbLike, row: typeof users.$inferSelect): AuthUser {
   return {
     id: row.id,
     name: row.name,
@@ -36,6 +43,7 @@ function toAuthUser(row: typeof users.$inferSelect): AuthUser {
     access: row.access,
     superAdmin: row.superAdmin,
     employeeId: row.employeeId,
+    firstAccount: row.id === firstAccountId(db),
     mustChangePassword: row.mustChangePassword,
   }
 }
@@ -71,7 +79,7 @@ export function findSession(db: DbLike, token: string, now = new Date()): { user
     db.update(sessions).set({ lastSeenAt: now, expiresAt }).where(eq(sessions.id, id)).run()
     if (row.session.remember) extendedTo = expiresAt
   }
-  return { user: toAuthUser(row.user), extendedTo }
+  return { user: toAuthUser(db, row.user), extendedTo }
 }
 
 export function deleteSession(db: DbLike, token: string) {
@@ -153,7 +161,7 @@ export async function login(db: Db, email: string, password: string, remember = 
   if (!current || !current.isActive || current.passwordHash !== row.passwordHash) throw INVALID()
   if (current.lockedUntil && current.lockedUntil > now) throw LOCKED(current.lockedUntil)
 
-  const user = toAuthUser({ ...current, failedLogins: 0, lockedUntil: null })
+  const user = toAuthUser(db, { ...current, failedLogins: 0, lockedUntil: null })
   const session = db.transaction((tx) => {
     tx.update(users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: now }).where(eq(users.id, row.id)).run()
     writeAudit(tx, user, { action: 'sign_in', entityType: 'user', entityId: row.id, details: `${row.email} · signed in`, at: now })

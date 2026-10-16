@@ -4,10 +4,10 @@ import { WORKSPACES, WORKSPACE_LABEL, type Workspace } from '@shared/constants.t
 export { WORKSPACE_LABEL, type Workspace }
 
 /** Each workspace's first page. */
-export const WORKSPACE_HOME = { assets: '/', grievances: '/grievances', maintenance: '/maintenance' } as const satisfies Record<Workspace, string>
+export const WORKSPACE_HOME = { assets: '/', grievances: '/grievances', maintenance: '/maintenance', reviews: '/reviews' } as const satisfies Record<Workspace, string>
 
 /** The address decides the workspace, so a link, a reload and the back button always land on the right side. */
-export const workspaceOf = (pathname: string): Workspace => (/^\/(grievances|maintenance)(?:\/|$)/.exec(pathname)?.[1] as Workspace | undefined) ?? 'assets'
+export const workspaceOf = (pathname: string): Workspace => (/^\/(grievances|maintenance|reviews)(?:\/|$)/.exec(pathname)?.[1] as Workspace | undefined) ?? 'assets'
 
 export function useWorkspace(): Workspace {
   return useRouterState({ select: (state) => workspaceOf(state.location.pathname) })
