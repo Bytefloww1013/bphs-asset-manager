@@ -21,7 +21,7 @@ interface EntryFieldsProps {
   error: (name: keyof EntryText) => string | null
   /** What the short description is for. The character count follows it. */
   shortDescriptionHint: string
-  /** False where files cannot be added yet: review updates, until review files come. */
+  /** False where the form changes words only, as a CAP's edit does: files are added from the record's page. */
   files?: boolean
 }
 

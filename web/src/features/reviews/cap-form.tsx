@@ -12,6 +12,7 @@ import { DateInput, Field } from '@/components/ui/form.tsx'
 import { Mono, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { EntryFields, type EntryText } from '@/features/common/entry-fields.tsx'
+import { filesProblem, withFiles } from '@/features/common/files.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { ReviewStatusBadge } from '@/features/reviews/status.tsx'
 import { api } from '@/lib/api.ts'
@@ -48,7 +49,7 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
   const save = useWrite((input: unknown) => (was ? api.patch<ReviewCap>(`${path}/${was.seq}`, input) : api.post<ReviewCap>(path, input)), { silent: true })
   const dirty = was
     ? entry.title !== was.title || entry.shortDescription !== was.shortDescription || entry.body !== was.bodyHtml || responsible?.id !== was.responsible.id || dueDate !== (was.dueDate ?? '')
-    : Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || responsible || dueDate)
+    : Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || entry.files.length || responsible || dueDate)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
   const stale = problem?.code === 'stale_version'
   // Someone already responsible stays offered after they are archived; anyone newly named must be active.
@@ -61,13 +62,15 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
 
   async function commit() {
     setProblem(null)
-    const { files: _none, ...text } = entry
+    const { files, ...text } = entry
     // An empty date input is no due date, which the server takes as null.
     const fields = { ...text, responsibleId: responsible?.id, dueDate: dueDate || null }
     const parsed = was ? reviewCapUpdateSchema.safeParse({ ...fields, version: was.version }) : reviewCapCreateSchema.safeParse(fields)
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
+    const filesWrong = filesProblem(files)
+    if (!parsed.success || filesWrong)
+      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
     try {
-      const row = await save.mutateAsync(parsed.data)
+      const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
       toast({ title: `${reviewCapCode(row.seq)} ${was ? 'edited' : `added to ${review.code}`}`, description: row.title })
       await navigate({ to: '/reviews/$code/caps/$cap', params: { code: review.code, cap: reviewCapCode(row.seq) } })
@@ -127,7 +130,7 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
             )
           )}
 
-          <EntryFields value={entry} onChange={change} error={error} files={false} shortDescriptionHint="What is to be done, in one or two sentences, shown on the history and in Action items." />
+          <EntryFields value={entry} onChange={change} error={error} files={!was} shortDescriptionHint="What is to be done, in one or two sentences, shown on the history and in Action items." />
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Responsible" hint="The one employee who sees it through. Having an account is not needed." error={error('responsibleId')}>
               <Combobox

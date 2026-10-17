@@ -1,10 +1,14 @@
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Access } from '../../shared/constants.ts'
 import { employees, users } from '../db/schema.ts'
+import { get } from '../lib/review-files.ts'
 import { nextReviewCode } from '../services/reviews.ts'
 import { setup } from './helpers.ts'
+
+type T = Awaited<ReturnType<typeof setup>>
 
 /** Priya (Super Admin, E-1042) is signed in; Rhea Okafor conducts reviews of Dana Whitlock, and neither has an account yet. */
 async function reviews() {
@@ -451,6 +455,229 @@ describe('corrective action plans', () => {
     expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: reader, body: { format: 'pdf', rows: 3 } })).status).toBe(422)
     expect(t.sqlite.prepare("select actor, entity_type, entity_id, review_id, details from review_audit_log where action = 'export'").all()).toEqual([
       { actor: 'reader@bphs.local', entity_type: 'cap', entity_id: null, review_id: null, details: 'Action items · 3 rows · Excel workbook' },
+    ])
+  })
+})
+
+describe('files on a review', () => {
+  const pdf = (name = 'checklist.pdf', size = 100) => new File([Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(size)])], name, { type: 'application/pdf' })
+  const txt = (name = 'notes.txt', text = 'Checklist used on every shift.') => new File([text], name, { type: 'text/plain' })
+  type Row = { id: number; cap_id: number | null; entry_id: number; filename: string; size: number; sha256: string }
+  const files = (t: T) => t.sqlite.prepare('select id, cap_id, entry_id, filename, size, sha256 from review_attachments order by id').all() as Row[]
+
+  /** A multipart post, the way the page sends files: the JSON as `data`, the files as `files`, from this origin. */
+  const send = (t: T, url: string, cookie: string, data: unknown, list: File[]) => {
+    const form = new FormData()
+    if (data !== undefined) form.set('data', JSON.stringify(data))
+    for (const file of list) form.append('files', file)
+    return t.app.request(url, { method: 'POST', headers: { cookie, origin: 'http://localhost' }, body: form })
+  }
+
+  /** A review with one CAP, CAP01. */
+  async function one() {
+    const fixture = await reviews()
+    const made = (await fixture.create()).data as { id: number; code: string }
+    const url = `/api/reviews/${made.code}`
+    const first = (await fixture.t.call('POST', `${url}/caps`, { cookie: fixture.superAdmin, body: cap(fixture.reviewer.id) })).data as { id: number; version: number }
+    return { ...fixture, made, url, first }
+  }
+  const capId = (t: T, reviewId: number, seq: number) => (t.sqlite.prepare('select id from review_caps where review_id = ? and seq = ?').get(reviewId, seq) as { id: number }).id
+  const entry = (t: T, id: number) => t.sqlite.prepare('select seq, cap_id, kind, title, short_description from review_entries where id = ?').get(id)
+
+  it('takes files with a new CAP, an update and a completion, and on their own, each set on one automatic entry filed where it is', async () => {
+    const { t, superAdmin, reviewer, made, url, first } = await one()
+    expect((await send(t, `${url}/caps`, superAdmin, cap(reviewer.id, { title: 'Shadow a shift' }), [pdf('plan.pdf')])).status).toBe(201)
+    expect((await send(t, `${url}/entries`, superAdmin, { ...update, capSeq: 1 }, [txt('minutes.txt')])).status).toBe(201)
+    expect((await send(t, `${url}/entries`, superAdmin, update, [txt('letter.txt')])).status).toBe(201)
+    const alone = await send(t, `${url}/attachments`, superAdmin, { capSeq: 2 }, [pdf('scan.pdf'), txt('reply.txt')])
+    expect(alone.status).toBe(201)
+    expect(await alone.json()).toMatchObject([
+      { filename: 'scan.pdf', contentType: 'application/pdf', cap: 2, uploadedBy: 'Priya Raghunathan' },
+      { filename: 'reply.txt', contentType: 'text/plain', cap: 2, uploadedBy: 'Priya Raghunathan' },
+    ])
+    expect((await send(t, `${url}/attachments`, superAdmin, undefined, [txt('review.txt')])).status).toBe(201)
+    const done = await send(t, `${url}/caps/CAP01/status`, superAdmin, { status: 'completed', version: first.version }, [pdf('evidence.pdf')])
+    expect(done.status).toBe(200)
+    expect(await done.json()).toMatchObject({ status: 'completed' })
+
+    const [capOne, two] = [capId(t, made.id, 1), capId(t, made.id, 2)]
+    const rows = files(t)
+    expect(rows.map((f) => [f.filename, f.cap_id])).toEqual([
+      ['plan.pdf', two],
+      ['minutes.txt', capOne],
+      ['letter.txt', null],
+      ['scan.pdf', two],
+      ['reply.txt', two],
+      ['review.txt', null],
+      ['evidence.pdf', capOne],
+    ])
+    // Each set hangs off the automatic entry that records it, not the update or change it came with.
+    expect(rows.map((f) => entry(t, f.entry_id))).toMatchObject([
+      { cap_id: two, kind: 'system', title: 'CAP02: File attached', short_description: 'plan.pdf' },
+      { cap_id: capOne, kind: 'system', title: 'CAP01: File attached', short_description: 'minutes.txt' },
+      { cap_id: null, kind: 'system', title: 'File attached', short_description: 'letter.txt' },
+      { cap_id: two, kind: 'system', title: 'CAP02: 2 files attached', short_description: 'scan.pdf, reply.txt' },
+      { cap_id: two, title: 'CAP02: 2 files attached' },
+      { cap_id: null, title: 'File attached', short_description: 'review.txt' },
+      { cap_id: capOne, title: 'CAP01: File attached', short_description: 'evidence.pdf' },
+    ])
+
+    const listed = (await t.call('GET', `${url}/attachments`, { cookie: superAdmin })).data as { cap: number | null; entrySeq: number }[]
+    expect(listed.map((file) => file.cap)).toEqual([2, 1, null, 2, 2, null, 1])
+    expect(listed.map((file) => file.entrySeq)).toEqual(rows.map((f) => (entry(t, f.entry_id) as { seq: number }).seq))
+
+    const stored = rows[1]!
+    const bytes = get(t.db, stored.id)!
+    expect(bytes.toString()).toBe('Checklist used on every shift.')
+    expect([stored.size, stored.sha256]).toEqual([bytes.length, createHash('sha256').update(bytes).digest('hex')])
+    expect(t.sqlite.prepare("select entity_type, entity_id, review_id, details from review_audit_log where action = 'attach' order by id").all()).toEqual(
+      rows.map((f) => ({ entity_type: 'attachment', entity_id: f.id, review_id: made.id, details: `${made.code}${f.cap_id === null ? '' : f.cap_id === capOne ? ' CAP01' : ' CAP02'} · ${f.filename}` })),
+    )
+    expect(t.sqlite.prepare("select count(*) as n from audit_log where details like '%.pdf%' or details like '%.txt%'").get()).toEqual({ n: 0 })
+  })
+
+  it('refuses a file it does not take, or a CAP that is not there, saying so, and writes nothing, completion included', async () => {
+    const { t, superAdmin, reviewer, url, first } = await one()
+    const count = () =>
+      t.sqlite.prepare('select (select count(*) from review_attachments) + (select count(*) from review_entries) + (select count(*) from review_caps) + (select count(*) from review_audit_log) as n').get()
+    const before = count()
+    const refused = async (to: string, data: unknown, list: File[], message: RegExp, field = 'files') => {
+      const res = await send(t, to, superAdmin, data, list)
+      expect(res.status, to).toBe(422)
+      const answer = (await res.json()) as { message: string; details: { field?: string; fields?: Record<string, string> } }
+      expect(answer.message).toMatch(message)
+      expect(answer.details.fields?.[field] ?? (answer.details.field === field && answer.message)).toBe(answer.message)
+    }
+    await refused(`${url}/attachments`, undefined, [new File(['MZ'], 'run.exe')], /run\.exe is not a type that can be attached/)
+    await refused(`${url}/attachments`, undefined, [txt('fake.pdf')], /fake\.pdf is not the PDF file its name says it is/)
+    await refused(`${url}/attachments`, undefined, [pdf('huge.pdf', 10 * 1024 * 1024)], /huge\.pdf is larger than 10 MB/)
+    await refused(`${url}/attachments`, undefined, [new File([], 'blank.txt', { type: 'text/plain' })], /blank\.txt is empty/)
+    await refused(`${url}/attachments`, undefined, Array.from({ length: 11 }, (_, i) => txt(`n${i}.txt`)), /at most 10 files/)
+    await refused(`${url}/attachments`, undefined, [], /Choose a file/)
+    await refused(`${url}/attachments`, { capSeq: 9 }, [txt()], /has no CAP09/, 'capSeq')
+    await refused(`${url}/caps`, cap(reviewer.id), [pdf(), txt('fake.png')], /fake\.png/)
+    await refused(`${url}/entries`, update, [txt('run.exe')], /run\.exe/)
+    await refused(`${url}/caps/CAP01/status`, { status: 'completed', version: first.version }, [txt('fake.pdf')], /fake\.pdf/)
+    expect(count()).toEqual(before)
+    expect((await t.call('GET', `${url}/caps/CAP01`, { cookie: superAdmin })).data).toMatchObject({ status: 'not_started', completedAt: null })
+    // A JSON post has no files to attach.
+    expect((await t.call('POST', `${url}/attachments`, { cookie: superAdmin, body: {} })).status).toBe(422)
+  })
+
+  it('takes files from the reviewer at Read Only and no other reader, and none on a Completed or voided review', async () => {
+    const { t, superAdmin, made, url, account, reviewer, employee } = await one()
+    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const reader = await account('reader@bphs.local', { reviews: 'read' }, employee('E-4005', 'Ray', 'Diaz').id)
+    expect((await send(t, `${url}/attachments`, rhea, { capSeq: 1 }, [txt()])).status).toBe(201)
+    const denied = await send(t, `${url}/attachments`, reader, undefined, [txt()])
+    expect(denied.status).toBe(403)
+    expect(((await denied.json()) as { message: string }).message).toContain('Rhea Okafor')
+    expect((await send(t, `${url}/attachments`, '', undefined, [txt()])).status).toBe(401)
+
+    t.sqlite.prepare("update reviews set status = 'completed' where id = ?").run(made.id)
+    const sealed = await send(t, `${url}/attachments`, superAdmin, undefined, [txt()])
+    expect(sealed.status).toBe(409)
+    expect(await sealed.json()).toMatchObject({ error: 'review_sealed', message: `${made.code} is Completed. Reopen it to attach files.` })
+    t.sqlite.prepare("update reviews set status = 'voided' where id = ?").run(made.id)
+    expect(await (await send(t, `${url}/attachments`, superAdmin, undefined, [txt()])).json()).toMatchObject({ error: 'review_voided' })
+    expect(files(t)).toHaveLength(1)
+  })
+
+  it('keeps every file as it was written, on an entry of its own review and CAP', async () => {
+    const { t, superAdmin, create, made, url } = await one()
+    await send(t, `${url}/attachments`, superAdmin, { capSeq: 1 }, [txt()])
+    expect(() => t.sqlite.prepare("update review_attachments set filename = 'other.txt'").run()).toThrow(/only be withdrawn/)
+    expect(() => t.sqlite.prepare('update review_attachments set cap_id = null').run()).toThrow(/only be withdrawn/)
+    expect(() => t.sqlite.prepare('update review_attachments set withdrawn_at = 1').run()).toThrow(/only be withdrawn/)
+    expect(() => t.sqlite.prepare('delete from review_attachments').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('insert or replace into review_attachments select * from review_attachments').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare("update review_attachment_data set bytes = x'00'").run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('delete from review_attachment_data').run()).toThrow(/append-only/)
+    expect(() => t.sqlite.prepare('insert or replace into review_attachment_data select * from review_attachment_data').run()).toThrow(/append-only/)
+    t.sqlite.prepare("update review_attachments set withdrawn_at = 1, withdrawn_reason = 'Wrong file'").run()
+    expect(() => t.sqlite.prepare("update review_attachments set withdrawn_at = 2, withdrawn_reason = 'Again'").run()).toThrow(/only be withdrawn/)
+
+    const other = (await create()).data as { id: number }
+    const otherEntry = (t.sqlite.prepare('select id from review_entries where review_id = ?').get(other.id) as { id: number }).id
+    const ownEntry = (t.sqlite.prepare('select id from review_entries where review_id = ? and cap_id is null').get(made.id) as { id: number }).id
+    const insert =
+      "insert into review_attachments (review_id, cap_id, entry_id, filename, content_type, size, sha256, uploaded_by_user_id, uploaded_by_label, uploaded_at) values (?, ?, ?, 'a.txt', 'text/plain', 1, 'x', ?, 'x', 0)"
+    expect(() => t.sqlite.prepare(insert).run(made.id, null, otherEntry, t.superUser.id)).toThrow(/same review and CAP/)
+    expect(() => t.sqlite.prepare(insert).run(made.id, capId(t, made.id, 1), ownEntry, t.superUser.id)).toThrow(/same review and CAP/)
+  })
+
+  it('sends each file as a download, never shown in the page, logging every one, and none of it to the employee reviewed', async () => {
+    const { t, superAdmin, create, account, employee, url, made } = await one()
+    await send(t, `${url}/attachments`, superAdmin, { capSeq: 1 }, [txt('notes – Dana.txt')])
+    const [file] = (await t.call('GET', `${url}/attachments`, { cookie: superAdmin })).data as { id: number }[]
+    const res = await t.app.request(`${url}/attachments/${file!.id}`, { headers: { cookie: superAdmin } })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('text/plain')
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(res.headers.get('content-disposition')).toBe(`attachment; filename="notes _ Dana.txt"; filename*=UTF-8''notes%20%E2%80%93%20Dana.txt`)
+    expect(await res.text()).toBe('Checklist used on every shift.')
+    expect(t.sqlite.prepare("select entity_id, review_id, details from review_audit_log where action = 'download'").all()).toEqual([{ entity_id: file!.id, review_id: made.id, details: `${made.code} CAP01 · notes – Dana.txt` }])
+    // A file is found only under its own review.
+    const other = (await create()).data as { code: string }
+    expect((await t.app.request(`/api/reviews/${other.code}/attachments/${file!.id}`, { headers: { cookie: superAdmin } })).status).toBe(404)
+
+    // Priya is the employee reviewed on this one; an editor recorded it and added its file.
+    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
+    const about = (await create({ employeeId: t.person.id }, editor)).data as { code: string }
+    const aboutUrl = `/api/reviews/${about.code}`
+    const [hidden] = (await (await send(t, `${aboutUrl}/attachments`, editor, undefined, [txt()])).json()) as { id: number }[]
+    for (const res of [
+      await t.app.request(`${aboutUrl}/attachments`, { headers: { cookie: superAdmin } }),
+      await t.app.request(`${aboutUrl}/attachments/${hidden!.id}`, { headers: { cookie: superAdmin } }),
+      await send(t, `${aboutUrl}/attachments`, superAdmin, undefined, [txt()]),
+      await t.app.request(`${aboutUrl}/attachments/${hidden!.id}/withdraw`, { method: 'POST', headers: { cookie: superAdmin, origin: 'http://localhost', 'content-type': 'application/json' }, body: JSON.stringify({ reason: 'x' }) }),
+    ]) {
+      expect(res.status).toBe(404)
+      expect(await res.json()).toMatchObject({ message: 'Review not found.' })
+    }
+  })
+
+  it('lets someone with Full access withdraw a file with a reason, on the history where the file is; it no longer downloads', async () => {
+    const { t, superAdmin, account, made, url } = await one()
+    const editor = await account('editor@bphs.local', { reviews: 'edit' })
+    const [file] = (await (await send(t, `${url}/attachments`, superAdmin, { capSeq: 1 }, [txt()])).json()) as { id: number }[]
+    const withdraw = (cookie: string, body: unknown) => t.call('POST', `${url}/attachments/${file!.id}/withdraw`, { cookie, body })
+
+    expect((await withdraw(editor, { reason: 'Wrong file.' })).status).toBe(403)
+    expect((await withdraw(superAdmin, { reason: ' ' })).status).toBe(422)
+    const done = await withdraw(superAdmin, { reason: 'Wrong file.' })
+    expect(done.status).toBe(200)
+    expect(done.data).toMatchObject({ filename: 'notes.txt', cap: 1, withdrawnReason: 'Wrong file.', withdrawnAt: expect.any(String) })
+    expect((await withdraw(superAdmin, { reason: 'Again.' })).data).toMatchObject({ error: 'attachment_withdrawn' })
+
+    const gone = await t.app.request(`${url}/attachments/${file!.id}`, { headers: { cookie: superAdmin } })
+    expect(gone.status).toBe(410)
+    expect(await gone.json()).toMatchObject({ error: 'attachment_withdrawn' })
+    expect(t.sqlite.prepare('select cap_id, kind, title, short_description, body_text from review_entries where review_id = ? order by seq desc').get(made.id)).toEqual({
+      cap_id: capId(t, made.id, 1),
+      kind: 'system',
+      title: 'CAP01: File withdrawn',
+      short_description: 'notes.txt',
+      body_text: 'Wrong file.',
+    })
+    expect(t.sqlite.prepare("select action, entity_id, details from review_audit_log where action in ('withdraw', 'download')").all()).toEqual([{ action: 'withdraw', entity_id: file!.id, details: `${made.code} CAP01 · notes.txt` }])
+    expect(get(t.db, file!.id)?.toString()).toBe('Checklist used on every shift.')
+
+    // Not on a Completed review, whose files still download.
+    const [kept] = (await (await send(t, `${url}/attachments`, superAdmin, undefined, [txt('kept.txt')])).json()) as { id: number }[]
+    t.sqlite.prepare("update reviews set status = 'completed' where id = ?").run(made.id)
+    expect((await t.call('POST', `${url}/attachments/${kept!.id}/withdraw`, { cookie: superAdmin, body: { reason: 'Wrong file.' } })).data).toMatchObject({ error: 'review_sealed' })
+    expect((await t.app.request(`${url}/attachments/${kept!.id}`, { headers: { cookie: superAdmin } })).status).toBe(200)
+  })
+
+  it('has no route that changes or removes a file', async () => {
+    const { t } = await reviews()
+    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.startsWith('/api/reviews') && route.path.includes('/attachments'))
+    expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))].sort()).toEqual([
+      'GET /api/reviews/:code/attachments',
+      'GET /api/reviews/:code/attachments/:id',
+      'POST /api/reviews/:code/attachments',
+      'POST /api/reviews/:code/attachments/:id/withdraw',
     ])
   })
 })

@@ -24,6 +24,7 @@ import type {
   ProgramRow,
   ReviewDetail,
   ReviewActionItem,
+  ReviewAttachment,
   ReviewCap,
   ReviewEntry,
   ReviewList,
@@ -188,6 +189,13 @@ export const reviewCapsQuery = (code: string) =>
   queryOptions({
     queryKey: ['reviews', 'detail', code.toUpperCase(), 'caps'],
     queryFn: () => api.get<ReviewCap[]>(`/reviews/${encodeURIComponent(code)}/caps`),
+  })
+
+/** Every file on one review and its CAPs, withdrawn ones too, in the order they were added. */
+export const reviewAttachmentsQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['reviews', 'detail', code.toUpperCase(), 'attachments'],
+    queryFn: () => api.get<ReviewAttachment[]>(`/reviews/${encodeURIComponent(code)}/attachments`),
   })
 
 export const reviewActionItemsQuery = queryOptions({

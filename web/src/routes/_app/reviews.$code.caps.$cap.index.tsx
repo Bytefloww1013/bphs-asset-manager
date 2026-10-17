@@ -12,6 +12,7 @@ import { Field, Segmented, Textarea } from '@/components/ui/form.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Sheet } from '@/components/ui/overlay.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
+import { AttachFiles, AttachmentList, FilePicker, FILES_HINT, filesProblem, withFiles } from '@/features/common/files.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { EntryMarker, Timeline } from '@/features/common/timeline.tsx'
 import { ReviewLoadError } from '@/features/reviews/load-error.tsx'
@@ -20,7 +21,7 @@ import { Fact, Person } from '@/features/reviews/parts.tsx'
 import { ReviewCapStatusBadge } from '@/features/reviews/status.tsx'
 import { ApiError, api } from '@/lib/api.ts'
 import { formatDateTime } from '@/lib/format.ts'
-import { reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
+import { reviewAttachmentsQuery, reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/caps/$cap/')({
@@ -29,6 +30,7 @@ export const Route = createFileRoute('/_app/reviews/$code/caps/$cap/')({
       context.queryClient.ensureQueryData(reviewQuery(params.code)),
       context.queryClient.ensureQueryData(reviewEntriesQuery(params.code)),
       context.queryClient.ensureQueryData(reviewCapsQuery(params.code)),
+      context.queryClient.ensureQueryData(reviewAttachmentsQuery(params.code)),
     ]),
   errorComponent: ReviewLoadError,
   component: CapPage,
@@ -43,10 +45,11 @@ function CapPage() {
   const { data: review } = useQuery(reviewQuery(code))
   const { data: entries } = useQuery(reviewEntriesQuery(code))
   const { data: caps } = useQuery(reviewCapsQuery(code))
+  const { data: allFiles } = useQuery(reviewAttachmentsQuery(code))
   const [task, setTask] = useState<ReviewCapStatus | 'status' | null>(null)
   const cap = caps?.find((one) => one.seq === reviewCapSeq(named))
   useReviewPageTitle(`${cap ? reviewCapCode(cap.seq) : named.toUpperCase()} of ${review?.code ?? code.toUpperCase()}`)
-  if (!review || !entries || !caps) return null
+  if (!review || !entries || !caps || !allFiles) return null
 
   const back = (
     <Link to="/reviews/$code" params={{ code: review.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
@@ -74,6 +77,7 @@ function CapPage() {
   const capCode = reviewCapCode(cap.seq)
   // Its own history: what the app wrote about it, and the updates and corrections filed under it.
   const history = entries.filter((entry) => entry.cap === cap.seq)
+  const files = allFiles.filter((file) => file.cap === cap.seq)
   // Someone who may not use a button still sees it, with the reason, as on a grievance; the server refuses whatever the page shows.
   const refused =
     review.status === 'completed' ? `${review.code} is Completed. Reopen it to change a CAP.` : canManageReview(user, review.reviewer.id) ? undefined : reviewManageReason(review.reviewer.name)
@@ -112,6 +116,7 @@ function CapPage() {
             <Button icon={<CheckCircle2 className="size-4" />} disabledReason={refused ?? (closed(cap.status) ? `It is already ${reviewCapStatusLabel(cap.status)}.` : undefined)} onClick={() => setTask('completed')}>
               Mark complete
             </Button>
+            {!refused && <AttachFiles section="reviews" code={review.code} cap={cap.seq} />}
           </div>
         )}
       </div>
@@ -161,6 +166,13 @@ function CapPage() {
         {cap.bodyHtml ? <RichTextView html={cap.bodyHtml} className="max-w-[75ch] px-5 py-5" /> : <p className="px-5 py-5 text-sm text-ink-3">Nothing was written beyond the short description.</p>}
       </Panel>
 
+      {files.length > 0 && (
+        <Panel>
+          <PanelHeader title="Files" description={`On ${capCode}: evidence of the work, as a rule. Each one downloads to be opened on your computer. Downloads are logged.`} className="border-b border-line" />
+          <AttachmentList section="reviews" code={review.code} files={files} sealed={!manage || review.status === 'completed'} />
+        </Panel>
+      )}
+
       <Panel>
         <PanelHeader title="History" description={`Updates on ${capCode}, and every change made to it. The review's timeline shows these too.`} className="border-b border-line" />
         <Timeline
@@ -190,23 +202,26 @@ function StatusSheet({ review, cap, preset, onClose }: { review: ReviewDetail; c
   const options = REVIEW_CAP_STATUSES.filter((status) => status !== cap.status).map((value) => ({ value, label: reviewCapStatusLabel(value) }))
   const [status, setStatus] = useState<ReviewCapStatus | null>(preset)
   const [note, setNote] = useState('')
-  const [missing, setMissing] = useState<{ status?: string; note?: string }>({})
+  const [files, setFiles] = useState<File[]>([])
+  const [missing, setMissing] = useState<{ status?: string; note?: string; files?: string }>({})
   const [error, setError] = useState<ApiError | null>(null)
   const capCode = reviewCapCode(cap.seq)
-  const write = useWrite((body: Record<string, unknown>) => api.post<ReviewCap>(`/reviews/${encodeURIComponent(review.code)}/caps/${cap.seq}/status`, body), {
+  const write = useWrite((body: unknown) => api.post<ReviewCap>(`/reviews/${encodeURIComponent(review.code)}/caps/${cap.seq}/status`, body), {
     silent: true,
     success: (next) => `${capCode} is now ${reviewCapStatusLabel(next.status)}`,
   })
   const cancelling = status === 'cancelled'
 
   async function commit() {
-    const next = { status: status ? undefined : 'Choose a status', note: cancelling && !note.trim() ? 'Say why it is being cancelled' : undefined }
+    // Files go with a completion only: the evidence that the work was done.
+    const sent = status === 'completed' ? files : []
+    const next = { status: status ? undefined : 'Choose a status', note: cancelling && !note.trim() ? 'Say why it is being cancelled' : undefined, files: filesProblem(sent) ?? undefined }
     setMissing(next)
-    if (next.status || next.note) return
+    if (next.status || next.note || next.files) return
     setError(null)
     try {
       // The version is the one on the page now: after someone else's change the page reloads, and a second try goes through.
-      await write.mutateAsync({ status, note, version: cap.version })
+      await write.mutateAsync(withFiles({ status, note, version: cap.version }, sent))
       onClose()
     } catch (e) {
       if (e instanceof ApiError) setError(e)
@@ -246,7 +261,14 @@ function StatusSheet({ review, cap, preset, onClose }: { review: ReviewDetail; c
         <Field label="New status" hint={`It is ${reviewCapStatusLabel(cap.status)} now.`} error={missing.status ?? error?.fields.status}>
           <Segmented value={status} onChange={setStatus} options={options} />
         </Field>
-        {status === 'completed' && <Alert>The time and your name are recorded as its completion. Reopening it later clears them; the history keeps both.</Alert>}
+        {status === 'completed' && (
+          <>
+            <Alert>The time and your name are recorded as its completion. Reopening it later clears them; the history keeps both.</Alert>
+            <Field label="Evidence" optional hint={FILES_HINT} error={missing.files ?? error?.fields.files}>
+              <FilePicker value={files} onChange={(picked) => (setFiles(picked), setMissing((now) => ({ ...now, files: undefined })))} />
+            </Field>
+          </>
+        )}
         {cancelling && <Alert>A cancelled CAP stays on the review, with this reason, and no longer counts towards the review being done.</Alert>}
         <Field label={cancelling ? 'Reason' : 'Note'} optional={!cancelling} hint="Shown on the history with the change." error={missing.note ?? error?.fields.note}>
           <Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />

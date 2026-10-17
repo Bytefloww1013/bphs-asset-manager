@@ -9,6 +9,7 @@ import { buttonStyles } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
+import { AttachFiles, AttachmentList } from '@/features/common/files.tsx'
 import { Timeline } from '@/features/common/timeline.tsx'
 import { ReviewLoadError } from '@/features/reviews/load-error.tsx'
 import { useReviewPageTitle } from '@/features/reviews/page-title.ts'
@@ -16,7 +17,7 @@ import { Fact, Person } from '@/features/reviews/parts.tsx'
 import { CapFacts, CapLink } from '@/features/reviews/cap-parts.tsx'
 import { ReviewCapStatusBadge, ReviewStatusBadge } from '@/features/reviews/status.tsx'
 import { formatDateTime, plural } from '@/lib/format.ts'
-import { reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
+import { reviewAttachmentsQuery, reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/')({
@@ -25,6 +26,7 @@ export const Route = createFileRoute('/_app/reviews/$code/')({
       context.queryClient.ensureQueryData(reviewQuery(params.code)),
       context.queryClient.ensureQueryData(reviewEntriesQuery(params.code)),
       context.queryClient.ensureQueryData(reviewCapsQuery(params.code)),
+      context.queryClient.ensureQueryData(reviewAttachmentsQuery(params.code)),
     ]),
   errorComponent: ReviewLoadError,
   component: ReviewPage,
@@ -57,8 +59,9 @@ function ReviewPage() {
   const { data: review } = useQuery(reviewQuery(code))
   const { data: entries } = useQuery(reviewEntriesQuery(code))
   const { data: caps } = useQuery(reviewCapsQuery(code))
+  const { data: files } = useQuery(reviewAttachmentsQuery(code))
   useReviewPageTitle(review?.code ?? code.toUpperCase())
-  if (!review || !entries || !caps) return null
+  if (!review || !entries || !caps || !files) return null
   // A voided review takes nothing more, and a completed one nothing until it is reopened; the server refuses both whatever the page shows.
   const manage = review.status !== 'voided' && canManageReview(user, review.reviewer.id)
   const add = manage && review.status !== 'completed'
@@ -155,6 +158,13 @@ function ReviewPage() {
         {review.bodyHtml ? <RichTextView html={review.bodyHtml} className="max-w-[75ch] px-5 py-5" /> : <p className="px-5 py-5 text-sm text-ink-3">The review in full has not been written yet.</p>}
       </Panel>
 
+      {files.length > 0 && (
+        <Panel>
+          <PanelHeader title="Files" description="On the review and its CAPs. Each one downloads to be opened on your computer. Downloads are logged." className="border-b border-line" />
+          <AttachmentList section="reviews" code={review.code} files={files} sealed={!add} />
+        </Panel>
+      )}
+
       {/* As on a grievance: beside the timeline on a wide screen, and first in the page's order. */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
         <Panel aria-label="Summary" className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 print:hidden">
@@ -174,6 +184,7 @@ function ReviewPage() {
             actions={
               add && (
                 <>
+                  <AttachFiles section="reviews" code={review.code} />
                   <Link to="/reviews/$code/caps/new" params={{ code: review.code }} className={buttonStyles('secondary')}>
                     <Flag className="size-4" aria-hidden /> Add CAP
                   </Link>

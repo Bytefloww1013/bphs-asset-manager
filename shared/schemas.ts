@@ -408,6 +408,13 @@ export const reviewCapStatusSchema = z
   })
 export type ReviewCapStatusInput = z.infer<typeof reviewCapStatusSchema>
 
+/** Files added on their own, to the review or, with `capSeq`, to one of its CAPs. */
+export const reviewAttachmentsSchema = z.object({ capSeq: z.number().int().positive().optional() })
+export type ReviewAttachmentsInput = z.infer<typeof reviewAttachmentsSchema>
+
+export const reviewAttachmentWithdrawSchema = grievanceAttachmentWithdrawSchema
+export type ReviewAttachmentWithdrawInput = GrievanceAttachmentWithdrawInput
+
 /** Reported by the Action items page when it saves the list, since the browser makes the file. */
 export const reviewActionItemsExportSchema = z.object({ format: z.enum(['csv', 'xlsx']), rows: z.number().int().min(0) })
 export type ReviewActionItemsExportInput = z.infer<typeof reviewActionItemsExportSchema>

@@ -25,7 +25,7 @@ export function PanelHeader({ title, description, actions, className }: { title:
         <h2 className="text-md font-semibold text-ink">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-ink-3">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   )
 }

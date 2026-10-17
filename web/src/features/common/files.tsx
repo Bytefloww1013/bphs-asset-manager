@@ -1,6 +1,6 @@
 import { FileText, Loader2, Paperclip, X } from 'lucide-react'
 import { useState } from 'react'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, grievanceEntryCode } from '@shared/constants.ts'
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, grievanceEntryCode, reviewCapCode, reviewEntryCode } from '@shared/constants.ts'
 import { GRIEVANCE_NOTE_MAX } from '@shared/schemas.ts'
 import type { GrievanceAttachment } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
@@ -16,9 +16,13 @@ import { useDenied } from '@/lib/session.ts'
 const ACCEPT = Object.keys(ATTACHMENT_TYPES).map((extension) => `.${extension}`).join(',')
 const MB = 1024 * 1024
 
-/** The workspaces whose records take files: what one record is called, and how its entries are numbered. Each record's API path is `/<section>/<code>`. */
+/**
+ * The workspaces whose records take files: what one record and its list of entries are called, and how its entries are numbered.
+ * Each record's API path is `/<section>/<code>`.
+ */
 const RECORDS = {
-  grievances: { noun: 'grievance', entryCode: grievanceEntryCode },
+  grievances: { noun: 'grievance', log: 'timeline', entryCode: grievanceEntryCode },
+  reviews: { noun: 'review', log: 'history', entryCode: reviewEntryCode },
 }
 type RecordSection = keyof typeof RECORDS
 const recordPath = (section: RecordSection, code: string) => `/${section}/${encodeURIComponent(code)}`
@@ -94,10 +98,13 @@ export function FilePicker({ value, onChange, disabled, ...rest }: FilePickerPro
   )
 }
 
-/** Adds files to a record on their own: the server records them on its timeline as an entry of their own. */
-export function AttachFiles({ section, code }: { section: RecordSection; code: string }) {
+/** A file as the lists show it. A review's files may each belong to one of its CAPs. */
+type Attachment = GrievanceAttachment & { cap?: number | null }
+
+/** Adds files to a record, or to one of a review's CAPs, on their own: the server records them as an entry of their own. */
+export function AttachFiles({ section, code, cap }: { section: RecordSection; code: string; cap?: number }) {
   const toast = useToast()
-  const attach = useWrite((files: File[]) => api.post<GrievanceAttachment[]>(`${recordPath(section, code)}/attachments`, withFiles({}, files)), {
+  const attach = useWrite((files: File[]) => api.post<Attachment[]>(`${recordPath(section, code)}/attachments`, withFiles(cap === undefined ? {} : { capSeq: cap }, files)), {
     success: (saved) => `${plural(saved.length, 'file')} attached`,
   })
   return (
@@ -127,9 +134,9 @@ export function AttachFiles({ section, code }: { section: RecordSection; code: s
  * A record's files, or one entry's. Each downloads as a file to save; the page never shows one. A withdrawn file stays on the
  * list, with the reason, but no longer downloads.
  */
-export function AttachmentList({ section, code, files, sealed }: { section: RecordSection; code: string; files: GrievanceAttachment[]; sealed: boolean }) {
+export function AttachmentList({ section, code, files, sealed }: { section: RecordSection; code: string; files: Attachment[]; sealed: boolean }) {
   const noWithdraw = useDenied(section, 'full')
-  const [withdrawing, setWithdrawing] = useState<GrievanceAttachment | null>(null)
+  const [withdrawing, setWithdrawing] = useState<Attachment | null>(null)
   return (
     <>
       <ul className="divide-y divide-line">
@@ -150,6 +157,7 @@ export function AttachmentList({ section, code, files, sealed }: { section: Reco
               <div className="mt-0.5 text-xs text-ink-3">
                 {fileSize(file.size)} · {file.uploadedBy} · {formatDateTime(file.uploadedAt)}
                 {file.entrySeq !== null && <> · with {RECORDS[section].entryCode(file.entrySeq)}</>}
+                {file.cap != null && <> · {reviewCapCode(file.cap)}</>}
               </div>
               {file.withdrawnAt && (
                 <p className="mt-1 text-xs text-ink-2 [overflow-wrap:anywhere]">
@@ -170,11 +178,11 @@ export function AttachmentList({ section, code, files, sealed }: { section: Reco
   )
 }
 
-function WithdrawSheet({ section, code, file, onClose }: { section: RecordSection; code: string; file: GrievanceAttachment; onClose: () => void }) {
+function WithdrawSheet({ section, code, file, onClose }: { section: RecordSection; code: string; file: Attachment; onClose: () => void }) {
   const [reason, setReason] = useState('')
   const [missing, setMissing] = useState<string>()
   const [error, setError] = useState<ApiError | null>(null)
-  const withdraw = useWrite((body: { reason: string }) => api.post<GrievanceAttachment>(`${recordPath(section, code)}/attachments/${file.id}/withdraw`, body), {
+  const withdraw = useWrite((body: { reason: string }) => api.post<Attachment>(`${recordPath(section, code)}/attachments/${file.id}/withdraw`, body), {
     silent: true,
     success: (withdrawn) => `${withdrawn.filename} withdrawn`,
   })
@@ -224,7 +232,7 @@ function WithdrawSheet({ section, code, file, onClose }: { section: RecordSectio
         <Alert tone="warn" title="This cannot be undone">
           A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the {RECORDS[section].noun}. Use it for a file added by mistake.
         </Alert>
-        <Field label="Reason" hint="Shown on the timeline." error={missing ?? error?.fields.reason}>
+        <Field label="Reason" hint={`Shown on the ${RECORDS[section].log}.`} error={missing ?? error?.fields.reason}>
           <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />
         </Field>
       </form>

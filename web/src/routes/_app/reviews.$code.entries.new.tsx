@@ -11,6 +11,7 @@ import { Alert, useToast } from '@/components/ui/feedback.tsx'
 import { Field, Input } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
+import { filesProblem, withFiles } from '@/features/common/files.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { BLANK_ENTRY, EntryFields, type EntryText } from '@/features/common/entry-fields.tsx'
 import { ReviewLoadError } from '@/features/reviews/load-error.tsx'
@@ -69,7 +70,7 @@ function NewUpdatePage() {
   const saved = useRef(false)
 
   const save = useWrite((input: unknown) => api.post<ReviewEntry>(`/reviews/${encodeURIComponent(code)}/entries`, input), { silent: true })
-  const dirty = Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body)
+  const dirty = Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || entry.files.length)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
 
   if (!review || !entries || !caps) return null
@@ -86,11 +87,13 @@ function NewUpdatePage() {
 
   async function commit() {
     setProblem(null)
-    const { files: _none, ...text } = entry
+    const { files, ...text } = entry
     const parsed = reviewEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, ...text } : { kind: 'update', occurredAt: instant(occurredAt), capSeq: cap?.seq, ...text })
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
+    const filesWrong = filesProblem(files)
+    if (!parsed.success || filesWrong)
+      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
     try {
-      const row = await save.mutateAsync(parsed.data)
+      const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
       toast({ title: `${reviewEntryCode(row.seq)} added to ${review!.code}`, description: row.title })
       await navigate(back)
@@ -199,7 +202,6 @@ function NewUpdatePage() {
                 value={entry}
                 onChange={change}
                 error={error}
-                files={false}
                 shortDescriptionHint={correcting ? 'What was wrong and what is right, in one or two sentences.' : 'One or two sentences, shown on the history.'}
               />
             </>

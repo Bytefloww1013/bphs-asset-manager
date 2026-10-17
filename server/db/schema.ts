@@ -578,6 +578,47 @@ export const reviewAuditLog = sqliteTable(
   (t) => [index('ix_review_audit_time').on(t.occurredAt), index('ix_review_audit_action').on(t.action), index('ix_review_audit_review').on(t.reviewId)],
 )
 
+/**
+ * A file on a review, or on one of its CAPs: a grievance file's columns, plus the CAP. Each hangs off the automatic history entry
+ * that records it, which a trigger holds to the same review and CAP. Only a withdrawal changes a row, once.
+ */
+export const reviewAttachments = sqliteTable(
+  'review_attachments',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    reviewId: integer('review_id')
+      .notNull()
+      .references(() => reviews.id, { onDelete: 'restrict' }),
+    /** Null for a file on the review itself. */
+    capId: integer('cap_id').references(() => reviewCaps.id, { onDelete: 'restrict' }),
+    entryId: integer('entry_id')
+      .notNull()
+      .references(() => reviewEntries.id, { onDelete: 'restrict' }),
+    filename: text('filename').notNull(),
+    /** Decided by the server from the file's content, never taken from the request. */
+    contentType: text('content_type').notNull(),
+    size: integer('size').notNull(),
+    sha256: text('sha256').notNull(),
+    uploadedByUserId: integer('uploaded_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    /** The name as it was when the file was added. */
+    uploadedByLabel: text('uploaded_by_label').notNull(),
+    uploadedAt: ms('uploaded_at').notNull(),
+    withdrawnAt: ms('withdrawn_at'),
+    withdrawnReason: text('withdrawn_reason'),
+  },
+  (t) => [index('ix_review_attachments_review').on(t.reviewId), index('ix_review_attachments_cap').on(t.capId)],
+)
+
+/** The bytes of each review file. Only `server/lib/review-files.ts` reads or writes this table. */
+export const reviewAttachmentData = sqliteTable('review_attachment_data', {
+  attachmentId: integer('attachment_id')
+    .primaryKey()
+    .references(() => reviewAttachments.id, { onDelete: 'restrict' }),
+  bytes: blob('bytes', { mode: 'buffer' }).notNull(),
+})
+
 // ---- Maintenance ------------------------------------------------------------------------
 
 /** A maintenance request, from the Zoho form's webhook or entered by hand. What Zoho sends is kept as the text it sent. */

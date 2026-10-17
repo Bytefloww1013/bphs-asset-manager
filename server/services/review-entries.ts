@@ -1,5 +1,5 @@
 import { and, asc, eq } from 'drizzle-orm'
-import { reviewCapCode, reviewEntryCode } from '../../shared/constants.ts'
+import { reviewEntryCode } from '../../shared/constants.ts'
 import type { ReviewEntryCreateInput } from '../../shared/schemas.ts'
 import type { ReviewEntry } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -8,7 +8,9 @@ import type { Actor } from '../lib/audit.ts'
 import { invalid } from '../lib/errors.ts'
 import { writeReviewAudit } from '../lib/review-audit.ts'
 import { requireRichText } from '../lib/richtext.ts'
-import { appendReviewEntry, findReviewToManage, getReview, requireNotSealed } from './reviews.ts'
+import type { Upload } from '../lib/uploads.ts'
+import { saveReviewAttachments } from './review-attachments.ts'
+import { appendReviewEntry, findCapBySeq, findReviewToManage, getReview, requireNotSealed } from './reviews.ts'
 
 // There is no update and no delete in this file, and there must never be: an entry is corrected by another entry.
 
@@ -45,8 +47,11 @@ export function listReviewEntries(db: DbLike, viewer: { employeeId: number | nul
   )
 }
 
-/** Add an update to a review's history, or to one of its CAPs, or a correction of an earlier entry, filed where that entry is. */
-export function createReviewEntry(db: Db, actor: Actor, code: string, input: ReviewEntryCreateInput): ReviewEntry {
+/**
+ * Add an update to a review's history, or to one of its CAPs, or a correction of an earlier entry, filed where that entry is.
+ * Any files that came with it are filed in the same place.
+ */
+export function createReviewEntry(db: Db, actor: Actor, code: string, input: ReviewEntryCreateInput, uploads: Upload[] = []): ReviewEntry {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
@@ -55,8 +60,7 @@ export function createReviewEntry(db: Db, actor: Actor, code: string, input: Rev
     let corrected: EntryRow | undefined
     let cap: { id: number; seq: number } | undefined
     if (input.kind === 'update' && input.capSeq !== undefined) {
-      cap = tx.select({ id: reviewCaps.id, seq: reviewCaps.seq }).from(reviewCaps).where(and(eq(reviewCaps.reviewId, review.id), eq(reviewCaps.seq, input.capSeq))).get()
-      if (!cap) throw invalid(`${review.code} has no ${reviewCapCode(input.capSeq)}.`, { field: 'capSeq' })
+      cap = findCapBySeq(tx, review, input.capSeq)
     }
     if (input.kind === 'correction') {
       corrected = tx
@@ -87,6 +91,7 @@ export function createReviewEntry(db: Db, actor: Actor, code: string, input: Rev
       details: `${review.code} ${reviewEntryCode(row.seq)} · ${input.title}`,
       at: now,
     })
+    saveReviewAttachments(tx, actor, review, cap ?? null, uploads, now)
     return shape(row, cap?.seq ?? null, corrected?.seq ?? null)
   })
 }

@@ -399,6 +399,13 @@ export type ReviewEntry = Omit<GrievanceEntry, 'kind'> & {
   cap: number | null
 }
 
+/** A file on a review: a grievance file's fields, with the CAP it belongs to. `entrySeq` is the automatic entry that recorded it. */
+export interface ReviewAttachment extends GrievanceAttachment {
+  entrySeq: number
+  /** The number of the CAP it belongs to, or null for a file on the review itself. */
+  cap: number | null
+}
+
 /** A Corrective Action Plan on a review, as it is now. What it said before each change is on the review's history. */
 export interface ReviewCap {
   id: number

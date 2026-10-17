@@ -9,8 +9,10 @@ import type { Actor } from '../lib/audit.ts'
 import { conflict, notFound } from '../lib/errors.ts'
 import { writeReviewAudit } from '../lib/review-audit.ts'
 import { plainToRichText, requireRichText } from '../lib/richtext.ts'
+import type { Upload } from '../lib/uploads.ts'
 import { requireActiveEmployees } from './grievances.ts'
 import { fullName } from './refs.ts'
+import { saveReviewAttachments } from './review-attachments.ts'
 import { appendReviewEntry, editRecord, findReviewToManage, getReview, iso, personJson, requireNotSealed, reviewsVisibleTo, toPerson, type FieldChange } from './reviews.ts'
 
 // A CAP is never deleted, so its number is never given to another. Every change to one is on its review's history.
@@ -82,8 +84,8 @@ const nameOf = (db: DbLike, id: number) => {
   return row ? fullName(row.firstName, row.lastName) : ''
 }
 
-/** Add a CAP to a review, as Not started. */
-export function createReviewCap(db: Db, actor: Actor, code: string, input: ReviewCapCreateInput): ReviewCap {
+/** Add a CAP to a review, as Not started, with any files that came with it. */
+export function createReviewCap(db: Db, actor: Actor, code: string, input: ReviewCapCreateInput, uploads: Upload[] = []): ReviewCap {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
@@ -118,6 +120,7 @@ export function createReviewCap(db: Db, actor: Actor, code: string, input: Revie
       at: now,
     })
     writeReviewAudit(tx, actor, { action: 'create', entityType: 'cap', entityId: row.id, reviewId: review.id, details: `${review.code} ${label} · ${input.title}`, at: now })
+    saveReviewAttachments(tx, actor, review, { id: row.id, seq }, uploads, now)
     return oneCap(tx, review, String(seq))
   })
 }
@@ -180,9 +183,10 @@ export function updateReviewCap(db: Db, actor: Actor, code: string, param: strin
 
 /**
  * Move a CAP between Not started, In progress, Completed and Cancelled, in any direction. Completed is stamped with when and by
- * whom; any other status clears the stamp, and the history keeps the earlier completion. A note goes on the history entry.
+ * whom; any other status clears the stamp, and the history keeps the earlier completion. A note goes on the history entry, and
+ * any files, evidence of the work as a rule, are saved with the change or not at all.
  */
-export function changeReviewCapStatus(db: Db, actor: Actor, code: string, param: string, input: ReviewCapStatusInput): ReviewCap {
+export function changeReviewCapStatus(db: Db, actor: Actor, code: string, param: string, input: ReviewCapStatusInput, uploads: Upload[] = []): ReviewCap {
   return db.transaction((tx) => {
     const { review, cap, label } = findCapToManage(tx, actor, code, param, input.version)
     if (cap.status === input.status) throw conflict('status_unchanged', `${label} is already ${reviewCapStatusLabel(input.status)}.`, { field: 'status' })
@@ -202,6 +206,7 @@ export function changeReviewCapStatus(db: Db, actor: Actor, code: string, param:
     const summary = `${label}: ${reviewCapStatusLabel(cap.status)} → ${reviewCapStatusLabel(input.status)}`
     appendReviewEntry(tx, actor, review.id, { kind: 'system', capId: cap.id, occurredAt: now, title: summary, body: plainToRichText(input.note), at: now })
     writeReviewAudit(tx, actor, { action: 'status', entityType: 'cap', entityId: cap.id, reviewId: review.id, details: `${review.code} ${label} · ${cap.title} · ${summary}`, at: now })
+    saveReviewAttachments(tx, actor, review, cap, uploads, now)
     return oneCap(tx, review, String(cap.seq))
   })
 }

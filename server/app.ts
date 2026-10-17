@@ -39,9 +39,9 @@ export interface AppOptions {
 // The largest thing anyone sends is an import: 2,000 rows of at most five 300-character cells as JSON, which fits with room to spare; signing in and changing a password send two short strings.
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_AUTH_BODY_BYTES = 16 * 1024
-// The routes that take a grievance's files, as multipart: ten files at their limit, and room for the form beside them.
+// The routes that take a grievance's or a review's files, as multipart: ten files at their limit, and room for the form beside them.
 const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
-const UPLOAD_PATH = /^\/api\/grievances(\/[^/]+\/(entries|attachments))?$/
+const UPLOAD_PATH = /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|reviews\/[^/]+\/(entries|attachments|caps(\/[^/]+\/status)?))$/
 
 /**
  * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
@@ -64,7 +64,7 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
     // The service decides: the reviewer's account may change its own reviews, and any reader may report an export.
     const reviewerMayDo =
       (method === 'PATCH' && /^\/api\/reviews\/[^/]+(\/caps\/[^/]+)?$/.test(path)) ||
-      (method === 'POST' && /^\/api\/reviews\/[^/]+\/(entries|caps|caps\/[^/]+\/status|exports)$/.test(path))
+      (method === 'POST' && /^\/api\/reviews\/[^/]+\/(entries|caps|caps\/[^/]+\/status|attachments|exports)$/.test(path))
     return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
   }
   return at('assets')

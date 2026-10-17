@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Phase 4 built** (slices 1.1 to 4.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Phase 5 built** (slices 1.1 to 5.2). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -25,8 +25,8 @@ A slice is ticked when it is finished and committed.
 - [x] 4.1 Add a CAP, and the CAP page
 - [x] 4.2 Change, reassign and complete a CAP
 - [x] 4.3 Action items across every review
-- [ ] 5.1 Files: storage and upload
-- [ ] 5.2 Files: download and withdraw
+- [x] 5.1 Files: storage and upload
+- [x] 5.2 Files: download and withdraw
 - [ ] 6.1 Review status and voiding
 - [ ] 6.2 Guards on employees
 - [ ] 6.3 Review Audit Log page and export
@@ -458,6 +458,15 @@ Everything in this slice is allowed by `canManageReview`, so for Edit or the rev
   - Its bytes stay in the database.
   - A trigger allows this one change to a file row and nothing else.
 - **Done when:** a test proves that no route deletes a file or its bytes.
+
+### Where Phase 5 differs from this plan
+
+- **One entry per set of files, not per file:** the files sent together get one automatic entry, "File attached" or "3 files attached", with their names. It is filed on the CAP when they are on one ("CAP01: 2 files attached"). The files hang off that entry, not off the update, CAP or status change they came with, so every file has an entry and `entry_id` is required. Each file still has its own `attach` audit entry.
+- **Evidence:** a status change takes files whatever the new status, but the page offers them only when marking a CAP Completed, as "Evidence".
+- **A CAP's edit takes no files.** Files are added to a CAP from its page, with Attach files.
+- **Withdrawing** also writes an automatic entry, "File withdrawn" with the reason, filed where the file is. Like attaching, it is refused on a Completed review with 409 `review_sealed`. The files of a Completed review still download.
+- **The file list** is read through the same check as the review, so the employee reviewed gets 404 on listing, downloading, attaching and withdrawing. Each file in the list carries its CAP number and the number of its entry.
+- **A panel header's buttons now wrap** on a narrow screen. The review's Timeline header gained a third button, Attach files, which pushed the page wider than a phone.
 
 ## 12. Phase 6: Lifecycle, guards and the audit log
 

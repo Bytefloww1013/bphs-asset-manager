@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import {
   reviewActionItemsExportSchema,
+  reviewAttachmentsSchema,
+  reviewAttachmentWithdrawSchema,
   reviewCapCreateSchema,
   reviewCapStatusSchema,
   reviewCapUpdateSchema,
@@ -10,7 +12,9 @@ import {
   reviewUpdateSchema,
 } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
-import { json, query, type Env } from '../http.ts'
+import { contentDisposition, formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
+import { readUploads } from '../lib/uploads.ts'
+import { addReviewAttachments, downloadReviewAttachment, listReviewAttachments, withdrawReviewAttachment } from '../services/review-attachments.ts'
 import { changeReviewCapStatus, createReviewCap, getReviewCap, listReviewActionItems, listReviewCaps, recordActionItemsExport, updateReviewCap } from '../services/review-caps.ts'
 import { createReviewEntry, listReviewEntries } from '../services/review-entries.ts'
 import { createReview, getReview, listReviews, updateReview } from '../services/reviews.ts'
@@ -34,15 +38,37 @@ export function reviewRoutes(db: Db) {
   app.patch('/:code', json(reviewUpdateSchema), (c) => c.json(updateReview(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
 
   app.get('/:code/entries', (c) => c.json(listReviewEntries(db, c.get('user'), c.req.param('code'))))
-  app.post('/:code/entries', json(reviewEntryCreateSchema), (c) => c.json(createReviewEntry(db, c.get('user'), c.req.param('code'), c.req.valid('json')), 201))
+  app.post('/:code/entries', jsonOrFiles(reviewEntryCreateSchema), async (c) =>
+    c.json(createReviewEntry(db, c.get('user'), c.req.param('code'), c.req.valid('json'), await readUploads(await formFiles(c))), 201),
+  )
 
   // A CAP is never removed: one entered by mistake is cancelled, with the reason on the history.
   app.get('/:code/caps', (c) => c.json(listReviewCaps(db, c.get('user'), c.req.param('code'))))
-  app.post('/:code/caps', json(reviewCapCreateSchema), (c) => c.json(createReviewCap(db, c.get('user'), c.req.param('code'), c.req.valid('json')), 201))
+  app.post('/:code/caps', jsonOrFiles(reviewCapCreateSchema), async (c) =>
+    c.json(createReviewCap(db, c.get('user'), c.req.param('code'), c.req.valid('json'), await readUploads(await formFiles(c))), 201),
+  )
   app.get('/:code/caps/:cap', (c) => c.json(getReviewCap(db, c.get('user'), c.req.param('code'), c.req.param('cap'))))
   app.patch('/:code/caps/:cap', json(reviewCapUpdateSchema), (c) => c.json(updateReviewCap(db, c.get('user'), c.req.param('code'), c.req.param('cap'), c.req.valid('json'))))
-  app.post('/:code/caps/:cap/status', json(reviewCapStatusSchema), (c) =>
-    c.json(changeReviewCapStatus(db, c.get('user'), c.req.param('code'), c.req.param('cap'), c.req.valid('json'))),
+  app.post('/:code/caps/:cap/status', jsonOrFiles(reviewCapStatusSchema), async (c) =>
+    c.json(changeReviewCapStatus(db, c.get('user'), c.req.param('code'), c.req.param('cap'), c.req.valid('json'), await readUploads(await formFiles(c)))),
+  )
+
+  // A file is added and never changed; taking one back is a withdrawal, not a delete.
+  app.post('/:code/attachments', jsonOrFiles(reviewAttachmentsSchema), async (c) =>
+    c.json(addReviewAttachments(db, c.get('user'), c.req.param('code'), c.req.valid('json'), await readUploads(await formFiles(c))), 201),
+  )
+  app.get('/:code/attachments', (c) => c.json(listReviewAttachments(db, c.get('user'), c.req.param('code'))))
+  // Always a download, never shown in the page, and never sniffed into something else, as grievance files are.
+  app.get('/:code/attachments/:id', (c) => {
+    const file = downloadReviewAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'))
+    return c.body(new Uint8Array(file.bytes), 200, {
+      'Content-Type': file.contentType,
+      'Content-Disposition': contentDisposition(file.filename),
+      'X-Content-Type-Options': 'nosniff',
+    })
+  })
+  app.post('/:code/attachments/:id/withdraw', requireFull('reviews'), json(reviewAttachmentWithdrawSchema), (c) =>
+    c.json(withdrawReviewAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'), c.req.valid('json'))),
   )
 
   return app

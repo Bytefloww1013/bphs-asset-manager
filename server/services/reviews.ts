@@ -1,11 +1,11 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm'
-import { REVIEW_STATUSES, reviewCode, type ReviewEntryKind, type ReviewStatus } from '../../shared/constants.ts'
+import { REVIEW_STATUSES, reviewCapCode, reviewCode, type ReviewEntryKind, type ReviewStatus } from '../../shared/constants.ts'
 import { formatUsDate } from '../../shared/dates.ts'
 import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
 import type { ReviewCreateInput, ReviewListQuery, ReviewUpdateInput } from '../../shared/schemas.ts'
 import type { ReviewDetail, ReviewList, ReviewPerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { employees, reviewEntries, reviews } from '../db/schema.ts'
+import { employees, reviewCaps, reviewEntries, reviews } from '../db/schema.ts'
 import type { Actor } from '../lib/audit.ts'
 import { conflict, forbidden, invalid, notFound } from '../lib/errors.ts'
 import { writeReviewAudit } from '../lib/review-audit.ts'
@@ -101,6 +101,13 @@ export function findReviewToManage(tx: DbLike, actor: Actor, code: string): Revi
 /** A Completed review takes nothing new until it is reopened. A voided one has already been refused by `findReviewToManage`. */
 export function requireNotSealed(review: ReviewDetail, doing: string) {
   if (review.status === 'completed') throw conflict('review_sealed', `${review.code} is Completed. Reopen it to ${doing}.`)
+}
+
+/** The review's CAP numbered `seq`, for something to be filed under, or 422 against `capSeq`. */
+export function findCapBySeq(tx: DbLike, review: ReviewDetail, seq: number) {
+  const cap = tx.select({ id: reviewCaps.id, seq: reviewCaps.seq }).from(reviewCaps).where(and(eq(reviewCaps.reviewId, review.id), eq(reviewCaps.seq, seq))).get()
+  if (!cap) throw invalid(`${review.code} has no ${reviewCapCode(seq)}.`, { field: 'capSeq' })
+  return cap
 }
 
 export interface NewReviewEntry {
