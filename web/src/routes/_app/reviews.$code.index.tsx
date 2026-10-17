@@ -118,8 +118,8 @@ function ReviewPage() {
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{review.summary}</p>
         <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
           {manage && <ReviewActions review={review} />}
-          <Link to="/reviews/$code/report" params={{ code: review.code }} className={buttonStyles('secondary')}>
-            <FileText className="size-4" aria-hidden /> Report
+          <Link to="/reviews/$code/case-file" params={{ code: review.code }} className={buttonStyles('secondary')}>
+            <FileText className="size-4" aria-hidden /> Case file
           </Link>
         </div>
       </div>

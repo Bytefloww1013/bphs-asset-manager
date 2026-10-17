@@ -320,7 +320,7 @@ A grievance printed whole, saved as a PDF from the browser's print dialog. Decid
 - **Printed only from its Print button.** The button logs the print first and opens the dialog only once the log is written; if the log fails, the page says so and nothing prints. Ctrl+P or the browser menu prints a single line asking for the button instead of the case file. Why: a confidential copy should never leave without an audit entry, and the browser cannot be made to wait on a log once its own print has started.
 - **The log says "print dialog opened", not "printed".** Browsers do not report whether the dialog was then cancelled, so the entry claims only what is known.
 - **The Excel workbook follows the same rule.** Its button logs the export before the file is made, so a failed log means no file.
-- **The review report is printed the same way,** from the same print pieces: the review's facts, findings and body, each CAP with its fields and the names of its files, the full history, and a table of every file with its SHA-256. A CAP or an entry is kept on one page where it fits. The Action items export also logs itself before the file is made.
+- **A review's case file is printed the same way,** from the same print pieces: the review's facts, findings and body, each CAP with its fields and the names of its files, the full history, and a table of every file with its SHA-256. A CAP or an entry is kept on one page where it fits. The Action items export also logs itself before the file is made.
 
 ## Do's and Don'ts
 

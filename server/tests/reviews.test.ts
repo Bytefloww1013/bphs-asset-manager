@@ -842,13 +842,13 @@ describe('the Review Audit Log', () => {
     expect(await (await t.app.request('/api/reviews/audit.csv', { headers: { cookie: editor } })).text()).toContain(about.code)
   })
 
-  it('has an entry for each printed report, from any account that can read the review, and the employee reviewed cannot print one', async () => {
+  it('has an entry for each printed case file, from any account that can read the review, and the employee reviewed cannot print one', async () => {
     const { t, superAdmin, create, account, employee, dana } = await reviews()
     const made = (await create()).data
     const reader = await account('reader@bphs.local', { reviews: 'read' }, employee('E-4009', 'Rui', 'Costa').id)
     expect((await t.call('POST', `/api/reviews/${made.code}/exports`, { cookie: reader })).status).toBe(204)
     const log = (await t.call('GET', '/api/reviews/audit?action=export', { cookie: superAdmin })).data
-    expect(log).toMatchObject({ total: 1, entries: [{ actor: 'reader@bphs.local', code: made.code, details: `${made.code} · Missed handover · PDF report (print dialog opened)` }] })
+    expect(log).toMatchObject({ total: 1, entries: [{ actor: 'reader@bphs.local', code: made.code, details: `${made.code} · Missed handover · PDF case file (print dialog opened)` }] })
     const reviewed = await account('dana@bphs.local', { reviews: 'read' }, dana.id)
     expect((await t.call('POST', `/api/reviews/${made.code}/exports`, { cookie: reviewed })).status).toBe(404)
   })

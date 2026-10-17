@@ -124,13 +124,13 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 | --- | --- |
 | Reviews: status tabs, filters, search | `/reviews` |
 | New review | `/reviews/new` |
-| Review detail: facts, findings, review body, files, a timeline with its CAPs, summary, status, void, report | `/reviews/AR-2026-0001` |
+| Review detail: facts, findings, review body, files, a timeline with its CAPs, summary, status, void, case file | `/reviews/AR-2026-0001` |
 | Edit review (each edit is on the history, with what it replaced) | `/reviews/AR-2026-0001/edit` |
 | Add an update or a correction, on the review or a CAP, with files | `/reviews/AR-2026-0001/entries/new` |
 | Add a CAP, with files | `/reviews/AR-2026-0001/caps/new` |
 | CAP detail: facts, details, files, its own history, status, mark complete | `/reviews/AR-2026-0001/caps/CAP01` |
 | Edit CAP | `/reviews/AR-2026-0001/caps/CAP01/edit` |
-| Report: print layout, saved as a PDF from the print dialog | `/reviews/AR-2026-0001/report` |
+| Case file: print layout, saved as a PDF from the print dialog | `/reviews/AR-2026-0001/case-file` |
 | Action items: every CAP on every review, with CSV and Excel export | `/reviews/actions` |
 | Employees | `/reviews/employees` |
 | Review audit log (filter, search, CSV export) | `/reviews/audit` |
@@ -189,7 +189,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
 - Every account that works in Grievances can read every grievance, and every account in Administrative Reviews every review except one about itself; there is no limit to named people.
 - Review due dates are recorded but nothing is flagged overdue, and nobody is notified.
-- The case-file and review-report PDFs come from the browser's print dialog, so its page header and footer are the browser's.
+- The grievance and review case-file PDFs come from the browser's print dialog, so its page header and footer are the browser's.
 - Grievance and review files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
 - Zoho Forms does not retry a webhook. A request sent while the app is down never arrives; it is still in the form's Entries in Zoho, and can be entered by hand (RUNBOOK section 9).
 - Maintenance dates (Date, Noticed, Submitted in Zoho) are kept as the text Zoho sends, so they are shown but not sorted or filtered as dates.

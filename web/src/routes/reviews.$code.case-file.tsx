@@ -12,8 +12,8 @@ import { formatDateTime } from '@/lib/format.ts'
 import { reviewAttachmentsQuery, reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
 import { requireSession } from '@/lib/session.ts'
 
-// Outside the app shell, as the grievance case file is: the page is the report as it prints.
-export const Route = createFileRoute('/reviews/$code/report')({
+// Outside the app shell, as the grievance case file is: the page is the review's case file as it prints.
+export const Route = createFileRoute('/reviews/$code/case-file')({
   beforeLoad: async ({ context, location }) => {
     await requireSession(context.queryClient, location.href, 'reviews')
   },
@@ -25,7 +25,7 @@ export const Route = createFileRoute('/reviews/$code/report')({
       context.queryClient.ensureQueryData(reviewAttachmentsQuery(params.code)),
     ]),
   errorComponent: ReviewLoadError,
-  component: Report,
+  component: CaseFile,
 })
 
 /** One CAP with every field and the names of its files, kept on one page where it fits. */
@@ -63,13 +63,13 @@ function Cap({ cap, files, first }: { cap: ReviewCap; files: ReviewAttachment[];
   )
 }
 
-function Report() {
+function CaseFile() {
   const { code } = Route.useParams()
   const { data: review } = useQuery(reviewQuery(code))
   const { data: entries } = useQuery(reviewEntriesQuery(code))
   const { data: caps } = useQuery(reviewCapsQuery(code))
   const { data: files } = useQuery(reviewAttachmentsQuery(code))
-  useReviewPageTitle(`${review?.code ?? code.toUpperCase()} report`)
+  useReviewPageTitle(`${review?.code ?? code.toUpperCase()} case file`)
 
   if (!review || !entries || !caps || !files) return null
   const counted = caps.filter((cap) => cap.status !== 'cancelled')

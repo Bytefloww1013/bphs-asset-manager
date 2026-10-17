@@ -558,6 +558,7 @@ All in `server/services/employees.ts`:
 - **The seed** gives Marcus Reviews Edit and Rosa Reviews Read Only, and adds five reviews in `server/review-seed.ts`, one per status plus a second Open one. AR-2026-0003 is about Marcus's own employee, so it is hidden from him.
 - **`/reviews/employees` was built in 7.2.** It was in the plan's screens and sidebar, but no slice had built it. It is the same Employees page as under Assets and Grievances.
 - **The end-to-end run used the seeded accounts.** Marcus was the Edit account, Rosa the reviewer and Priya, a Super Admin, the employee reviewed. It also checked that completing the review is refused while CAPs are open. It ran in Chromium only, at 1400 and 390 px wide.
+- **The report is now the Case file**, at your request after 7.2. The button, the page title and the audit entry say Case file, and the page is at `/reviews/$code/case-file`, as on a grievance. The plan's sections above still say report.
 
 ## 14. Questions
 

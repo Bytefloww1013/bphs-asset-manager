@@ -14,7 +14,7 @@ import { cn } from '@/lib/cn.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { useUser } from '@/lib/session.ts'
 
-// The pieces of a record as it prints: the grievance case file and the review report.
+// The pieces of a record as it prints: a grievance's case file and a review's.
 
 export function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (

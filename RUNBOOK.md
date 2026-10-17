@@ -330,10 +330,10 @@ Checked by running them against a real container and scratch Docker volumes whil
   1. Marcus (Reviews Edit) recorded a review through the form, with Rosa as the reviewer and Priya as the employee reviewed.
   2. Rosa (Reviews Read Only, but the reviewer) added three CAPs and an update on CAP01 with a file.
   3. Rosa completed CAP01. Completing the review was then refused while two CAPs were open. She cancelled CAP02 with a reason and completed CAP03.
-  4. Rosa completed the review and printed its report; the export was in the audit log.
-  5. Priya, a Super Admin, could not find it in the review list (All, searched by ID), Action items (All, searched), the audit log (searched) or the API. Its review, CAP and report links each answered "No review with that ID".
+  4. Rosa completed the review and printed its case file; the export was in the audit log.
+  5. Priya, a Super Admin, could not find it in the review list (All, searched by ID), Action items (All, searched), the audit log (searched) or the API. Its review, CAP and case file links each answered "No review with that ID".
 
-  No sideways scrolling at either width. The console showed only the expected "Review not found" for Priya. Access rules, sealing and the employee guards are covered by `server/tests/reviews.test.ts`. **The printed PDF from Firefox was not seen**: print one report from each browser the first time.
+  No sideways scrolling at either width. The console showed only the expected "Review not found" for Priya. Access rules, sealing and the employee guards are covered by `server/tests/reviews.test.ts`. **The printed PDF from Firefox was not seen**: print one review case file from each browser the first time.
 - Graceful shutdown on SIGTERM (exit 0), log rotation settings (accepted by `docker compose config`), and that the cookie is `HttpOnly; Secure; SameSite=Lax` when `COOKIE_SECURE=true`.
 
 **Not exercised**, so check them the first time you use them:
