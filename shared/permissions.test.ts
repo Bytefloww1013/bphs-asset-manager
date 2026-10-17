@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Access } from './constants.ts'
-import { canAt, canManageGrievance, describeAccess, levelOf, workspacesOf } from './permissions.ts'
+import { canAt, canManageGrievance, canManageReview, describeAccess, levelOf, workspacesOf } from './permissions.ts'
 
 const user = (access: Access, employeeId: number | null = null, superAdmin = false) => ({ access, superAdmin, employeeId })
 
@@ -67,5 +67,28 @@ describe('managing a grievance', () => {
   it('refuses when nobody is signed in', () => {
     expect(canManageGrievance(null, 7)).toBe(false)
     expect(canManageGrievance(undefined, 7)).toBe(false)
+  })
+})
+
+describe('managing a review', () => {
+  it('lets the reviewer manage their own with Read, and nobody else at Read', () => {
+    expect(canManageReview(user({ reviews: 'read' }, 7), 7)).toBe(true)
+    expect(canManageReview(user({ reviews: 'read' }, 7), 8)).toBe(false)
+  })
+
+  it('lets Edit, Full and a Super Admin with a linked employee manage any review', () => {
+    expect(canManageReview(user({ reviews: 'edit' }, 9), 8)).toBe(true)
+    expect(canManageReview(user({ reviews: 'full' }, 9), 8)).toBe(true)
+    expect(canManageReview(user({}, 9, true), 8)).toBe(true)
+  })
+
+  it('refuses an account with no linked employee, whatever its level', () => {
+    expect(canManageReview(user({ reviews: 'edit' }), 8)).toBe(false)
+    expect(canManageReview(user({}, null, true), 8)).toBe(false)
+  })
+
+  it('refuses a reviewer with no access to Reviews, and nobody signed in', () => {
+    expect(canManageReview(user({ assets: 'full' }, 7), 7)).toBe(false)
+    expect(canManageReview(null, 7)).toBe(false)
   })
 })

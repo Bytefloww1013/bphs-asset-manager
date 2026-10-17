@@ -627,7 +627,7 @@ describe('adding to the timeline', () => {
   it('has no route that changes or removes an entry, and none is changed by trying', async () => {
     const { t, admin, superAdmin, made, path } = await one()
     const added = (await t.call('POST', path, { cookie: admin, body: entry })).data as { id: number }
-    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.includes('/entries'))
+    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.startsWith('/api/grievances') && route.path.includes('/entries'))
     // A route with a validator is listed once for each handler.
     expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))].sort()).toEqual(['GET /api/grievances/:code/entries', 'POST /api/grievances/:code/entries'])
     const before = t.sqlite.prepare('select * from grievance_entries order by id').all()

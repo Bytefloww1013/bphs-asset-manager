@@ -38,7 +38,8 @@ export function EntryMarker({ kind, className }: { kind: string; className?: str
       </span>
     )
   }
-  if (kind === 'action') {
+  // A review's update is drawn as a grievance's action is: something someone did.
+  if (kind === 'action' || kind === 'update') {
     return (
       <span className={cn('mt-2', box, 'bg-ink-2 text-surface')} aria-hidden>
         <Check className="size-3.5" strokeWidth={2.75} />
@@ -100,9 +101,11 @@ interface TimelineProps<E extends TimelineEntry> {
   /** Where this browser keeps the reader's choice of order. */
   orderKey: string
   link?: (entry: E, children: ReactNode) => ReactNode
+  /** What can be done with an entry the app did not write, shown after who documented it. */
+  actions?: (entry: E) => ReactNode
 }
 
-function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, kindLabel, entryCode }: Pick<TimelineProps<E>, 'link' | 'kindLabel' | 'entryCode'> & { entry: E; last: boolean; onGoTo: (seq: number) => void }) {
+function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, actions, kindLabel, entryCode }: Pick<TimelineProps<E>, 'link' | 'actions' | 'kindLabel' | 'entryCode'> & { entry: E; last: boolean; onGoTo: (seq: number) => void }) {
   const [open, setOpen] = useState(false)
   const code = entryCode(entry.seq)
   const automatic = entry.kind === 'system'
@@ -165,6 +168,7 @@ function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, kindLabel, 
                 <span className="sr-only"> of {code}</span>
               </button>
             )}
+            {actions?.(entry)}
           </p>
           {/* Printed, every entry is open: paper has no button to press. */}
           {entry.bodyHtml && (
@@ -182,7 +186,7 @@ function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, kindLabel, 
  * A record's timeline: one rail through the case, in the order things happened, with the newest first unless the reader turns it
  * round. Every entry of the record is passed in; only the drawing is done a page at a time.
  */
-export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel, entryCode, orderKey, link }: TimelineProps<E>) {
+export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel, entryCode, orderKey, link, actions }: TimelineProps<E>) {
   const [show, setShow] = useState<'all' | E['kind']>('all')
   const [hideAutomatic, setHideAutomatic] = useState(false)
   const [order, setOrder] = useState<Order>(() => savedOrder(orderKey))
@@ -281,7 +285,7 @@ export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel,
               <h3 className="pb-1.5 pl-9 pt-4 text-xs font-semibold tracking-wide text-ink-3">{month.name}</h3>
               <ol>
                 {month.entries.map((entry, i) => (
-                  <Entry key={entry.id} entry={entry} link={link} kindLabel={kindLabel} entryCode={entryCode} onGoTo={follow} last={remaining === 0 && m === months.length - 1 && i === month.entries.length - 1} />
+                  <Entry key={entry.id} entry={entry} link={link} actions={actions} kindLabel={kindLabel} entryCode={entryCode} onGoTo={follow} last={remaining === 0 && m === months.length - 1 && i === month.entries.length - 1} />
                 ))}
               </ol>
             </section>

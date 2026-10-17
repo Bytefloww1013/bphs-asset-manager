@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Phase 2 built** (slices 1.1 to 2.2). **Phase 3 under way**, its first part committed as work in progress: see "Handoff" below. Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Phase 3 built** (slices 1.1 to 3.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -19,9 +19,9 @@ A slice is ticked when it is finished and committed.
 - [x] 1.3 Every account linked to an employee
 - [x] 2.1 Shared pieces out of Grievances
 - [x] 2.2 Workspace and section
-- [ ] 3.1 Review data, create and detail
-- [ ] 3.2 History, edit and updates
-- [ ] 3.3 Browse
+- [x] 3.1 Review data, create and detail
+- [x] 3.2 History, edit and updates
+- [x] 3.3 Browse
 - [ ] 4.1 Add a CAP, and the CAP page
 - [ ] 4.2 Change, reassign and complete a CAP
 - [ ] 4.3 Action items across every review
@@ -32,56 +32,6 @@ A slice is ticked when it is finished and committed.
 - [ ] 6.3 Review Audit Log page and export
 - [ ] 7.1 Printable review report
 - [ ] 7.2 Seed, docs, end-to-end check
-
-## Handoff (2026-10-16, mid Phase 3)
-
-The work stopped partway through Phase 3 so the computer could be shut down. Your instruction still stands: build Phases 1 to 3, commit after each phase, then stop and report. Phases 1 and 2 are committed (`9aaa46f`, `8c0af3a`). Phase 3's data layer is committed as work in progress; the rest of Phase 3 (slices 3.1 to 3.3) goes in **one more commit**, ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. After it, tick 3.1 to 3.3 above, change the Status line to "Phase 3 built", and stop.
-
-### Committed as work in progress (typecheck and 217 tests pass)
-
-- `server/db/schema.ts`: `reviews`, `reviewCaps`, `reviewEntries`, `reviewAuditLog`.
-- `server/db/migrations/0015_reviews.sql`, with its triggers added by hand, plus `meta/0015_snapshot.json` and the `_journal.json` entry.
-- `server/lib/review-audit.ts`: `writeReviewAudit(db, actor, {action, entityType: 'review'|'cap'|'entry'|'attachment', entityId, reviewId, details?, at?})`.
-- `shared/constants.ts`: review statuses, CAP statuses, entry kinds (update, correction, system) and their labels; `reviewCode` (AR-YYYY-NNNN), `reviewCapCode` (CAP01), `reviewEntryCode` (E01).
-- `shared/types.ts`: `ReviewPerson`, `ReviewDetail`, `ReviewEntry`, `ReviewRow`, `ReviewList`.
-- `shared/schemas.ts`: `reviewCreateSchema`, `reviewUpdateSchema` (adds `version`), `reviewEntryCreateSchema` (update `{occurredAt, …}` or correction `{correctsSeq, …}`), `reviewListQuerySchema`. The employee reviewed cannot be the reviewer.
-- `shared/permissions.ts`: `canManageReview(user, reviewerEmployeeId)` (Read in Reviews and is the reviewer, or Edit) and `reviewManageReason(name)`.
-
-### Still to do, in order
-
-1. **`shared/permissions.test.ts`**: a `describe('managing a review')` block mirroring `managing a grievance`. Include: a reviewer with no linked employee is refused even at Read.
-2. **`server/services/reviews.ts`**. It holds everything the entries and (later) CAP files need, so imports run one way only:
-   - `reviewsVisibleTo(user)` → sql `r.employee_id is not ${user.employeeId}` (needs alias `r`). The employee reviewed never sees their review, at any level, Super Admin included (Q6): 404 "Review not found." and left out of every count.
-   - `nextReviewCode`, `getReview(db, user, {id}|{code})` (joins `employees e` reviewed, `employees v` reviewer, left join `users u`; people as `json_object(...)`), `findReviewToManage` (forbidden with `reviewManageReason`, then `conflict('review_voided', …)`), `appendReviewEntry` (as `appendGrievanceEntry`, bumps `reviews.lastActivityAt`).
-   - `createReview`: refuse reviewing yourself (`invalid`, field `employeeId`), both people active (`requireActiveEmployees` from `grievances.ts`), insert, system entry E01 "Review created", audit `create`.
-   - `updateReview`: version check (`stale_version`, naming the last editor), `unchanged`, version-guarded update to `version + 1`, system entry `Edited: …` listing "Label: old → new" with old Findings and old body kept in the entry body, audit `update`. Mirror `server/services/grievance-versions.ts`.
-   - `listReviews`: visibility, reviewer/employee/date filters, search over code, title, summary and both names; CAP done/total (total leaves out cancelled) and next due; counts per status over all matches; order `last_activity_at desc, id desc`; reviewer and employee lists for the filters.
-3. **`server/services/review-entries.ts`**: `listReviewEntries`, `createReviewEntry` (correction must exist and not be a system entry). No update or delete, ever.
-4. **`server/routes/reviews.ts`** as `reviewRoutes(db)`: `GET /`, `POST /` (201), `GET /:code`, `PATCH /:code`, `GET /:code/entries`, `POST /:code/entries` (201). Fixed paths before `/:code`.
-5. **`server/app.ts`**: pass `reviewRoutes(db)` (line 132), and let the reviewer through at Read (line 63):
-   ```ts
-   if (/^\/api\/reviews(\/|$)/.test(path)) {
-     const reviewerMayDo = (method === 'PATCH' && /^\/api\/reviews\/[^/]+$/.test(path)) || (method === 'POST' && /^\/api\/reviews\/[^/]+\/entries$/.test(path))
-     return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
-   }
-   ```
-6. **`server/tests/reviews.test.ts`**: log separation (copy the test at `server/tests/grievances.test.ts` lines 51 to 60, for `review`, `writeReviewAudit`, `reviewAuditLog`, allowing `lib/review-audit.ts`); append-only triggers; code numbering; create (201, archived person refused, no Edit 403, self-review refused); the employee reviewed gets 404 as Super Admin; stale and unchanged edits refused; the reviewer at Read Only can edit and add an update while another Read Only account gets 403; history keeps the old text; list tabs, search, and a hidden review in no count. Use accounts linked to employees: `adminUser` in `helpers.ts` has none, so Reviews is None for it.
-7. **Web**:
-   - `web/src/lib/queries.ts`: `reviewsQuery`, `reviewQuery` (key `['reviews','detail',code.toUpperCase()]`), `reviewEntriesQuery`.
-   - `features/reviews/`: load error, status badge, `form.tsx`. Copy the Grievances ones.
-   - Routes: `reviews.new.tsx`, `reviews.$code.index.tsx` (details, Findings, body, timeline with an Updates filter; Edit and Add update shown by `canManageReview`), `reviews.$code.edit.tsx`, `reviews.$code.entries.new.tsx` (no Type select), and `reviews.index.tsx` (tabs Open, In progress, Completed, Voided, All; search; filters; "New review" hidden by `useDenied('reviews','edit')`).
-   - `features/common/entry-fields.tsx`: an optional `files` prop, so the Files field can be hidden until Phase 5.
-   - `features/common/timeline.tsx`: an `update` case in `EntryMarker`, drawn like `action`.
-   - Check whether `PeoplePicker` can pick one person; otherwise use `Combobox`.
-8. **Finish**: `bun run typecheck`, `bun run test` (217 passed before Phase 3), `bun run build` (it regenerates `routeTree.gen.ts`; typecheck fails on new routes until it runs), a headless Chromium check of the new screens, then the commit.
-
-### Things to know when resuming
-
-- Run `git status` first: the tree should be clean, with the work-in-progress commit on top of `8c0af3a`.
-- The temporary scratchpad (local server data, Playwright scripts, screenshots) was under `/tmp` and is likely gone after the restart. Recreate it as the memory note `visual-checks-with-playwright.md` describes. Sign in as p.raghunathan@bphs.local (Priya, Super Admin, linked to E-1042); the password is in your seed data.
-- Start the built app with `PORT=3456 DATA_DIR=<dir> NODE_ENV=production node server/index.ts`, after `bun run build`.
-- There is no lint config, so don't run biome. The `sqlite3` CLI is not installed; use node with better-sqlite3 to look at a database.
-- In Playwright, the heading "Reviews" needs `exact: true`, and the mobile menu button is named "Open navigation".
 
 ## 1. What it does
 
@@ -607,7 +557,7 @@ I will build these as proposed.
 - A Type or Category list, programs or locations on a review.
 - A Verified step for each CAP, separate from completing the review (Q6).
 - Recurring CAPs, or templates for them.
-- An Excel workbook per review. It is easy to add later by copying the grievance workbook.
+- An Excel workbook per review. It is easy to add later by copying the grievance workbook, removed in `41bf4de` and still in the history.
 - Importing reviews from another system.
 - Images inside the rich text. They go in as attached files.
 

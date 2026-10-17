@@ -22,10 +22,13 @@ import type {
   MaintenanceDetail,
   MaintenanceRow,
   ProgramRow,
+  ReviewDetail,
+  ReviewEntry,
+  ReviewList,
   SessionUser,
   UserRow,
 } from '@shared/types.ts'
-import type { GrievanceStatus } from '@shared/constants.ts'
+import type { GrievanceStatus, ReviewStatus } from '@shared/constants.ts'
 import { ApiError, api, qs } from './api.ts'
 import { startOfLocalDay } from './format.ts'
 
@@ -147,6 +150,35 @@ export const grievanceVersionsQuery = (code: string) =>
   queryOptions({
     queryKey: ['grievances', 'detail', code.toUpperCase(), 'versions'],
     queryFn: () => api.get<GrievanceVersion[]>(`/grievances/${encodeURIComponent(code)}/versions`),
+  })
+
+export interface ReviewListParams {
+  status?: ReviewStatus | 'all'
+  reviewer?: number
+  employee?: number
+  from?: string
+  to?: string
+  q?: string
+}
+
+export const reviewsQuery = (params: ReviewListParams) =>
+  queryOptions({
+    queryKey: ['reviews', 'list', params],
+    queryFn: () => api.get<ReviewList>(`/reviews${qs({ ...params })}`),
+    placeholderData: (previous) => previous,
+  })
+
+export const reviewQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['reviews', 'detail', code.toUpperCase()],
+    queryFn: () => api.get<ReviewDetail>(`/reviews/${encodeURIComponent(code)}`),
+  })
+
+/** Every entry on one review's history, under the review's own key like a grievance's. */
+export const reviewEntriesQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['reviews', 'detail', code.toUpperCase(), 'entries'],
+    queryFn: () => api.get<ReviewEntry[]>(`/reviews/${encodeURIComponent(code)}/entries`),
   })
 
 export const digitalAssetsQuery = queryOptions({

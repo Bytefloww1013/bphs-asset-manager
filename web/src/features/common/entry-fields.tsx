@@ -21,10 +21,12 @@ interface EntryFieldsProps {
   error: (name: keyof EntryText) => string | null
   /** What the short description is for. The character count follows it. */
   shortDescriptionHint: string
+  /** False where files cannot be added yet: review updates, until review files come. */
+  files?: boolean
 }
 
 /** The fields an action or event on a grievance is written with, and a CAP on a review: Title, Short description, Details and Files. */
-export function EntryFields({ value, onChange, error, shortDescriptionHint }: EntryFieldsProps) {
+export function EntryFields({ value, onChange, error, shortDescriptionHint, files = true }: EntryFieldsProps) {
   return (
     <>
       <Field label="Title" hint={count(value.title, GRIEVANCE_TITLE_MAX)} error={error('title')}>
@@ -36,9 +38,11 @@ export function EntryFields({ value, onChange, error, shortDescriptionHint }: En
       <Field label="Details" hint="Optional. Anything the short description does not cover." error={error('body')}>
         <RichTextEditor label="Details" onChange={(body) => onChange('body', body)} />
       </Field>
-      <Field label="Files" optional hint={FILES_HINT} error={error('files')}>
-        <FilePicker value={value.files} onChange={(files) => onChange('files', files)} />
-      </Field>
+      {files && (
+        <Field label="Files" optional hint={FILES_HINT} error={error('files')}>
+          <FilePicker value={value.files} onChange={(picked) => onChange('files', picked)} />
+        </Field>
+      )}
     </>
   )
 }

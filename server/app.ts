@@ -46,7 +46,7 @@ const UPLOAD_PATH = /^\/api\/grievances(\/[^/]+\/(entries|attachments))?$/
 /**
  * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
  * Users answers to Super Admin, and anyone may read the employee list, which every workspace's pickers use.
- * Grievance owners manage their own with Read, so those routes are left to the service to decide.
+ * Grievance owners manage their own with Read, and so do reviewers, so those routes are left to the service to decide.
  */
 function accessNeeded(method: string, path: string): { section: Section; level: AccessLevel } | null {
   const read = method === 'GET' || method === 'HEAD'
@@ -60,7 +60,10 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
     return ownerMayDo ? { section: 'grievances', level: 'read' } : at('grievances')
   }
   if (/^\/api\/maintenance(\/|$)/.test(path)) return at('maintenance')
-  if (/^\/api\/reviews(\/|$)/.test(path)) return at('reviews')
+  if (/^\/api\/reviews(\/|$)/.test(path)) {
+    const reviewerMayDo = (method === 'PATCH' && /^\/api\/reviews\/[^/]+$/.test(path)) || (method === 'POST' && /^\/api\/reviews\/[^/]+\/entries$/.test(path))
+    return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
+  }
   return at('assets')
 }
 
@@ -129,7 +132,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/digital-assets', digitalAssetRoutes(db))
   api.route('/grievances', grievanceRoutes(db))
   api.route('/maintenance', maintenanceRoutes(db))
-  api.route('/reviews', reviewRoutes())
+  api.route('/reviews', reviewRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requireSuperAdmin)
   api.use('/users', requireSuperAdmin)
