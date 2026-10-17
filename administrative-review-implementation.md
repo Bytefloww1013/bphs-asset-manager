@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Slice 7.1 built** (slices 1.1 to 7.1). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Phase 7 built** (slices 1.1 to 7.2). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -31,7 +31,7 @@ A slice is ticked when it is finished and committed.
 - [x] 6.2 Guards on employees
 - [x] 6.3 Review Audit Log page and export
 - [x] 7.1 Printable review report
-- [ ] 7.2 Seed, docs, end-to-end check
+- [x] 7.2 Seed, docs, end-to-end check
 
 ## 1. What it does
 
@@ -555,6 +555,9 @@ All in `server/services/employees.ts`:
 - **The report ends with a Files table**, as the case file does: each file with its CAP, the entry that recorded it, its size, who added it and its SHA-256. Each CAP also lists its files by name.
 - **Report link:** the review page shows it to every account that can read the review, next to Edit, Change status and Void.
 - **Checked in Chrome only.** A 10-CAP review printed to 7 Letter pages with no CAP split. Firefox's print can't be driven headless, so it has not been checked.
+- **The seed** gives Marcus Reviews Edit and Rosa Reviews Read Only, and adds five reviews in `server/review-seed.ts`, one per status plus a second Open one. AR-2026-0003 is about Marcus's own employee, so it is hidden from him.
+- **`/reviews/employees` was built in 7.2.** It was in the plan's screens and sidebar, but no slice had built it. It is the same Employees page as under Assets and Grievances.
+- **The end-to-end run used the seeded accounts.** Marcus was the Edit account, Rosa the reviewer and Priya, a Super Admin, the employee reviewed. It also checked that completing the review is refused while CAPs are open. It ran in Chromium only, at 1400 and 390 px wide.
 
 ## 14. Questions
 

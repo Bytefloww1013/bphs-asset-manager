@@ -39,7 +39,7 @@ import { LogoMark, Wordmark } from '../ui/logo.tsx'
 import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/audit'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/employees' | '/reviews/audit'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -58,6 +58,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
         items: [
           { to: '/reviews', label: 'Reviews', icon: ClipboardCheck },
           { to: '/reviews/actions', label: 'Action items', icon: ListChecks },
+          ...(employees ? [{ to: '/reviews/employees', label: 'Employees', icon: Users } as const] : []),
         ],
       },
       { heading: 'Administration', items: [{ to: '/reviews/audit', label: 'Audit log', icon: ScrollText }] },

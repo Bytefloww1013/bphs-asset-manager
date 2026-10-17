@@ -4,7 +4,7 @@
 
 Application: [BPHS-Connect](https://bphs-connect.com).
 
-An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to, and a third, **Maintenance**, tracks the work order requests staff send from a Zoho form. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
+An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to, a third, **Maintenance**, tracks the work order requests staff send from a Zoho form, and a fourth, **Administrative Reviews**, keeps reviews of employees' work and the corrective action plans (CAPs) that follow from them, each hidden from the employee it is about. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
 
 - **Front end:** React 19, Vite, Tailwind v4, TanStack Router, Query, Table (v9) and Form, Radix primitives, Lucide icons, Geist type (self-hosted).
 - **Back end:** Hono on Node 24+, Drizzle ORM over `better-sqlite3`, Zod validation, scrypt password hashing, cookie sessions stored in SQLite.
@@ -18,11 +18,11 @@ Requires [Bun](https://bun.sh) 1.3 or newer (package manager and script runner) 
 
 ```bash
 bun install
-bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, 5 grievances, history, 5 users)
+bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, 5 grievances, 5 administrative reviews, history, 6 users)
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
-The seed prints the demo sign-ins (a Super Admin, an account with Edit access, a read-only account; it also makes one that must change its password, a locked one and a deactivated one). It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
+The seed prints the demo sign-ins (a Super Admin, an account with Edit access, a read-only account; it also makes one that must change its password, a locked one and a deactivated one). One of the reviews is about the Edit account's own employee, to show it is hidden from that account. It refuses to run when `NODE_ENV=production`. Without seeding, the first start creates one Super Admin with the password `Brightpath1!`, which must be changed at first sign-in.
 
 The development API runs on Node through `tsx watch`, which restarts it when an imported file changes. This avoids the native file-watcher crash seen with Node 24's `--watch` mode when stopping the server.
 
@@ -30,7 +30,7 @@ Other scripts:
 
 | Script | What it does |
 | --- | --- |
-| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files, maintenance and its webhook) against an in-memory database |
+| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files, maintenance and its webhook, administrative reviews with their CAPs, files and who may see them) against an in-memory database |
 | `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
 | `bun run build` | Builds the SPA to `dist/web` |
 | `bun run start` | Production mode: builds the SPA first, so it is never an older one, then the API serves it from `dist/web` |
@@ -72,7 +72,7 @@ This uses SQLite's backup API, so it is safe while the app is running. `scripts/
 
 ## What it does
 
-Three workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
+Four workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 
 | Screen | Route |
 | --- | --- |
@@ -118,6 +118,23 @@ Three workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 
 Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 
+**Administrative Reviews**, twelve screens:
+
+| Screen | Route |
+| --- | --- |
+| Reviews: status tabs, filters, search | `/reviews` |
+| New review | `/reviews/new` |
+| Review detail: facts, findings, review body, files, a timeline with its CAPs, summary, status, void, report | `/reviews/AR-2026-0001` |
+| Edit review (each edit is on the history, with what it replaced) | `/reviews/AR-2026-0001/edit` |
+| Add an update or a correction, on the review or a CAP, with files | `/reviews/AR-2026-0001/entries/new` |
+| Add a CAP, with files | `/reviews/AR-2026-0001/caps/new` |
+| CAP detail: facts, details, files, its own history, status, mark complete | `/reviews/AR-2026-0001/caps/CAP01` |
+| Edit CAP | `/reviews/AR-2026-0001/caps/CAP01/edit` |
+| Report: print layout, saved as a PDF from the print dialog | `/reviews/AR-2026-0001/report` |
+| Action items: every CAP on every review, with CSV and Excel export | `/reviews/actions` |
+| Employees | `/reviews/employees` |
+| Review audit log (filter, search, CSV export) | `/reviews/audit` |
+
 ### Rules the system enforces
 
 - One open assignment per asset, in the app **and** by a partial unique index in the database.
@@ -134,7 +151,10 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 - The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download and print, by ID, title and filename only, never body text. The case file prints only after that entry is written.
 - A maintenance request gets its ID from the system (`MR-0001`) and starts Not Started. Choosing an employee dispatches it; clearing the employee on a Dispatched request returns it to Not Started. Statuses are Not Started, Dispatched, On Hold, Rejected and Finished. Every dispatch, status change and note adds a line to its timeline, and a delete (Super Admin, after a confirmation) is recorded in the Audit Log by ID only. An employee dispatched on a request can be archived but not deleted.
 - The webhook needs the shared secret in `X-Webhook-Secret` and a non-empty `description`; every other field may be missing, over-long text is cut rather than refused (Zoho does not retry), and the same entry sent twice (same email and Added Time) is stored once.
-- Access: each account has a level in each of Assets, Grievances, Maintenance and Employees. **None** hides the section, **Read** sees it, **Edit** also adds and changes records, **Full** also deletes, archives, voids and withdraws. **Super Admin** is Full everywhere, including sections added later, and is the only way to manage accounts. The owner of a grievance can edit it, change its status and hand it on with Read; Grievances Edit can do that to any grievance. Employees are shared: every account can choose them in a form, Employees None only hides the Employees page, and each workspace shows only its own counts.
+- A review gets its ID from the system (`AR-2026-0001`), each CAP a number within it (`CAP01`), and each entry on its history one of its own (`E01`). Entries and file contents are never changed or deleted, in the app **and** by triggers in the database; a mistaken update is fixed by a correction, a CAP added by mistake is cancelled with a reason, and a review entered by mistake is voided. Every change to the review or a CAP adds an automatic entry.
+- A review is never shown to the account linked to its employee reviewed, whatever its level, Super Admin included: it is left out of every list, count, search, export and audit entry, and its address answers 404. So every account is linked to an employee (except the first account), and nobody can change their own account's link.
+- The reviewer's account can manage the review with Read Only, as an owner can a grievance; Reviews Edit can manage any review. Voiding a review and withdrawing a file need Reviews Full. A review is Completed only when every CAP is Completed or Cancelled, and then takes no new CAPs, updates or files until it is reopened; a voided one never does. Review files follow the grievance file rules, and the Review Audit Log is a third log, kept apart from the other two.
+- Access: each account has a level in each of Assets, Grievances, Maintenance, Administrative Reviews and Employees. **None** hides the section, **Read Only** sees it, **Edit** also adds and changes records, **Full** also deletes, archives, voids and withdraws. **Super Admin** is Full everywhere, including sections added later, and is the only way to manage accounts. The owner of a grievance can edit it, change its status and hand it on with Read; Grievances Edit can do that to any grievance. Employees are shared: every account can choose them in a form, Employees None only hides the Employees page, and each workspace shows only its own counts.
 
 ## Project layout
 
@@ -143,11 +163,11 @@ server/            Hono API: app.ts, routes/, services/ (business rules), db/ (D
                    plus the command-line tools backup.ts, admin.ts and seed.ts
 scripts/           backup-offbox.sh (scheduled, checked backups to the host)
 shared/            Types, Zod schemas, password rules, permissions, the importable record types and the CSV reader and writer, used by both sides
-web/src/           React app: routes/ (file-based), components/ui (kit), components/data-grid (TanStack Table), features/ (grievances/ holds the timeline, files, rich text and chip picker pieces)
+web/src/           React app: routes/ (file-based), components/ui (kit), components/data-grid (TanStack Table), features/ (common/ holds the timeline, files, print, audit log and picker pieces that Grievances and Reviews share)
 dist/web/          Built SPA (generated)
 ```
 
-Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances and maintenance, `server/tests/grievances.test.ts` and `server/tests/maintenance.test.ts`.
+Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances, maintenance and reviews, `server/tests/grievances.test.ts`, `server/tests/maintenance.test.ts` and `server/tests/reviews.test.ts`.
 
 ## How it differs from the design spec
 
@@ -167,9 +187,10 @@ The design was reworked for legibility and comfort, not just restyled:
 - Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).
 - The audit log export caps at 50,000 rows per download, and is CSV only.
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
-- Every account that works in Grievances can read every grievance; there is no limit to named people.
-- The case-file PDF comes from the browser's print dialog, so its page header and footer are the browser's.
-- Grievance files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
+- Every account that works in Grievances can read every grievance, and every account in Administrative Reviews every review except one about itself; there is no limit to named people.
+- Review due dates are recorded but nothing is flagged overdue, and nobody is notified.
+- The case-file and review-report PDFs come from the browser's print dialog, so its page header and footer are the browser's.
+- Grievance and review files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
 - Zoho Forms does not retry a webhook. A request sent while the app is down never arrives; it is still in the form's Entries in Zoho, and can be entered by hand (RUNBOOK section 9).
 - Maintenance dates (Date, Noticed, Submitted in Zoho) are kept as the text Zoho sends, so they are shown but not sorted or filtered as dates.
 - An import takes one file of at most 2,000 rows and 5 MB, reads the first sheet of a workbook, and does not read the old `.xls` format.

@@ -20,7 +20,7 @@ import { useWorkspace } from '@/lib/workspace.ts'
 
 type Show = 'active' | 'archived' | 'all'
 
-/** The search of both Employees pages, at /employees in Assets and /grievances/employees in Grievances. */
+/** The search of every Employees page: /employees in Assets, /grievances/employees and /reviews/employees. */
 export const employeesSearch = (search: Record<string, unknown>): { show?: Show } => ({
   show: search.show === 'archived' || search.show === 'all' ? search.show : undefined,
 })
@@ -32,15 +32,15 @@ const department = c.accessor((row) => row.department ?? '', { id: 'department',
 const held = c.accessor('assetsHeld', { header: 'Physical assets held', cell: (info) => (info.getValue() ? <span className="font-medium">{info.getValue()}</span> : <span className="text-ink-3">0</span>), meta: { align: 'right', hideBelow: 'sm' } })
 const state = c.accessor('state', { header: 'Status', cell: (info) => <Badge tone={info.getValue() === 'active' ? 'ok' : 'neutral'}>{info.getValue() === 'active' ? 'Active' : 'Archived'}</Badge>, meta: { hideBelow: 'lg' } })
 const actions = c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <EmployeeRowActions employee={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } })
-// The same people in both workspaces; what they hold is Assets business only.
-const COLUMNS = { assets: [name, code, department, held, state, actions], grievances: [name, code, department, state, actions] }
+// The same people in every workspace; what they hold is Assets business only.
+const COLUMNS = { assets: [name, code, department, held, state, actions], others: [name, code, department, state, actions] }
 const getRowId = (row: EmployeeRow) => String(row.id)
 const searchText = (row: EmployeeRow) => [row.name, row.code, row.department, row.jobTitle].filter(Boolean).join(' ')
 
 export function EmployeesPage() {
   usePageTitle('Employees')
   const readOnly = useDenied('employees', 'edit')
-  // The page is only in Assets and Grievances.
+  // The page is in Assets, Grievances and Administrative Reviews.
   const assets = useWorkspace() === 'assets'
   const { show = 'active' } = useSearch({ strict: false }) as { show?: Show }
   const navigate = useNavigate()
@@ -56,7 +56,7 @@ export function EmployeesPage() {
 
   const active = data.filter((e) => e.state === 'active').length
   const rows = useMemo(() => (show === 'all' ? data : data.filter((e) => e.state === (show === 'active' ? 'active' : 'archived'))), [data, show])
-  const table = useGrid({ data: rows, columns: COLUMNS[assets ? 'assets' : 'grievances'], getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'name', desc: false }] })
+  const table = useGrid({ data: rows, columns: COLUMNS[assets ? 'assets' : 'others'], getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'name', desc: false }] })
 
   return (
     <div className="flex flex-col gap-6">

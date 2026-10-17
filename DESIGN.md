@@ -267,7 +267,7 @@ Record White panel with a Sunken header band, Caption headers in Ink Three, 56px
 ### Navigation
 Left rail on Slate Rail. Items are 36px, Label weight, Ink Two with an Ink Three icon. The active item becomes a Record White pill with a hairline ring and a navy icon. Locked destinations (Users for an Admin) stay in the list with a lock icon and screen-reader text.
 
-**Workspaces.** Under the product name BPHS-Connect sits a two-part switcher, Assets and Grievances: a Hairline-grey track with the chosen half as a Record White pill. Each workspace has a sidebar of its own. The chosen half and the active nav icon are navy on both sides; Grievances is told apart by its own sidebar, the selected workspace in the switcher, and a small "Confidential" line with a lock. The colour comes from the token `--color-workspace`, which aliases the shared navy accent on both sides.
+**Workspaces.** Under the product name BPHS-Connect sits a switcher with a part for each workspace the account works in (Assets, Grievances, Maintenance, Administrative Reviews): a Hairline-grey track with the chosen part as a Record White pill. Two parts sit side by side; three or more stack in a column, because a third of the sidebar is too narrow for "Maintenance". An account that works in one workspace has no switcher. Each workspace has a sidebar of its own. The chosen part and the active nav icon are navy in every workspace; Grievances and Administrative Reviews are told apart by their own sidebar, the selected workspace in the switcher, and a small "Confidential" line with a lock. The colour comes from the token `--color-workspace`, which aliases the shared navy accent on both sides.
 
 ### Sheets and dialogs
 Issue, Return and edit forms open as a right-hand sheet (480px, full-width on phones) so the table stays visible behind a 35% ink scrim. The header carries title and one-line consequence, the body scrolls, and the footer is pinned on a Paper band with the primary action last. Focus lands on the first field of the task, not on Close. Centred dialogs are reserved for confirmations, the one-time password, and signing in again when a session ends. The last two must be answered, so Escape and a click outside do not close them.
@@ -286,7 +286,7 @@ The body of a grievance, an action or a note. One field, the "ruled field", chos
 - **Keyboard:** the bar is a single tab stop; arrow keys, Home and End move along it. Alt+F10 goes from the text to the bar and Escape back. Tab leaves the field, except in a list, where it indents the item.
 
 ### Timeline
-A grievance's actions and events, read down one rail. Chosen on 2026-10-12 from three mocked directions (rail, ledger, cards; the mock is `qa-shots/slice-3.2/timeline-mock.html`).
+A grievance's actions and events, or a review's CAPs and updates, read down one rail. Chosen on 2026-10-12 from three mocked directions (rail, ledger, cards; the mock is `qa-shots/slice-3.2/timeline-mock.html`).
 - **Rail:** a 1.5px Strong Hairline line down the left with a 24px marker per entry. It stops at the last entry's marker. Month headings (Label size, Ink 3) sit on the text column, and each month is its own ordered list.
 - **Types without colour:** every entry carries its type as a word in small capitals beside its number, and each type has its own marker shape: an Action is a filled Ink 2 disc with a tick, an Event an outlined diamond, a Correction a dashed ring with a pencil, an Automatic entry a small Ink 4 dot. The markers are all ink; no type has a colour of its own.
 - **Entry:** number in mono, type, chips, and the date and time it happened at the right; then the title at 14px/600, the short description in Ink 2, and "Documented by" in Ink 3. "Details" opens the full text in place, in the Rich text reading style; an entry with no details has no such button. An automatic entry is one Ink 3 line with no card.
@@ -297,8 +297,18 @@ A grievance's actions and events, read down one rail. Chosen on 2026-10-12 from 
 - **Summary:** a panel beside the timeline on wide screens (240px, sticky 24px from the top) with status, owner, grievance date, entry counts by type, and first and latest activity. Below 1024px it sits above the timeline in two columns.
 - **Print:** the controls and the summary are dropped, every entry's details are open, and no entry breaks across a page.
 
+### CAPs
+A review's Corrective Action Plans. They sit on the review's timeline among its updates rather than in a table of their own, because a CAP is added the way a grievance's action is and its progress is read in the same place. Decided on 2026-10-16 with the Administrative Reviews plan.
+- **On the timeline:** a CAP is drawn at the time it was added, numbered `CAP01` where an entry has its number, with a marker of its own: an outlined Ink 2 rounded square with a flag. Its title links to the CAP's page. After its type come its status badge (Not started neutral, In progress warn, Completed ok, Cancelled bad) and an Ink 3 line, "Responsible: name · Due 2026-10-30 · Completed 2026-10-20". These are the CAP as it is now; the automatic entries say what changed and when.
+- **Entries about a CAP:** an update, correction or automatic entry filed on a CAP carries a `CAP01` chip, the same quiet chip as "Corrects E06", linking to the CAP's page.
+- **Controls:** Show is All, CAPs or Updates. "Hide automatic" never hides a CAP, only the automatic entries.
+- **Summary:** "2 of 3 done", which leaves Cancelled CAPs out of both numbers, then each CAP's number as a link beside its status badge.
+- **The CAP page** is laid out like a grievance entry's page. Under a "Corrective action plan" eyebrow with the status badge come the title and short description, then Add update, Edit, Change status, Mark complete and Attach files. An account that may not use them sees them disabled with the reason ("Only the reviewer (name) or someone with Edit access…"); on a Completed review the reason is that it must be reopened first. Panels follow: **Facts** (status, Responsible, due date, completed and by whom; then the review it belongs to and who added it), **Details**, **Files** once there are any, and **History**, the review's timeline narrowed to this CAP's entries.
+- **Changing status:** Mark complete opens the Change status sheet with Completed chosen and an Evidence file picker. Cancelled needs a reason. A note is shown under the change on the history, with who wrote it.
+- **Voided review:** a warn alert says the CAPs are kept as a record, and the buttons are gone.
+
 ### Files
-Attachments on a grievance or an entry. Once saved a file is never changed or removed, and the hint under every picker says so.
+Attachments on a grievance or an entry, and on a review, a CAP or an update. Once saved a file is never changed or removed, and the hint under every picker says so.
 - **Picking:** a dashed Strong Hairline box labelled "Choose files" wraps the real file input, which is visually hidden but keeps its keyboard focus and label. Choosing again adds to the list rather than replacing it. Each chosen file is a row with its name, its size and a Remove icon button. The hint names the allowed types and the limits (10 MB each, 10 at a time).
 - **Attaching later:** on a grievance that is not sealed, a secondary "Attach files" button with a paperclip, which turns into a spinner while the files go up. A refusal arrives as a toast in the server's words.
 - **List:** one row per file: a file icon, the filename as a navy download link, and a meta line in Ink 3 with size, who added it, when, and "with E03" when it came with an entry. Files always download; nothing opens in the page.
@@ -310,6 +320,7 @@ A grievance printed whole, saved as a PDF from the browser's print dialog. Decid
 - **Printed only from its Print button.** The button logs the print first and opens the dialog only once the log is written; if the log fails, the page says so and nothing prints. Ctrl+P or the browser menu prints a single line asking for the button instead of the case file. Why: a confidential copy should never leave without an audit entry, and the browser cannot be made to wait on a log once its own print has started.
 - **The log says "print dialog opened", not "printed".** Browsers do not report whether the dialog was then cancelled, so the entry claims only what is known.
 - **The Excel workbook follows the same rule.** Its button logs the export before the file is made, so a failed log means no file.
+- **The review report is printed the same way,** from the same print pieces: the review's facts, findings and body, each CAP with its fields and the names of its files, the full history, and a table of every file with its SHA-256. A CAP or an entry is kept on one page where it fits. The Action items export also logs itself before the file is made.
 
 ## Do's and Don'ts
 

@@ -39,6 +39,7 @@ import { Route as AppMaintenanceNewRouteImport } from './routes/_app/maintenance
 import { Route as AppReviewsIndexRouteImport } from './routes/_app/reviews.index'
 import { Route as AppReviewsActionsRouteImport } from './routes/_app/reviews.actions'
 import { Route as AppReviewsAuditRouteImport } from './routes/_app/reviews.audit'
+import { Route as AppReviewsEmployeesRouteImport } from './routes/_app/reviews.employees'
 import { Route as AppReviewsNewRouteImport } from './routes/_app/reviews.new'
 import { Route as GrievancesCodeCaseFileRouteImport } from './routes/grievances.$code.case-file'
 import { Route as ReviewsCodeReportRouteImport } from './routes/reviews.$code.report'
@@ -203,6 +204,11 @@ const AppReviewsAuditRoute = AppReviewsAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AppReviewsRoute,
 } as any)
+const AppReviewsEmployeesRoute = AppReviewsEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => AppReviewsRoute,
+} as any)
 const AppReviewsNewRoute = AppReviewsNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -305,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/maintenance/new': typeof AppMaintenanceNewRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/audit': typeof AppReviewsAuditRoute
+  '/reviews/employees': typeof AppReviewsEmployeesRoute
   '/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/reviews/$code/report': typeof ReviewsCodeReportRoute
@@ -347,6 +354,7 @@ export interface FileRoutesByTo {
   '/maintenance/new': typeof AppMaintenanceNewRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/audit': typeof AppReviewsAuditRoute
+  '/reviews/employees': typeof AppReviewsEmployeesRoute
   '/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/reviews/$code/report': typeof ReviewsCodeReportRoute
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/_app/maintenance/new': typeof AppMaintenanceNewRoute
   '/_app/reviews/actions': typeof AppReviewsActionsRoute
   '/_app/reviews/audit': typeof AppReviewsAuditRoute
+  '/_app/reviews/employees': typeof AppReviewsEmployeesRoute
   '/_app/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/reviews/$code/report': typeof ReviewsCodeReportRoute
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/maintenance/new'
     | '/reviews/actions'
     | '/reviews/audit'
+    | '/reviews/employees'
     | '/reviews/new'
     | '/grievances/$code/case-file'
     | '/reviews/$code/report'
@@ -483,6 +493,7 @@ export interface FileRouteTypes {
     | '/maintenance/new'
     | '/reviews/actions'
     | '/reviews/audit'
+    | '/reviews/employees'
     | '/reviews/new'
     | '/grievances/$code/case-file'
     | '/reviews/$code/report'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/_app/maintenance/new'
     | '/_app/reviews/actions'
     | '/_app/reviews/audit'
+    | '/_app/reviews/employees'
     | '/_app/reviews/new'
     | '/grievances/$code/case-file'
     | '/reviews/$code/report'
@@ -770,6 +782,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReviewsAuditRouteImport
       parentRoute: typeof AppReviewsRoute
     }
+    '/_app/reviews/employees': {
+      id: '/_app/reviews/employees'
+      path: '/employees'
+      fullPath: '/reviews/employees'
+      preLoaderRoute: typeof AppReviewsEmployeesRouteImport
+      parentRoute: typeof AppReviewsRoute
+    }
     '/_app/reviews/new': {
       id: '/_app/reviews/new'
       path: '/new'
@@ -920,6 +939,7 @@ const AppMaintenanceRouteWithChildren = AppMaintenanceRoute._addFileChildren(
 interface AppReviewsRouteChildren {
   AppReviewsActionsRoute: typeof AppReviewsActionsRoute
   AppReviewsAuditRoute: typeof AppReviewsAuditRoute
+  AppReviewsEmployeesRoute: typeof AppReviewsEmployeesRoute
   AppReviewsNewRoute: typeof AppReviewsNewRoute
   AppReviewsIndexRoute: typeof AppReviewsIndexRoute
   AppReviewsCodeEditRoute: typeof AppReviewsCodeEditRoute
@@ -933,6 +953,7 @@ interface AppReviewsRouteChildren {
 const AppReviewsRouteChildren: AppReviewsRouteChildren = {
   AppReviewsActionsRoute: AppReviewsActionsRoute,
   AppReviewsAuditRoute: AppReviewsAuditRoute,
+  AppReviewsEmployeesRoute: AppReviewsEmployeesRoute,
   AppReviewsNewRoute: AppReviewsNewRoute,
   AppReviewsIndexRoute: AppReviewsIndexRoute,
   AppReviewsCodeEditRoute: AppReviewsCodeEditRoute,
