@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, Flag, Pencil, Plus } from 'lucide-react'
+import { ChevronLeft, Flag, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { reviewCapCode, reviewEntryCode, reviewEntryKindLabel } from '@shared/constants.ts'
 import { canManageReview } from '@shared/permissions.ts'
@@ -12,6 +12,7 @@ import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { AttachFiles, AttachmentList } from '@/features/common/files.tsx'
 import { Timeline } from '@/features/common/timeline.tsx'
 import { ReviewLoadError } from '@/features/reviews/load-error.tsx'
+import { ReviewActions } from '@/features/reviews/manage.tsx'
 import { useReviewPageTitle } from '@/features/reviews/page-title.ts'
 import { Fact, Person } from '@/features/reviews/parts.tsx'
 import { CapFacts, CapLink } from '@/features/reviews/cap-parts.tsx'
@@ -115,13 +116,7 @@ function ReviewPage() {
         </div>
         <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{review.title}</h1>
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{review.summary}</p>
-        {manage && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
-            <Link to="/reviews/$code/edit" params={{ code: review.code }} className={buttonStyles('secondary')}>
-              <Pencil className="size-4" aria-hidden /> Edit
-            </Link>
-          </div>
-        )}
+        {manage && <ReviewActions review={review} />}
       </div>
 
       {review.status === 'voided' && (

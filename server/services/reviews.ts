@@ -1,8 +1,8 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm'
-import { REVIEW_STATUSES, reviewCapCode, reviewCode, type ReviewEntryKind, type ReviewStatus } from '../../shared/constants.ts'
+import { REVIEW_STATUSES, reviewCapCode, reviewCode, reviewStatusLabel, type ReviewEntryKind, type ReviewStatus } from '../../shared/constants.ts'
 import { formatUsDate } from '../../shared/dates.ts'
 import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
-import type { ReviewCreateInput, ReviewListQuery, ReviewUpdateInput } from '../../shared/schemas.ts'
+import type { ReviewCreateInput, ReviewListQuery, ReviewStatusChangeInput, ReviewUpdateInput, ReviewVoidInput } from '../../shared/schemas.ts'
 import type { ReviewDetail, ReviewList, ReviewPerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, reviewCaps, reviewEntries, reviews } from '../db/schema.ts'
@@ -275,6 +275,40 @@ export function updateReview(db: Db, actor: Actor, code: string, input: ReviewUp
     writeReviewAudit(tx, actor, { action: 'update', entityType: 'review', entityId: was.id, reviewId: was.id, details: `${was.code} · ${input.title} · ${summary}`, at: now })
     return getReview(tx, actor, { id: was.id })
   })
+}
+
+/** One change to a review's status, with the automatic history entry, which carries the note, and the audit entry that record it. */
+function applyStatus(tx: DbLike, actor: Actor, review: ReviewDetail, action: 'status' | 'void', status: ReviewStatus, note: string) {
+  const now = new Date()
+  tx.update(reviews)
+    .set({ status, completedAt: status === 'completed' ? now : null })
+    .where(eq(reviews.id, review.id))
+    .run()
+  const summary = `Status: ${reviewStatusLabel(review.status)} → ${reviewStatusLabel(status)}`
+  appendReviewEntry(tx, actor, review.id, { kind: 'system', occurredAt: now, title: summary, body: plainToRichText(note), at: now })
+  writeReviewAudit(tx, actor, { action, entityType: 'review', entityId: review.id, reviewId: review.id, details: `${review.code} · ${review.title} · ${summary}`, at: now })
+  return getReview(tx, actor, { id: review.id })
+}
+
+/**
+ * Move a review between Open, In progress and Completed, in any direction: reopening is a change like any other. Completed stamps
+ * the time and is refused while any CAP is still to be done; any other status clears the stamp, and the history keeps the earlier one.
+ */
+export function changeReviewStatus(db: Db, actor: Actor, code: string, input: ReviewStatusChangeInput): ReviewDetail {
+  return db.transaction((tx) => {
+    const review = findReviewToManage(tx, actor, code)
+    if (review.status === input.status) throw conflict('status_unchanged', `${review.code} is already ${reviewStatusLabel(input.status)}.`, { field: 'status' })
+    if (input.status === 'completed') {
+      const open = tx.get<{ n: number }>(sql`select count(*) as n from review_caps where review_id = ${review.id} and status in ('not_started', 'in_progress')`)?.n ?? 0
+      if (open) throw conflict('caps_open', `${review.code} has ${open === 1 ? '1 CAP' : `${open} CAPs`} still to be done. Complete or cancel ${open === 1 ? 'it' : 'them'} first.`, { field: 'status' })
+    }
+    return applyStatus(tx, actor, review, 'status', input.status, input.note)
+  })
+}
+
+/** Void a review entered by mistake. It stays, with its history, its CAPs and the reason, and nothing about it can change again. */
+export function voidReview(db: Db, actor: Actor, code: string, input: ReviewVoidInput): ReviewDetail {
+  return db.transaction((tx) => applyStatus(tx, actor, findReviewToManage(tx, actor, code), 'void', 'voided', input.reason))
 }
 
 interface RawRow extends Pick<RawReview, 'id' | 'code' | 'title' | 'summary' | 'reviewDate' | 'status' | 'lastActivityAt' | 'employee' | 'reviewer'> {

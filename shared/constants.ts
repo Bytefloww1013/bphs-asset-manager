@@ -119,6 +119,12 @@ export type ReviewStatus = (typeof REVIEW_STATUSES)[number]
 const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = { open: 'Open', in_progress: 'In progress', completed: 'Completed', voided: 'Voided' }
 export const reviewStatusLabel = (status: ReviewStatus) => REVIEW_STATUS_LABELS[status]
 
+/** What keeps an employee from being archived on the review side: "the reviewer on 1 open review and responsible for 2 open CAPs". */
+export function openReviewWork(reviewing: number, caps: number) {
+  const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
+  return [reviewing && `the reviewer on ${count(reviewing, 'open review')}`, caps && `responsible for ${count(caps, 'open CAP')}`].filter(Boolean).join(' and ')
+}
+
 /** Where a Corrective Action Plan stands. */
 export const REVIEW_CAP_STATUSES = ['not_started', 'in_progress', 'completed', 'cancelled'] as const
 export type ReviewCapStatus = (typeof REVIEW_CAP_STATUSES)[number]

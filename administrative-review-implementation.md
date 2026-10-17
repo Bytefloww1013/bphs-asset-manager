@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Phase 5 built** (slices 1.1 to 5.2). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Phase 6 built** (slices 1.1 to 6.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -27,9 +27,9 @@ A slice is ticked when it is finished and committed.
 - [x] 4.3 Action items across every review
 - [x] 5.1 Files: storage and upload
 - [x] 5.2 Files: download and withdraw
-- [ ] 6.1 Review status and voiding
-- [ ] 6.2 Guards on employees
-- [ ] 6.3 Review Audit Log page and export
+- [x] 6.1 Review status and voiding
+- [x] 6.2 Guards on employees
+- [x] 6.3 Review Audit Log page and export
 - [ ] 7.1 Printable review report
 - [ ] 7.2 Seed, docs, end-to-end check
 
@@ -501,6 +501,19 @@ All in `server/services/employees.ts`:
 - **Done when:**
   - every action in `REVIEW_AUDIT_ACTIONS` is written by at least one test;
   - the employee reviewed sees none of their review's entries, in the page or in the CSV.
+
+### Where Phase 6 differs from this plan
+
+- **Completed refused while CAPs are open** is 409 `caps_open`, shown under the New status field rather than in an alert. Choosing the status the review already has is 409 `status_unchanged`.
+- **The review's own fields can still be edited when it is Completed.** Only new CAPs, updates and files wait for it to be reopened. Each edit is on the history, as before.
+- **Voiding clears `completed_at`**, like any status other than Completed. The history keeps when it was completed. A status change and a void share one helper, so both write the same "Status: A → B" entry, with the note or reason as its body.
+- **The change sheet is shared:** the grievance's status sheet moved to `web/src/features/common/change-sheet.tsx`, and the review's Change status and Void sheets use it too.
+- **The archive refusal code is `has_open_reviews`.**
+- **A CAP on a voided review does not count**, for archiving or in the counts.
+- **The counts are worked out for each viewer**, since reviews about the viewer are left out. So `listEmployees` and `getEmployee` now take the viewer.
+- **An account without Reviews** sees zero counts, and gets the general refusal with no counts when it tries to archive someone with open review work.
+- **In the audit log,** a file on a CAP links to its CAP as well as the review, and an export of Action items links to Action items. The CSV has the same columns as the Grievance Audit Log's.
+- **Tests:** the `send` and `txt` helpers moved to the top of `server/tests/reviews.test.ts`, so the audit-log test can attach and withdraw files.
 
 ## 13. Phase 7: Output and finish
 

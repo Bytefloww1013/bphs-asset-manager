@@ -21,7 +21,7 @@ export function employeeRoutes(db: Db) {
   const app = new Hono<Env>()
 
   // Employees serve every workspace, so anyone may list them; Archive, Restore and Delete need Full.
-  app.get('/', (c) => c.json(listEmployees(db).map((row) => employeeFor(c.get('user'), row))))
+  app.get('/', (c) => c.json(listEmployees(db, c.get('user')).map((row) => employeeFor(c.get('user'), row))))
   app.post('/', json(employeeCreateSchema), (c) =>
     c.json(employeeFor(c.get('user'), createEmployee(db, c.get('user'), c.req.valid('json'))), 201),
   )

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { Access } from '../../shared/constants.ts'
+import { REVIEW_AUDIT_ACTIONS, type Access } from '../../shared/constants.ts'
 import { employees, users } from '../db/schema.ts'
 import { get } from '../lib/review-files.ts'
 import { nextReviewCode } from '../services/reviews.ts'
@@ -36,6 +36,15 @@ async function reviews() {
 
 const update = { kind: 'update', occurredAt: new Date().toISOString(), title: 'Spoke with Dana', shortDescription: 'Agreed a handover checklist.' }
 const cap = (responsibleId: number, change: Record<string, unknown> = {}) => ({ title: 'Handover checklist', shortDescription: 'Write one and use it.', responsibleId, dueDate: '2026-11-02', ...change })
+const txt = (name = 'notes.txt', text = 'Checklist used on every shift.') => new File([text], name, { type: 'text/plain' })
+
+/** A multipart post, the way the page sends files: the JSON as `data`, the files as `files`, from this origin. */
+const send = (t: T, url: string, cookie: string, data: unknown, list: File[]) => {
+  const form = new FormData()
+  if (data !== undefined) form.set('data', JSON.stringify(data))
+  for (const file of list) form.append('files', file)
+  return t.app.request(url, { method: 'POST', headers: { cookie, origin: 'http://localhost' }, body: form })
+}
 
 describe('the review audit log', () => {
   it('is append-only', async () => {
@@ -461,17 +470,8 @@ describe('corrective action plans', () => {
 
 describe('files on a review', () => {
   const pdf = (name = 'checklist.pdf', size = 100) => new File([Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(size)])], name, { type: 'application/pdf' })
-  const txt = (name = 'notes.txt', text = 'Checklist used on every shift.') => new File([text], name, { type: 'text/plain' })
   type Row = { id: number; cap_id: number | null; entry_id: number; filename: string; size: number; sha256: string }
   const files = (t: T) => t.sqlite.prepare('select id, cap_id, entry_id, filename, size, sha256 from review_attachments order by id').all() as Row[]
-
-  /** A multipart post, the way the page sends files: the JSON as `data`, the files as `files`, from this origin. */
-  const send = (t: T, url: string, cookie: string, data: unknown, list: File[]) => {
-    const form = new FormData()
-    if (data !== undefined) form.set('data', JSON.stringify(data))
-    for (const file of list) form.append('files', file)
-    return t.app.request(url, { method: 'POST', headers: { cookie, origin: 'http://localhost' }, body: form })
-  }
 
   /** A review with one CAP, CAP01. */
   async function one() {
@@ -679,5 +679,166 @@ describe('files on a review', () => {
       'POST /api/reviews/:code/attachments',
       'POST /api/reviews/:code/attachments/:id/withdraw',
     ])
+  })
+})
+
+describe('a review status', () => {
+  it('moves between Open, In progress and Completed, Completed only once every CAP is done, sealing it until reopened', async () => {
+    const { t, superAdmin, create, reviewer } = await reviews()
+    const made = (await create()).data
+    const url = `/api/reviews/${made.code}`
+    const status = (body: Record<string, unknown>) => t.call('POST', `${url}/status`, { cookie: superAdmin, body })
+    for (const n of [1, 2]) expect((await t.call('POST', `${url}/caps`, { cookie: superAdmin, body: cap(reviewer.id, { title: `CAP ${n}` }) })).status).toBe(201)
+
+    expect((await status({ status: 'open' })).data).toMatchObject({ error: 'status_unchanged', details: { field: 'status' } })
+    expect((await status({ status: 'voided' })).status).toBe(422)
+    expect((await status({ status: 'completed' })).data).toMatchObject({ error: 'caps_open', message: `${made.code} has 2 CAPs still to be done. Complete or cancel them first.` })
+    await t.call('POST', `${url}/caps/CAP01/status`, { cookie: superAdmin, body: { status: 'completed', version: 1 } })
+    expect((await status({ status: 'completed' })).data.message).toBe(`${made.code} has 1 CAP still to be done. Complete or cancel it first.`)
+    await t.call('POST', `${url}/caps/CAP02/status`, { cookie: superAdmin, body: { status: 'cancelled', note: 'Covered by CAP01.', version: 1 } })
+    const done = await status({ status: 'completed', note: 'Signed off.' })
+    expect(done.data).toMatchObject({ status: 'completed' })
+    expect(done.data.completedAt).not.toBeNull()
+
+    for (const [target, body, doing] of [
+      [`${url}/caps`, cap(reviewer.id), 'add a CAP'],
+      [`${url}/entries`, update, 'add to its history'],
+      [`${url}/caps/CAP02/status`, { status: 'in_progress', version: 2 }, 'change a CAP'],
+    ] as const) {
+      const res = await t.call('POST', target, { cookie: superAdmin, body })
+      expect(res.data, target).toMatchObject({ error: 'review_sealed', message: `${made.code} is Completed. Reopen it to ${doing}.` })
+    }
+
+    const reopened = await status({ status: 'in_progress' })
+    expect(reopened.data).toMatchObject({ status: 'in_progress', completedAt: null })
+    expect((await t.call('POST', `${url}/caps`, { cookie: superAdmin, body: cap(reviewer.id) })).status).toBe(201)
+    const entries = (await t.call('GET', `${url}/entries`, { cookie: superAdmin })).data.filter((entry: { title: string }) => entry.title.startsWith('Status: '))
+    expect(entries.map((entry: { title: string; bodyHtml: string }) => [entry.title, entry.bodyHtml])).toEqual([
+      ['Status: Open → Completed', '<p>Signed off.</p>'],
+      ['Status: Completed → In progress', ''],
+    ])
+    expect(t.sqlite.prepare("select details from review_audit_log where action = 'status' and entity_type = 'review' order by id").all()).toEqual([
+      { details: `${made.code} · Missed handover · Status: Open → Completed` },
+      { details: `${made.code} · Missed handover · Status: Completed → In progress` },
+    ])
+  })
+
+  it('is changed by the reviewer at Read Only and no other reader; voiding needs Full, takes a reason and is for good', async () => {
+    const { t, superAdmin, create, account, reviewer, dana, employee } = await reviews()
+    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const reader = await account('reader@bphs.local', { reviews: 'read' }, employee('E-4005', 'Ray', 'Diaz').id)
+    const editor = await account('editor@bphs.local', { reviews: 'edit' })
+    const reviewed = await account('dana@bphs.local', { reviews: 'full' }, dana.id)
+    const made = (await create()).data
+    const url = `/api/reviews/${made.code}`
+    const send = (target: string, cookie: string, body: Record<string, unknown>) => t.call('POST', `${url}/${target}`, { cookie, body })
+
+    expect((await send('status', rhea, { status: 'in_progress' })).data.status).toBe('in_progress')
+    expect((await send('status', reader, { status: 'open' })).status).toBe(403)
+    expect((await send('status', reviewed, { status: 'open' })).status).toBe(404)
+    expect((await send('void', reviewed, { reason: 'Mine.' })).status).toBe(404)
+    for (const cookie of [rhea, editor]) expect((await send('void', cookie, { reason: 'Entered twice.' })).status).toBe(403)
+    expect((await send('void', superAdmin, { reason: ' ' })).data.details.fields).toHaveProperty('reason')
+
+    expect((await send('void', superAdmin, { reason: 'Entered twice.' })).data).toMatchObject({ status: 'voided', completedAt: null })
+    for (const [method, target, body] of [
+      ['POST', `${url}/status`, { status: 'open' }],
+      ['POST', `${url}/void`, { reason: 'Again.' }],
+      ['PATCH', url, { ...made, reviewerId: reviewer.id, employeeId: dana.id, body: made.bodyHtml, title: 'Changed' }],
+      ['POST', `${url}/caps`, cap(reviewer.id)],
+      ['POST', `${url}/entries`, update],
+    ] as const) {
+      expect((await t.call(method, target, { cookie: superAdmin, body })).data.error, `${method} ${target}`).toBe('review_voided')
+    }
+    const last = (await t.call('GET', `${url}/entries`, { cookie: superAdmin })).data.at(-1)
+    expect(last).toMatchObject({ title: 'Status: In progress → Voided', bodyHtml: '<p>Entered twice.</p>' })
+    expect(t.sqlite.prepare("select action, details from review_audit_log where action = 'void'").all()).toEqual([{ action: 'void', details: `${made.code} · Missed handover · Status: In progress → Voided` }])
+  })
+})
+
+describe('an employee named on a review', () => {
+  const HIDDEN = 'Has records you cannot see. Archive instead; history is never deleted.'
+  const row = async (t: T, cookie: string, id: number) => ((await t.call('GET', '/api/employees', { cookie })).data as { id: number }[]).find((employee) => employee.id === id)
+
+  it('is not archived while they conduct an open review or have a CAP to do, and is never deleted', async () => {
+    const { t, superAdmin, create, reviewer, dana, employee } = await reviews()
+    const made = (await create()).data
+    const url = `/api/reviews/${made.code}`
+    await t.call('POST', `${url}/caps`, { cookie: superAdmin, body: cap(reviewer.id) })
+    await t.call('POST', `${url}/caps`, { cookie: superAdmin, body: cap(dana.id) })
+    expect(await row(t, superAdmin, reviewer.id)).toMatchObject({ openReviewsReviewing: 1, openCapsResponsible: 1, deleteBlocked: 'Named on an administrative review. Archive instead; history is never deleted.' })
+
+    const archive = (id: number) => t.call('POST', `/api/employees/${id}/archive`, { cookie: superAdmin })
+    expect((await archive(reviewer.id)).data).toMatchObject({ error: 'has_open_reviews', message: 'Rhea Okafor is the reviewer on 1 open review and responsible for 1 open CAP. Give them to someone else before archiving.' })
+    expect((await archive(dana.id)).data.message).toBe('Dana Whitlock is responsible for 1 open CAP. Give it to someone else before archiving.')
+    expect((await t.call('DELETE', `/api/employees/${dana.id}`, { cookie: superAdmin })).data.message).toBe('Dana Whitlock cannot be deleted. Named on an administrative review. Archive instead; history is never deleted.')
+
+    // A CAP on a voided review is nobody's work.
+    const helper = employee('E-4005', 'Hal', 'Reyes')
+    const other = (await create({ employeeId: helper.id })).data
+    await t.call('POST', `/api/reviews/${other.code}/caps`, { cookie: superAdmin, body: cap(dana.id) })
+    await t.call('POST', `/api/reviews/${other.code}/void`, { cookie: superAdmin, body: { reason: 'Entered twice.' } })
+    await t.call('POST', `${url}/caps/CAP01/status`, { cookie: superAdmin, body: { status: 'completed', version: 1 } })
+    await t.call('POST', `${url}/caps/CAP02/status`, { cookie: superAdmin, body: { status: 'cancelled', note: 'Not needed.', version: 1 } })
+    expect((await archive(dana.id)).status).toBe(200)
+    expect((await archive(reviewer.id)).data.message).toBe('Rhea Okafor is the reviewer on 1 open review. Give it to someone else before archiving.')
+    await t.call('POST', `${url}/status`, { cookie: superAdmin, body: { status: 'completed' } })
+    expect((await archive(reviewer.id)).status).toBe(200)
+  })
+
+  it('says nothing of a review to an account without Reviews, or to the employee it is about', async () => {
+    const { t, superAdmin, create, reviewer, employee, account } = await reviews()
+    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
+    const assets = await account('assets@bphs.local', { assets: 'edit', employees: 'full' }, employee('E-4004', 'Asa', 'Lund').id)
+    // About Priya, the Super Admin.
+    const about = (await create({ employeeId: t.person.id }, editor)).data
+    await t.call('POST', `/api/reviews/${about.code}/caps`, { cookie: editor, body: cap(reviewer.id) })
+
+    expect(await row(t, editor, reviewer.id)).toMatchObject({ openReviewsReviewing: 1, openCapsResponsible: 1, deleteBlocked: HIDDEN })
+    expect(await row(t, assets, reviewer.id)).toMatchObject({ openReviewsReviewing: 0, openCapsResponsible: 0, deleteBlocked: HIDDEN })
+    expect(await row(t, superAdmin, reviewer.id)).toMatchObject({ openReviewsReviewing: 0, openCapsResponsible: 0, deleteBlocked: HIDDEN })
+
+    const general = 'Rhea Okafor has open work on records you cannot see, so they cannot be archived yet.'
+    for (const cookie of [assets, superAdmin]) {
+      expect((await t.call('POST', `/api/employees/${reviewer.id}/archive`, { cookie })).data).toMatchObject({ error: 'has_open_reviews', message: general })
+    }
+    expect((await t.call('DELETE', `/api/employees/${reviewer.id}`, { cookie: superAdmin })).data.message).toBe(`Rhea Okafor cannot be deleted. ${HIDDEN}`)
+  })
+})
+
+describe('the Review Audit Log', () => {
+  it('has an entry for each kind of change, linked to its review and CAP, and none of a review about the viewer, on the page or in the CSV', async () => {
+    const { t, superAdmin, create, reviewer, account, employee, fields } = await reviews()
+    const made = (await create()).data
+    const url = `/api/reviews/${made.code}`
+    await t.call('PATCH', url, { cookie: superAdmin, body: { ...fields, title: 'Missed handovers', version: made.version } })
+    await t.call('POST', `${url}/caps`, { cookie: superAdmin, body: cap(reviewer.id) })
+    await t.call('POST', `${url}/entries`, { cookie: superAdmin, body: update })
+    const [file] = (await (await send(t, `${url}/attachments`, superAdmin, { capSeq: 1 }, [txt()])).json()) as { id: number }[]
+    await t.app.request(`${url}/attachments/${file!.id}`, { headers: { cookie: superAdmin } })
+    await t.call('POST', `${url}/attachments/${file!.id}/withdraw`, { cookie: superAdmin, body: { reason: 'Wrong file.' } })
+    await t.call('POST', `${url}/status`, { cookie: superAdmin, body: { status: 'in_progress' } })
+    await t.call('POST', '/api/reviews/action-items/exports', { cookie: superAdmin, body: { format: 'csv', rows: 1 } })
+    await t.call('POST', `${url}/void`, { cookie: superAdmin, body: { reason: 'Entered twice.' } })
+
+    const log = async (cookie: string, query = '') => (await t.call('GET', `/api/reviews/audit${query}`, { cookie })).data as { total: number; entries: { action: string; code: string | null; cap: number | null }[] }
+    const all = await log(superAdmin)
+    expect(new Set(all.entries.map((entry) => entry.action))).toEqual(new Set(REVIEW_AUDIT_ACTIONS))
+    expect(all.entries.filter((entry) => entry.cap).map((entry) => entry.action)).toEqual(['withdraw', 'download', 'attach', 'create'])
+    expect(all.entries.find((entry) => entry.action === 'export')).toMatchObject({ code: null, cap: null })
+    expect(await log(superAdmin, '?action=void')).toMatchObject({ total: 1, entries: [{ action: 'void', code: made.code }] })
+
+    // Priya is the employee reviewed on this one.
+    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
+    const about = (await create({ employeeId: t.person.id }, editor)).data
+    await t.call('POST', `/api/reviews/${about.code}/caps`, { cookie: editor, body: cap(reviewer.id) })
+    const codes = async (cookie: string) => (await log(cookie)).entries.map((entry) => entry.code)
+    expect(await codes(editor)).toContain(about.code)
+    expect(await codes(superAdmin)).not.toContain(about.code)
+    expect((await log(superAdmin)).total).toBe(all.total)
+    const csv = await (await t.app.request('/api/reviews/audit.csv', { headers: { cookie: superAdmin } })).text()
+    expect(csv).toContain(made.code)
+    expect(csv).not.toContain(about.code)
+    expect(await (await t.app.request('/api/reviews/audit.csv', { headers: { cookie: editor } })).text()).toContain(about.code)
   })
 })

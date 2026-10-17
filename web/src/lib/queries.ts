@@ -22,6 +22,7 @@ import type {
   MaintenanceDetail,
   MaintenanceRow,
   ProgramRow,
+  ReviewAuditPage,
   ReviewDetail,
   ReviewActionItem,
   ReviewAttachment,
@@ -246,7 +247,7 @@ const auditRange = ({ from, to }: Pick<AuditParams, 'from' | 'to'>) => ({
   to: to ? startOfLocalDay(to, 1) : undefined,
 })
 
-/** A page of an audit log: the Audit Log at `audit`, the Grievance Audit Log at `grievances/audit`. */
+/** A page of an audit log: the Audit Log at `audit`, the Grievance Audit Log at `grievances/audit`, the Review Audit Log at `reviews/audit`. */
 const logQuery = <T,>(log: string, params: AuditParams) =>
   queryOptions({
     queryKey: [log, params],
@@ -259,6 +260,8 @@ export const auditQuery = (params: AuditParams) => logQuery<AuditPage>('audit', 
 export const auditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('audit', params)
 export const grievanceAuditQuery = (params: AuditParams) => logQuery<GrievanceAuditPage>('grievances/audit', params)
 export const grievanceAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('grievances/audit', params)
+export const reviewAuditQuery = (params: AuditParams) => logQuery<ReviewAuditPage>('reviews/audit', params)
+export const reviewAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('reviews/audit', params)
 
 /** After any write, refresh everything that could have changed. The data set is small; correctness beats cleverness. */
 export function refreshData(queryClient: QueryClient) {

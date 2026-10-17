@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -408,6 +408,15 @@ export const reviewCapStatusSchema = z
   })
 export type ReviewCapStatusInput = z.infer<typeof reviewCapStatusSchema>
 
+/** Voiding is not one of these, as with grievances: it has its own request, needs Full and has no way back. */
+export const REVIEW_OPEN_STATUSES = ['open', 'in_progress', 'completed'] as const
+
+export const reviewStatusChangeSchema = z.object({ status: z.enum(REVIEW_OPEN_STATUSES, { error: 'Choose a status' }), note })
+export type ReviewStatusChangeInput = z.infer<typeof reviewStatusChangeSchema>
+
+export const reviewVoidSchema = grievanceVoidSchema
+export type ReviewVoidInput = GrievanceVoidInput
+
 /** Files added on their own, to the review or, with `capSeq`, to one of its CAPs. */
 export const reviewAttachmentsSchema = z.object({ capSeq: z.number().int().positive().optional() })
 export type ReviewAttachmentsInput = z.infer<typeof reviewAttachmentsSchema>
@@ -468,6 +477,10 @@ export type AuditQuery = z.infer<typeof auditQuerySchema>
 /** The Grievance Audit Log takes the same filters, over its own actions. */
 export const grievanceAuditQuerySchema = auditQuerySchema.extend({ action: z.enum(GRIEVANCE_AUDIT_ACTIONS).optional() })
 export type GrievanceAuditQuery = z.infer<typeof grievanceAuditQuerySchema>
+
+/** So does the Review Audit Log. */
+export const reviewAuditQuerySchema = auditQuerySchema.extend({ action: z.enum(REVIEW_AUDIT_ACTIONS).optional() })
+export type ReviewAuditQuery = z.infer<typeof reviewAuditQuerySchema>
 
 // ---- Maintenance ----------------------------------------------------------------
 // A request entered by hand. Zoho's come in through the webhook, which reads them leniently on its own.

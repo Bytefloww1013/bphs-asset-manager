@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewCapStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewAuditAction, ReviewCapStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
 import type { Grantee } from './permissions.ts'
 
 // ---- Auth ---------------------------------------------------------------
@@ -187,6 +187,9 @@ export interface EmployeeRow {
   digitalHeld: number
   /** Grievances they own that are not Closed or Voided. Each one keeps them from being archived until it has another owner. */
   openGrievancesOwned: number
+  /** Open or In progress reviews they conduct, and CAPs still to be done that they are responsible for, on reviews this account may see. Each keeps them from being archived. */
+  openReviewsReviewing: number
+  openCapsResponsible: number
   hasHistory: boolean
   /** Why this employee cannot be deleted, as a sentence, or null when they can be. */
   deleteBlocked: string | null
@@ -494,6 +497,18 @@ export interface GrievanceAuditEntry extends Omit<AuditEntry, 'action'> {
 export interface GrievanceAuditPage {
   total: number
   entries: GrievanceAuditEntry[]
+}
+
+export interface ReviewAuditEntry extends Omit<AuditEntry, 'action'> {
+  action: ReviewAuditAction
+  /** The review the entry describes, by its ID, and the CAP when it is about one or a file on one. Null for an export of Action items. */
+  code: string | null
+  cap: number | null
+}
+
+export interface ReviewAuditPage {
+  total: number
+  entries: ReviewAuditEntry[]
 }
 
 // ---- Users ------------------------------------------------------------------

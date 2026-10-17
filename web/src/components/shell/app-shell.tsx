@@ -39,7 +39,7 @@ import { LogoMark, Wordmark } from '../ui/logo.tsx'
 import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/audit'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -60,6 +60,7 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
           { to: '/reviews/actions', label: 'Action items', icon: ListChecks },
         ],
       },
+      { heading: 'Administration', items: [{ to: '/reviews/audit', label: 'Audit log', icon: ScrollText }] },
     ]
   }
   if (workspace === 'grievances') {

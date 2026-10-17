@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { Archive, ArchiveRestore, CornerDownLeft, PackageSearch, Pencil, Send, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { openReviewWork } from '@shared/constants.ts'
 import type { EmployeeRow } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
@@ -112,6 +113,7 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   const archive = useWrite(() => api.post(`/employees/${employee.id}/archive`), { success: `${employee.name} archived` })
   const restore = useWrite(() => api.post(`/employees/${employee.id}/restore`), { success: `${employee.name} restored` })
   const remove = useWrite(() => api.delete(`/employees/${employee.id}`), { success: `${employee.name} deleted` })
+  const openReviews = employee.openReviewsReviewing + employee.openCapsResponsible
 
   const items: MenuItem[] = [
     ...(assets ? [{ label: 'What they hold', icon: PackageSearch, onSelect: () => setHoldings(true) }] : []),
@@ -130,7 +132,9 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
                 ? `Holds ${plural(employee.digitalHeld, 'digital asset')}. Unassign them first.`
                 : employee.openGrievancesOwned > 0
                   ? `Owns ${plural(employee.openGrievancesOwned, 'grievance')} not yet closed. Give ${employee.openGrievancesOwned === 1 ? 'it' : 'them'} to another owner first.`
-                  : undefined,
+                  : openReviews > 0
+                    ? `Is ${openReviewWork(employee.openReviewsReviewing, employee.openCapsResponsible)}. Give ${openReviews === 1 ? 'it' : 'them'} to someone else first.`
+                    : undefined,
         },
     {
       label: 'Delete',

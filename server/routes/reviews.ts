@@ -3,21 +3,26 @@ import {
   reviewActionItemsExportSchema,
   reviewAttachmentsSchema,
   reviewAttachmentWithdrawSchema,
+  reviewAuditQuerySchema,
   reviewCapCreateSchema,
   reviewCapStatusSchema,
   reviewCapUpdateSchema,
   reviewCreateSchema,
   reviewEntryCreateSchema,
   reviewListQuerySchema,
+  reviewStatusChangeSchema,
   reviewUpdateSchema,
+  reviewVoidSchema,
 } from '../../shared/schemas.ts'
+import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
 import { contentDisposition, formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
 import { readUploads } from '../lib/uploads.ts'
+import { listReviewAudit, listReviewAuditForExport } from '../services/review-audit.ts'
 import { addReviewAttachments, downloadReviewAttachment, listReviewAttachments, withdrawReviewAttachment } from '../services/review-attachments.ts'
 import { changeReviewCapStatus, createReviewCap, getReviewCap, listReviewActionItems, listReviewCaps, recordActionItemsExport, updateReviewCap } from '../services/review-caps.ts'
 import { createReviewEntry, listReviewEntries } from '../services/review-entries.ts'
-import { createReview, getReview, listReviews, updateReview } from '../services/reviews.ts'
+import { changeReviewStatus, createReview, getReview, listReviews, updateReview, voidReview } from '../services/reviews.ts'
 
 /** The Administrative Reviews workspace. Every read is through the signed-in account, so a review about it is never found. */
 export function reviewRoutes(db: Db) {
@@ -33,9 +38,25 @@ export function reviewRoutes(db: Db) {
     recordActionItemsExport(db, c.get('user'), c.req.valid('json'))
     return c.body(null, 204)
   })
+  // Read-only for everyone, as the other two logs are. No route writes to it; the changes it describes do.
+  app.get('/audit', query(reviewAuditQuerySchema), (c) => c.json(listReviewAudit(db, c.get('user'), c.req.valid('query'))))
+  app.get('/audit.csv', query(reviewAuditQuerySchema), (c) => {
+    const entries = listReviewAuditForExport(db, c.get('user'), c.req.valid('query'))
+    const csv = toCsv(
+      ['occurred_at', 'user', 'action', 'entity_type', 'entity_id', 'details'],
+      entries.map((e) => [e.occurredAt, e.actor, e.action, e.entityType, e.entityId, e.details]),
+    )
+    return c.body(CSV_BOM + csv, 200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="review-audit-log.csv"',
+    })
+  })
 
   app.get('/:code', (c) => c.json(getReview(db, c.get('user'), { code: c.req.param('code') })))
   app.patch('/:code', json(reviewUpdateSchema), (c) => c.json(updateReview(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
+  app.post('/:code/status', json(reviewStatusChangeSchema), (c) => c.json(changeReviewStatus(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
+  // Voiding is for a review entered by mistake, and it has no way back.
+  app.post('/:code/void', requireFull('reviews'), json(reviewVoidSchema), (c) => c.json(voidReview(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
 
   app.get('/:code/entries', (c) => c.json(listReviewEntries(db, c.get('user'), c.req.param('code'))))
   app.post('/:code/entries', jsonOrFiles(reviewEntryCreateSchema), async (c) =>
