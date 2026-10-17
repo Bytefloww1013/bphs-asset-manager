@@ -311,6 +311,12 @@ export function voidReview(db: Db, actor: Actor, code: string, input: ReviewVoid
   return db.transaction((tx) => applyStatus(tx, actor, findReviewToManage(tx, actor, code), 'void', 'voided', input.reason))
 }
 
+/** Log a printed report. The browser prints it, so the page reports each one here; reading a review is not logged, taking a copy is. */
+export function recordReviewExport(db: DbLike, actor: Actor, code: string) {
+  const review = getReview(db, actor, { code })
+  writeReviewAudit(db, actor, { action: 'export', entityType: 'review', entityId: review.id, reviewId: review.id, details: `${review.code} · ${review.title} · PDF report (print dialog opened)` })
+}
+
 interface RawRow extends Pick<RawReview, 'id' | 'code' | 'title' | 'summary' | 'reviewDate' | 'status' | 'lastActivityAt' | 'employee' | 'reviewer'> {
   capsDone: number
   capsTotal: number

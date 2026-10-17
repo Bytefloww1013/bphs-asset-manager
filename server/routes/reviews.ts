@@ -22,7 +22,7 @@ import { listReviewAudit, listReviewAuditForExport } from '../services/review-au
 import { addReviewAttachments, downloadReviewAttachment, listReviewAttachments, withdrawReviewAttachment } from '../services/review-attachments.ts'
 import { changeReviewCapStatus, createReviewCap, getReviewCap, listReviewActionItems, listReviewCaps, recordActionItemsExport, updateReviewCap } from '../services/review-caps.ts'
 import { createReviewEntry, listReviewEntries } from '../services/review-entries.ts'
-import { changeReviewStatus, createReview, getReview, listReviews, updateReview, voidReview } from '../services/reviews.ts'
+import { changeReviewStatus, createReview, getReview, listReviews, recordReviewExport, updateReview, voidReview } from '../services/reviews.ts'
 
 /** The Administrative Reviews workspace. Every read is through the signed-in account, so a review about it is never found. */
 export function reviewRoutes(db: Db) {
@@ -57,6 +57,12 @@ export function reviewRoutes(db: Db) {
   app.post('/:code/status', json(reviewStatusChangeSchema), (c) => c.json(changeReviewStatus(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
   // Voiding is for a review entered by mistake, and it has no way back.
   app.post('/:code/void', requireFull('reviews'), json(reviewVoidSchema), (c) => c.json(voidReview(db, c.get('user'), c.req.param('code'), c.req.valid('json'))))
+
+  // The report is printed by the browser; the page reports it here so the copy is logged.
+  app.post('/:code/exports', (c) => {
+    recordReviewExport(db, c.get('user'), c.req.param('code'))
+    return c.body(null, 204)
+  })
 
   app.get('/:code/entries', (c) => c.json(listReviewEntries(db, c.get('user'), c.req.param('code'))))
   app.post('/:code/entries', jsonOrFiles(reviewEntryCreateSchema), async (c) =>

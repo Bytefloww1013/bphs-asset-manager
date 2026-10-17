@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, Flag, Plus } from 'lucide-react'
+import { ChevronLeft, FileText, Flag, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { reviewCapCode, reviewEntryCode, reviewEntryKindLabel } from '@shared/constants.ts'
 import { canManageReview } from '@shared/permissions.ts'
@@ -116,7 +116,12 @@ function ReviewPage() {
         </div>
         <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{review.title}</h1>
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{review.summary}</p>
-        {manage && <ReviewActions review={review} />}
+        <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
+          {manage && <ReviewActions review={review} />}
+          <Link to="/reviews/$code/report" params={{ code: review.code }} className={buttonStyles('secondary')}>
+            <FileText className="size-4" aria-hidden /> Report
+          </Link>
+        </div>
       </div>
 
       {review.status === 'voided' && (

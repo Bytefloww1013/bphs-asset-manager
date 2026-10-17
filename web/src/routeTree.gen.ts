@@ -41,6 +41,7 @@ import { Route as AppReviewsActionsRouteImport } from './routes/_app/reviews.act
 import { Route as AppReviewsAuditRouteImport } from './routes/_app/reviews.audit'
 import { Route as AppReviewsNewRouteImport } from './routes/_app/reviews.new'
 import { Route as GrievancesCodeCaseFileRouteImport } from './routes/grievances.$code.case-file'
+import { Route as ReviewsCodeReportRouteImport } from './routes/reviews.$code.report'
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
 import { Route as AppGrievancesCodeEditRouteImport } from './routes/_app/grievances.$code.edit'
 import { Route as AppGrievancesCodeVersionsRouteImport } from './routes/_app/grievances.$code.versions'
@@ -212,6 +213,11 @@ const GrievancesCodeCaseFileRoute = GrievancesCodeCaseFileRouteImport.update({
   path: '/grievances/$code/case-file',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewsCodeReportRoute = ReviewsCodeReportRouteImport.update({
+  id: '/reviews/$code/report',
+  path: '/reviews/$code/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppGrievancesCodeIndexRoute = AppGrievancesCodeIndexRouteImport.update({
   id: '/$code/',
   path: '/$code/',
@@ -301,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/reviews/audit': typeof AppReviewsAuditRoute
   '/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
+  '/reviews/$code/report': typeof ReviewsCodeReportRoute
   '/assets/': typeof AppAssetsIndexRoute
   '/employees/': typeof AppEmployeesIndexRoute
   '/grievances/': typeof AppGrievancesIndexRoute
@@ -342,6 +349,7 @@ export interface FileRoutesByTo {
   '/reviews/audit': typeof AppReviewsAuditRoute
   '/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
+  '/reviews/$code/report': typeof ReviewsCodeReportRoute
   '/assets': typeof AppAssetsIndexRoute
   '/employees': typeof AppEmployeesIndexRoute
   '/grievances': typeof AppGrievancesIndexRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/_app/reviews/audit': typeof AppReviewsAuditRoute
   '/_app/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
+  '/reviews/$code/report': typeof ReviewsCodeReportRoute
   '/_app/assets/': typeof AppAssetsIndexRoute
   '/_app/employees/': typeof AppEmployeesIndexRoute
   '/_app/grievances/': typeof AppGrievancesIndexRoute
@@ -434,6 +443,7 @@ export interface FileRouteTypes {
     | '/reviews/audit'
     | '/reviews/new'
     | '/grievances/$code/case-file'
+    | '/reviews/$code/report'
     | '/assets/'
     | '/employees/'
     | '/grievances/'
@@ -475,6 +485,7 @@ export interface FileRouteTypes {
     | '/reviews/audit'
     | '/reviews/new'
     | '/grievances/$code/case-file'
+    | '/reviews/$code/report'
     | '/assets'
     | '/employees'
     | '/grievances'
@@ -520,6 +531,7 @@ export interface FileRouteTypes {
     | '/_app/reviews/audit'
     | '/_app/reviews/new'
     | '/grievances/$code/case-file'
+    | '/reviews/$code/report'
     | '/_app/assets/'
     | '/_app/employees/'
     | '/_app/grievances/'
@@ -543,6 +555,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PasswordChangeRoute: typeof PasswordChangeRoute
   GrievancesCodeCaseFileRoute: typeof GrievancesCodeCaseFileRoute
+  ReviewsCodeReportRoute: typeof ReviewsCodeReportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -771,6 +784,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GrievancesCodeCaseFileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reviews/$code/report': {
+      id: '/reviews/$code/report'
+      path: '/reviews/$code/report'
+      fullPath: '/reviews/$code/report'
+      preLoaderRoute: typeof ReviewsCodeReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/grievances/$code/': {
       id: '/_app/grievances/$code/'
       path: '/$code'
@@ -972,6 +992,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PasswordChangeRoute: PasswordChangeRoute,
   GrievancesCodeCaseFileRoute: GrievancesCodeCaseFileRoute,
+  ReviewsCodeReportRoute: ReviewsCodeReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

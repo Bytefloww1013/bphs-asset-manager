@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Phase 6 built** (slices 1.1 to 6.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Slice 7.1 built** (slices 1.1 to 7.1). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -30,7 +30,7 @@ A slice is ticked when it is finished and committed.
 - [x] 6.1 Review status and voiding
 - [x] 6.2 Guards on employees
 - [x] 6.3 Review Audit Log page and export
-- [ ] 7.1 Printable review report
+- [x] 7.1 Printable review report
 - [ ] 7.2 Seed, docs, end-to-end check
 
 ## 1. What it does
@@ -546,6 +546,15 @@ All in `server/services/employees.ts`:
   4. Complete the last CAP, then complete the review and print it.
   5. Sign in as the employee reviewed and confirm the review is nowhere: not in the list, Action items, audit log or search, and its link answers "not found".
 - **Done when:** that whole run works at desktop width and at phone width.
+
+### Where Phase 7 differs from this plan
+
+- **The print pieces are shared.** The grievance case file's print gate, page header, entry block and files table moved to `web/src/features/common/printout.tsx`, and the case file and the review report both use them.
+- **`POST /:code/exports` takes no body.** The report has one format, so there is nothing to choose.
+- **The report has no "Include automatic entries" switch.** The history always prints whole, since the automatic entries record each CAP's changes.
+- **The report ends with a Files table**, as the case file does: each file with its CAP, the entry that recorded it, its size, who added it and its SHA-256. Each CAP also lists its files by name.
+- **Report link:** the review page shows it to every account that can read the review, next to Edit, Change status and Void.
+- **Checked in Chrome only.** A 10-CAP review printed to 7 Letter pages with no CAP split. Firefox's print can't be driven headless, so it has not been checked.
 
 ## 14. Questions
 

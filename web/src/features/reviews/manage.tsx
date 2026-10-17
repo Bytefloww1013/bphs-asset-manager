@@ -18,7 +18,7 @@ export function ReviewActions({ review }: { review: ReviewDetail }) {
   const [task, setTask] = useState<Task | null>(null)
   const close = () => setTask(null)
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
+    <>
       <Link to="/reviews/$code/edit" params={{ code: review.code }} className={buttonStyles('secondary')}>
         <Pencil className="size-4" aria-hidden /> Edit
       </Link>
@@ -28,7 +28,7 @@ export function ReviewActions({ review }: { review: ReviewDetail }) {
       </Button>
       {task === 'status' && <StatusSheet review={review} onClose={close} />}
       {task === 'void' && <VoidSheet review={review} onClose={close} />}
-    </div>
+    </>
   )
 }
 
