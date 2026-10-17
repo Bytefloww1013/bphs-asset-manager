@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewCapStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
 import type { Grantee } from './permissions.ts'
 
 // ---- Auth ---------------------------------------------------------------
@@ -393,7 +393,39 @@ export interface ReviewDetail {
 }
 
 /** One entry on a review's history, in the shape a grievance's takes. Nothing here can be changed once it is written. */
-export type ReviewEntry = Omit<GrievanceEntry, 'kind'> & { kind: ReviewEntryKind }
+export type ReviewEntry = Omit<GrievanceEntry, 'kind'> & {
+  kind: ReviewEntryKind
+  /** The number of the CAP the entry is about, or null when it is about the review itself. */
+  cap: number | null
+}
+
+/** A Corrective Action Plan on a review, as it is now. What it said before each change is on the review's history. */
+export interface ReviewCap {
+  id: number
+  /** Shown as CAP01. */
+  seq: number
+  title: string
+  shortDescription: string
+  /** The Details, sanitised by the server. Empty when none were written. */
+  bodyHtml: string
+  responsible: ReviewPerson
+  /** `YYYY-MM-DD`, or null when none was set. */
+  dueDate: string | null
+  status: ReviewCapStatus
+  version: number
+  /** The account that added it, by name, or null once that account is gone. */
+  addedBy: string | null
+  createdAt: string
+  updatedAt: string
+  completedAt: string | null
+  /** Who marked it Completed, by name as it was then. */
+  completedBy: string | null
+}
+
+/** A CAP as the Action items list shows it, with the review it is on. */
+export interface ReviewActionItem extends Pick<ReviewCap, 'id' | 'seq' | 'title' | 'shortDescription' | 'responsible' | 'dueDate' | 'status' | 'completedAt'> {
+  review: { code: string; title: string }
+}
 
 /** A review as the list shows it. */
 export interface ReviewRow {

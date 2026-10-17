@@ -3,7 +3,7 @@ import { createFileRoute, Link, useBlocker, useNavigate } from '@tanstack/react-
 import { ChevronLeft } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { canManageReview, reviewManageReason } from '@shared/permissions.ts'
-import { reviewEntryCode } from '@shared/constants.ts'
+import { reviewCapCode, reviewEntryCode } from '@shared/constants.ts'
 import { reviewEntryCreateSchema } from '@shared/schemas.ts'
 import type { ReviewEntry } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
@@ -18,16 +18,23 @@ import { useReviewPageTitle } from '@/features/reviews/page-title.ts'
 import { ReviewStatusBadge } from '@/features/reviews/status.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
-import { reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
+import { reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/entries/new')({
-  // `corrects` is set by "Add correction" on an entry: the number of the entry being corrected.
-  validateSearch: (search: Record<string, unknown>): { corrects?: number } => {
+  // `corrects` is set by "Add correction" on an entry: the number of the entry being corrected. `cap` is set by Add update on a CAP.
+  validateSearch: (search: Record<string, unknown>): { corrects?: number; cap?: number } => {
     const corrects = Number(search.corrects)
-    return Number.isInteger(corrects) && corrects > 0 ? { corrects } : {}
+    const cap = Number(search.cap)
+    if (Number.isInteger(corrects) && corrects > 0) return { corrects }
+    return Number.isInteger(cap) && cap > 0 ? { cap } : {}
   },
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(reviewQuery(params.code)), context.queryClient.ensureQueryData(reviewEntriesQuery(params.code))]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(reviewQuery(params.code)),
+      context.queryClient.ensureQueryData(reviewEntriesQuery(params.code)),
+      context.queryClient.ensureQueryData(reviewCapsQuery(params.code)),
+    ]),
   errorComponent: ReviewLoadError,
   component: NewUpdatePage,
 })
@@ -41,14 +48,17 @@ const instant = (local: string) => (local && !Number.isNaN(new Date(local).getTi
 // As on New review, nothing typed here is kept in browser storage.
 function NewUpdatePage() {
   const { code } = Route.useParams()
-  const { corrects } = Route.useSearch()
+  const { corrects, cap: capSeq } = Route.useSearch()
   const user = useUser()
   const { data: review } = useQuery(reviewQuery(code))
   const { data: entries } = useQuery(reviewEntriesQuery(code))
+  const { data: caps } = useQuery(reviewCapsQuery(code))
   // A correction is this same form with the entry it corrects named; that entry is never touched.
   const correcting = corrects !== undefined
   const original = correcting ? entries?.find((entry) => entry.seq === corrects && entry.kind !== 'system') : undefined
-  useReviewPageTitle(`${correcting ? `Correct ${reviewEntryCode(corrects)} of` : 'Add to'} ${review?.code ?? code.toUpperCase()}`)
+  // The CAP it goes under: the one Add update was pressed on, or for a correction, the one the corrected entry is under.
+  const cap = caps?.find((one) => one.seq === (correcting ? original?.cap : capSeq))
+  useReviewPageTitle(`${correcting ? `Correct ${reviewEntryCode(corrects)} of` : cap ? `Update ${reviewCapCode(cap.seq)} of` : 'Add to'} ${review?.code ?? code.toUpperCase()}`)
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -62,9 +72,12 @@ function NewUpdatePage() {
   const dirty = Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body)
   const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
 
-  if (!review || !entries) return null
+  if (!review || !entries || !caps) return null
   const voided = review.status === 'voided'
-  const blocked = voided || (correcting && !original)
+  const completed = review.status === 'completed'
+  const noCap = capSeq !== undefined && !cap
+  const blocked = voided || completed || noCap || (correcting && !original)
+  const back = cap ? { to: '/reviews/$code/caps/$cap' as const, params: { code: review.code, cap: reviewCapCode(cap.seq) } } : { to: '/reviews/$code' as const, params: { code: review.code } }
 
   function refuse(next: { message: string; fields: Record<string, string> }) {
     setProblem(next)
@@ -74,13 +87,13 @@ function NewUpdatePage() {
   async function commit() {
     setProblem(null)
     const { files: _none, ...text } = entry
-    const parsed = reviewEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, ...text } : { kind: 'update', occurredAt: instant(occurredAt), ...text })
+    const parsed = reviewEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, ...text } : { kind: 'update', occurredAt: instant(occurredAt), capSeq: cap?.seq, ...text })
     if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
     try {
       const row = await save.mutateAsync(parsed.data)
       saved.current = true
       toast({ title: `${reviewEntryCode(row.seq)} added to ${review!.code}`, description: row.title })
-      await navigate({ to: '/reviews/$code', params: { code: review!.code } })
+      await navigate(back)
     } catch (e) {
       refuse(splitApiError(e))
     }
@@ -103,7 +116,10 @@ function NewUpdatePage() {
           {correcting ? (
             <PageHeader title="Add a correction" description={`What ${reviewEntryCode(corrects)} should have said. It is added as a new entry; ${reviewEntryCode(corrects)} itself stays exactly as it was written.`} />
           ) : (
-            <PageHeader title="Add an update" description="Something that happened since the review. Once saved it cannot be changed or removed, only corrected by a later entry." />
+            <PageHeader
+              title={cap ? `Add an update to ${reviewCapCode(cap.seq)}` : 'Add an update'}
+              description="Something that happened since the review. Once saved it cannot be changed or removed, only corrected by a later entry."
+            />
           )}
         </div>
       </div>
@@ -130,6 +146,14 @@ function NewUpdatePage() {
               <dt className="font-medium text-ink">Title</dt>
               <dd className="min-w-0 text-ink-2 [overflow-wrap:anywhere]">{review.title}</dd>
             </div>
+            {cap && (
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <dt className="font-medium text-ink">CAP</dt>
+                <dd className="min-w-0 [overflow-wrap:anywhere]">
+                  <Mono>{reviewCapCode(cap.seq)}</Mono>: {cap.title}
+                </dd>
+              </div>
+            )}
             {original && (
               <div className="flex flex-wrap gap-x-3 gap-y-1">
                 <dt className="font-medium text-ink">Corrects</dt>
@@ -144,6 +168,14 @@ function NewUpdatePage() {
           {voided ? (
             <Alert tone="warn" title="This review has been voided">
               Nothing more can be added to its history.
+            </Alert>
+          ) : completed ? (
+            <Alert tone="warn" title={`${review.code} is Completed`}>
+              Reopen it to add to its history.
+            </Alert>
+          ) : noCap ? (
+            <Alert tone="bad" title={`${reviewCapCode(capSeq)} cannot be updated`}>
+              {review.code} has no CAP with that number.
             </Alert>
           ) : correcting && !original ? (
             <Alert tone="bad" title={`${reviewEntryCode(corrects)} cannot be corrected`}>
@@ -174,8 +206,8 @@ function NewUpdatePage() {
           )}
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line pt-5">
-            <Link to="/reviews/$code" params={{ code: review.code }} className={buttonStyles('secondary')}>
-              {blocked ? 'Back to the review' : 'Cancel'}
+            <Link {...back} className={buttonStyles('secondary')}>
+              {blocked ? (cap ? 'Back to the CAP' : 'Back to the review') : 'Cancel'}
             </Link>
             {!blocked && (
               <Button variant="primary" type="submit" loading={save.isPending} disabledReason={canManageReview(user, review.reviewer.id) ? undefined : reviewManageReason(review.reviewer.name)}>

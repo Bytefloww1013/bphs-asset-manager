@@ -36,7 +36,7 @@ export function EntryFields({ value, onChange, error, shortDescriptionHint, file
         <Textarea rows={2} className="min-h-0" value={value.shortDescription} onChange={(event) => onChange('shortDescription', event.target.value)} />
       </Field>
       <Field label="Details" hint="Optional. Anything the short description does not cover." error={error('body')}>
-        <RichTextEditor label="Details" onChange={(body) => onChange('body', body)} />
+        <RichTextEditor label="Details" defaultValue={value.body} onChange={(body) => onChange('body', body)} />
       </Field>
       {files && (
         <Field label="Files" optional hint={FILES_HINT} error={error('files')}>

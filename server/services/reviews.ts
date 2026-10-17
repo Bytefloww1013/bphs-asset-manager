@@ -29,15 +29,16 @@ export function nextReviewCode(tx: DbLike, at: Date = new Date()): { code: strin
   return { code: reviewCode(year, seq), year, seq }
 }
 
-const personJson = (alias: 'e' | 'v') =>
+/** An employee as a JSON column, for `toPerson`. */
+export const personJson = (alias: 'e' | 'v') =>
   sql.raw(`json_object('id', ${alias}.id, 'code', ${alias}.code, 'first', ${alias}.first_name, 'last', ${alias}.last_name, 'archived', ${alias}.archived_at is not null)`)
 
-const toPerson = (json: string): ReviewPerson => {
+export const toPerson = (json: string): ReviewPerson => {
   const p = JSON.parse(json) as { id: number; code: string; first: string; last: string; archived: number }
   return { id: p.id, code: p.code, name: fullName(p.first, p.last), archived: p.archived === 1 }
 }
 
-const iso = (ms: number) => new Date(ms).toISOString()
+export const iso = (ms: number) => new Date(ms).toISOString()
 
 interface RawReview {
   id: number
@@ -95,6 +96,11 @@ export function findReviewToManage(tx: DbLike, actor: Actor, code: string): Revi
   if (!canManageReview(actor, review.reviewer.id)) throw forbidden(reviewManageReason(review.reviewer.name))
   if (review.status === 'voided') throw conflict('review_voided', `${review.code} has been voided. It is kept as a record and cannot be changed.`)
   return review
+}
+
+/** A Completed review takes nothing new until it is reopened. A voided one has already been refused by `findReviewToManage`. */
+export function requireNotSealed(review: ReviewDetail, doing: string) {
+  if (review.status === 'completed') throw conflict('review_sealed', `${review.code} is Completed. Reopen it to ${doing}.`)
 }
 
 export interface NewReviewEntry {
@@ -187,7 +193,15 @@ const EDITED = 'Edited: '
 
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
 const escape = (text: string) => text.replace(/[&<>"]/g, (m) => ESCAPES[m]!)
-const asBefore = (html: string) => html || '<p><em>Empty</em></p>'
+
+/** A field an edit changed. Long text has no before and after here; it is kept whole, under its own heading. */
+export type FieldChange = [label: string, before?: string, after?: string]
+
+/** The body of an edit's history entry: each short field as old → new, then each long text as it was before. */
+export function editRecord(changes: FieldChange[], replaced: [heading: string, html: string][]): RichText {
+  const lines = changes.filter(([, before]) => before !== undefined).map(([label, before, after]) => `<li><strong>${label}:</strong> ${escape(before!)} → ${escape(after!)}</li>`)
+  return cleanRichText([lines.length ? `<ul>${lines.join('')}</ul>` : '', ...replaced.map(([heading, html]) => `<h3>${heading}</h3>${html || '<p><em>Empty</em></p>'}`)].join(''))
+}
 
 /**
  * Replace a review's details. The history entry it writes names each field that changed, as old → new, and keeps the Findings
@@ -218,7 +232,7 @@ export function updateReview(db: Db, actor: Actor, code: string, input: ReviewUp
       requireActiveEmployees(tx, [input.employeeId], 'employeeId')
     }
 
-    const changes: [label: string, before?: string, after?: string][] = []
+    const changes: FieldChange[] = []
     if (input.title !== was.title) changes.push(['Title', was.title, input.title])
     if (input.summary !== was.summary) changes.push(['Summary', was.summary, input.summary])
     if (input.reviewDate !== was.reviewDate) changes.push(['Review date', formatUsDate(was.reviewDate)!, formatUsDate(input.reviewDate)!])
@@ -246,14 +260,10 @@ export function updateReview(db: Db, actor: Actor, code: string, input: ReviewUp
       .run()
 
     const summary = `${EDITED}${changes.map(([label]) => label).join(', ')}`
-    const lines = changes.filter(([, before]) => before !== undefined).map(([label, before, after]) => `<li><strong>${label}:</strong> ${escape(before!)} → ${escape(after!)}</li>`)
-    const record = cleanRichText(
-      [
-        lines.length ? `<ul>${lines.join('')}</ul>` : '',
-        input.findings !== was.findings ? `<h3>Findings before</h3>${asBefore(plainToRichText(was.findings).html)}` : '',
-        body.html !== was.bodyHtml ? `<h3>Review body before</h3>${asBefore(was.bodyHtml)}` : '',
-      ].join(''),
-    )
+    const record = editRecord(changes, [
+      ...(input.findings !== was.findings ? [['Findings before', plainToRichText(was.findings).html] as [string, string]] : []),
+      ...(body.html !== was.bodyHtml ? [['Review body before', was.bodyHtml] as [string, string]] : []),
+    ])
     appendReviewEntry(tx, actor, was.id, { kind: 'system', occurredAt: now, title: summary, body: record, at: now })
     writeReviewAudit(tx, actor, { action: 'update', entityType: 'review', entityId: was.id, reviewId: was.id, details: `${was.code} · ${input.title} · ${summary}`, at: now })
     return getReview(tx, actor, { id: was.id })

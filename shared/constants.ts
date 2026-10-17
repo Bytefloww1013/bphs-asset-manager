@@ -135,6 +135,11 @@ export const reviewEntryKindLabel = (kind: ReviewEntryKind) => REVIEW_ENTRY_KIND
 export const reviewCode = (year: number, seq: number) => `AR-${year}-${String(seq).padStart(4, '0')}`
 /** A CAP's number within its review, as in CAP01. */
 export const reviewCapCode = (seq: number) => `CAP${String(seq).padStart(2, '0')}`
+/** A CAP's number from its address, CAP01 or a bare 1, or null when the text names no CAP. */
+export const reviewCapSeq = (text: string) => {
+  const match = /^(?:cap)?0*([1-9]\d*)$/i.exec(text.trim())
+  return match ? Number(match[1]) : null
+}
 /** A review's entries are numbered as a grievance's are: E01, E02. */
 export const reviewEntryCode = grievanceEntryCode
 

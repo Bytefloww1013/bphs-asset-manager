@@ -7,8 +7,8 @@ export interface ReviewAuditInput {
   action: ReviewAuditAction
   entityType: 'review' | 'cap' | 'entry' | 'attachment'
   entityId: number | null
-  /** The review it is about, so the entry can be hidden from that review's employee reviewed. */
-  reviewId: number
+  /** The review it is about, so the entry can be hidden from that review's employee reviewed. Null for an export of Action items. */
+  reviewId: number | null
   /** IDs and titles only. Never the text of findings, the review body, CAP details or updates. */
   details?: string
   at?: Date

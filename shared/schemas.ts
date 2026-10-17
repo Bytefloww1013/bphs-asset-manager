@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_STATUSES, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -378,12 +378,39 @@ export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>
 export const reviewEntryCreateSchema = z.discriminatedUnion(
   'kind',
   [
-    z.object({ kind: z.literal('update'), occurredAt, ...entryText }),
+    // `capSeq` files the update under one of the review's CAPs. A correction goes wherever the entry it corrects is.
+    z.object({ kind: z.literal('update'), occurredAt, capSeq: z.number().int().positive().optional(), ...entryText }),
     z.object({ kind: z.literal('correction'), correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(), ...entryText }),
   ],
   { error: 'Choose Update or Correction' },
 )
 export type ReviewEntryCreateInput = z.infer<typeof reviewEntryCreateSchema>
+
+const capFields = {
+  ...entryText,
+  responsibleId: z.number({ error: 'Choose who is responsible' }).int().positive(),
+  /** Optional. Nothing is ever marked overdue; the date is kept for the notifications planned later. */
+  dueDate: calendarDate('due date').nullable().default(null),
+}
+
+/** A new CAP. It starts as Not started. */
+export const reviewCapCreateSchema = z.object(capFields)
+export type ReviewCapCreateInput = z.infer<typeof reviewCapCreateSchema>
+
+/** An edit, with the version the editor loaded, so that a save made over someone else's is refused. */
+export const reviewCapUpdateSchema = z.object({ ...capFields, version: z.number().int().positive() })
+export type ReviewCapUpdateInput = z.infer<typeof reviewCapUpdateSchema>
+
+export const reviewCapStatusSchema = z
+  .object({ status: z.enum(REVIEW_CAP_STATUSES, { error: 'Choose a status' }), note, version: z.number().int().positive() })
+  .superRefine((value, ctx) => {
+    if (value.status === 'cancelled' && !value.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Say why it is being cancelled' })
+  })
+export type ReviewCapStatusInput = z.infer<typeof reviewCapStatusSchema>
+
+/** Reported by the Action items page when it saves the list, since the browser makes the file. */
+export const reviewActionItemsExportSchema = z.object({ format: z.enum(['csv', 'xlsx']), rows: z.number().int().min(0) })
+export type ReviewActionItemsExportInput = z.infer<typeof reviewActionItemsExportSchema>
 
 // `from` and `to` are days, both inclusive, compared with the review date.
 export const reviewListQuerySchema = z.object({

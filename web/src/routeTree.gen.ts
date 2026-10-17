@@ -37,6 +37,7 @@ import { Route as AppMaintenanceIndexRouteImport } from './routes/_app/maintenan
 import { Route as AppMaintenanceIdRouteImport } from './routes/_app/maintenance.$id'
 import { Route as AppMaintenanceNewRouteImport } from './routes/_app/maintenance.new'
 import { Route as AppReviewsIndexRouteImport } from './routes/_app/reviews.index'
+import { Route as AppReviewsActionsRouteImport } from './routes/_app/reviews.actions'
 import { Route as AppReviewsNewRouteImport } from './routes/_app/reviews.new'
 import { Route as GrievancesCodeCaseFileRouteImport } from './routes/grievances.$code.case-file'
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
@@ -46,7 +47,10 @@ import { Route as AppReviewsCodeIndexRouteImport } from './routes/_app/reviews.$
 import { Route as AppReviewsCodeEditRouteImport } from './routes/_app/reviews.$code.edit'
 import { Route as AppGrievancesCodeEntriesSeqRouteImport } from './routes/_app/grievances.$code.entries.$seq'
 import { Route as AppGrievancesCodeEntriesNewRouteImport } from './routes/_app/grievances.$code.entries.new'
+import { Route as AppReviewsCodeCapsNewRouteImport } from './routes/_app/reviews.$code.caps.new'
 import { Route as AppReviewsCodeEntriesNewRouteImport } from './routes/_app/reviews.$code.entries.new'
+import { Route as AppReviewsCodeCapsCapIndexRouteImport } from './routes/_app/reviews.$code.caps.$cap.index'
+import { Route as AppReviewsCodeCapsCapEditRouteImport } from './routes/_app/reviews.$code.caps.$cap.edit'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -187,6 +191,11 @@ const AppReviewsIndexRoute = AppReviewsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppReviewsRoute,
 } as any)
+const AppReviewsActionsRoute = AppReviewsActionsRouteImport.update({
+  id: '/actions',
+  path: '/actions',
+  getParentRoute: () => AppReviewsRoute,
+} as any)
 const AppReviewsNewRoute = AppReviewsNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -235,10 +244,27 @@ const AppGrievancesCodeEntriesNewRoute =
     path: '/$code/entries/new',
     getParentRoute: () => AppGrievancesRoute,
   } as any)
+const AppReviewsCodeCapsNewRoute = AppReviewsCodeCapsNewRouteImport.update({
+  id: '/$code/caps/new',
+  path: '/$code/caps/new',
+  getParentRoute: () => AppReviewsRoute,
+} as any)
 const AppReviewsCodeEntriesNewRoute =
   AppReviewsCodeEntriesNewRouteImport.update({
     id: '/$code/entries/new',
     path: '/$code/entries/new',
+    getParentRoute: () => AppReviewsRoute,
+  } as any)
+const AppReviewsCodeCapsCapIndexRoute =
+  AppReviewsCodeCapsCapIndexRouteImport.update({
+    id: '/$code/caps/$cap/',
+    path: '/$code/caps/$cap/',
+    getParentRoute: () => AppReviewsRoute,
+  } as any)
+const AppReviewsCodeCapsCapEditRoute =
+  AppReviewsCodeCapsCapEditRouteImport.update({
+    id: '/$code/caps/$cap/edit',
+    path: '/$code/caps/$cap/edit',
     getParentRoute: () => AppReviewsRoute,
   } as any)
 
@@ -265,6 +291,7 @@ export interface FileRoutesByFullPath {
   '/grievances/new': typeof AppGrievancesNewRoute
   '/maintenance/$id': typeof AppMaintenanceIdRoute
   '/maintenance/new': typeof AppMaintenanceNewRoute
+  '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/assets/': typeof AppAssetsIndexRoute
@@ -279,7 +306,10 @@ export interface FileRoutesByFullPath {
   '/reviews/$code/': typeof AppReviewsCodeIndexRoute
   '/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
+  '/reviews/$code/caps/new': typeof AppReviewsCodeCapsNewRoute
   '/reviews/$code/entries/new': typeof AppReviewsCodeEntriesNewRoute
+  '/reviews/$code/caps/$cap/edit': typeof AppReviewsCodeCapsCapEditRoute
+  '/reviews/$code/caps/$cap/': typeof AppReviewsCodeCapsCapIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -301,6 +331,7 @@ export interface FileRoutesByTo {
   '/grievances/new': typeof AppGrievancesNewRoute
   '/maintenance/$id': typeof AppMaintenanceIdRoute
   '/maintenance/new': typeof AppMaintenanceNewRoute
+  '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/assets': typeof AppAssetsIndexRoute
@@ -315,7 +346,10 @@ export interface FileRoutesByTo {
   '/reviews/$code': typeof AppReviewsCodeIndexRoute
   '/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
+  '/reviews/$code/caps/new': typeof AppReviewsCodeCapsNewRoute
   '/reviews/$code/entries/new': typeof AppReviewsCodeEntriesNewRoute
+  '/reviews/$code/caps/$cap/edit': typeof AppReviewsCodeCapsCapEditRoute
+  '/reviews/$code/caps/$cap': typeof AppReviewsCodeCapsCapIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -342,6 +376,7 @@ export interface FileRoutesById {
   '/_app/grievances/new': typeof AppGrievancesNewRoute
   '/_app/maintenance/$id': typeof AppMaintenanceIdRoute
   '/_app/maintenance/new': typeof AppMaintenanceNewRoute
+  '/_app/reviews/actions': typeof AppReviewsActionsRoute
   '/_app/reviews/new': typeof AppReviewsNewRoute
   '/grievances/$code/case-file': typeof GrievancesCodeCaseFileRoute
   '/_app/assets/': typeof AppAssetsIndexRoute
@@ -356,7 +391,10 @@ export interface FileRoutesById {
   '/_app/reviews/$code/': typeof AppReviewsCodeIndexRoute
   '/_app/grievances/$code/entries/$seq': typeof AppGrievancesCodeEntriesSeqRoute
   '/_app/grievances/$code/entries/new': typeof AppGrievancesCodeEntriesNewRoute
+  '/_app/reviews/$code/caps/new': typeof AppReviewsCodeCapsNewRoute
   '/_app/reviews/$code/entries/new': typeof AppReviewsCodeEntriesNewRoute
+  '/_app/reviews/$code/caps/$cap/edit': typeof AppReviewsCodeCapsCapEditRoute
+  '/_app/reviews/$code/caps/$cap/': typeof AppReviewsCodeCapsCapIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -383,6 +421,7 @@ export interface FileRouteTypes {
     | '/grievances/new'
     | '/maintenance/$id'
     | '/maintenance/new'
+    | '/reviews/actions'
     | '/reviews/new'
     | '/grievances/$code/case-file'
     | '/assets/'
@@ -397,7 +436,10 @@ export interface FileRouteTypes {
     | '/reviews/$code/'
     | '/grievances/$code/entries/$seq'
     | '/grievances/$code/entries/new'
+    | '/reviews/$code/caps/new'
     | '/reviews/$code/entries/new'
+    | '/reviews/$code/caps/$cap/edit'
+    | '/reviews/$code/caps/$cap/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -419,6 +461,7 @@ export interface FileRouteTypes {
     | '/grievances/new'
     | '/maintenance/$id'
     | '/maintenance/new'
+    | '/reviews/actions'
     | '/reviews/new'
     | '/grievances/$code/case-file'
     | '/assets'
@@ -433,7 +476,10 @@ export interface FileRouteTypes {
     | '/reviews/$code'
     | '/grievances/$code/entries/$seq'
     | '/grievances/$code/entries/new'
+    | '/reviews/$code/caps/new'
     | '/reviews/$code/entries/new'
+    | '/reviews/$code/caps/$cap/edit'
+    | '/reviews/$code/caps/$cap'
   id:
     | '__root__'
     | '/_app'
@@ -459,6 +505,7 @@ export interface FileRouteTypes {
     | '/_app/grievances/new'
     | '/_app/maintenance/$id'
     | '/_app/maintenance/new'
+    | '/_app/reviews/actions'
     | '/_app/reviews/new'
     | '/grievances/$code/case-file'
     | '/_app/assets/'
@@ -473,7 +520,10 @@ export interface FileRouteTypes {
     | '/_app/reviews/$code/'
     | '/_app/grievances/$code/entries/$seq'
     | '/_app/grievances/$code/entries/new'
+    | '/_app/reviews/$code/caps/new'
     | '/_app/reviews/$code/entries/new'
+    | '/_app/reviews/$code/caps/$cap/edit'
+    | '/_app/reviews/$code/caps/$cap/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -681,6 +731,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReviewsIndexRouteImport
       parentRoute: typeof AppReviewsRoute
     }
+    '/_app/reviews/actions': {
+      id: '/_app/reviews/actions'
+      path: '/actions'
+      fullPath: '/reviews/actions'
+      preLoaderRoute: typeof AppReviewsActionsRouteImport
+      parentRoute: typeof AppReviewsRoute
+    }
     '/_app/reviews/new': {
       id: '/_app/reviews/new'
       path: '/new'
@@ -744,11 +801,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppGrievancesCodeEntriesNewRouteImport
       parentRoute: typeof AppGrievancesRoute
     }
+    '/_app/reviews/$code/caps/new': {
+      id: '/_app/reviews/$code/caps/new'
+      path: '/$code/caps/new'
+      fullPath: '/reviews/$code/caps/new'
+      preLoaderRoute: typeof AppReviewsCodeCapsNewRouteImport
+      parentRoute: typeof AppReviewsRoute
+    }
     '/_app/reviews/$code/entries/new': {
       id: '/_app/reviews/$code/entries/new'
       path: '/$code/entries/new'
       fullPath: '/reviews/$code/entries/new'
       preLoaderRoute: typeof AppReviewsCodeEntriesNewRouteImport
+      parentRoute: typeof AppReviewsRoute
+    }
+    '/_app/reviews/$code/caps/$cap/': {
+      id: '/_app/reviews/$code/caps/$cap/'
+      path: '/$code/caps/$cap'
+      fullPath: '/reviews/$code/caps/$cap/'
+      preLoaderRoute: typeof AppReviewsCodeCapsCapIndexRouteImport
+      parentRoute: typeof AppReviewsRoute
+    }
+    '/_app/reviews/$code/caps/$cap/edit': {
+      id: '/_app/reviews/$code/caps/$cap/edit'
+      path: '/$code/caps/$cap/edit'
+      fullPath: '/reviews/$code/caps/$cap/edit'
+      preLoaderRoute: typeof AppReviewsCodeCapsCapEditRouteImport
       parentRoute: typeof AppReviewsRoute
     }
   }
@@ -801,19 +879,27 @@ const AppMaintenanceRouteWithChildren = AppMaintenanceRoute._addFileChildren(
 )
 
 interface AppReviewsRouteChildren {
+  AppReviewsActionsRoute: typeof AppReviewsActionsRoute
   AppReviewsNewRoute: typeof AppReviewsNewRoute
   AppReviewsIndexRoute: typeof AppReviewsIndexRoute
   AppReviewsCodeEditRoute: typeof AppReviewsCodeEditRoute
   AppReviewsCodeIndexRoute: typeof AppReviewsCodeIndexRoute
+  AppReviewsCodeCapsNewRoute: typeof AppReviewsCodeCapsNewRoute
   AppReviewsCodeEntriesNewRoute: typeof AppReviewsCodeEntriesNewRoute
+  AppReviewsCodeCapsCapEditRoute: typeof AppReviewsCodeCapsCapEditRoute
+  AppReviewsCodeCapsCapIndexRoute: typeof AppReviewsCodeCapsCapIndexRoute
 }
 
 const AppReviewsRouteChildren: AppReviewsRouteChildren = {
+  AppReviewsActionsRoute: AppReviewsActionsRoute,
   AppReviewsNewRoute: AppReviewsNewRoute,
   AppReviewsIndexRoute: AppReviewsIndexRoute,
   AppReviewsCodeEditRoute: AppReviewsCodeEditRoute,
   AppReviewsCodeIndexRoute: AppReviewsCodeIndexRoute,
+  AppReviewsCodeCapsNewRoute: AppReviewsCodeCapsNewRoute,
   AppReviewsCodeEntriesNewRoute: AppReviewsCodeEntriesNewRoute,
+  AppReviewsCodeCapsCapEditRoute: AppReviewsCodeCapsCapEditRoute,
+  AppReviewsCodeCapsCapIndexRoute: AppReviewsCodeCapsCapIndexRoute,
 }
 
 const AppReviewsRouteWithChildren = AppReviewsRoute._addFileChildren(

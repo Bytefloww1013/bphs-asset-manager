@@ -31,6 +31,7 @@ async function reviews() {
 }
 
 const update = { kind: 'update', occurredAt: new Date().toISOString(), title: 'Spoke with Dana', shortDescription: 'Agreed a handover checklist.' }
+const cap = (responsibleId: number, change: Record<string, unknown> = {}) => ({ title: 'Handover checklist', shortDescription: 'Write one and use it.', responsibleId, dueDate: '2026-11-02', ...change })
 
 describe('the review audit log', () => {
   it('is append-only', async () => {
@@ -119,12 +120,19 @@ describe('a review about you', () => {
     const other = (await create({}, editor)).data
     const path = `/api/reviews/${about.code}`
     expect((await t.call('GET', path, { cookie: editor })).status).toBe(200)
+    const made = (await t.call('POST', `${path}/caps`, { cookie: editor, body: cap(about.reviewer.id) })).data
+    await t.call('POST', `/api/reviews/${other.code}/caps`, { cookie: editor, body: cap(about.reviewer.id, { title: 'Visible' }) })
 
     for (const [method, target, body] of [
       ['GET', path, undefined],
       ['GET', `${path}/entries`, undefined],
       ['PATCH', path, { ...about, reviewerId: about.reviewer.id, employeeId: about.employee.id, body: about.bodyHtml, title: 'Changed' }],
       ['POST', `${path}/entries`, update],
+      ['GET', `${path}/caps`, undefined],
+      ['POST', `${path}/caps`, cap(about.reviewer.id)],
+      ['GET', `${path}/caps/CAP01`, undefined],
+      ['PATCH', `${path}/caps/CAP01`, { ...cap(about.reviewer.id, { title: 'Changed' }), version: made.version }],
+      ['POST', `${path}/caps/CAP01/status`, { status: 'completed', version: made.version }],
     ] as const) {
       const res = await t.call(method, target, { cookie: superAdmin, body })
       expect(res.status, `${method} ${target}`).toBe(404)
@@ -136,6 +144,9 @@ describe('a review about you', () => {
     expect(list.employees.map((person: { name: string }) => person.name)).toEqual(['Dana Whitlock'])
     expect((await t.call('GET', `/api/reviews?q=${about.code}`, { cookie: superAdmin })).data.counts.all).toBe(0)
     expect((await t.call('GET', '/api/reviews', { cookie: editor })).data.counts.all).toBe(2)
+    const items = async (cookie: string) => (await t.call('GET', '/api/reviews/action-items', { cookie })).data.map((item: { title: string }) => item.title)
+    expect(await items(superAdmin)).toEqual(['Visible'])
+    expect(await items(editor)).toEqual(['Handover checklist', 'Visible'])
   })
 })
 
@@ -288,5 +299,158 @@ describe('the reviews list', () => {
     expect(await codes('?to=2026-09-30')).toEqual([])
     expect((await list('?q=lifting&status=open')).counts).toEqual({ all: 1, open: 0, in_progress: 0, completed: 0, voided: 1 })
     expect((await t.call('GET', '/api/reviews?status=closed', { cookie: superAdmin })).status).toBe(422)
+  })
+})
+
+describe('corrective action plans', () => {
+  it('are numbered on their review, start Not started, and are each on the history', async () => {
+    const { t, superAdmin, create, reviewer, dana } = await reviews()
+    const made = (await create()).data
+    const path = `/api/reviews/${made.code}`
+    const first = await t.call('POST', `${path}/caps`, { cookie: superAdmin, body: cap(reviewer.id, { body: '<p>Use it every shift.</p>' }) })
+    expect(first.status).toBe(201)
+    expect(first.data).toMatchObject({
+      seq: 1,
+      status: 'not_started',
+      version: 1,
+      title: 'Handover checklist',
+      bodyHtml: '<p>Use it every shift.</p>',
+      responsible: { id: reviewer.id, name: 'Rhea Okafor' },
+      dueDate: '2026-11-02',
+      addedBy: 'Priya Raghunathan',
+      completedAt: null,
+      completedBy: null,
+    })
+    const second = (await t.call('POST', `${path}/caps`, { cookie: superAdmin, body: cap(dana.id, { title: 'Shadow a shift', dueDate: null }) })).data
+    expect(second.seq).toBe(2)
+    expect((await t.call('POST', `/api/reviews/${(await create()).data.code}/caps`, { cookie: superAdmin, body: cap(dana.id) })).data.seq).toBe(1)
+
+    for (const address of ['CAP01', 'cap1', '1', '01']) expect((await t.call('GET', `${path}/caps/${address}`, { cookie: superAdmin })).data.id, address).toBe(first.data.id)
+    for (const address of ['CAP09', 'CAP00', 'x']) expect((await t.call('GET', `${path}/caps/${address}`, { cookie: superAdmin })).status, address).toBe(404)
+    expect((await t.call('GET', `${path}/caps`, { cookie: superAdmin })).data.map((one: { seq: number }) => one.seq)).toEqual([1, 2])
+
+    const onCap = await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { ...update, capSeq: 2 } })
+    expect(onCap.data).toMatchObject({ seq: 4, kind: 'update', cap: 2 })
+    expect((await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { ...update, capSeq: 9 } })).data).toMatchObject({ message: `${made.code} has no CAP09.`, details: { field: 'capSeq' } })
+    const fixed = await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: { kind: 'correction', correctsSeq: 4, title: 'Wrong shift', shortDescription: 'It was the night shift.' } })
+    expect(fixed.data).toMatchObject({ seq: 5, cap: 2, corrects: 4 })
+
+    const entries = (await t.call('GET', `${path}/entries`, { cookie: superAdmin })).data
+    expect(entries.map((entry: { seq: number; cap: number | null; title: string }) => [entry.seq, entry.cap, entry.title])).toEqual([
+      [1, null, 'Review created'],
+      [2, 1, 'CAP01 added: Handover checklist. Responsible: Rhea Okafor. Due: 11/02/2026.'],
+      [3, 2, 'CAP02 added: Shadow a shift. Responsible: Dana Whitlock.'],
+      [4, 2, 'Spoke with Dana'],
+      [5, 2, 'Wrong shift'],
+    ])
+    expect(t.sqlite.prepare("select entity_type, review_id, details from review_audit_log where action = 'create' and entity_type = 'cap' order by id limit 2").all()).toEqual([
+      { entity_type: 'cap', review_id: made.id, details: `${made.code} CAP01 · Handover checklist` },
+      { entity_type: 'cap', review_id: made.id, details: `${made.code} CAP02 · Shadow a shift` },
+    ])
+    // A CAP is cancelled, never removed.
+    expect((await t.call('DELETE', `${path}/caps/CAP01`, { cookie: superAdmin })).status).toBe(404)
+  })
+
+  it('keep each edit and status change on the history, stamp completion, and refuse a stale or closed one', async () => {
+    const { t, superAdmin, create, reviewer, dana, employee } = await reviews()
+    const made = (await create()).data
+    const path = `/api/reviews/${made.code}/caps`
+    const added = (await t.call('POST', path, { cookie: superAdmin, body: cap(reviewer.id) })).data
+    const gone = employee('E-4009', 'Gone', 'Away')
+    t.sqlite.prepare('update employees set archived_at = 1 where id = ?').run(gone.id)
+    const edit = (change: Record<string, unknown>, version: number) => t.call('PATCH', `${path}/CAP01`, { cookie: superAdmin, body: { ...cap(reviewer.id), ...change, version } })
+    const status = (body: Record<string, unknown>) => t.call('POST', `${path}/CAP01/status`, { cookie: superAdmin, body })
+
+    expect((await edit({ responsibleId: gone.id }, 1)).data.details.field).toBe('responsibleId')
+    expect((await edit({}, 1)).data.error).toBe('unchanged')
+    const edited = await edit({ title: 'Handover <list>', responsibleId: dana.id, dueDate: null, body: '<p>New.</p>' }, 1)
+    expect(edited.data).toMatchObject({ version: 2, title: 'Handover <list>', responsible: { name: 'Dana Whitlock' }, dueDate: null })
+    const stale = await edit({ title: 'Again' }, 1)
+    expect(stale.data).toMatchObject({ error: 'stale_version', message: 'CAP01 was changed by Priya Raghunathan while you had it open. Nothing has been saved.', details: { version: 2 } })
+
+    expect((await status({ status: 'not_started', version: 2 })).data.error).toBe('status_unchanged')
+    expect((await status({ status: 'cancelled', version: 2 })).data.details.fields).toHaveProperty('note')
+    const done = await status({ status: 'completed', note: 'Checklist is in use.', version: 2 })
+    expect(done.data).toMatchObject({ status: 'completed', version: 3, completedBy: 'Priya Raghunathan' })
+    expect(done.data.completedAt).not.toBeNull()
+    expect((await edit({ title: 'Too late' }, 3)).data).toMatchObject({ error: 'cap_closed', message: 'CAP01 is Completed. Reopen it before editing it.' })
+    const reopened = await status({ status: 'in_progress', version: 3 })
+    expect(reopened.data).toMatchObject({ status: 'in_progress', version: 4, completedAt: null, completedBy: null })
+    expect(t.sqlite.prepare('select completed_by_user_id as user, completed_by_label as label from review_caps where id = ?').get(added.id)).toEqual({ user: null, label: null })
+
+    const entries = (await t.call('GET', `/api/reviews/${made.code}/entries`, { cookie: superAdmin })).data.slice(2)
+    expect(entries.map((entry: { cap: number; title: string }) => [entry.cap, entry.title])).toEqual([
+      [1, 'CAP01 edited: Title, Responsible, Due date, Details'],
+      [1, 'CAP01: Not started → Completed'],
+      [1, 'CAP01: Completed → In progress'],
+    ])
+    expect(entries[0].bodyHtml).toContain('<strong>Title:</strong> Handover checklist → Handover &lt;list&gt;')
+    expect(entries[0].bodyHtml).toContain('<strong>Due date:</strong> 11/02/2026 → None')
+    expect(entries[0].bodyHtml).toContain('<h3>Details before</h3><p><em>Empty</em></p>')
+    expect(entries[1].bodyHtml).toBe('<p>Checklist is in use.</p>')
+    expect(t.sqlite.prepare("select action, details from review_audit_log where entity_type = 'cap' and action != 'create' order by id").all()).toEqual([
+      { action: 'update', details: `${made.code} CAP01 · Handover <list> · CAP01 edited: Title, Responsible, Due date, Details` },
+      { action: 'status', details: `${made.code} CAP01 · Handover <list> · CAP01: Not started → Completed` },
+      { action: 'status', details: `${made.code} CAP01 · Handover <list> · CAP01: Completed → In progress` },
+    ])
+
+    // A Completed review is sealed; a voided one is a record only.
+    t.sqlite.prepare("update reviews set status = 'completed' where id = ?").run(made.id)
+    expect((await t.call('POST', path, { cookie: superAdmin, body: cap(reviewer.id) })).data).toMatchObject({ error: 'review_sealed', message: `${made.code} is Completed. Reopen it to add a CAP.` })
+    expect((await status({ status: 'completed', version: 4 })).data.error).toBe('review_sealed')
+    t.sqlite.prepare("update reviews set status = 'voided' where id = ?").run(made.id)
+    expect((await edit({ title: 'Voided' }, 4)).data.error).toBe('review_voided')
+  })
+
+  it('are open to the reviewer at Read Only, and to no other reader, not even the one responsible', async () => {
+    const { t, create, employee, account, reviewer } = await reviews()
+    const olu = employee('E-4004', 'Olu', 'Bello')
+    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const responsible = await account('olu@bphs.local', { reviews: 'read' }, olu.id)
+    const made = (await create()).data
+    const path = `/api/reviews/${made.code}/caps`
+    const added = (await t.call('POST', path, { cookie: rhea, body: cap(olu.id) })).data
+    expect(added).toMatchObject({ seq: 1, addedBy: 'rhea@bphs.local' })
+
+    expect((await t.call('GET', `${path}/CAP01`, { cookie: responsible })).status).toBe(200)
+    for (const [method, target, body] of [
+      ['POST', path, cap(olu.id)],
+      ['PATCH', `${path}/CAP01`, { ...cap(olu.id, { title: 'Changed' }), version: 1 }],
+      ['POST', `${path}/CAP01/status`, { status: 'completed', version: 1 }],
+    ] as const) {
+      const res = await t.call(method, target, { cookie: responsible, body })
+      expect(res.status, `${method} ${target}`).toBe(403)
+      expect(res.data.message).toContain('Rhea Okafor')
+    }
+    expect((await t.call('PATCH', `${path}/CAP01`, { cookie: rhea, body: { ...cap(reviewer.id), version: 1 } })).data.responsible.name).toBe('Rhea Okafor')
+    expect((await t.call('POST', `${path}/CAP01/status`, { cookie: rhea, body: { status: 'completed', version: 2 } })).data).toMatchObject({ status: 'completed', completedBy: 'rhea@bphs.local' })
+  })
+
+  it('are listed as action items across reviews, soonest due first, leaving out voided reviews; each export is logged', async () => {
+    const { t, superAdmin, create, reviewer, account } = await reviews()
+    const first = (await create()).data
+    const second = (await create({ title: 'Late timesheets' })).data
+    const voided = (await create({ title: 'Entered twice' })).data
+    const add = (code: string, title: string, dueDate: string | null) => t.call('POST', `/api/reviews/${code}/caps`, { cookie: superAdmin, body: cap(reviewer.id, { title, dueDate }) })
+    await add(first.code, 'Undated', null)
+    await add(first.code, 'Later', '2026-12-01')
+    await add(second.code, 'Sooner', '2026-11-01')
+    await add(voided.code, 'Not an action item', '2026-10-20')
+    t.sqlite.prepare("update reviews set status = 'voided' where id = ?").run(voided.id)
+
+    const items = (await t.call('GET', '/api/reviews/action-items', { cookie: superAdmin })).data
+    expect(items.map((item: { title: string; review: { code: string } }) => [item.title, item.review.code])).toEqual([
+      ['Sooner', second.code],
+      ['Later', first.code],
+      ['Undated', first.code],
+    ])
+    expect(items[0]).toMatchObject({ seq: 1, status: 'not_started', dueDate: '2026-11-01', responsible: { name: 'Rhea Okafor' }, review: { title: 'Late timesheets' }, completedAt: null })
+
+    const reader = await account('reader@bphs.local', { reviews: 'read' }, reviewer.id)
+    expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: reader, body: { format: 'xlsx', rows: 3 } })).status).toBe(204)
+    expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: reader, body: { format: 'pdf', rows: 3 } })).status).toBe(422)
+    expect(t.sqlite.prepare("select actor, entity_type, entity_id, review_id, details from review_audit_log where action = 'export'").all()).toEqual([
+      { actor: 'reader@bphs.local', entity_type: 'cap', entity_id: null, review_id: null, details: 'Action items · 3 rows · Excel workbook' },
+    ])
   })
 })

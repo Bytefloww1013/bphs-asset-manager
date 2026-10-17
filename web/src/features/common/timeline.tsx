@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Diamond, Pencil } from 'lucide-react'
+import { Check, ChevronDown, Diamond, Flag, Pencil } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import type { GrievanceEntry } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -7,8 +7,11 @@ import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { cn } from '@/lib/cn.ts'
 import { formatDate, formatDateTime, plural } from '@/lib/format.ts'
 
-/** What the timeline draws of an entry. A grievance's entries have this shape, and so will a review's. */
-export type TimelineEntry = Omit<GrievanceEntry, 'kind'> & { kind: string }
+/**
+ * What the timeline draws of an entry. A grievance's entries have this shape, and so do a review's. A review's CAP is drawn among
+ * them with a `code` of its own, CAP01, which then stands in for the entry number.
+ */
+export type TimelineEntry = Omit<GrievanceEntry, 'kind'> & { kind: string; code?: string }
 
 type Order = 'newest' | 'oldest'
 
@@ -43,6 +46,13 @@ export function EntryMarker({ kind, className }: { kind: string; className?: str
     return (
       <span className={cn('mt-2', box, 'bg-ink-2 text-surface')} aria-hidden>
         <Check className="size-3.5" strokeWidth={2.75} />
+      </span>
+    )
+  }
+  if (kind === 'cap') {
+    return (
+      <span className={cn('mt-2', box, 'rounded-md border-[1.5px] border-ink-2 text-ink-2')} aria-hidden>
+        <Flag className="size-3.5" strokeWidth={2.25} />
       </span>
     )
   }
@@ -103,11 +113,22 @@ interface TimelineProps<E extends TimelineEntry> {
   link?: (entry: E, children: ReactNode) => ReactNode
   /** What can be done with an entry the app did not write, shown after who documented it. */
   actions?: (entry: E) => ReactNode
+  /** More about an entry the app did not write, shown beside its type: a CAP's status, or the CAP an update is about. */
+  tags?: (entry: E) => ReactNode
 }
 
-function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, actions, kindLabel, entryCode }: Pick<TimelineProps<E>, 'link' | 'actions' | 'kindLabel' | 'entryCode'> & { entry: E; last: boolean; onGoTo: (seq: number) => void }) {
+function Entry<E extends TimelineEntry>({
+  entry,
+  last,
+  onGoTo,
+  link,
+  actions,
+  tags,
+  kindLabel,
+  entryCode,
+}: Pick<TimelineProps<E>, 'link' | 'actions' | 'tags' | 'kindLabel' | 'entryCode'> & { entry: E; last: boolean; onGoTo: (seq: number) => void }) {
   const [open, setOpen] = useState(false)
-  const code = entryCode(entry.seq)
+  const code = entry.code ?? entryCode(entry.seq)
   const automatic = entry.kind === 'system'
   const backDated = !automatic && entry.kind !== 'correction' && Date.parse(entry.recordedAt) - Date.parse(entry.occurredAt) > BACK_DATED_MS
   return (
@@ -140,6 +161,7 @@ function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, actions, ki
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <Mono className="text-xs text-ink-3">{code}</Mono>
             <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">{kindLabel(entry.kind)}</span>
+            {tags?.(entry)}
             {entry.corrects !== null && <Chip onClick={() => onGoTo(entry.corrects!)}>Corrects {entryCode(entry.corrects)}</Chip>}
             {entry.correctedBy.map((seq) => (
               <Chip key={seq} onClick={() => onGoTo(seq)}>
@@ -186,7 +208,7 @@ function Entry<E extends TimelineEntry>({ entry, last, onGoTo, link, actions, ki
  * A record's timeline: one rail through the case, in the order things happened, with the newest first unless the reader turns it
  * round. Every entry of the record is passed in; only the drawing is done a page at a time.
  */
-export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel, entryCode, orderKey, link, actions }: TimelineProps<E>) {
+export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel, entryCode, orderKey, link, actions, tags }: TimelineProps<E>) {
   const [show, setShow] = useState<'all' | E['kind']>('all')
   const [hideAutomatic, setHideAutomatic] = useState(false)
   const [order, setOrder] = useState<Order>(() => savedOrder(orderKey))
@@ -195,7 +217,8 @@ export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel,
   const more = useRef<HTMLButtonElement>(null)
 
   const rows = useMemo(() => {
-    const kindOf = new Map(entries.map((entry) => [entry.seq, entry.kind]))
+    // Only entries can be corrected; a CAP, which has a code of its own, never is.
+    const kindOf = new Map(entries.filter((entry) => !entry.code).map((entry) => [entry.seq, entry.kind]))
     // A correction is shown with the type of what it corrects, so filtering never hides that an entry was corrected.
     const matches = (entry: E) => (show === 'all' ? !(hideAutomatic && entry.kind === 'system') : (entry.corrects === null ? entry.kind : kindOf.get(entry.corrects)) === show)
     const sign = order === 'newest' ? -1 : 1
@@ -285,7 +308,7 @@ export function Timeline<E extends TimelineEntry>({ entries, filters, kindLabel,
               <h3 className="pb-1.5 pl-9 pt-4 text-xs font-semibold tracking-wide text-ink-3">{month.name}</h3>
               <ol>
                 {month.entries.map((entry, i) => (
-                  <Entry key={entry.id} entry={entry} link={link} actions={actions} kindLabel={kindLabel} entryCode={entryCode} onGoTo={follow} last={remaining === 0 && m === months.length - 1 && i === month.entries.length - 1} />
+                  <Entry key={entry.code ?? entry.id} entry={entry} link={link} actions={actions} tags={tags} kindLabel={kindLabel} entryCode={entryCode} onGoTo={follow} last={remaining === 0 && m === months.length - 1 && i === month.entries.length - 1} />
                 ))}
               </ol>
             </section>

@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronLeft, Pencil, Plus } from 'lucide-react'
+import { ChevronLeft, Flag, Pencil, Plus } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { reviewEntryCode, reviewEntryKindLabel } from '@shared/constants.ts'
+import { reviewCapCode, reviewEntryCode, reviewEntryKindLabel } from '@shared/constants.ts'
 import { canManageReview } from '@shared/permissions.ts'
-import type { ReviewPerson } from '@shared/types.ts'
-import { Badge } from '@/components/ui/badge.tsx'
+import type { ReviewCap, ReviewEntry } from '@shared/types.ts'
 import { buttonStyles } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
@@ -13,55 +12,80 @@ import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { Timeline } from '@/features/common/timeline.tsx'
 import { ReviewLoadError } from '@/features/reviews/load-error.tsx'
 import { useReviewPageTitle } from '@/features/reviews/page-title.ts'
-import { ReviewStatusBadge } from '@/features/reviews/status.tsx'
+import { Fact, Person } from '@/features/reviews/parts.tsx'
+import { CapFacts, CapLink } from '@/features/reviews/cap-parts.tsx'
+import { ReviewCapStatusBadge, ReviewStatusBadge } from '@/features/reviews/status.tsx'
 import { formatDateTime, plural } from '@/lib/format.ts'
-import { reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
+import { reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/')({
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(reviewQuery(params.code)), context.queryClient.ensureQueryData(reviewEntriesQuery(params.code))]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(reviewQuery(params.code)),
+      context.queryClient.ensureQueryData(reviewEntriesQuery(params.code)),
+      context.queryClient.ensureQueryData(reviewCapsQuery(params.code)),
+    ]),
   errorComponent: ReviewLoadError,
   component: ReviewPage,
 })
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0 px-5 py-4">
-      <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-ink">{children}</dd>
-    </div>
-  )
-}
+/** A CAP as the timeline draws it: in the place an Action takes on a grievance, numbered CAP01 rather than as an entry. */
+type CapRow = Omit<ReviewEntry, 'kind'> & { kind: 'cap'; code: string; plan: ReviewCap }
+type Row = ReviewEntry | CapRow
 
-/** As on a grievance, someone who has been archived keeps their place on the review and is marked. */
-function Person({ person }: { person: ReviewPerson }) {
-  return (
-    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-      <span>{person.name}</span>
-      <Mono className="text-xs font-normal text-ink-3">{person.code}</Mono>
-      {person.archived && (
-        <Badge tone="neutral" dot={false}>
-          archived
-        </Badge>
-      )}
-    </span>
-  )
-}
+const capRow = (cap: ReviewCap): CapRow => ({
+  id: cap.id,
+  seq: cap.seq,
+  code: reviewCapCode(cap.seq),
+  kind: 'cap',
+  cap: cap.seq,
+  occurredAt: cap.createdAt,
+  recordedAt: cap.createdAt,
+  title: cap.title,
+  shortDescription: cap.shortDescription,
+  bodyHtml: cap.bodyHtml,
+  documentedBy: cap.addedBy ?? 'A removed account',
+  corrects: null,
+  correctedBy: [],
+  plan: cap,
+})
 
 function ReviewPage() {
   const { code } = Route.useParams()
   const user = useUser()
   const { data: review } = useQuery(reviewQuery(code))
   const { data: entries } = useQuery(reviewEntriesQuery(code))
+  const { data: caps } = useQuery(reviewCapsQuery(code))
   useReviewPageTitle(review?.code ?? code.toUpperCase())
-  if (!review || !entries) return null
-  // A voided review takes nothing more; the server refuses it whatever the page shows.
+  if (!review || !entries || !caps) return null
+  // A voided review takes nothing more, and a completed one nothing until it is reopened; the server refuses both whatever the page shows.
   const manage = review.status !== 'voided' && canManageReview(user, review.reviewer.id)
+  const add = manage && review.status !== 'completed'
+  const counted = caps.filter((cap) => cap.status !== 'cancelled')
   const count = (kind: string) => entries.filter((entry) => entry.kind === kind).length
   const times = entries.map((entry) => entry.occurredAt).sort()
   const summary: [string, ReactNode][] = [
     ['Status', <ReviewStatusBadge status={review.status} />],
     ['Review date', <Mono>{review.reviewDate}</Mono>],
+    [
+      'CAPs',
+      caps.length ? (
+        <>
+          {counted.filter((cap) => cap.status === 'completed').length} of {counted.length} done
+          <ul className="mt-1.5 flex flex-col gap-1 font-normal">
+            {caps.map((cap) => (
+              <li key={cap.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <CapLink code={review.code} seq={cap.seq} />
+                <ReviewCapStatusBadge status={cap.status} />
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <span className="font-normal text-ink-3">None yet</span>
+      ),
+    ],
     [
       'Entries',
       <>
@@ -146,24 +170,43 @@ function ReviewPage() {
         <Panel className="lg:col-start-1 lg:row-start-1">
           <PanelHeader
             title="Timeline"
-            description="Updates since the review, and every change made to it, by when they happened."
+            description="Its CAPs, the updates since the review, and every change made to it, by when they happened."
             actions={
-              manage && (
-                <Link to="/reviews/$code/entries/new" params={{ code: review.code }} className={buttonStyles('primary')}>
-                  <Plus className="size-4" aria-hidden /> Add update
-                </Link>
+              add && (
+                <>
+                  <Link to="/reviews/$code/caps/new" params={{ code: review.code }} className={buttonStyles('secondary')}>
+                    <Flag className="size-4" aria-hidden /> Add CAP
+                  </Link>
+                  <Link to="/reviews/$code/entries/new" params={{ code: review.code }} className={buttonStyles('primary')}>
+                    <Plus className="size-4" aria-hidden /> Add update
+                  </Link>
+                </>
               )
             }
             className="border-b border-line"
           />
-          <Timeline
-            entries={entries}
-            filters={[['update', 'Updates']]}
-            kindLabel={reviewEntryKindLabel}
+          <Timeline<Row>
+            entries={[...entries, ...caps.map(capRow)]}
+            filters={[
+              ['cap', 'CAPs'],
+              ['update', 'Updates'],
+            ]}
+            kindLabel={(kind) => (kind === 'cap' ? 'CAP' : reviewEntryKindLabel(kind))}
             entryCode={reviewEntryCode}
             orderKey="review-timeline-order"
+            link={(row, title) =>
+              row.kind === 'cap' ? (
+                <Link to="/reviews/$code/caps/$cap" params={{ code: review.code, cap: row.code }} className="hover:text-accent hover:underline">
+                  {title}
+                </Link>
+              ) : (
+                title
+              )
+            }
+            tags={(row) => (row.kind === 'cap' ? <CapFacts cap={row.plan} /> : row.cap !== null && <CapLink code={review.code} seq={row.cap} chip />)}
             actions={(entry) =>
-              manage && (
+              add &&
+              entry.kind !== 'cap' && (
                 <Link to="/reviews/$code/entries/new" params={{ code: review.code }} search={{ corrects: entry.seq }} className="font-medium text-accent hover:underline print:hidden">
                   Add correction<span className="sr-only"> to {reviewEntryCode(entry.seq)}</span>
                 </Link>

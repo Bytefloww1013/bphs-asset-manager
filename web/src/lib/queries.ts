@@ -23,6 +23,8 @@ import type {
   MaintenanceRow,
   ProgramRow,
   ReviewDetail,
+  ReviewActionItem,
+  ReviewCap,
   ReviewEntry,
   ReviewList,
   SessionUser,
@@ -180,6 +182,18 @@ export const reviewEntriesQuery = (code: string) =>
     queryKey: ['reviews', 'detail', code.toUpperCase(), 'entries'],
     queryFn: () => api.get<ReviewEntry[]>(`/reviews/${encodeURIComponent(code)}/entries`),
   })
+
+/** Every CAP of one review, in number order. A CAP's page reads its CAP from here, as an entry's page reads its entry. */
+export const reviewCapsQuery = (code: string) =>
+  queryOptions({
+    queryKey: ['reviews', 'detail', code.toUpperCase(), 'caps'],
+    queryFn: () => api.get<ReviewCap[]>(`/reviews/${encodeURIComponent(code)}/caps`),
+  })
+
+export const reviewActionItemsQuery = queryOptions({
+  queryKey: ['reviews', 'action-items'],
+  queryFn: () => api.get<ReviewActionItem[]>('/reviews/action-items'),
+})
 
 export const digitalAssetsQuery = queryOptions({
   queryKey: ['digital-assets'],

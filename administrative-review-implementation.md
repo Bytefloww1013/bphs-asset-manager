@@ -1,6 +1,6 @@
 # Implementation plan: Administrative Reviews
 
-Status: **Phase 3 built** (slices 1.1 to 3.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
+Status: **Phase 4 built** (slices 1.1 to 4.3). Written 2026-10-16 against `main` at `066a3a4`. Updated the same day with your answers to Q2, Q5, Q6, Q8 and Q14, and with your new rule that every account is linked to an employee. Updated again with your answers to Q15 to Q19.
 
 Every question is now answered (section 14), so the build can start with Phase 1.
 
@@ -22,9 +22,9 @@ A slice is ticked when it is finished and committed.
 - [x] 3.1 Review data, create and detail
 - [x] 3.2 History, edit and updates
 - [x] 3.3 Browse
-- [ ] 4.1 Add a CAP, and the CAP page
-- [ ] 4.2 Change, reassign and complete a CAP
-- [ ] 4.3 Action items across every review
+- [x] 4.1 Add a CAP, and the CAP page
+- [x] 4.2 Change, reassign and complete a CAP
+- [x] 4.3 Action items across every review
 - [ ] 5.1 Files: storage and upload
 - [ ] 5.2 Files: download and withdraw
 - [ ] 6.1 Review status and voiding
@@ -419,6 +419,16 @@ Everything in this slice is allowed by `canManageReview`, so for Edit or the rev
   - **Export:** CSV or Excel, through the existing `ExportButton` (Q10).
   - Nothing is marked overdue (Q14).
 - **Done when:** the export contains exactly the rows the table shows, and leaves out CAPs on a review about the signed-in account's employee.
+
+### Where Phase 4 differs from this plan
+
+- **`version`, not `expectedVersion`:** the CAP edit and status requests carry the version as `version`, the name the review edit already uses.
+- **A status note** is saved in the body of the status change's own system entry, not as a separate update. It shows on the history under the change, with who wrote it.
+- **Sealed early:** a Completed review already refuses new CAPs, CAP changes, updates and corrections with 409 `review_sealed`. Phase 6 adds the way to complete and reopen a review.
+- **Action items:**
+  - CAPs on a voided review are left out, as they can no longer be acted on.
+  - The page loads every CAP the account may see and filters on the page, as Requests does. The list is small enough.
+  - Export is two buttons, Export CSV and Export Excel, not `ExportButton`, which only makes CSV. The page saves the rows it shows, in the order shown, and first reports the copy to `POST /api/reviews/action-items/exports`, so each one is in the Review Audit Log.
 
 ## 11. Phase 5: Files
 

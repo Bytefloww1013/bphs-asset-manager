@@ -39,7 +39,7 @@ import { LogoMark, Wordmark } from '../ui/logo.tsx'
 import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews'
+  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -51,7 +51,17 @@ function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] 
   // The employee list stays readable to every picker; the page itself needs Employees.
   const employees = canAt(user, 'employees', 'read')
   if (workspace === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
-  if (workspace === 'reviews') return [{ heading: 'Records', items: [{ to: '/reviews', label: 'Reviews', icon: ClipboardCheck }] }]
+  if (workspace === 'reviews') {
+    return [
+      {
+        heading: 'Records',
+        items: [
+          { to: '/reviews', label: 'Reviews', icon: ClipboardCheck },
+          { to: '/reviews/actions', label: 'Action items', icon: ListChecks },
+        ],
+      },
+    ]
+  }
   if (workspace === 'grievances') {
     return [
       {

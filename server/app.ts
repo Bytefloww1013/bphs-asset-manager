@@ -61,7 +61,10 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
   }
   if (/^\/api\/maintenance(\/|$)/.test(path)) return at('maintenance')
   if (/^\/api\/reviews(\/|$)/.test(path)) {
-    const reviewerMayDo = (method === 'PATCH' && /^\/api\/reviews\/[^/]+$/.test(path)) || (method === 'POST' && /^\/api\/reviews\/[^/]+\/entries$/.test(path))
+    // The service decides: the reviewer's account may change its own reviews, and any reader may report an export.
+    const reviewerMayDo =
+      (method === 'PATCH' && /^\/api\/reviews\/[^/]+(\/caps\/[^/]+)?$/.test(path)) ||
+      (method === 'POST' && /^\/api\/reviews\/[^/]+\/(entries|caps|caps\/[^/]+\/status|exports)$/.test(path))
     return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
   }
   return at('assets')
