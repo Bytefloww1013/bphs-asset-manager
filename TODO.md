@@ -30,6 +30,16 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 - [x] Administrative Reviews: a fourth workspace for reviews of employees' work, their Corrective Action Plans (CAPs), files, a printable case file and a Review Audit Log ([the plan](administrative-review-implementation.md)). Deployed (the live site serves `eacce4d`, the reviews case file). After deploying: link every account except the first to its employee on **Users**, since an unlinked account cannot open Reviews; give each account its Reviews level; and print one case file from each browser.
 - [ ] _Add requests here._ Build and check each one locally, then redeploy with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first.
 
+## Future TODOs
+
+Ideas agreed on but not planned yet. Each gets its own `[feature]-plan.md` when its turn comes.
+
+- [ ] **@mentions.** Typing `@` in a note or comment opens a list of people who have accounts, at the cursor, narrowed with each character typed. The person mentioned gets a notification with a link to where they were mentioned. Never in Grievances or Administrative Reviews. Builds on [NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md).
+- [ ] **Custom notification triggers.** Rules such as "notify me when a new asset is assigned to my program" or "when an asset comes back in poor condition". Default audience: Edit/Full in the section plus Super Admins. The notifications tables are designed so this needs only a rules table.
+- [ ] **Show many workspaces cleanly.** Staff keep asking for more features and workspaces. Decide how the workspace switcher should look with many of them (grouped list, a launcher, search), before a fifth workspace is added.
+- [ ] **Mailbox in My Space.** Messages between people, with replies. A greyed-out placeholder from [MySpace-plan.md](MySpace-plan.md) until then.
+- [ ] **Personal Dashboard in My Space.** A home page each person can arrange, within limits. Also a placeholder until then.
+
 ## Maybe
 
 - [ ] fail2ban for SSH. Password guessing can no longer get in, because SSH is key-only except for the host's web console. This would only quieten the logs.
