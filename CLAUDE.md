@@ -39,5 +39,6 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - Question the user over several rounds before writing a plan.
 - Name it `[feature_name]-plan.md`, at the repo root.
 - Build it from phases, each made of actionable slices, each slice with a checkbox.
-- Commit after each slice (with its box ticked). Push to `main` after each phase.
+- Commit after each phase (with its slices' boxes ticked), not after each slice.
+- Never push to `main` (or anywhere) unless the user says to.
 - Write the plan only. Implement nothing until the user gives the go-ahead.

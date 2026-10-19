@@ -6,8 +6,8 @@ Status: **planned (2026-10-19), not started.** Nothing here is built until the g
 
 ## How this plan is worked
 
-- Each phase is made of slices. Tick a slice's box when it is done, and commit the tick with the slice's work: **one commit per slice**.
-- **Push to `main` when a phase is done**, not before.
+- Each phase is made of slices. Tick a slice's box when it is done. Commit when the whole phase is done, ticks included: **one commit per phase**.
+- **Don't push** unless the user says to.
 - Each slice ends with `bun run typecheck` and `bun run test` passing. Slices that change screens are also checked in the browser.
 - Deploying to the VPS is separate. It happens only when you ask, with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first. This plan adds a migration.
 
