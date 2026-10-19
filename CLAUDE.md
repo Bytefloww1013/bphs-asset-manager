@@ -27,3 +27,7 @@ for files CodeGraph doesn't index (config, Markdown, JSON, SQL migrations) or
 for a detail its output didn't cover. If the MCP tool is unavailable, run
 `codegraph explore "<query>"` in the shell.
 <!-- /rtk-instructions -->
+
+# Handoff guard
+
+`handoff/` holds handoffs written by the user-level handoff skill and hook, which run when context gets full. If a handoff isn't pasted in as "Previous context", the guard blocks tools it shouldn't, or the state looks off, see "Handoff guard (troubleshooting)" in `~/.claude/CLAUDE.md`. Mention anything odd about it to the user.
