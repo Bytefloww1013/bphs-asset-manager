@@ -1,4 +1,4 @@
-import { queryOptions, type QueryClient } from '@tanstack/react-query'
+import { infiniteQueryOptions, queryOptions, type QueryClient } from '@tanstack/react-query'
 import type {
   AssetDetail,
   AssetRow,
@@ -21,6 +21,8 @@ import type {
   Lookups,
   MaintenanceDetail,
   MaintenanceRow,
+  MuteRow,
+  NotificationPage,
   ProgramRow,
   ReviewAuditPage,
   ReviewDetail,
@@ -262,6 +264,38 @@ export const grievanceAuditQuery = (params: AuditParams) => logQuery<GrievanceAu
 export const grievanceAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('grievances/audit', params)
 export const reviewAuditQuery = (params: AuditParams) => logQuery<ReviewAuditPage>('reviews/audit', params)
 export const reviewAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('reviews/audit', params)
+
+// ---- My Space: notifications --------------------------------------------------------------
+
+export const notificationCountQuery = queryOptions({
+  queryKey: ['notifications', 'count'],
+  queryFn: () => api.get<{ unread: number }>('/me/notifications/count'),
+  select: (data) => data.unread,
+  // Nothing is pushed: the bell asks every 30 seconds, and when the tab comes back.
+  refetchInterval: 30_000,
+})
+
+export type NotificationView = 'unread' | 'all' | 'archived'
+
+/** The bell's popover: the latest few that are not archived. */
+export const latestNotificationsQuery = queryOptions({
+  queryKey: ['notifications', 'latest'],
+  queryFn: () => api.get<NotificationPage>('/me/notifications?view=all&limit=8'),
+  staleTime: 0,
+})
+
+export const notificationsQuery = (view: NotificationView) =>
+  infiniteQueryOptions({
+    queryKey: ['notifications', 'list', view],
+    queryFn: ({ pageParam }) => api.get<NotificationPage>(`/me/notifications${qs({ view, before: pageParam })}`),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+  })
+
+export const mutesQuery = queryOptions({
+  queryKey: ['notifications', 'mutes'],
+  queryFn: () => api.get<MuteRow[]>('/me/mutes'),
+})
 
 /** After any write, refresh everything that could have changed. The data set is small; correctness beats cleverness. */
 export function refreshData(queryClient: QueryClient) {

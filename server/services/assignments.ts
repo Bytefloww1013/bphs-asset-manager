@@ -1,4 +1,5 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
+import { RATING_ATTENTION_BELOW } from '../../shared/constants.ts'
 import type { IssueInput, ReturnBulkInput, ReturnInput } from '../../shared/schemas.ts'
 import type { AssignmentRow, ReturnBulkResult } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -6,6 +7,7 @@ import { assetTypes, assets, assignments, conditions, employees, programs, users
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError, conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
+import { accountOf, notify, sectionTeam } from './notifications.ts'
 import { employeeRef, fullName, assessorFor, programRef, requireActiveRating, requireEmployee, requireProgram } from './refs.ts'
 
 interface OpenRow {
@@ -73,8 +75,11 @@ export function getAssignment(db: DbLike, id: number): AssignmentRow | null {
   return row ? toRow(row, now) : null
 }
 
-/** Issue an asset to an employee, or assign it to a program, inside an already-open transaction. Returns the new Assignment id. */
-export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new Date()): number {
+/**
+ * Issue an asset to an employee, or assign it to a program, inside an already-open transaction. Returns the new Assignment id.
+ * The holder's account is told, unless `notifyHolder` is false: a pasted import would flood the inboxes.
+ */
+export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new Date(), notifyHolder = true): number {
   const found = tx
     .select({ asset: assets, type: assetTypes.name })
     .from(assets)
@@ -134,6 +139,21 @@ export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new
     details: `${asset.tag} → ${holderCode(employee, program)} · ${rating.name}`,
     at: now,
   })
+  if (notifyHolder && employee) {
+    notify(
+      tx,
+      actor,
+      {
+        recipients: accountOf(tx, employee.id),
+        kind: 'asset_issued',
+        sourceKey: `asset:${asset.id}`,
+        title: `${asset.tag} was issued to you`,
+        body: `${found.type}, issued by ${actor.name}.`,
+        link: `/assets/${asset.tag}`,
+      },
+      now,
+    )
+  }
   return assignment.id
 }
 
@@ -193,24 +213,66 @@ export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input
     details: `${asset.tag} ← ${holderCode(employee, program)} · ${rating.name}`,
     at: now,
   })
-  return { assetTag: asset.tag, employee: employee ? employeeRef(employee) : null, program: program ? programRef(program) : null }
+  const poor: PoorReturn | null = rating.score < RATING_ATTENTION_BELOW ? { assignmentId: assignment.id, assetId: asset.id, tag: asset.tag, rating: rating.name } : null
+  return { assetTag: asset.tag, employee: employee ? employeeRef(employee) : null, program: program ? programRef(program) : null, poor }
+}
+
+interface PoorReturn {
+  assignmentId: number
+  assetId: number
+  tag: string
+  rating: string
+}
+
+/** Tells the Assets team about returns rated in the attention band: one notification however many came back together. */
+function notifyPoorReturns(db: DbLike, actor: Actor, returns: PoorReturn[]) {
+  const [first] = returns
+  if (!first) return
+  const recipients = sectionTeam(db, 'assets')
+  if (returns.length === 1) {
+    notify(db, actor, {
+      recipients,
+      kind: 'asset_returned_poor',
+      sourceKey: `asset:${first.assetId}`,
+      title: `${first.tag} came back rated ${first.rating}`,
+      link: `/assets/${first.tag}`,
+    })
+  } else {
+    // The Overview's condition watch lists them all.
+    notify(db, actor, {
+      recipients,
+      kind: 'asset_returned_poor',
+      sourceKey: `return-bulk:${first.assignmentId}`,
+      title: `${returns.length} assets came back in poor condition`,
+      body: returns.map((item) => `${item.tag} (${item.rating})`).join(', '),
+      link: '/',
+    })
+  }
 }
 
 export function returnAssignment(db: Db, actor: Actor, id: number, input: ReturnInput) {
-  return db.transaction((tx) => returnInTx(tx, actor, id, input))
+  return db.transaction((tx) => {
+    const { poor, ...returned } = returnInTx(tx, actor, id, input)
+    if (poor) notifyPoorReturns(tx, actor, [poor])
+    return returned
+  })
 }
 
 /** Each Assignment is returned on its own so one stale row never blocks the rest. */
 export function returnMany(db: Db, actor: Actor, input: ReturnBulkInput): ReturnBulkResult {
   const result: ReturnBulkResult = { returned: [], failed: [] }
   const log = { done: false }
+  const poor: PoorReturn[] = []
   for (const id of input.ids) {
     try {
-      db.transaction((tx) => returnInTx(tx, actor, id, input))
+      const returned = db.transaction((tx) => returnInTx(tx, actor, id, input))
+      if (returned.poor) poor.push(returned.poor)
       result.returned.push(id)
     } catch (error) {
       result.failed.push({ id, message: rowFailure(error, log) })
     }
   }
+  // Sent after the loop, outside the returns' own transactions, so a bulk return makes one notification and not one per row.
+  notifyPoorReturns(db, actor, poor)
   return result
 }

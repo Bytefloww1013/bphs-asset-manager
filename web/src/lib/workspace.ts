@@ -13,6 +13,15 @@ export function useWorkspace(): Workspace {
   return useRouterState({ select: (state) => workspaceOf(state.location.pathname) })
 }
 
+/** Where in the app a page sits: a workspace, or My Space, which belongs to the person signed in and needs no access grant. */
+export type Area = Workspace | 'me'
+
+export const areaOf = (pathname: string): Area => (/^\/me(?:\/|$)/.test(pathname) ? 'me' : workspaceOf(pathname))
+
+export function useArea(): Area {
+  return useRouterState({ select: (state) => areaOf(state.location.pathname) })
+}
+
 // ---- The workspace last used -----------------------------------------------------------------
 // Only the name of the workspace is kept in the browser, never anything from inside it.
 const KEY = 'bphs.workspace'
@@ -30,6 +39,11 @@ export function rememberWorkspace(workspace: Workspace) {
 export function workspaceToReopen(): Workspace {
   if (reopened) return 'assets'
   reopened = true
+  return lastWorkspace()
+}
+
+/** The workspace used last, which My Space's Back link returns to. */
+export function lastWorkspace(): Workspace {
   try {
     const saved = localStorage.getItem(KEY) as Workspace
     return WORKSPACES.includes(saved) ? saved : 'assets'

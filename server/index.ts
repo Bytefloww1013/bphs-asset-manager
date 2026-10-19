@@ -5,12 +5,20 @@ import { ensureBootstrapAdmin, ensureDefaultLists } from './bootstrap.ts'
 import { config, isProduction } from './config.ts'
 import { createDb, runMigrations } from './db/client.ts'
 import { purgeExpiredSessions } from './services/auth.ts'
+import { purgeNotifications, sendOverdueReminders } from './services/notifications.ts'
 
 const { db, sqlite } = createDb(path.join(config.dataDir, 'bphs.sqlite'))
 runMigrations(db)
 ensureDefaultLists(db)
 await ensureBootstrapAdmin(db)
-purgeExpiredSessions(db)
+// Sessions are checked on every request, but keep the tables tidy: expired sessions, year-old notifications and ended mutes.
+// The same timer sends the overdue reminders.
+function tidy() {
+  purgeExpiredSessions(db)
+  purgeNotifications(db)
+  sendOverdueReminders(db)
+}
+tidy()
 
 const app = createApp(db, { serveWeb: isProduction || process.env.SERVE_WEB === 'true' })
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' }, (info) => {
@@ -29,5 +37,4 @@ function shutdown(signal: string) {
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
 
-// Sessions are checked on every request, but keep the table tidy.
-setInterval(() => purgeExpiredSessions(db), 6 * 60 * 60 * 1000).unref()
+setInterval(tidy, 6 * 60 * 60 * 1000).unref()

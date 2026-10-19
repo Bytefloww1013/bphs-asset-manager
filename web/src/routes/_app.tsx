@@ -5,7 +5,7 @@ import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
 import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
 import { lookupsQuery } from '@/lib/queries.ts'
 import { requireSession, useUser } from '@/lib/session.ts'
-import { WORKSPACE_HOME, workspaceOf, workspaceToReopen } from '@/lib/workspace.ts'
+import { WORKSPACE_HOME, areaOf, workspaceToReopen } from '@/lib/workspace.ts'
 
 export interface SheetSearch {
   /** Open the Issue sheet for this asset id, or 'new' to pick one. */
@@ -31,7 +31,7 @@ export const Route = createFileRoute('/_app')({
     program: search.program === 'pick' ? 'pick' : toId(search.program),
   }),
   beforeLoad: async ({ context, location }) => {
-    const user = await requireSession(context.queryClient, location.href, workspaceOf(location.pathname))
+    const user = await requireSession(context.queryClient, location.href, areaOf(location.pathname))
     // Opening the app at its front page goes back to the workspace last used. Asked on every first load, wherever it lands,
     // so that choosing Assets in the switcher later is never undone.
     const reopen = workspaceToReopen()

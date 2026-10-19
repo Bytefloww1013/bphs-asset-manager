@@ -244,7 +244,7 @@ function assertTagFree(db: DbLike, tag: string, exceptId?: number) {
   }
 }
 
-function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date): number {
+function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date, notifyHolder = true): number {
   const type = requireType(tx, input.typeId)
   const rating = requireActiveRating(tx, input.conditionRatingId)
   assertTagFree(tx, input.tag)
@@ -269,6 +269,7 @@ function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date
         notes: input.notes,
       },
       now,
+      notifyHolder,
     )
   } else {
     tx.insert(conditions)
@@ -332,6 +333,7 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
             holderId,
           },
           new Date(),
+          false,
         ),
       )
       result.created += 1

@@ -94,63 +94,63 @@ Recipient helpers:
 
 ### Phase 1 — Data and API
 
-- [ ] **1.1 Tables and kinds.**
+- [x] **1.1 Tables and kinds.**
   - Add the three tables to `server/db/schema.ts` and generate `0017_notifications` with `bun run db:generate`.
   - Add `NOTIFICATION_KINDS` with labels and an `unmutable` flag, and the row types, to `shared/`.
   - Tests: the migration applies to a copy of the current schema.
-- [ ] **1.2 `notify()` and the recipient helpers.**
+- [x] **1.2 `notify()` and the recipient helpers.**
   - Tests: the actor is skipped; inactive accounts and employees without accounts are skipped; duplicates are dropped; item and kind mutes set `muted`, but not for unmutable kinds; expired mutes are ignored; a rolled-back transaction leaves no notification; a link that is not an in-app path is refused.
-- [ ] **1.3 Inbox API.**
+- [x] **1.3 Inbox API.**
   - `GET /api/me/notifications?view=unread|all|archived` (newest first, paged with a cursor).
   - `GET /api/me/notifications/count` (unread and not muted).
   - `POST …/:id/read`, `…/:id/unread`, `…/read-all`, `…/:id/archive`, `…/:id/unarchive`.
   - Tests: only your own rows are visible, another user's ID is 404, the count leaves out muted rows, and read-all leaves archived rows alone.
-- [ ] **1.4 Mutes API.**
+- [x] **1.4 Mutes API.**
   - `POST /api/me/mutes` with `{ kind, sourceKey?, duration: '24h' | '7d' | '1m' | 'forever' }`.
   - `GET /api/me/mutes` (active only) and `DELETE /api/me/mutes/:id`.
   - Tests: unmutable kinds are refused, durations end where they should, and muting the same thing again replaces the old mute rather than stacking.
-- [ ] **1.5 Retention.**
+- [x] **1.5 Retention.**
   - `purgeNotifications(db, now)` deletes notifications over a year old and expired mutes. It runs on the existing 6-hourly timer in `server/index.ts`.
   - Tests: the boundaries at exactly one year.
 
 ### Phase 2 — Bell and Inbox
 
-- [ ] **2.1 The bell.**
+- [x] **2.1 The bell.**
   - Add the bell to the sidebar header (wide screens) and the mobile top bar. The count query refetches every 30 seconds and on focus.
   - Badge: red background, white text, `99+` past 99, hidden at 0. Label: "Notifications, 3 unread".
   - Add sample notifications to `bun run db:seed` (dev only) so the screens have something to show before the events exist.
-- [ ] **2.2 The popover.**
+- [x] **2.2 The popover.**
   - Shows the latest 8. Unread rows are bold with a dot; muted rows show the muted-bell icon.
   - Clicking a row marks it read and follows its link. Also has **Mark all read** and **See all** (→ `/me/inbox`).
   - Fully usable from the keyboard (Radix popover).
-- [ ] **2.3 Inbox page.**
+- [x] **2.3 Inbox page.**
   - `/me/inbox` in My Space, with **Unread / All / Archived** tabs.
   - Each row has a menu: mark read or unread, archive or unarchive, **Mute this item…**, **Mute this kind…**.
   - Add **Inbox** as the first entry in the My Space sidebar, with the same count.
-- [ ] **2.4 Mute confirmation.**
+- [x] **2.4 Mute confirmation.**
   - The dialog names what is muted and offers the four durations.
   - It says in plain words: *"New notifications from this source will still arrive in your Inbox, but they won't add to the red count on the bell or appear as new anywhere else. You can unmute it in Notification settings."*
   - Unmutable kinds do not offer Mute at all.
-- [ ] **2.5 Notification settings page.**
+- [x] **2.5 Notification settings page.**
   - `/me/notifications`: active mutes with what each mutes and when it ends ("Until you change it"), each with **Unmute**.
   - Also lists which kinds can never be muted, and why.
 
 ### Phase 3 — The events
 
-- [ ] **3.1 Assets issued to you.**
+- [x] **3.1 Assets issued to you.**
   - Call `notify()` from `issueInTx` in `assignments.ts` (which covers asset creation with a holder, through `assets.ts`) and from `issueInTx` in `digital-assets.ts`.
   - Skip it for imports.
   - Tests for each path, plus "issued to a program" and "employee without an account" (both get no notification).
-- [ ] **3.2 Returned in poor condition.**
+- [x] **3.2 Returned in poor condition.**
   - From `returnInTx` when the rating is in the attention band. `returnMany` gathers its returns into one notification per bulk return.
   - Tests: who receives it (the Edit/Full team plus Super Admins, not the actor and not Read-only accounts) and that a bulk return sends one.
-- [ ] **3.3 Maintenance.**
+- [x] **3.3 Maintenance.**
   - Call `notify()` from `dispatchMaintenanceRequest` (to the new assignee, and to the previous one as "changed"), `changeMaintenanceStatus` and `addMaintenanceNote`.
   - Tests: no notification when you act on your own request, and none for an unassigned request.
-- [ ] **3.4 Account and security events.**
+- [x] **3.4 Account and security events.**
   - Call `notify()` from `resetPassword`, `updateUser` (access, Super Admin and employee link) and `clearLock` in `users.ts`.
   - Tests: each event fires, none can be muted, and the admin CLI's reset (`bun run admin reset-password`) also notifies, with the actor shown as the CLI.
-- [ ] **3.5 Overdue reminder.**
+- [x] **3.5 Overdue reminder.**
   - A sweep on the same timer finds open assignments past `OVERDUE_DAYS` whose employee has an account and that have no `asset_overdue` notification for `assignment:<id>` yet.
   - Tests: it is sent once and only once, and it is not sent for a returned asset or for a program holder.
 

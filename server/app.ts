@@ -22,6 +22,7 @@ import { digitalAssetRoutes } from './routes/digital-assets.ts'
 import { grievanceRoutes } from './routes/grievances.ts'
 import { importRoutes } from './routes/imports.ts'
 import { maintenanceRoutes } from './routes/maintenance.ts'
+import { meRoutes } from './routes/me.ts'
 import { reviewRoutes } from './routes/reviews.ts'
 import { programRoutes } from './routes/programs.ts'
 import { webhookRoutes } from './routes/webhooks.ts'
@@ -52,6 +53,8 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
   const read = method === 'GET' || method === 'HEAD'
   const at = (section: Section) => ({ section, level: read ? 'read' : 'edit' }) as const
   if (/^\/api\/users(\/|$)/.test(path)) return null
+  // My Space: every account's own notifications and mutes, whatever its access.
+  if (/^\/api\/me(\/|$)/.test(path)) return null
   if (/^\/api\/employees(\/|$)/.test(path)) return read ? null : at('employees')
   // Each importer checks Edit in the section it writes to.
   if (/^\/api\/import(\/|$)/.test(path)) return null
@@ -136,6 +139,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/grievances', grievanceRoutes(db))
   api.route('/maintenance', maintenanceRoutes(db))
   api.route('/reviews', reviewRoutes(db))
+  api.route('/me', meRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requireSuperAdmin)
   api.use('/users', requireSuperAdmin)

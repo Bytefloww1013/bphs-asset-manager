@@ -5,6 +5,7 @@ import type { Db, DbLike } from '../db/client.ts'
 import { digitalAssetTypes, digitalAssets, digitalAssignments } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
+import { accountOf, notify } from './notifications.ts'
 import { fullName, requireEmployee } from './refs.ts'
 
 interface RawDigitalAsset {
@@ -150,6 +151,20 @@ function issueInTx(tx: DbLike, actor: Actor, assetId: number, input: DigitalIssu
     details: `${asset.code} → ${employee.code} · ${asset.type}${input.issuedAt ? ` · issued ${at.toISOString().slice(0, 10)}` : ''}`,
     at: now,
   })
+  // To the list: a digital asset has no page of its own.
+  notify(
+    tx,
+    actor,
+    {
+      recipients: accountOf(tx, employee.id),
+      kind: 'digital_issued',
+      sourceKey: `digital:${assetId}`,
+      title: `${asset.code} was issued to you`,
+      body: `${asset.type}, issued by ${actor.name}.`,
+      link: '/digital-assets',
+    },
+    now,
+  )
   return assignment.id
 }
 

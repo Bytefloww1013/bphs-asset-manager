@@ -46,3 +46,46 @@ Final project checks pass: client/server typecheck, production build, and 176 te
 **Runtime follow-up:** built revision 9ff3e69 using the unchanged Dockerfile and Bun 1.3.14. The actual non-root Node v24.21.0 Linux container was healthy and served eight byte-identical images plus the correct nested-route SPA shell. The headed Chromium/WSLg screenshot was opened and judged at 1440×1000/DPR 1; the real CSS hover produces #062B3E and the old placeholder cache does not replace the new versioned icon. Disposable review container/volume removed; image retained. No app source changed.
 
 **Historical public-domain probe (outside the brand-update scope):** both names currently resolve to 204.11.56.246 in this environment, differing from the guide's VPS at 50.6.205.113. Initial HTTPS probes rejected a testexp hostname mismatch; later probes timed out. See release-probe.json. A future deployment should confirm its target and DNS/TLS setup. The user clarified that this work is a brand update only; these probe results do not block completion.
+
+# My Space end-to-end check (2026-10-19)
+
+Result: passed, 33 of 33. This is the check for slice 2.2 of [MySpace-plan.md](MySpace-plan.md).
+
+**Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with isolated seeded data. Headless Firefox driven by puppeteer-core, at 1366×860 (wide) and 390×844 (narrow, drawer). All accounts use the seed password.
+
+**Accounts:**
+- Super Admin (the first account, with no employee). Maintenance was the last workspace used.
+- Assets-only, at Edit, linked to E-1201.
+- Maintenance-only, at Edit, linked to E-1288, an archived employee.
+
+**Each account, wide:**
+- **My Space** is the first item in the account menu and opens `/me/profile`.
+- The sidebar shows **Back to *last workspace*** in place of the switcher: Maintenance, Assets and Maintenance respectively.
+- Mailbox and Personal Dashboard are `role="link"` with `aria-disabled="true"`, tabIndex −1 and no href. "Coming later" is part of their name.
+- Clicking either placeholder leaves the page where it is.
+- The Profile page shows the linked employee:
+  - "None. The first account needs no employee." for the Super Admin.
+  - "Tomas Berger E-1201" for Assets-only.
+  - "Alice Nkemdirim E-1288 archived" for Maintenance-only. It loads because `GET /api/employees` is open to every account.
+- A reload stays on `/me/profile` with the My Space sidebar.
+- The Back link returns to that workspace's home, and that workspace is still the one remembered (`bphs.workspace`).
+
+**Each account, narrow:**
+- My Space from the account menu inside the drawer opens the page and closes the drawer.
+- The drawer shows the Back link and both placeholders. Tapping a placeholder does nothing and the drawer stays open.
+- The drawer's Back link navigates and closes the drawer.
+
+**Also checked (Phase 1 check):**
+- The Super Admin's tab order from the top runs Skip to content → Back to Maintenance → Profile → account menu → Change password, so the placeholders are never focused.
+- An account that must change its password is still sent to `/password-change` from `/me/profile`.
+- Signed out, `/me/profile` goes to `/login?redirect=%2Fme%2Fprofile`.
+
+**Fixed during the build:**
+- [P1] The Profile page first read the linked employee from `/api/lookups`, which needs Assets read, so a Maintenance-only account saw "…" for ever. It now uses `employeesQuery`.
+- [P2] "Personal Dashboard" wrapped beside its "Coming later" hint in the 15.5rem rail. The hint now sits under the name.
+
+**Screenshots** (local, gitignored): `qa-shots/myspace/e2e-{super,assets,maint}-{wide,drawer}.png`.
+
+**Not covered:**
+- A real screen reader. The name was checked from the DOM.
+- An account with no workspace at all. The app already assumes every account has one.

@@ -1,4 +1,4 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewAuditAction, ReviewCapStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
+import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, NotificationKind, ReviewAuditAction, ReviewCapStatus, ReviewEntryKind, ReviewStatus } from './constants.ts'
 import type { Grantee } from './permissions.ts'
 
 // ---- Auth ---------------------------------------------------------------
@@ -591,5 +591,39 @@ export interface MaintenanceNote {
   body: string
   /** The writer's name as it was at the time, or "Zoho Forms". */
   createdBy: string
+  createdAt: string
+}
+
+// ---- Notifications ----------------------------------------------------------
+export interface NotificationRow {
+  id: number
+  kind: NotificationKind
+  sourceKey: string
+  title: string
+  body: string | null
+  /** An in-app path. */
+  link: string
+  createdAt: string
+  readAt: string | null
+  archivedAt: string | null
+  /** A mute applied when it arrived: it is in the Inbox but not in the bell's count. */
+  muted: boolean
+}
+
+export interface NotificationPage {
+  items: NotificationRow[]
+  /** Pass as `before` for the next page; null on the last one. */
+  nextCursor: number | null
+}
+
+export interface MuteRow {
+  id: number
+  kind: NotificationKind
+  /** Null when the whole kind is muted. */
+  sourceKey: string | null
+  /** The title of the latest notification from the muted item, so the settings page can name it. Null for a kind, or once it is gone. */
+  about: string | null
+  /** Null means until the person changes it. */
+  until: string | null
   createdAt: string
 }

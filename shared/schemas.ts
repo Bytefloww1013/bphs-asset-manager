@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, MUTE_DURATIONS, NOTIFICATION_KIND_KEYS, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -501,3 +501,20 @@ export type MaintenanceCreateInput = z.infer<typeof maintenanceCreateSchema>
 export const maintenanceDispatchSchema = z.object({ employeeId: z.number({ error: 'Choose an employee' }).int().positive().nullable() })
 export const maintenanceStatusSchema = z.object({ status: z.enum(MAINTENANCE_STATUSES, { error: 'Choose a status' }) })
 export const maintenanceNoteSchema = z.object({ body: requiredText(MAINTENANCE_NOTE_MAX, 'Note') })
+
+// ---- Notifications ------------------------------------------------------------------
+export const notificationListSchema = z.object({
+  view: z.enum(['unread', 'all', 'archived']).default('all'),
+  /** The cursor: only notifications older than this id. */
+  before: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(25),
+})
+export type NotificationListInput = z.infer<typeof notificationListSchema>
+
+/** Mute one source (with `sourceKey`) or the whole kind (without). */
+export const muteSchema = z.object({
+  kind: z.enum(NOTIFICATION_KIND_KEYS),
+  sourceKey: z.string().trim().min(1).max(100).optional(),
+  duration: z.enum(MUTE_DURATIONS),
+})
+export type MuteInput = z.infer<typeof muteSchema>

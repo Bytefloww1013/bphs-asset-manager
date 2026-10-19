@@ -18,6 +18,7 @@ import { createDb, type DbLike } from './db/client.ts'
 import { auditLog, users } from './db/schema.ts'
 import { generateOneTimePassword, hashPassword } from './lib/password.ts'
 import { deleteUserSessions } from './services/auth.ts'
+import { notifyAccount } from './services/users.ts'
 
 const USAGE = 'Usage: node server/admin.ts list | unlock <email> | reset-password <email>'
 
@@ -57,6 +58,7 @@ if (command === 'list') {
   db.transaction((tx) => {
     tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
     audit(tx, user.id, `${user.email} · locked_until cleared via server CLI`)
+    if (user.lockedUntil && user.lockedUntil > new Date()) notifyAccount(tx, null, user.id, 'account_unlocked', 'Your account was unlocked', 'Unlocked on the server, from its command line.')
   })
   console.log(`Unlocked ${user.email}.`)
 } else if (command === 'reset-password') {
@@ -67,6 +69,7 @@ if (command === 'list') {
     tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
     deleteUserSessions(tx, user.id)
     audit(tx, user.id, `${user.email} · password reset via server CLI · must change on next login`)
+    notifyAccount(tx, null, user.id, 'account_password_reset', 'Your password was reset', 'Reset on the server, from its command line. If you did not expect this, tell a Super Admin.')
   })
   console.log(`Password reset for ${user.email}.`)
   console.log(`  one-time password: ${oneTimePassword}   (they must change it at the next sign-in)`)

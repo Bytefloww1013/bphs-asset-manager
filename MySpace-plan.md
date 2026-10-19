@@ -2,7 +2,7 @@
 
 > **[NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md) depends on this plan.** Build this one first: the Inbox, notification settings and notices all live in My Space.
 
-Status: **planned (2026-10-19), not started.** Nothing here is built until the go-ahead is given.
+Status: **built (2026-10-19).** Both phases are done; the end-to-end check is in [design-qa.md](design-qa.md).
 
 ## How this plan is worked
 
@@ -36,38 +36,38 @@ Status: **planned (2026-10-19), not started.** Nothing here is built until the g
 - So My Space is a new kind of **area**, beside the workspaces. It is **not** added to `WORKSPACES` in [shared/constants.ts](shared/constants.ts): that list also drives `SECTIONS`, access levels and the Users screen, and My Space needs no access grant.
 - `rememberWorkspace()` must not remember My Space. Reopening the app should still go to the last *workspace*, and the Back link needs that workspace.
 - The sidebar is built per workspace in `useNav()` in [web/src/components/shell/app-shell.tsx](web/src/components/shell/app-shell.tsx). My Space adds one more branch there, and that branch is the list that later plans add pages to.
-- The server needs nothing new for this plan. The Profile page reads the session user (`meQuery`). It gets the linked employee's name from `lookupsQuery`, whose employee list every account may read.
+- The server needs nothing new for this plan. The Profile page reads the session user (`meQuery`). It gets the linked employee from `employeesQuery` (`GET /api/employees`), which every account may read and which includes archived employees. (`/api/lookups` needs Assets, so it would fail for a Maintenance-only account.)
 
 ## 4. Phases and slices
 
 ### Phase 1 — The area itself
 
-- [ ] **1.1 Route and area detection.**
+- [x] **1.1 Route and area detection.**
   - Add `/me` under `_app`: a `me.tsx` layout and a `me.index.tsx` that redirects to `/me/profile`.
   - Add an `Area` type (`Workspace | 'me'`) and `useArea()` next to `useWorkspace()`. `workspaceOf()` keeps returning a workspace, for the existing callers.
   - Make the `_app` guard check only the session for `/me` paths, with no workspace access needed.
   - Stop `rememberWorkspace()` from recording `me`.
   - Check: an account with Maintenance access only can open `/me` and is not redirected. Reloading `/me` stays on `/me`.
-- [ ] **1.2 Shell: sidebar, Back link, entry point.**
+- [x] **1.2 Shell: sidebar, Back link, entry point.**
   - In My Space, show the My Space sidebar in place of the workspace switcher and the workspace nav. The nav is a list of entries with an optional `disabled` reason, so later plans add pages by adding entries.
   - Add **Back to *last workspace*** at the top of the sidebar.
   - Add **My Space** as the first item in the account menu.
   - The mobile drawer gets the same sidebar.
   - Check: the wide and narrow layouts, keyboard order, and that the Back link goes to the right workspace.
-- [ ] **1.3 Profile page.**
+- [x] **1.3 Profile page.**
   - `/me/profile`, read-only: name, email, linked employee (code and name), Super Admin badge, and each section's access level, worded as on the Users screen.
   - Include a **Change password** link to the existing page.
   - Check: a Super Admin, an account with mixed access, and the first account (which has no linked employee).
-- [ ] **1.4 Placeholders.**
+- [x] **1.4 Placeholders.**
   - **Mailbox** and **Personal Dashboard** entries in the My Space sidebar: greyed out, `aria-disabled`, not focusable as links, with a "Coming later" hint that screen readers also get.
   - Check them in the browser with the keyboard and a screen-reader label check.
 
 ### Phase 2 — Docs and end-to-end check
 
-- [ ] **2.1 Docs.**
+- [x] **2.1 Docs.**
   - [PRODUCT.md](PRODUCT.md) and [README.md](README.md): what My Space is, and why it is not a workspace.
   - [DESIGN.md](DESIGN.md): the My Space sidebar, the Back link and disabled nav entries.
-- [ ] **2.2 End-to-end browser check.**
+- [x] **2.2 End-to-end browser check.**
   - Sign in as three accounts (Super Admin, Assets-only, Maintenance-only).
   - Open My Space from the account menu, use the Back link, reload on a My Space page, try a narrow window, and check that the placeholders cannot be activated.
   - Record the results in [design-qa.md](design-qa.md).

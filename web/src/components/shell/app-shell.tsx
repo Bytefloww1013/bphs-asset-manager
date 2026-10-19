@@ -1,19 +1,24 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet, useLocation, useRouter } from '@tanstack/react-router'
 import {
   AppWindow,
   ArrowDownUp,
+  ArrowLeft,
   Building2,
   ChevronsUpDown,
+  CircleUserRound,
   ClipboardList,
+  Inbox,
   KeyRound,
   Laptop,
   LayoutDashboard,
+  LayoutGrid,
   ListChecks,
   Lock,
   LogOut,
+  Mail,
   Menu as MenuIcon,
   PackageCheck,
   Scale,
@@ -21,6 +26,7 @@ import {
   ClipboardCheck,
   ShieldCheck,
   Tags,
+  UserRound,
   Users,
   Wrench,
   X,
@@ -30,26 +36,47 @@ import { useEffect, useState } from 'react'
 import { canAt, describeAccess, workspacesOf } from '@shared/permissions.ts'
 import { cn } from '@/lib/cn.ts'
 import { api } from '@/lib/api.ts'
+import { notificationCountQuery } from '@/lib/queries.ts'
+import { NotificationBell, UnreadBadge } from '@/features/notifications/parts.tsx'
 import { initials } from '@/lib/format.ts'
 import { useUser } from '@/lib/session.ts'
-import { WORKSPACE_HOME, WORKSPACE_LABEL, rememberWorkspace, useWorkspace, type Workspace } from '@/lib/workspace.ts'
+import { WORKSPACE_HOME, WORKSPACE_LABEL, lastWorkspace, rememberWorkspace, useArea, useWorkspace, type Area, type Workspace } from '@/lib/workspace.ts'
 import { IconButton } from '../ui/button.tsx'
 import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
 import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
-  to: '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/employees' | '/reviews/audit'
+  /** Left out only for an entry that is disabled. */
+  to?: '/me/inbox' | '/me/profile' | '/' | '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/employees' | '/reviews/audit'
   label: string
   icon: LucideIcon
   locked?: boolean
+  /** Why the entry cannot be opened yet. It is shown, greyed out, but is not a link. */
+  disabled?: string
+  /** Unread notifications, as a red count. */
+  count?: number
 }
 
-/** Each workspace has a sidebar of its own; nothing from one appears in the other. */
-function useNav(workspace: Workspace): { heading: string; items: NavEntry[] }[] {
+/** Each workspace has a sidebar of its own; nothing from one appears in the other. My Space has one too. */
+function useNav(workspace: Area): { heading: string; items: NavEntry[] }[] {
   const user = useUser()
+  const { data: unread } = useQuery(notificationCountQuery)
   // The employee list stays readable to every picker; the page itself needs Employees.
   const employees = canAt(user, 'employees', 'read')
+  if (workspace === 'me') {
+    return [
+      {
+        heading: 'My Space',
+        items: [
+          { to: '/me/inbox', label: 'Inbox', icon: Inbox, count: unread },
+          { to: '/me/profile', label: 'Profile', icon: UserRound },
+          { label: 'Mailbox', icon: Mail, disabled: 'Coming later' },
+          { label: 'Personal Dashboard', icon: LayoutGrid, disabled: 'Coming later' },
+        ],
+      },
+    ]
+  }
   if (workspace === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
   if (workspace === 'reviews') {
     return [
@@ -152,11 +179,29 @@ function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+/** In My Space, in place of the switcher: back to the workspace used last, or the first one this account works in if it no longer works there. */
+function BackLink({ onNavigate }: { onNavigate?: () => void }) {
+  const usable = workspacesOf(useUser())
+  const last = lastWorkspace()
+  const to = usable.includes(last) ? last : usable[0]
+  if (!to) return null
+  return (
+    <Link
+      to={WORKSPACE_HOME[to]}
+      onClick={onNavigate}
+      className="flex h-9 items-center gap-2 rounded-control px-2.5 text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-surface/70 hover:text-ink"
+    >
+      <ArrowLeft className="size-4 shrink-0" aria-hidden />
+      Back to {WORKSPACE_LABEL[to]}
+    </Link>
+  )
+}
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
-  const groups = useNav(useWorkspace())
+  const groups = useNav(useArea())
   const pathname = useLocation({ select: (location) => location.pathname })
   // An entry gives way to one beneath it: on /grievances/categories, Categories is the current page and Grievances is not.
-  const yields = (to: string) => groups.some((group) => group.items.some((other) => other.to !== to && other.to.startsWith(`${to}/`) && pathname.startsWith(other.to)))
+  const yields = (to: string) => groups.some((group) => group.items.some((other) => other.to && other.to !== to && other.to.startsWith(`${to}/`) && pathname.startsWith(other.to)))
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {groups.map((group) => (
@@ -164,23 +209,36 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           <p className="px-2.5 pb-1.5 text-xs font-medium text-ink-3">{group.heading}</p>
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  onClick={onNavigate}
-                  activeOptions={{ exact: item.to === '/' || yields(item.to) }}
-                  className="group flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-surface/70 hover:text-ink data-[status=active]:bg-surface data-[status=active]:text-ink data-[status=active]:shadow-panel data-[status=active]:ring-1 data-[status=active]:ring-line"
-                  activeProps={{ 'aria-current': 'page' }}
-                >
-                  <item.icon className="size-[1.125rem] shrink-0 text-ink-3 group-data-[status=active]:text-workspace" aria-hidden strokeWidth={1.75} />
-                  <span className="flex-1">{item.label}</span>
-                  {item.locked && (
-                    <>
-                      <Lock className="size-3.5 text-ink-3" aria-hidden />
-                      <span className="sr-only">Super Admin only</span>
-                    </>
-                  )}
-                </Link>
+              <li key={item.label}>
+                {item.to && !item.disabled ? (
+                  <Link
+                    to={item.to}
+                    onClick={onNavigate}
+                    activeOptions={{ exact: item.to === '/' || yields(item.to) }}
+                    className="group flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-surface/70 hover:text-ink data-[status=active]:bg-surface data-[status=active]:text-ink data-[status=active]:shadow-panel data-[status=active]:ring-1 data-[status=active]:ring-line"
+                    activeProps={{ 'aria-current': 'page' }}
+                  >
+                    <item.icon className="size-[1.125rem] shrink-0 text-ink-3 group-data-[status=active]:text-workspace" aria-hidden strokeWidth={1.75} />
+                    <span className="flex-1">{item.label}</span>
+                    <UnreadBadge count={item.count} />
+                    {item.locked && (
+                      <>
+                        <Lock className="size-3.5 text-ink-3" aria-hidden />
+                        <span className="sr-only">Super Admin only</span>
+                      </>
+                    )}
+                  </Link>
+                ) : (
+                  // Not a link and not a tab stop. role and aria-disabled let a screen reader announce it as an unavailable link, with the reason.
+                  <span role="link" aria-disabled="true" className="flex cursor-not-allowed items-center gap-2.5 rounded-control px-2.5 py-1 text-sm font-medium text-ink-3">
+                    <item.icon className="size-[1.125rem] shrink-0 opacity-60" aria-hidden strokeWidth={1.75} />
+                    {/* The reason sits under the name: beside it, "Personal Dashboard" does not fit the rail. */}
+                    <span className="flex flex-col">
+                      <span className="opacity-60">{item.label}</span>
+                      <span className="text-xs font-normal">{item.disabled}</span>
+                    </span>
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -190,7 +248,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function UserMenu() {
+function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
   const user = useUser()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -233,6 +291,15 @@ function UserMenu() {
           </div>
           <DropdownMenu.Separator className="-mx-1.5 my-1.5 h-px bg-line" />
           <DropdownMenu.Item
+            onSelect={() => {
+              onNavigate?.()
+              void router.navigate({ to: '/me' })
+            }}
+            className="flex cursor-default items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-sm font-medium text-ink outline-none data-[highlighted]:bg-sunken"
+          >
+            <CircleUserRound className="size-4" aria-hidden /> My Space
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
             onSelect={() => void router.navigate({ to: '/password-change' })}
             className="flex cursor-default items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-sm font-medium text-ink outline-none data-[highlighted]:bg-sunken"
           >
@@ -252,8 +319,11 @@ function UserMenu() {
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
   const [drawer, setDrawer] = useState(false)
-  const workspace = useWorkspace()
-  useEffect(() => rememberWorkspace(workspace), [workspace])
+  const area = useArea()
+  // My Space is not a workspace: reopening the app, and its Back link, go to the workspace used before it.
+  useEffect(() => {
+    if (area !== 'me') rememberWorkspace(area)
+  }, [area])
   // The drawer is only drawn below `lg`. Close it when the window grows past that, or it would stay open, unseen, holding the page.
   useEffect(() => {
     const wide = window.matchMedia('(min-width: 1024px)')
@@ -262,19 +332,18 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
     return () => wide.removeEventListener('change', close)
   }, [])
   return (
-    <div data-workspace={workspace} className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+    <div data-workspace={area} className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[90] focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop">
         Skip to content
       </a>
 
       {/* Wide screens: a fixed rail on a slightly cooler neutral than the page. */}
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-sidebar lg:flex">
-        <div className="px-4 pb-3 pt-5">
+        <div className="flex items-center justify-between gap-2 pb-3 pl-4 pr-3 pt-5">
           <Wordmark />
+          <NotificationBell align="start" />
         </div>
-        <div className="px-3 pb-4">
-          <WorkspaceSwitcher />
-        </div>
+        <div className="px-3 pb-4">{area === 'me' ? <BackLink /> : <WorkspaceSwitcher />}</div>
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
           <NavList />
         </div>
@@ -290,11 +359,14 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
         </IconButton>
         <LogoMark className="size-7" />
         <span className="text-md font-semibold">{APP_NAME}</span>
+        <div className="ml-auto">
+          <NotificationBell align="end" />
+        </div>
       </header>
       <Dialog.Root open={drawer} onOpenChange={setDrawer}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ink/35 lg:hidden" />
-          <Dialog.Content data-workspace={workspace} className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] animate-fade-in flex-col bg-sidebar shadow-pop outline-none lg:hidden">
+          <Dialog.Content data-workspace={area} className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] animate-fade-in flex-col bg-sidebar shadow-pop outline-none lg:hidden">
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
             <Dialog.Description className="sr-only">Move between sections of the app</Dialog.Description>
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
@@ -305,14 +377,12 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                 </IconButton>
               </Dialog.Close>
             </div>
-            <div className="px-3 pb-4">
-              <WorkspaceSwitcher onNavigate={() => setDrawer(false)} />
-            </div>
+            <div className="px-3 pb-4">{area === 'me' ? <BackLink onNavigate={() => setDrawer(false)} /> : <WorkspaceSwitcher onNavigate={() => setDrawer(false)} />}</div>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
               <NavList onNavigate={() => setDrawer(false)} />
             </div>
             <div className="border-t border-line p-3">
-              <UserMenu />
+              <UserMenu onNavigate={() => setDrawer(false)} />
             </div>
           </Dialog.Content>
         </Dialog.Portal>

@@ -1,12 +1,12 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { useEffect, useSyncExternalStore } from 'react'
-import type { AccessLevel, Section, Workspace } from '@shared/constants.ts'
+import { isInAppPath, type AccessLevel, type Section } from '@shared/constants.ts'
 import { canAt, canUseWorkspace, needsAccess, workspacesOf } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { meQuery } from './queries.ts'
 import { APP_NAME } from './brand.ts'
-import { WORKSPACE_HOME } from './workspace.ts'
+import { WORKSPACE_HOME, type Area } from './workspace.ts'
 
 /** The signed-in user. Only call inside routes below the auth guard. */
 export function useUser(): SessionUser {
@@ -32,19 +32,20 @@ export function usePageTitle(title: string) {
  * never send someone to another site, and the sign-in page and the overview (where sign-in lands anyway) are not kept.
  */
 export function returnPath(value: unknown): string | undefined {
-  if (typeof value !== 'string' || !/^\/(?![/\\])/.test(value)) return undefined
+  if (typeof value !== 'string' || !isInAppPath(value)) return undefined
   return value === '/' || /^\/login(?:[/?#]|$)/.test(value) ? undefined : value
 }
 
 /**
  * The auth guard for a page that needs a signed-in user with a usable password; a route's `beforeLoad` calls it with the
- * workspace the page is in. An account that does not work there is taken to the first workspace it does work in.
+ * area the page is in. An account that does not work in that workspace is taken to the first workspace it does work in.
+ * My Space is every account's own, so it needs only the session.
  */
-export async function requireSession(queryClient: QueryClient, href: string, workspace: Workspace): Promise<SessionUser> {
+export async function requireSession(queryClient: QueryClient, href: string, area: Area): Promise<SessionUser> {
   const user = await queryClient.ensureQueryData(meQuery)
   if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(href) } })
   if (user.mustChangePassword) throw redirect({ to: '/password-change' })
-  if (!canUseWorkspace(user, workspace)) throw redirect({ to: WORKSPACE_HOME[workspacesOf(user)[0]!] })
+  if (area !== 'me' && !canUseWorkspace(user, area)) throw redirect({ to: WORKSPACE_HOME[workspacesOf(user)[0]!] })
   return user
 }
 

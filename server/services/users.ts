@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { ACCESS_LEVEL_LABEL, WORKSPACE_LABEL, WORKSPACES } from '../../shared/constants.ts'
+import { ACCESS_LEVEL_LABEL, WORKSPACE_LABEL, WORKSPACES, type NotificationKind } from '../../shared/constants.ts'
 import { describeAccess, workspacesOf, type Grantee } from '../../shared/permissions.ts'
 import type { UserCreateInput, UserUpdateInput } from '../../shared/schemas.ts'
 import type { UserRow, UserState, UserWithPassword } from '../../shared/types.ts'
@@ -9,6 +9,7 @@ import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { generateOneTimePassword, hashPassword } from '../lib/password.ts'
 import { deleteUserSessions, firstAccountId } from './auth.ts'
+import { notify } from './notifications.ts'
 import { fullName } from './refs.ts'
 
 function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
@@ -73,6 +74,11 @@ function employeeLabel(db: DbLike, id: number | null) {
   return row ? `${row.code} ${fullName(row.firstName, row.lastName)}` : 'none'
 }
 
+/** Tells an account about a change to it. These kinds cannot be muted, so a change nobody expected is noticed. Null actor: the server CLI. */
+export function notifyAccount(tx: DbLike, actor: Actor | null, userId: number, kind: Extract<NotificationKind, `account_${string}`>, title: string, body: string) {
+  notify(tx, actor, { recipients: [userId], kind, sourceKey: `user:${userId}`, title, body, link: '/me/profile' })
+}
+
 /** A new account starts with a one-time password and must change it on first login. */
 export async function createUser(db: Db, actor: Actor, input: UserCreateInput): Promise<UserWithPassword> {
   const oneTimePassword = generateOneTimePassword()
@@ -132,6 +138,12 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
     if (changes.length === 0) return
     tx.update(users).set(patch).where(eq(users.id, id)).run()
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${current.email} · ${changes.join('; ')}` })
+    if (patch.access) {
+      notifyAccount(tx, actor, id, 'account_access_changed', 'Your access was changed', `Changed by ${actor.name}. See your Profile for what you can do now.`)
+    }
+    if (patch.employeeId !== undefined) {
+      notifyAccount(tx, actor, id, 'account_employee_linked', 'The employee linked to your account was changed', `Now ${employeeLabel(tx, patch.employeeId)}. Changed by ${actor.name}.`)
+    }
   })
   return toRow(requireUser(db, id))
 }
@@ -150,6 +162,7 @@ export async function resetPassword(db: Db, actor: Actor, id: number): Promise<U
     tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, id)).run()
     deleteUserSessions(tx, id)
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${target.email} · password reset · must change on next login` })
+    notifyAccount(tx, actor, id, 'account_password_reset', 'Your password was reset', `Reset by ${actor.name}. If you did not expect this, tell a Super Admin.`)
   })
   return { user: toRow(requireUser(db, id)), oneTimePassword }
 }
@@ -159,6 +172,8 @@ export function clearLock(db: Db, actor: Actor, id: number): UserRow {
     const target = requireUser(tx, id)
     tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, id)).run()
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${target.email} · locked_until cleared` })
+    // Clearing a failed-attempt count on an account that was never locked is not news.
+    if (target.lockedUntil && target.lockedUntil > new Date()) notifyAccount(tx, actor, id, 'account_unlocked', 'Your account was unlocked', `Unlocked by ${actor.name}.`)
   })
   return toRow(requireUser(db, id))
 }

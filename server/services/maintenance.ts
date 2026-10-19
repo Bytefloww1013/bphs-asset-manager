@@ -7,6 +7,7 @@ import { employees, maintenanceNotes, maintenanceRequests } from '../db/schema.t
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { requireActiveEmployees } from './grievances.ts'
+import { accountOf, notify } from './notifications.ts'
 import { employeeRef, fullName, requireEmployee } from './refs.ts'
 
 /** A new request's fields: a Zoho entry as the webhook read it, or one entered by hand. */
@@ -119,6 +120,11 @@ const nameOf = (db: DbLike, id: number) => {
   return fullName(employee.firstName, employee.lastName)
 }
 
+/** Tells whoever is dispatched to the request. Acting on your own request tells you nothing; `notify` drops the actor. */
+function notifyAssignee(db: DbLike, actor: Actor, request: Request, employeeId: number | null, kind: 'maintenance_dispatched' | 'maintenance_changed', title: string, body?: string) {
+  notify(db, actor, { recipients: accountOf(db, employeeId), kind, sourceKey: `maintenance:${request.id}`, title, body, link: `/maintenance/${request.id}` })
+}
+
 /** Dispatching a request that is Not Started makes it Dispatched; clearing a Dispatched one puts it back to Not Started. */
 export function dispatchMaintenanceRequest(db: Db, actor: Actor, id: number, employeeId: number | null): MaintenanceDetail {
   db.transaction((tx) => {
@@ -143,6 +149,12 @@ export function dispatchMaintenanceRequest(db: Db, actor: Actor, id: number, emp
     }
     tx.update(maintenanceRequests).set({ assignedEmployeeId: employeeId, status }).where(eq(maintenanceRequests.id, id)).run()
     addLine(tx, id, actor, 'system', line)
+    const code = maintenanceCode(id)
+    if (after !== null) notifyAssignee(tx, actor, current, employeeId, 'maintenance_dispatched', `${code} was dispatched to you by ${actor.name}`, current.location)
+    if (before !== null) {
+      const title = after === null ? `Your dispatch to ${code} was cleared by ${actor.name}` : `${code} was reassigned to ${after} by ${actor.name}`
+      notifyAssignee(tx, actor, current, current.assignedEmployeeId, 'maintenance_changed', title)
+    }
   })
   return getMaintenanceRequest(db, id)
 }
@@ -161,14 +173,18 @@ export function changeMaintenanceStatus(db: Db, actor: Actor, id: number, status
       .where(eq(maintenanceRequests.id, id))
       .run()
     addLine(tx, id, actor, 'system', line)
+    const title = `${maintenanceCode(id)} was set to ${maintenanceStatusLabel(status)} by ${actor.name}`
+    notifyAssignee(tx, actor, current, current.assignedEmployeeId, 'maintenance_changed', title, clears ? 'Your dispatch to it was cleared.' : undefined)
   })
   return getMaintenanceRequest(db, id)
 }
 
 export function addMaintenanceNote(db: Db, actor: Actor, id: number, body: string): MaintenanceDetail {
   db.transaction((tx) => {
-    requireRequest(tx, id)
+    const request = requireRequest(tx, id)
     addLine(tx, id, actor, 'note', body)
+    // The note itself stays on the request: the assignee may not have Maintenance access.
+    notifyAssignee(tx, actor, request, request.assignedEmployeeId, 'maintenance_changed', `${actor.name} added a note to ${maintenanceCode(id)}`)
   })
   return getMaintenanceRequest(db, id)
 }
