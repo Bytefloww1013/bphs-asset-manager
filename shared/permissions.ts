@@ -26,6 +26,9 @@ export const workspacesOf = (user: Grantee): Workspace[] => WORKSPACES.filter((w
 
 export const canUseWorkspace = (user: Grantee | undefined | null, workspace: Workspace) => canAt(user, workspace, 'read')
 
+/** Who may send notices. One rule, so widening it later is this line and its test. */
+export const canSendNotices = (user: Grantee | undefined | null) => user?.superAdmin === true
+
 /** What someone without enough access is told, on the page and by the server. */
 export const needsAccess = (section: Section, level: AccessLevel) =>
   level === 'read' ? `Your account does not have access to ${SECTION_LABEL[section]}.` : `You need ${ACCESS_LEVEL_LABEL[level]} access to ${SECTION_LABEL[section]} for this.`

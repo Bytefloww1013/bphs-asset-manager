@@ -23,6 +23,7 @@ import { grievanceRoutes } from './routes/grievances.ts'
 import { importRoutes } from './routes/imports.ts'
 import { maintenanceRoutes } from './routes/maintenance.ts'
 import { meRoutes } from './routes/me.ts'
+import { noticeRoutes } from './routes/notices.ts'
 import { reviewRoutes } from './routes/reviews.ts'
 import { programRoutes } from './routes/programs.ts'
 import { webhookRoutes } from './routes/webhooks.ts'
@@ -46,13 +47,13 @@ const UPLOAD_PATH = /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|review
 
 /**
  * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
- * Users answers to Super Admin, and anyone may read the employee list, which every workspace's pickers use.
+ * Users and notices answer to Super Admin, and anyone may read the employee list, which every workspace's pickers use.
  * Grievance owners manage their own with Read, and so do reviewers, so those routes are left to the service to decide.
  */
 function accessNeeded(method: string, path: string): { section: Section; level: AccessLevel } | null {
   const read = method === 'GET' || method === 'HEAD'
   const at = (section: Section) => ({ section, level: read ? 'read' : 'edit' }) as const
-  if (/^\/api\/users(\/|$)/.test(path)) return null
+  if (/^\/api\/(users|notices)(\/|$)/.test(path)) return null
   // My Space: every account's own notifications and mutes, whatever its access.
   if (/^\/api\/me(\/|$)/.test(path)) return null
   if (/^\/api\/employees(\/|$)/.test(path)) return read ? null : at('employees')
@@ -140,6 +141,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/maintenance', maintenanceRoutes(db))
   api.route('/reviews', reviewRoutes(db))
   api.route('/me', meRoutes(db))
+  api.route('/notices', noticeRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requireSuperAdmin)
   api.use('/users', requireSuperAdmin)

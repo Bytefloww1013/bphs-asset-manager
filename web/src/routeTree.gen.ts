@@ -39,6 +39,7 @@ import { Route as AppMaintenanceIdRouteImport } from './routes/_app/maintenance.
 import { Route as AppMaintenanceNewRouteImport } from './routes/_app/maintenance.new'
 import { Route as AppMeIndexRouteImport } from './routes/_app/me.index'
 import { Route as AppMeInboxRouteImport } from './routes/_app/me.inbox'
+import { Route as AppMeNoticesRouteImport } from './routes/_app/me.notices'
 import { Route as AppMeNotificationsRouteImport } from './routes/_app/me.notifications'
 import { Route as AppMeProfileRouteImport } from './routes/_app/me.profile'
 import { Route as AppReviewsIndexRouteImport } from './routes/_app/reviews.index'
@@ -51,6 +52,7 @@ import { Route as ReviewsCodeCaseFileRouteImport } from './routes/reviews.$code.
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
 import { Route as AppGrievancesCodeEditRouteImport } from './routes/_app/grievances.$code.edit'
 import { Route as AppGrievancesCodeVersionsRouteImport } from './routes/_app/grievances.$code.versions'
+import { Route as AppMeInboxNoticeIdRouteImport } from './routes/_app/me.inbox_.$noticeId'
 import { Route as AppReviewsCodeIndexRouteImport } from './routes/_app/reviews.$code.index'
 import { Route as AppReviewsCodeEditRouteImport } from './routes/_app/reviews.$code.edit'
 import { Route as AppGrievancesCodeEntriesSeqRouteImport } from './routes/_app/grievances.$code.entries.$seq'
@@ -209,6 +211,11 @@ const AppMeInboxRoute = AppMeInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AppMeRoute,
 } as any)
+const AppMeNoticesRoute = AppMeNoticesRouteImport.update({
+  id: '/notices',
+  path: '/notices',
+  getParentRoute: () => AppMeRoute,
+} as any)
 const AppMeNotificationsRoute = AppMeNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -270,6 +277,11 @@ const AppGrievancesCodeVersionsRoute =
     path: '/$code/versions',
     getParentRoute: () => AppGrievancesRoute,
   } as any)
+const AppMeInboxNoticeIdRoute = AppMeInboxNoticeIdRouteImport.update({
+  id: '/inbox_/$noticeId',
+  path: '/inbox/$noticeId',
+  getParentRoute: () => AppMeRoute,
+} as any)
 const AppReviewsCodeIndexRoute = AppReviewsCodeIndexRouteImport.update({
   id: '/$code/',
   path: '/$code/',
@@ -341,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/maintenance/$id': typeof AppMaintenanceIdRoute
   '/maintenance/new': typeof AppMaintenanceNewRoute
   '/me/inbox': typeof AppMeInboxRoute
+  '/me/notices': typeof AppMeNoticesRoute
   '/me/notifications': typeof AppMeNotificationsRoute
   '/me/profile': typeof AppMeProfileRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
@@ -357,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/reviews/': typeof AppReviewsIndexRoute
   '/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
   '/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
+  '/me/inbox/$noticeId': typeof AppMeInboxNoticeIdRoute
   '/reviews/$code/edit': typeof AppReviewsCodeEditRoute
   '/grievances/$code/': typeof AppGrievancesCodeIndexRoute
   '/reviews/$code/': typeof AppReviewsCodeIndexRoute
@@ -388,6 +402,7 @@ export interface FileRoutesByTo {
   '/maintenance/$id': typeof AppMaintenanceIdRoute
   '/maintenance/new': typeof AppMaintenanceNewRoute
   '/me/inbox': typeof AppMeInboxRoute
+  '/me/notices': typeof AppMeNoticesRoute
   '/me/notifications': typeof AppMeNotificationsRoute
   '/me/profile': typeof AppMeProfileRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
@@ -404,6 +419,7 @@ export interface FileRoutesByTo {
   '/reviews': typeof AppReviewsIndexRoute
   '/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
   '/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
+  '/me/inbox/$noticeId': typeof AppMeInboxNoticeIdRoute
   '/reviews/$code/edit': typeof AppReviewsCodeEditRoute
   '/grievances/$code': typeof AppGrievancesCodeIndexRoute
   '/reviews/$code': typeof AppReviewsCodeIndexRoute
@@ -441,6 +457,7 @@ export interface FileRoutesById {
   '/_app/maintenance/$id': typeof AppMaintenanceIdRoute
   '/_app/maintenance/new': typeof AppMaintenanceNewRoute
   '/_app/me/inbox': typeof AppMeInboxRoute
+  '/_app/me/notices': typeof AppMeNoticesRoute
   '/_app/me/notifications': typeof AppMeNotificationsRoute
   '/_app/me/profile': typeof AppMeProfileRoute
   '/_app/reviews/actions': typeof AppReviewsActionsRoute
@@ -457,6 +474,7 @@ export interface FileRoutesById {
   '/_app/reviews/': typeof AppReviewsIndexRoute
   '/_app/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
   '/_app/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
+  '/_app/me/inbox_/$noticeId': typeof AppMeInboxNoticeIdRoute
   '/_app/reviews/$code/edit': typeof AppReviewsCodeEditRoute
   '/_app/grievances/$code/': typeof AppGrievancesCodeIndexRoute
   '/_app/reviews/$code/': typeof AppReviewsCodeIndexRoute
@@ -494,6 +512,7 @@ export interface FileRouteTypes {
     | '/maintenance/$id'
     | '/maintenance/new'
     | '/me/inbox'
+    | '/me/notices'
     | '/me/notifications'
     | '/me/profile'
     | '/reviews/actions'
@@ -510,6 +529,7 @@ export interface FileRouteTypes {
     | '/reviews/'
     | '/grievances/$code/edit'
     | '/grievances/$code/versions'
+    | '/me/inbox/$noticeId'
     | '/reviews/$code/edit'
     | '/grievances/$code/'
     | '/reviews/$code/'
@@ -541,6 +561,7 @@ export interface FileRouteTypes {
     | '/maintenance/$id'
     | '/maintenance/new'
     | '/me/inbox'
+    | '/me/notices'
     | '/me/notifications'
     | '/me/profile'
     | '/reviews/actions'
@@ -557,6 +578,7 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/grievances/$code/edit'
     | '/grievances/$code/versions'
+    | '/me/inbox/$noticeId'
     | '/reviews/$code/edit'
     | '/grievances/$code'
     | '/reviews/$code'
@@ -593,6 +615,7 @@ export interface FileRouteTypes {
     | '/_app/maintenance/$id'
     | '/_app/maintenance/new'
     | '/_app/me/inbox'
+    | '/_app/me/notices'
     | '/_app/me/notifications'
     | '/_app/me/profile'
     | '/_app/reviews/actions'
@@ -609,6 +632,7 @@ export interface FileRouteTypes {
     | '/_app/reviews/'
     | '/_app/grievances/$code/edit'
     | '/_app/grievances/$code/versions'
+    | '/_app/me/inbox_/$noticeId'
     | '/_app/reviews/$code/edit'
     | '/_app/grievances/$code/'
     | '/_app/reviews/$code/'
@@ -840,6 +864,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeInboxRouteImport
       parentRoute: typeof AppMeRoute
     }
+    '/_app/me/notices': {
+      id: '/_app/me/notices'
+      path: '/notices'
+      fullPath: '/me/notices'
+      preLoaderRoute: typeof AppMeNoticesRouteImport
+      parentRoute: typeof AppMeRoute
+    }
     '/_app/me/notifications': {
       id: '/_app/me/notifications'
       path: '/notifications'
@@ -923,6 +954,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/grievances/$code/versions'
       preLoaderRoute: typeof AppGrievancesCodeVersionsRouteImport
       parentRoute: typeof AppGrievancesRoute
+    }
+    '/_app/me/inbox_/$noticeId': {
+      id: '/_app/me/inbox_/$noticeId'
+      path: '/inbox/$noticeId'
+      fullPath: '/me/inbox/$noticeId'
+      preLoaderRoute: typeof AppMeInboxNoticeIdRouteImport
+      parentRoute: typeof AppMeRoute
     }
     '/_app/reviews/$code/': {
       id: '/_app/reviews/$code/'
@@ -1031,16 +1069,20 @@ const AppMaintenanceRouteWithChildren = AppMaintenanceRoute._addFileChildren(
 
 interface AppMeRouteChildren {
   AppMeInboxRoute: typeof AppMeInboxRoute
+  AppMeNoticesRoute: typeof AppMeNoticesRoute
   AppMeNotificationsRoute: typeof AppMeNotificationsRoute
   AppMeProfileRoute: typeof AppMeProfileRoute
   AppMeIndexRoute: typeof AppMeIndexRoute
+  AppMeInboxNoticeIdRoute: typeof AppMeInboxNoticeIdRoute
 }
 
 const AppMeRouteChildren: AppMeRouteChildren = {
   AppMeInboxRoute: AppMeInboxRoute,
+  AppMeNoticesRoute: AppMeNoticesRoute,
   AppMeNotificationsRoute: AppMeNotificationsRoute,
   AppMeProfileRoute: AppMeProfileRoute,
   AppMeIndexRoute: AppMeIndexRoute,
+  AppMeInboxNoticeIdRoute: AppMeInboxNoticeIdRoute,
 }
 
 const AppMeRouteWithChildren = AppMeRoute._addFileChildren(AppMeRouteChildren)

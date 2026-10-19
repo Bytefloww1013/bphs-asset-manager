@@ -22,6 +22,8 @@ import type {
   MaintenanceDetail,
   MaintenanceRow,
   MuteRow,
+  NoticeRow,
+  NoticeText,
   NotificationPage,
   ProgramRow,
   ReviewAuditPage,
@@ -296,6 +298,12 @@ export const mutesQuery = queryOptions({
   queryKey: ['notifications', 'mutes'],
   queryFn: () => api.get<MuteRow[]>('/me/mutes'),
 })
+
+/** A notice as its recipient reads it. Fetching it marks it read. */
+export const noticeQuery = (id: number) => queryOptions({ queryKey: ['notice', id], queryFn: () => api.get<NoticeText>(`/me/notices/${id}`) })
+
+/** Sent notices with their read counts: Super Admins only. */
+export const noticesQuery = queryOptions({ queryKey: ['notices'], queryFn: () => api.get<NoticeRow[]>('/notices') })
 
 /** After any write, refresh everything that could have changed. The data set is small; correctness beats cleverness. */
 export function refreshData(queryClient: QueryClient) {

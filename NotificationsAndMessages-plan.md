@@ -156,13 +156,13 @@ Recipient helpers:
 
 ### Phase 4 — Super Admin notices
 
-- [ ] **4.1 Notices API.**
+- [x] **4.1 Notices API.**
   - `POST /api/notices` (Super Admin, via `canSendNotices`) with `{ title, body, audience: 'all' | { userIds } }`.
   - `GET /api/notices` (the ones sent, with read counts) and `GET /api/me/notices/:id` (a recipient reading one).
   - Writes an audit line. Tests: a non-Super Admin is refused, a picked audience gets only those accounts, and deactivated accounts are skipped.
-- [ ] **4.2 Reading a notice.**
+- [x] **4.2 Reading a notice.**
   - Opening a notice notification shows its full text on `/me/inbox/:id`, which marks it read.
-- [ ] **4.3 Notices page.**
+- [x] **4.3 Notices page.**
   - `/me/notices` (only in a Super Admin's My Space sidebar): a **New notice** sheet (title, body, everyone or picked accounts) and a list of sent notices showing "*n* of *m* read".
 
 ### Phase 5 — Docs and end-to-end check

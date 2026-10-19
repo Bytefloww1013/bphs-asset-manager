@@ -9,6 +9,7 @@ import {
   listMutes,
   listNotifications,
   markAllRead,
+  readNotice,
   setArchived,
   setRead,
 } from '../services/notifications.ts'
@@ -34,6 +35,8 @@ export function meRoutes(db: Db) {
       return c.body(null, 204)
     })
   }
+
+  app.get('/notices/:id', (c) => c.json(readNotice(db, c.get('user').id, intParam(c, 'id'))))
 
   app.get('/mutes', (c) => c.json(listMutes(db, c.get('user').id)))
   app.post('/mutes', json(muteSchema), (c) => c.json(addMute(db, c.get('user').id, c.req.valid('json')), 201))

@@ -189,6 +189,10 @@ export const NOTIFICATION_KINDS = {
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS
 export const NOTIFICATION_KIND_KEYS = Object.keys(NOTIFICATION_KINDS) as [NotificationKind, ...NotificationKind[]]
 
+/** A notice is plain text with line breaks: short enough to read in the bell's popover. */
+export const NOTICE_TITLE_MAX = 120
+export const NOTICE_BODY_MAX = 2000
+
 export const MUTE_DURATIONS = ['24h', '7d', '1m', 'forever'] as const
 export type MuteDuration = (typeof MUTE_DURATIONS)[number]
 export const MUTE_DURATION_LABEL: Record<MuteDuration, string> = { '24h': '24 hours', '7d': '7 days', '1m': '1 month', forever: 'Until I change it' }

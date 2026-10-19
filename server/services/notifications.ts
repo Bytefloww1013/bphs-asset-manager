@@ -2,10 +2,11 @@ import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from 
 import type { SQLiteUpdateSetSource } from 'drizzle-orm/sqlite-core'
 import { NOTIFICATION_KINDS, OVERDUE_DAYS, isInAppPath, muteEnds, type NotificationKind, type Section } from '../../shared/constants.ts'
 import { canAt } from '../../shared/permissions.ts'
-import type { MuteInput, NotificationListInput } from '../../shared/schemas.ts'
-import type { MuteRow, NotificationPage, NotificationRow } from '../../shared/types.ts'
+import type { MuteInput, NoticeInput, NotificationListInput } from '../../shared/schemas.ts'
+import type { MuteRow, NoticeRow, NoticeText, NotificationPage, NotificationRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { notificationMutes, notifications, users } from '../db/schema.ts'
+import { notices, notificationMutes, notifications, users } from '../db/schema.ts'
+import { writeAudit, type Actor } from '../lib/audit.ts'
 import { invalid, notFound } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
 
@@ -24,18 +25,19 @@ export interface NewNotification {
 /**
  * The one writer of notifications. It runs inside the transaction of the change that caused it, so a change that rolls back takes
  * its notifications with it. The actor (null for the server CLI) and inactive accounts get nothing; a live mute marks the row muted.
+ * Returns how many were sent.
  */
-export function notify(tx: DbLike, actor: { id: number } | null, input: NewNotification, now = new Date()) {
+export function notify(tx: DbLike, actor: { id: number } | null, input: NewNotification, now = new Date()): number {
   if (!isInAppPath(input.link)) throw new Error(`A notification link must be an in-app path, not ${input.link}`)
   const wanted = [...new Set(input.recipients)].filter((id) => id !== actor?.id)
-  if (wanted.length === 0) return
+  if (wanted.length === 0) return 0
   const recipients = tx
     .select({ id: users.id })
     .from(users)
     .where(and(inArray(users.id, wanted), eq(users.isActive, true)))
     .all()
     .map((row) => row.id)
-  if (recipients.length === 0) return
+  if (recipients.length === 0) return 0
   const muted = new Set(
     NOTIFICATION_KINDS[input.kind].unmutable
       ? []
@@ -67,6 +69,7 @@ export function notify(tx: DbLike, actor: { id: number } | null, input: NewNotif
       })),
     )
     .run()
+  return recipients.length
 }
 
 /** The active account linked to an employee, as a recipient list: empty when they have none. `uq_users_employee` allows one at most. */
@@ -159,6 +162,52 @@ export function markAllRead(db: DbLike, userId: number, now = new Date()) {
     .set({ readAt: now })
     .where(and(eq(notifications.userId, userId), isNull(notifications.readAt), isNull(notifications.archivedAt)))
     .run()
+}
+
+// ---- Notices ----------------------------------------------------------------------------
+
+/** Sent notices, newest first, with how many of their recipients have read them: the counts come from the `notice` notifications. */
+export function listNotices(db: DbLike, id?: number): NoticeRow[] {
+  return db
+    .all<Omit<NoticeRow, 'createdAt'> & { createdAt: number }>(
+      sql`select n.id as id, n.title as title, n.body as body, n.audience as audience, u.name as sentBy, n.created_at as createdAt,
+        coalesce(c.recipients, 0) as recipients, coalesce(c.read, 0) as read
+      from notices n
+      join users u on u.id = n.created_by_user_id
+      left join (select source_key, count(*) as recipients, count(read_at) as read from notifications where kind = 'notice' group by source_key) c
+        on c.source_key = 'notice:' || n.id
+      ${id === undefined ? sql`` : sql`where n.id = ${id}`}
+      order by n.id desc`,
+    )
+    .map((row) => ({ ...row, createdAt: new Date(row.createdAt).toISOString() }))
+}
+
+/** One `notice` notification for each active account picked, or for every one. The sender gets none, and a notice nobody would get is refused. */
+export function sendNotice(db: Db, actor: Actor, input: NoticeInput, now = new Date()): NoticeRow {
+  return db.transaction((tx) => {
+    const { id } = tx
+      .insert(notices)
+      .values({ title: input.title, body: input.body, audience: input.audience === 'all' ? 'all' : 'picked', createdByUserId: actor.id, createdAt: now })
+      .returning({ id: notices.id })
+      .get()
+    const recipients = input.audience === 'all' ? tx.select({ id: users.id }).from(users).all().map((row) => row.id) : input.audience.userIds
+    const sent = notify(tx, actor, { recipients, kind: 'notice', sourceKey: `notice:${id}`, title: input.title, body: input.body, link: `/me/inbox/${id}` }, now)
+    if (sent === 0) throw invalid('Nobody would get this notice. It goes only to active accounts, and never to you.', { field: 'audience' })
+    writeAudit(tx, actor, { action: 'create', entityType: 'notice', entityId: id, details: `${input.title} · to ${input.audience === 'all' ? 'everyone' : 'picked accounts'} · ${sent} recipient${sent === 1 ? '' : 's'}`, at: now })
+    return listNotices(tx, id)[0]!
+  })
+}
+
+/** A notice as one of its recipients reads it, which marks their notification read. Anyone it was not sent to gets a 404. */
+export function readNotice(db: DbLike, userId: number, id: number, now = new Date()): NoticeText {
+  const mine = db
+    .update(notifications)
+    .set({ readAt: sql`coalesce(${notifications.readAt}, ${now.getTime()})` })
+    .where(and(eq(notifications.userId, userId), eq(notifications.kind, 'notice'), eq(notifications.sourceKey, `notice:${id}`)))
+    .run()
+  if (mine.changes === 0) throw notFound('Notice')
+  const { id: noticeId, title, body, sentBy, createdAt } = listNotices(db, id)[0]!
+  return { id: noticeId, title, body, sentBy, createdAt }
 }
 
 // ---- Mutes ------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, MUTE_DURATIONS, NOTIFICATION_KIND_KEYS, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, MUTE_DURATIONS, NOTICE_BODY_MAX, NOTICE_TITLE_MAX, NOTIFICATION_KIND_KEYS, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -518,3 +518,11 @@ export const muteSchema = z.object({
   duration: z.enum(MUTE_DURATIONS),
 })
 export type MuteInput = z.infer<typeof muteSchema>
+
+/** A Super Admin's notice, to every active account or to the accounts picked. */
+export const noticeSchema = z.object({
+  title: requiredText(NOTICE_TITLE_MAX, 'Title'),
+  body: requiredText(NOTICE_BODY_MAX, 'Message'),
+  audience: z.union([z.literal('all'), z.object({ userIds: z.array(id).min(1, 'Pick at least one account').max(1000) })]),
+})
+export type NoticeInput = z.infer<typeof noticeSchema>
