@@ -5,8 +5,8 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 ## Production (https://bphs-connect.com)
 
 - [x] **Change the first Super Admin's password, urgently.** Sign in as `admin@bphs-connect.com` with the starting password from [DEPLOY-GUIDE.md step 8](DEPLOY-GUIDE.md#8-start-the-app-and-check-its-health), and choose a permanent one. Every new install starts with that same password, and the site is public.
-- [ ] Create a second Super Admin under **Users**, so there is another way back in if one account is locked out.
-- [ ] Run the rest of the sign-in checks in [DEPLOY-GUIDE.md step 11](DEPLOY-GUIDE.md#11-sign-in-and-verify-the-application): sign out and back in, refresh a direct URL, open each workspace, and try an import/export and a grievance attachment.
+- [x] Create a second Super Admin under **Users**, so there is another way back in if one account is locked out.
+- [x] Run the rest of the sign-in checks in [DEPLOY-GUIDE.md step 11](DEPLOY-GUIDE.md#11-sign-in-and-verify-the-application): sign out and back in, refresh a direct URL, open each workspace, and try an import/export and a grievance attachment.
 - [x] Connect the Zoho maintenance form ([DEPLOY-GUIDE.md step 15](DEPLOY-GUIDE.md#15-connect-the-zoho-maintenance-form)).
   - URL: `https://bphs-connect.com/api/webhooks/maintenance`
   - Header: `X-Webhook-Secret`, set to the secret the server already has.
@@ -27,7 +27,7 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 - [x] Show a maintenance request's Date, Noticed and Zoho time in US format (10/15/2026 12:40 PM). Zoho sends day first and has no setting for it. Deployed 2026-10-16.
 - [x] Per-section access (None, Read, Edit or Full in Assets, Grievances, Maintenance and Employees) in place of roles. Deployed 2026-10-16.
-- [ ] Administrative Reviews: a fourth workspace for reviews of employees' work, their Corrective Action Plans (CAPs), files, a printable case file and a Review Audit Log ([the plan](administrative-review-implementation.md)). Built and checked locally, not deployed. When deploying: link every account except the first to its employee on **Users**, since an unlinked account cannot open Reviews; give each account its Reviews level; and print one case file from each browser.
+- [x] Administrative Reviews: a fourth workspace for reviews of employees' work, their Corrective Action Plans (CAPs), files, a printable case file and a Review Audit Log ([the plan](administrative-review-implementation.md)). Deployed (the live site serves `eacce4d`, the reviews case file). After deploying: link every account except the first to its employee on **Users**, since an unlinked account cannot open Reviews; give each account its Reviews level; and print one case file from each browser.
 - [ ] _Add requests here._ Build and check each one locally, then redeploy with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first.
 
 ## Maybe
