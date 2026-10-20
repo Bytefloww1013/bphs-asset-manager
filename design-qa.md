@@ -130,3 +130,7 @@ Result: passed, 47 of 47. This is the check for slice 5.2 of [NotificationsAndMe
 - A real screen reader. Names and "Muted." were checked from the DOM.
 - In the browser: the overdue reminder, a digital asset issue, a bulk return, an account unlock and a linked-employee change. Each is covered by `server/tests/notification-events.test.ts`.
 - The 30-second refetch was not timed. Counts were read after navigating or bringing the tab to the front.
+
+**Follow-up fixes (same day):** two gaps from the slice 3 check, rechecked on a seeded production build, 11 of 11 (the pre-fix build failed 6 of them).
+- Opening a notification whose link goes to a workspace the account cannot read now only marks it read. Dana Whitfield (Grievances only, linked to E-1130) was issued BPHS-0003 and DA-00001. Before the fix, opening either one sent her to `/grievances`, because the asset pages turned her away. Now she stays on her Inbox, whether she opens it from the popover or the Inbox. Marcus, at Assets Edit, is still taken to `/assets/BPHS-0033`.
+- When the bell's popover opens, focus goes to the popover itself, not to Mark all read. Enter straight after opening with the keyboard no longer marks everything read. Tab goes to Mark all read, then to the first row. Escape closes the popover and returns focus to the bell. Screenshot: `qa-shots/notifications/8-holder-no-assets-fixed.png`.

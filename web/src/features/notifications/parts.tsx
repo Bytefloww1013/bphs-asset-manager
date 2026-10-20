@@ -5,6 +5,7 @@ import { Bell, BellOff } from 'lucide-react'
 import { useState } from 'react'
 import { MUTE_DURATIONS, MUTE_DURATION_LABEL, NOTIFICATION_KINDS, isInAppPath, type MuteDuration } from '@shared/constants.ts'
 import type { MuteInput } from '@shared/schemas.ts'
+import { canUseWorkspace } from '@shared/permissions.ts'
 import type { NotificationRow } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Spinner } from '@/components/ui/feedback.tsx'
@@ -15,6 +16,8 @@ import { api } from '@/lib/api.ts'
 import { cn } from '@/lib/cn.ts'
 import { formatDateTime, formatRelative } from '@/lib/format.ts'
 import { latestNotificationsQuery, notificationCountQuery } from '@/lib/queries.ts'
+import { useUser } from '@/lib/session.ts'
+import { areaOf } from '@/lib/workspace.ts'
 
 /** The red count: hidden at 0, and 99+ past 99. */
 export function UnreadBadge({ count, className }: { count: number | undefined; className?: string }) {
@@ -27,14 +30,18 @@ export function UnreadBadge({ count, className }: { count: number | undefined; c
   )
 }
 
-/** Marks a notification read and follows its link. */
+/** Marks a notification read and follows its link, when it leads somewhere this account can open. */
 export function useOpenNotification() {
   const router = useRouter()
+  const user = useUser()
   const read = useWrite((id: number) => api.post(`/me/notifications/${id}/read`))
   return (row: NotificationRow) => {
     if (!row.readAt) read.mutate(row.id)
     // Checked here as well as when it was written, so a notification can never send anyone off-site.
-    if (isInAppPath(row.link)) void router.navigate({ href: row.link })
+    if (!isInAppPath(row.link)) return
+    // A holder without Assets access is still told about the asset issued to them; its page would only turn them away.
+    const area = areaOf(row.link)
+    if (area === 'me' || canUseWorkspace(user, area)) void router.navigate({ href: row.link })
   }
 }
 
@@ -90,6 +97,12 @@ export function NotificationBell({ align }: { align: 'start' | 'end' }) {
           sideOffset={6}
           collisionPadding={12}
           aria-label="Notifications"
+          // The popover itself takes focus, not its first button: Enter straight after opening would mark everything read.
+          onOpenAutoFocus={(event) => {
+            const content = event.currentTarget as HTMLElement
+            event.preventDefault()
+            content.focus()
+          }}
           className="z-[60] flex w-96 max-w-[calc(100vw-24px)] animate-pop-in flex-col rounded-panel border border-line bg-surface shadow-pop focus-visible:outline-none"
         >
           <Latest onDone={() => setOpen(false)} />
