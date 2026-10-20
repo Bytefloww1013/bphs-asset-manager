@@ -135,7 +135,7 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 | Employees | `/reviews/employees` |
 | Review audit log (filter, search, CSV export) | `/reviews/audit` |
 
-**My Space**, the signed-in person's own pages, opened from the account menu. Every account has it, whatever its access. It is not a workspace: workspaces are shared work areas that access is granted to, and they are the ones in the switcher. Its sidebar has a Back link to the last workspace in place of the switcher, and greyed-out Mailbox and Personal Dashboard entries marked "Coming later".
+**My Space**, the signed-in person's own pages, opened from the account menu. Every account has it, whatever its access. It is not a workspace: workspaces are shared work areas that access is granted to, and they are the ones in the switcher. Its sidebar has a Back link to the last workspace in place of the switcher, and a greyed-out Personal Dashboard entry marked "Coming later".
 
 | Screen | Route |
 | --- | --- |

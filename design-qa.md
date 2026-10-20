@@ -61,8 +61,8 @@ Result: passed, 33 of 33. This is the check for slice 2.2 of [MySpace-plan.md](M
 **Each account, wide:**
 - **My Space** is the first item in the account menu and opens `/me/profile`.
 - The sidebar shows **Back to *last workspace*** in place of the switcher: Maintenance, Assets and Maintenance respectively.
-- Mailbox and Personal Dashboard are `role="link"` with `aria-disabled="true"`, tabIndex −1 and no href. "Coming later" is part of their name.
-- Clicking either placeholder leaves the page where it is.
+- Personal Dashboard is `role="link"` with `aria-disabled="true"`, tabIndex −1 and no href. "Coming later" is part of its name.
+- Clicking the placeholder leaves the page where it is.
 - The Profile page shows the linked employee:
   - "None. The first account needs no employee." for the Super Admin.
   - "Tomas Berger E-1201" for Assets-only.
