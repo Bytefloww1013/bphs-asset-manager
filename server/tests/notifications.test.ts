@@ -91,9 +91,11 @@ describe('notify()', () => {
     send(t, everyone)
     send(t, everyone, { sourceKey: 'asset:2' })
     send(t, [t.adminUser.id], { kind: 'account_password_reset', sourceKey: 'user:2', link: '/me' })
+    // The item mute covers asset:1 whatever the kind; the superUser's kind mute does not reach another kind.
+    send(t, [t.adminUser.id, t.superUser.id], { kind: 'asset_returned_poor' })
     const muted = (userId: number) => rowsOf(t, userId).map((row) => [row.sourceKey, row.muted])
-    expect(muted(t.adminUser.id)).toEqual([['asset:1', true], ['asset:2', false], ['user:2', false]])
-    expect(muted(t.superUser.id)).toEqual([['asset:1', true], ['asset:2', true]])
+    expect(muted(t.adminUser.id)).toEqual([['asset:1', true], ['asset:2', false], ['user:2', false], ['asset:1', true]])
+    expect(muted(t.superUser.id)).toEqual([['asset:1', true], ['asset:2', true], ['asset:1', false]])
     // A mute that has ended mutes nothing.
     expect(muted(other.id)).toEqual([['asset:1', false], ['asset:2', false]])
   })
@@ -238,6 +240,13 @@ describe('the Mutes API', () => {
       ['maintenance:4', true],
     ])
     expect(muteEnds('1m', new Date(list[0].createdAt))?.toISOString()).toBe(list[0].until)
+    // Muting the item again from a notification of another kind is still one mute of it.
+    await mute({ kind: 'maintenance_dispatched', sourceKey: 'maintenance:4', duration: '7d' })
+    const again = (await t.call('GET', '/api/me/mutes', { cookie })).data
+    expect(again.map((row: { kind: string; sourceKey: string | null }) => [row.kind, row.sourceKey])).toEqual([
+      ['maintenance_dispatched', 'maintenance:4'],
+      ['maintenance_changed', null],
+    ])
   })
 
   it('names a muted item by its latest notification', async () => {

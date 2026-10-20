@@ -2,7 +2,7 @@
 
 > **Depends on [MySpace-plan.md](MySpace-plan.md).** The Inbox, notification settings and notices are pages in My Space, so that plan is built first.
 
-Status: **planned (2026-10-19), not started.** Nothing here is built until the go-ahead is given.
+Status: **built (2026-10-19).** All five phases are done; the end-to-end check is in [design-qa.md](design-qa.md).
 
 ## How this plan is worked
 
@@ -167,12 +167,12 @@ Recipient helpers:
 
 ### Phase 5 — Docs and end-to-end check
 
-- [ ] **5.1 Docs.**
+- [x] **5.1 Docs.**
   - [PRODUCT.md](PRODUCT.md) and [README.md](README.md): notifications, mutes, notices, retention.
   - [DESIGN.md](DESIGN.md): the bell, the badge, the popover and the muted icon.
   - [RUNBOOK.md](RUNBOOK.md): the new migration and the purge timer.
   - [SECURITYREVIEW.md](SECURITYREVIEW.md): a short section on own-rows-only, in-app links, and Grievances and Reviews being excluded.
-- [ ] **5.2 End-to-end browser check.**
+- [x] **5.2 End-to-end browser check.**
   - With two accounts side by side: issue an asset, return one in poor condition, dispatch and update a maintenance request, reset a password, send a notice, mute an item and a kind, and check the count, popover, Inbox and settings at wide and narrow widths.
   - Record the results in [design-qa.md](design-qa.md).
 

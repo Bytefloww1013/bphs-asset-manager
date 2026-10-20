@@ -47,8 +47,8 @@ export function notify(tx: DbLike, actor: { id: number } | null, input: NewNotif
           .where(
             and(
               inArray(notificationMutes.userId, recipients),
-              eq(notificationMutes.kind, input.kind),
-              or(isNull(notificationMutes.sourceKey), eq(notificationMutes.sourceKey, input.sourceKey)),
+              // A kind mute covers its kind; an item mute covers its item whatever the notification's kind (MR-0042 dispatched, then changed).
+              or(and(eq(notificationMutes.kind, input.kind), isNull(notificationMutes.sourceKey)), eq(notificationMutes.sourceKey, input.sourceKey)),
               or(isNull(notificationMutes.until), gt(notificationMutes.until, now)),
             ),
           )
@@ -230,7 +230,7 @@ const selectMutes = (db: DbLike) =>
     })
     .from(notificationMutes)
 
-/** Muting the same thing again replaces the old mute, so the new duration is the one that holds. */
+/** Muting the same thing again (the same kind, or the same item from a notification of any kind) replaces the old mute, so the new duration is the one that holds. */
 export function addMute(db: Db, userId: number, input: MuteInput, now = new Date()): MuteRow {
   const kind = NOTIFICATION_KINDS[input.kind]
   if (kind.unmutable) throw invalid(`${kind.label} cannot be muted.`, { field: 'kind' })
@@ -240,8 +240,7 @@ export function addMute(db: Db, userId: number, input: MuteInput, now = new Date
       .where(
         and(
           eq(notificationMutes.userId, userId),
-          eq(notificationMutes.kind, input.kind),
-          sourceKey === null ? isNull(notificationMutes.sourceKey) : eq(notificationMutes.sourceKey, sourceKey),
+          sourceKey === null ? and(eq(notificationMutes.kind, input.kind), isNull(notificationMutes.sourceKey)) : eq(notificationMutes.sourceKey, sourceKey),
         ),
       )
       .run()

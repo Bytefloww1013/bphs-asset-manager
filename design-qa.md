@@ -89,3 +89,44 @@ Result: passed, 33 of 33. This is the check for slice 2.2 of [MySpace-plan.md](M
 **Not covered:**
 - A real screen reader. The name was checked from the DOM.
 - An account with no workspace at all. The app already assumes every account has one.
+
+# Notifications end-to-end check (2026-10-19)
+
+Result: passed, 47 of 47. This is the check for slice 5.2 of [NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md).
+
+**Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with freshly seeded data and `TZ=America/New_York`. Headless Firefox driven by puppeteer-core, with the two accounts in separate browser contexts side by side, at 1280×900 (wide) and 390×844 (narrow). All accounts use the seed password.
+
+**Accounts:**
+- Priya Raghunathan, the Super Admin, who acts.
+- Marcus Oyelaran, at Edit in Assets and linked to E-0988, who receives. He starts with the seed's 2 unread; a muted seed row is left out of the count.
+
+**What Priya did, in order:** changed Marcus's access to add Maintenance at Edit; issued BPHS-0003 to E-0988; returned BPHS-0046 rated Poor; created MR-0001 and dispatched it to Marcus; set MR-0001 to On Hold; sent a notice to everyone ("To 4 accounts"). Later: set MR-0001 to Finished, returned BPHS-0097 rated Damaged, and reset Marcus's password.
+
+**Marcus, wide:**
+- Mark all read takes the seed count to 0. The badge is gone and the bell's name is plain "Notifications".
+- After the six events the bell's name is "Notifications, 6 unread", the badge shows 6, and so does the Inbox entry in the sidebar.
+- The popover lists 8 rows, newest first. The six new ones are bold with a dot, and the older read ones are plain. The two MR-0001 rows (dispatched, on hold) are separate.
+- Opening the issued notification goes to `/assets/BPHS-0003`, and the count drops to 5.
+- The notice and the access change offer only Mark read and Archive, with no Mute.
+- **Mute this item** on the dispatched row (24 hours) and **Mute this kind** on the poor return (until changed), each with its toast.
+- MR-0001 set to Finished and BPHS-0097 returned Damaged both arrive muted. The count stays at 5, and in the Inbox and the popover both show the muted bell and "Muted.", with no highlight.
+- Notification settings lists both mutes, "Everything about this item" and "Assets returned in poor condition: All of them", and the five kinds that are never muted. Unmute takes one off the list.
+
+**Marcus, narrow:**
+- The bell is in the top bar with its count, and the popover stays on screen (12 to 378 px).
+- The Inbox and Notification settings have no sideways scroll.
+
+**Password reset:**
+- Priya gets a one-time password. Her own bell is unchanged (2 unread before and after), since her own actions never notify her.
+- Marcus signs in with it and is sent to `/password-change`. After the change the bell shows 6 unread, and "Your password was reset" offers no Mute.
+
+**Fixed during the build:**
+- [P1] "Mute this item" matched the notification's kind as well as its item. Muting MR-0001 from its "dispatched" row therefore did not mute "MR-0001 was set to Finished", which is another kind. An item mute now covers every notification about that item, whatever its kind, and an item has at most one mute. Settings calls it "Everything about this item", not the kind it was muted from. Two server tests cover it.
+- [P2] At 390 wide, each row's kind and time sat in two columns, so "just now" broke over two lines beside the kind. They now wrap together as one line of text, in the Inbox and the popover.
+
+**Screenshots** (local, gitignored): `qa-shots/notifications/{1-popover-wide,2-inbox-wide,3-popover-muted,4-settings-wide,5-popover-narrow,6-inbox-narrow,7-settings-narrow}.png`.
+
+**Not covered:**
+- A real screen reader. Names and "Muted." were checked from the DOM.
+- In the browser: the overdue reminder, a digital asset issue, a bulk return, an account unlock and a linked-employee change. Each is covered by `server/tests/notification-events.test.ts`.
+- The 30-second refetch was not timed. Counts were read after navigating or bringing the tab to the front.

@@ -57,10 +57,12 @@ export function NotificationLine({ row }: { row: NotificationRow }) {
               <span className="sr-only">Muted.</span>
             </>
           )}
-          {NOTIFICATION_KINDS[row.kind].label} ·{' '}
-          <time dateTime={row.createdAt} title={formatDateTime(row.createdAt)}>
-            {formatRelative(row.createdAt)}
-          </time>
+          <span>
+            {NOTIFICATION_KINDS[row.kind].label} ·{' '}
+            <time dateTime={row.createdAt} title={formatDateTime(row.createdAt)}>
+              {formatRelative(row.createdAt)}
+            </time>
+          </span>
         </span>
       </span>
     </>
@@ -173,12 +175,12 @@ export function MuteDialog({ row, item, onClose }: { row: NotificationRow; item:
   )
 }
 
-/** What a mute covers: one item of a kind (named by its notification's title), or the whole kind. */
+/** What a mute covers: one item, whatever its notifications' kind (named by its notification's title), or the whole kind. */
 export function MutedThing({ kind, about, className }: { kind: NotificationRow['kind']; about: string | null; className?: string }) {
   return (
     <div className={cn('min-w-0 text-sm', className)}>
-      <p className="font-medium text-ink">{NOTIFICATION_KINDS[kind].label}</p>
-      <p className="text-ink-2 [overflow-wrap:anywhere]">{about === null ? 'All of them' : `Only this item: ${about}`}</p>
+      <p className="font-medium text-ink">{about === null ? NOTIFICATION_KINDS[kind].label : 'Everything about this item'}</p>
+      <p className="text-ink-2 [overflow-wrap:anywhere]">{about === null ? 'All of them' : about}</p>
     </div>
   )
 }
