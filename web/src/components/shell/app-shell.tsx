@@ -59,12 +59,12 @@ interface NavEntry {
 }
 
 /** Each workspace has a sidebar of its own; nothing from one appears in the other. My Space has one too. */
-function useNav(workspace: Area): { heading: string; items: NavEntry[] }[] {
+function useNav(area: Area): { heading: string; items: NavEntry[] }[] {
   const user = useUser()
   const { data: unread } = useQuery(notificationCountQuery)
   // The employee list stays readable to every picker; the page itself needs Employees.
   const employees = canAt(user, 'employees', 'read')
-  if (workspace === 'me') {
+  if (area === 'me') {
     return [
       {
         heading: 'My Space',
@@ -77,8 +77,8 @@ function useNav(workspace: Area): { heading: string; items: NavEntry[] }[] {
       },
     ]
   }
-  if (workspace === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
-  if (workspace === 'reviews') {
+  if (area === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
+  if (area === 'reviews') {
     return [
       {
         heading: 'Records',
@@ -91,7 +91,7 @@ function useNav(workspace: Area): { heading: string; items: NavEntry[] }[] {
       { heading: 'Administration', items: [{ to: '/reviews/audit', label: 'Audit log', icon: ScrollText }] },
     ]
   }
-  if (workspace === 'grievances') {
+  if (area === 'grievances') {
     return [
       {
         heading: 'Records',

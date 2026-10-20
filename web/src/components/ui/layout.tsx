@@ -56,3 +56,13 @@ export const ShiftEnterKeys = () => (
 export function Mono({ className, ...rest }: ComponentProps<'span'>) {
   return <span className={cn('font-mono text-[0.8125rem] tabular-nums', className)} {...rest} />
 }
+
+/** One labelled fact in a page's Facts panel. */
+export function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 px-5 py-4">
+      <dt className="text-xs text-ink-3">{label}</dt>
+      <dd className="mt-1 text-sm font-medium text-ink">{children}</dd>
+    </div>
+  )
+}

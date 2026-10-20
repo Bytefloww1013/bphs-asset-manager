@@ -16,6 +16,7 @@ import { conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { describeRowProblem } from '../../shared/rows.ts'
 import { daysBetween } from '../lib/time.ts'
 import { issueInTx } from './assignments.ts'
+import { relinkAsset } from './notifications.ts'
 import { assessorFor, fullName, requireActiveRating } from './refs.ts'
 
 interface AssetBase {
@@ -368,6 +369,7 @@ export function updateAsset(db: Db, actor: Actor, id: number, input: AssetUpdate
     }
     if (changes.length === 0) return
     tx.update(assets).set(patch).where(eq(assets.id, id)).run()
+    if (patch.tag) relinkAsset(tx, current.tag, patch.tag)
     writeAudit(tx, actor, { action: 'update', entityType: 'asset', entityId: id, details: `${patch.tag ?? current.tag} · ${changes.join('; ')}` })
   })
   return getAssetRow(db, id)

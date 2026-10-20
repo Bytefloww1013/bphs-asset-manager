@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useRouter } from '@tanstack/react-router'
 import { Bell } from 'lucide-react'
 import { useState } from 'react'
-import { NOTIFICATION_KINDS, isInAppPath } from '@shared/constants.ts'
+import { NOTIFICATION_KIND_LABEL, isInAppPath } from '@shared/constants.ts'
 import { canUseWorkspace } from '@shared/permissions.ts'
 import type { NotificationRow } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
@@ -55,7 +55,8 @@ export function NotificationLine({ row }: { row: NotificationRow }) {
         </span>
         {row.body && <span className="mt-0.5 line-clamp-3 whitespace-pre-line text-sm text-ink-3 [overflow-wrap:anywhere]">{row.body}</span>}
         <span className="mt-0.5 block text-xs text-ink-3">
-          {NOTIFICATION_KINDS[row.kind].label} ·{' '}
+          {/* A kind this page does not know yet, from a newer server or an older row, still draws. */}
+          {NOTIFICATION_KIND_LABEL[row.kind] ?? 'Notification'} ·{' '}
           <time dateTime={row.createdAt} title={formatDateTime(row.createdAt)}>
             {formatRelative(row.createdAt)}
           </time>

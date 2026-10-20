@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, NOTICE_BODY_MAX, NOTICE_TITLE_MAX, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, NOTICE_BODY_MAX, NOTICE_TITLE_MAX, NOTIFICATION_VIEWS, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -504,7 +504,7 @@ export const maintenanceNoteSchema = z.object({ body: requiredText(MAINTENANCE_N
 
 // ---- Notifications ------------------------------------------------------------------
 export const notificationListSchema = z.object({
-  view: z.enum(['unread', 'all', 'archived']).default('all'),
+  view: z.enum(NOTIFICATION_VIEWS).default('all'),
   /** The cursor: only notifications older than this id. */
   before: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(25),

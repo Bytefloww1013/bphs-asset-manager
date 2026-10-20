@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { assetTypes, conditionRatings, digitalAssetTypes, employees, notifications, programs, users } from '../db/schema.ts'
-import { createAsset, createAssetsBulk } from '../services/assets.ts'
+import { createAsset, createAssetsBulk, updateAsset } from '../services/assets.ts'
 import { issueAsset, issueInTx, returnAssignment, returnMany } from '../services/assignments.ts'
 import { createDigitalAsset, issueDigitalAsset } from '../services/digital-assets.ts'
 import { addMaintenanceNote, changeMaintenanceStatus, createMaintenanceRequest, dispatchMaintenanceRequest } from '../services/maintenance.ts'
@@ -95,6 +95,43 @@ describe('returned in poor condition', () => {
         link: '/',
       },
     ])
+  })
+
+  it('leaves out rows that failed or came back Fair, and lists ten tags at most', async () => {
+    const t = await setup()
+    const held = Array.from({ length: 12 }, (_, n) => asset(t, `BPHS-${String(n + 1).padStart(4, '0')}`, t.person.id))
+    const fair = asset(t, 'BPHS-0100', t.person.id)
+    returnMany(t.db, t.adminUser, { ids: [fair.assignmentId!], conditionRatingId: ratingId(t, 'Fair') })
+    const result = returnMany(t.db, t.adminUser, { ids: [fair.assignmentId!, ...held.map((row) => row.assignmentId!)], conditionRatingId: ratingId(t, 'Poor') })
+    expect([result.returned.length, result.failed.map((row) => row.id)]).toEqual([12, [fair.assignmentId]])
+    const [sent, ...more] = rowsOf(t, t.superUser.id, 'asset_returned_poor')
+    expect(more).toEqual([])
+    expect(sent!.title).toBe('12 assets came back in poor condition')
+    expect(sent!.body).toBe(`${held.slice(0, 10).map((row) => `${row.tag} (Poor)`).join(', ')}, and 2 more`)
+  })
+})
+
+describe('links that follow the change', () => {
+  it('point at the new tag when an asset is renamed', async () => {
+    const t = await setup()
+    const made = asset(t, 'BPHS-0001', t.person.id)
+    updateAsset(t.db, t.adminUser, made.id, { tag: 'BPHS-0099' })
+    expect(rowsOf(t, t.superUser.id)).toMatchObject([{ kind: 'asset_issued', link: '/assets/BPHS-0099' }])
+  })
+
+  it('forget what an account was told as its old employee when the link changes', async () => {
+    const t = await setup()
+    const old = person(t, 'E-2').employee
+    const next = person(t, 'E-3').employee
+    const id = t.adminUser.id
+    updateUser(t.db, t.superUser, id, { employeeId: old.id })
+    // Issued by someone else, as the actor is never told.
+    createAsset(t.db, t.superUser, { tag: 'BPHS-0001', typeId: t.db.select().from(assetTypes).get()!.id, conditionRatingId: ratingId(t, 'Good'), holderId: old.id })
+    await resetPassword(t.db, t.superUser, id)
+    expect(rowsOf(t, id, 'asset_issued')).toHaveLength(1)
+    updateUser(t.db, t.superUser, id, { employeeId: next.id })
+    expect(rowsOf(t, id).map((row) => row.kind)).toEqual(['account_employee_linked', 'account_password_reset', 'account_employee_linked'])
+    expect(rowsOf(t, id, 'asset_issued')).toEqual([])
   })
 })
 

@@ -13,10 +13,15 @@ ensureDefaultLists(db)
 await ensureBootstrapAdmin(db)
 // Sessions are checked on every request, but keep the tables tidy: expired sessions and year-old notifications.
 // The same timer sends the overdue reminders.
+// Each job runs on its own: one that fails is logged, and neither stops the others nor takes the server down.
 function tidy() {
-  purgeExpiredSessions(db)
-  purgeNotifications(db)
-  sendOverdueReminders(db)
+  for (const job of [purgeExpiredSessions, purgeNotifications, sendOverdueReminders]) {
+    try {
+      job(db)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 }
 tidy()
 

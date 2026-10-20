@@ -60,6 +60,16 @@ describe('server/admin.ts (break-glass recovery)', () => {
     sqlite.close()
   })
 
+  it('does not tell an account that was not locked that it was unlocked', async () => {
+    const t = await fixture()
+    expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
+    expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
+    const { db, sqlite } = t.reopen()
+    expect(db.select().from(notifications).all()).toHaveLength(1)
+    expect(db.select().from(auditLog).all()).toHaveLength(2)
+    sqlite.close()
+  })
+
   it('resets a password: new one-time password works once, old one stops, must change at next sign-in', async () => {
     const t = await fixture()
     const result = t.run('reset-password', 'admin@bphs.local')

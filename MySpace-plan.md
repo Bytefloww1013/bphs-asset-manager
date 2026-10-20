@@ -2,7 +2,7 @@
 
 > **[NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md) depends on this plan.** Build this one first: the Inbox, notification settings and notices all live in My Space.
 
-Status: **built (2026-10-19).** Both phases are done; the end-to-end check is in [design-qa.md](design-qa.md).
+Status: **built (2026-10-19).** Both phases are done; the end-to-end check is in [design-qa.md](design-qa.md). Muting, Notification settings and the Mailbox placeholder were removed after build (Oct 19 2026); the parts of this plan about them are history.
 
 ## How this plan is worked
 

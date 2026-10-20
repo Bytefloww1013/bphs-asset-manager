@@ -14,17 +14,22 @@ export function meRoutes(db: Db) {
     markAllRead(db, c.get('user').id)
     return c.body(null, 204)
   })
-  for (const [action, apply] of [
-    ['read', (userId: number, id: number) => setRead(db, userId, id, true)],
-    ['unread', (userId: number, id: number) => setRead(db, userId, id, false)],
-    ['archive', (userId: number, id: number) => setArchived(db, userId, id, true)],
-    ['unarchive', (userId: number, id: number) => setArchived(db, userId, id, false)],
-  ] as const) {
-    app.post(`/notifications/:id/${action}`, (c) => {
-      apply(c.get('user').id, intParam(c, 'id'))
-      return c.body(null, 204)
-    })
-  }
+  app.post('/notifications/:id/read', (c) => {
+    setRead(db, c.get('user').id, intParam(c, 'id'), true)
+    return c.body(null, 204)
+  })
+  app.post('/notifications/:id/unread', (c) => {
+    setRead(db, c.get('user').id, intParam(c, 'id'), false)
+    return c.body(null, 204)
+  })
+  app.post('/notifications/:id/archive', (c) => {
+    setArchived(db, c.get('user').id, intParam(c, 'id'), true)
+    return c.body(null, 204)
+  })
+  app.post('/notifications/:id/unarchive', (c) => {
+    setArchived(db, c.get('user').id, intParam(c, 'id'), false)
+    return c.body(null, 204)
+  })
 
   app.get('/notices/:id', (c) => c.json(readNotice(db, c.get('user').id, intParam(c, 'id'))))
 

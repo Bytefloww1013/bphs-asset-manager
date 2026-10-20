@@ -2,7 +2,7 @@
 
 > **Depends on [MySpace-plan.md](MySpace-plan.md).** The Inbox, notification settings and notices are pages in My Space, so that plan is built first.
 
-Status: **built (2026-10-19).** All five phases are done; the end-to-end check is in [design-qa.md](design-qa.md).
+Status: **built (2026-10-19).** All five phases are done; the end-to-end check is in [design-qa.md](design-qa.md). Muting, Notification settings and the Mailbox placeholder were removed after build (Oct 19 2026); the parts of this plan about them are history.
 
 ## How this plan is worked
 

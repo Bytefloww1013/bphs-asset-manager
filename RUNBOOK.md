@@ -199,11 +199,11 @@ curl -fsS http://localhost:8080/api/health
 
 Expect a short gap (seconds) while the container is recreated. Sessions live in the database, so people stay signed in.
 
-The notifications release adds migration `server/db/migrations/0017_notifications.sql` (notifications, notices and mutes). Like every migration it runs on the first start and cannot be undone, so take the backup above before upgrading to it.
+The notifications release adds migration `server/db/migrations/0017_notifications.sql` (notifications and notices). Like every migration it runs on the first start and cannot be undone, so take the backup above before upgrading to it.
 
-Migration `server/db/migrations/0018_drop_notification_mutes.sql` removes muting: it drops the mutes table and the `muted` column on notifications, so any mutes people set are gone. Take a backup before upgrading to it too.
+It is followed by `0018_drop_notification_mutes.sql`, which removes muting (it drops the mutes table and the `muted` column, so any mutes people set are gone), and `0019_notification_source_index.sql`, which adds an index for the overdue reminders. Take the same backup first. `server/admin.ts` now runs pending migrations too, so the break-glass commands work on a database the server has not started on yet.
 
-**Housekeeping timer.** Every 6 hours (and once at start) the server signs out expired sessions, deletes notifications over a year old, read or not, and sends the overdue-asset reminders (once per assignment). Nothing needs scheduling outside the container.
+**Housekeeping timer.** Every 6 hours (and once at start) the server signs out expired sessions, deletes notifications and notices over a year old, read or not, and sends the overdue-asset reminders (once per assignment). Nothing needs scheduling outside the container.
 
 **Rolling back:** check out the previous version, restore the pre-upgrade backup (5.1) and rebuild (`docker compose up -d --build`). Do not run an older version against a database a newer version has migrated.
 

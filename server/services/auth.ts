@@ -64,7 +64,7 @@ export function createSession(db: DbLike, userId: number, remember: boolean, now
  * `extendedTo` is the new expiry when this lookup moved a remembered session, which the cookie in the browser has to follow.
  * Any other session's cookie ends with the browser, so it has no expiry to move.
  */
-export function findSession(db: DbLike, token: string, now = new Date()): { user: AuthUser; extendedTo: Date | null } | null {
+export function findSession(db: DbLike, token: string, now = new Date(), touch = true): { user: AuthUser; extendedTo: Date | null } | null {
   const id = sha256(token)
   const row = db
     .select({ session: sessions, user: users })
@@ -74,7 +74,7 @@ export function findSession(db: DbLike, token: string, now = new Date()): { user
     .get()
   if (!row) return null
   let extendedTo: Date | null = null
-  if (now.getTime() - row.session.lastSeenAt.getTime() > 5 * MINUTE) {
+  if (touch && now.getTime() - row.session.lastSeenAt.getTime() > 5 * MINUTE) {
     const expiresAt = sessionExpiry(now, row.session.remember)
     db.update(sessions).set({ lastSeenAt: now, expiresAt }).where(eq(sessions.id, id)).run()
     if (row.session.remember) extendedTo = expiresAt

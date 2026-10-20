@@ -141,6 +141,8 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/maintenance', maintenanceRoutes(db))
   api.route('/reviews', reviewRoutes(db))
   api.route('/me', meRoutes(db))
+  api.use('/notices/*', requireSuperAdmin)
+  api.use('/notices', requireSuperAdmin)
   api.route('/notices', noticeRoutes(db))
   api.route('/', listRoutes(db))
   api.use('/users/*', requireSuperAdmin)

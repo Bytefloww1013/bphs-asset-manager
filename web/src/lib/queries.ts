@@ -35,7 +35,7 @@ import type {
   SessionUser,
   UserRow,
 } from '@shared/types.ts'
-import type { GrievanceStatus, ReviewStatus } from '@shared/constants.ts'
+import type { GrievanceStatus, NotificationView, ReviewStatus } from '@shared/constants.ts'
 import { ApiError, api, qs } from './api.ts'
 import { startOfLocalDay } from './format.ts'
 
@@ -275,8 +275,6 @@ export const notificationCountQuery = queryOptions({
   // Nothing is pushed: the bell asks every 30 seconds, and when the tab comes back.
   refetchInterval: 30_000,
 })
-
-export type NotificationView = 'unread' | 'all' | 'archived'
 
 /** The bell's popover: the latest few that are not archived. */
 export const latestNotificationsQuery = queryOptions({

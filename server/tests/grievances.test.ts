@@ -48,14 +48,14 @@ describe('the grievance audit log', () => {
   })
 
   // The two logs are kept apart in the source as well: grievance code never writes to the Audit Log, and nothing else writes to this one.
-  it('is written by grievance code only, which never writes to the audit log', () => {
+  it('is written by grievance code only, which never writes to the audit log or notifies', () => {
     const server = path.resolve(import.meta.dirname, '..')
     const sources = (fs.readdirSync(server, { recursive: true }) as string[])
       .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.startsWith('tests' + path.sep))
       .map((file) => ({ file: file.split(path.sep).join('/'), text: fs.readFileSync(path.join(server, file), 'utf8') }))
     const isGrievance = (file: string) => path.basename(file).startsWith('grievance')
     expect(sources.filter((s) => isGrievance(s.file)).map((s) => s.file)).toContain('lib/grievance-audit.ts')
-    expect(sources.filter((s) => isGrievance(s.file) && /\bwriteAudit\b|\bauditLog\b/.test(s.text)).map((s) => s.file)).toEqual([])
+    expect(sources.filter((s) => isGrievance(s.file) && /\bwriteAudit\b|\bauditLog\b|\bnotify\b/.test(s.text)).map((s) => s.file)).toEqual([])
     expect(sources.filter((s) => !isGrievance(s.file) && s.file !== 'db/schema.ts' && /\bwriteGrievanceAudit\b|\bgrievanceAuditLog\b/.test(s.text)).map((s) => s.file)).toEqual([])
   })
 })

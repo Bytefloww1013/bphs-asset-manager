@@ -9,7 +9,7 @@ import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { generateOneTimePassword, hashPassword } from '../lib/password.ts'
 import { deleteUserSessions, firstAccountId } from './auth.ts'
-import { notify } from './notifications.ts'
+import { forgetEmployeeNotifications, notify } from './notifications.ts'
 import { fullName } from './refs.ts'
 
 function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
@@ -79,6 +79,15 @@ export function notifyAccount(tx: DbLike, actor: Actor | null, userId: number, k
   notify(tx, actor, { recipients: [userId], kind, sourceKey: `user:${userId}`, title, body, link: '/me/profile' })
 }
 
+/** Clearing a failed-attempt count on an account that was never locked is not news. */
+export const isLocked = (user: { lockedUntil: Date | null }, now = new Date()) => user.lockedUntil !== null && user.lockedUntil > now
+
+/** `by` says who did it: "by <name>", or "on the server, from its command line". */
+export const tellUnlocked = (tx: DbLike, actor: Actor | null, userId: number, by: string) =>
+  notifyAccount(tx, actor, userId, 'account_unlocked', 'Your account was unlocked', `Unlocked ${by}.`)
+export const tellPasswordReset = (tx: DbLike, actor: Actor | null, userId: number, by: string) =>
+  notifyAccount(tx, actor, userId, 'account_password_reset', 'Your password was reset', `Reset ${by}. If you did not expect this, tell a Super Admin.`)
+
 /** A new account starts with a one-time password and must change it on first login. */
 export async function createUser(db: Db, actor: Actor, input: UserCreateInput): Promise<UserWithPassword> {
   const oneTimePassword = generateOneTimePassword()
@@ -142,6 +151,7 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
       notifyAccount(tx, actor, id, 'account_access_changed', 'Your access was changed', `Changed by ${actor.name}. See your Profile for what you can do now.`)
     }
     if (patch.employeeId !== undefined) {
+      forgetEmployeeNotifications(tx, id)
       notifyAccount(tx, actor, id, 'account_employee_linked', 'The employee linked to your account was changed', `Now ${employeeLabel(tx, patch.employeeId)}. Changed by ${actor.name}.`)
     }
   })
@@ -162,7 +172,7 @@ export async function resetPassword(db: Db, actor: Actor, id: number): Promise<U
     tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, id)).run()
     deleteUserSessions(tx, id)
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${target.email} · password reset · must change on next login` })
-    notifyAccount(tx, actor, id, 'account_password_reset', 'Your password was reset', `Reset by ${actor.name}. If you did not expect this, tell a Super Admin.`)
+    tellPasswordReset(tx, actor, id, `by ${actor.name}`)
   })
   return { user: toRow(requireUser(db, id)), oneTimePassword }
 }
@@ -172,8 +182,7 @@ export function clearLock(db: Db, actor: Actor, id: number): UserRow {
     const target = requireUser(tx, id)
     tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, id)).run()
     writeAudit(tx, actor, { action: 'update', entityType: 'user', entityId: id, details: `${target.email} · locked_until cleared` })
-    // Clearing a failed-attempt count on an account that was never locked is not news.
-    if (target.lockedUntil && target.lockedUntil > new Date()) notifyAccount(tx, actor, id, 'account_unlocked', 'Your account was unlocked', `Unlocked by ${actor.name}.`)
+    if (isLocked(target)) tellUnlocked(tx, actor, id, `by ${actor.name}`)
   })
   return toRow(requireUser(db, id))
 }

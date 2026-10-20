@@ -14,12 +14,13 @@ import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { describeAccess } from '../shared/permissions.ts'
 import { config } from './config.ts'
-import { createDb, type DbLike } from './db/client.ts'
+import { createDb, runMigrations, type DbLike } from './db/client.ts'
 import { auditLog, users } from './db/schema.ts'
 import { generateOneTimePassword, hashPassword } from './lib/password.ts'
 import { deleteUserSessions } from './services/auth.ts'
-import { notifyAccount } from './services/users.ts'
+import { isLocked, tellPasswordReset, tellUnlocked } from './services/users.ts'
 
+const CLI = 'on the server, from its command line'
 const USAGE = 'Usage: node server/admin.ts list | unlock <email> | reset-password <email>'
 
 function fail(message: string): never {
@@ -32,6 +33,8 @@ if (!fs.existsSync(file)) fail(`No database at ${file}`)
 
 const [command, emailArg] = process.argv.slice(2)
 const { db, sqlite } = createDb(file)
+// The app may never have started on this image, as after restoring an older backup: the commands below need today's tables.
+runMigrations(db)
 
 function findUser(db: DbLike, email: string | undefined) {
   if (!email) fail(USAGE)
@@ -58,7 +61,7 @@ if (command === 'list') {
   db.transaction((tx) => {
     tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
     audit(tx, user.id, `${user.email} · locked_until cleared via server CLI`)
-    if (user.lockedUntil && user.lockedUntil > new Date()) notifyAccount(tx, null, user.id, 'account_unlocked', 'Your account was unlocked', 'Unlocked on the server, from its command line.')
+    if (isLocked(user)) tellUnlocked(tx, null, user.id, CLI)
   })
   console.log(`Unlocked ${user.email}.`)
 } else if (command === 'reset-password') {
@@ -69,7 +72,7 @@ if (command === 'list') {
     tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
     deleteUserSessions(tx, user.id)
     audit(tx, user.id, `${user.email} · password reset via server CLI · must change on next login`)
-    notifyAccount(tx, null, user.id, 'account_password_reset', 'Your password was reset', 'Reset on the server, from its command line. If you did not expect this, tell a Super Admin.')
+    tellPasswordReset(tx, null, user.id, CLI)
   })
   console.log(`Password reset for ${user.email}.`)
   console.log(`  one-time password: ${oneTimePassword}   (they must change it at the next sign-in)`)

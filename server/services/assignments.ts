@@ -224,6 +224,9 @@ interface PoorReturn {
   rating: string
 }
 
+// A year-end return can bring back hundreds: the Overview lists the rest.
+const POOR_TAGS_LISTED = 10
+
 /** Tells the Assets team about returns rated in the attention band: one notification however many came back together. */
 function notifyPoorReturns(db: DbLike, actor: Actor, returns: PoorReturn[]) {
   const [first] = returns
@@ -244,7 +247,7 @@ function notifyPoorReturns(db: DbLike, actor: Actor, returns: PoorReturn[]) {
       kind: 'asset_returned_poor',
       sourceKey: `return-bulk:${first.assignmentId}`,
       title: `${returns.length} assets came back in poor condition`,
-      body: returns.map((item) => `${item.tag} (${item.rating})`).join(', '),
+      body: [...returns.slice(0, POOR_TAGS_LISTED).map((item) => `${item.tag} (${item.rating})`), ...(returns.length > POOR_TAGS_LISTED ? [`and ${returns.length - POOR_TAGS_LISTED} more`] : [])].join(', '),
       link: '/',
     })
   }
@@ -272,7 +275,12 @@ export function returnMany(db: Db, actor: Actor, input: ReturnBulkInput): Return
       result.failed.push({ id, message: rowFailure(error, log) })
     }
   }
-  // Sent after the loop, outside the returns' own transactions, so a bulk return makes one notification and not one per row.
-  notifyPoorReturns(db, actor, poor)
+  // Sent after the loop, in a transaction of its own, so a bulk return makes one notification and not one per row.
+  // The returns have already gone through, so a failure here is logged rather than reported as theirs.
+  try {
+    db.transaction((tx) => notifyPoorReturns(tx, actor, poor))
+  } catch (error) {
+    console.error(error)
+  }
   return result
 }

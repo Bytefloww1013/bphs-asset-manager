@@ -173,21 +173,24 @@ export const MAINTENANCE_DESCRIPTION_MAX = 50_000
  * What a notification can be about. Nothing is ever sent about Grievances or Administrative Reviews: a notification would leak
  * that a case exists.
  */
-export const NOTIFICATION_KINDS = {
-  asset_issued: { label: 'Assets issued to you' },
-  digital_issued: { label: 'Digital assets issued to you' },
-  asset_returned_poor: { label: 'Assets returned in poor condition' },
-  maintenance_dispatched: { label: 'Maintenance requests dispatched to you' },
-  maintenance_changed: { label: 'Changes to your maintenance requests' },
-  asset_overdue: { label: 'Overdue assets' },
-  account_password_reset: { label: 'Password resets' },
-  account_access_changed: { label: 'Access changes' },
-  account_unlocked: { label: 'Account unlocks' },
-  account_employee_linked: { label: 'Linked employee changes' },
-  notice: { label: 'Notices' },
-} as const satisfies Record<string, { label: string }>
-export type NotificationKind = keyof typeof NOTIFICATION_KINDS
-export const NOTIFICATION_KIND_KEYS = Object.keys(NOTIFICATION_KINDS) as [NotificationKind, ...NotificationKind[]]
+export const NOTIFICATION_KIND_LABEL = {
+  asset_issued: 'Asset issued',
+  digital_issued: 'Digital asset issued',
+  asset_returned_poor: 'Poor-condition return',
+  maintenance_dispatched: 'Maintenance dispatched',
+  maintenance_changed: 'Maintenance update',
+  asset_overdue: 'Overdue asset',
+  account_password_reset: 'Password reset',
+  account_access_changed: 'Access change',
+  account_unlocked: 'Account unlocked',
+  account_employee_linked: 'Linked employee change',
+  notice: 'Notice',
+} as const
+export type NotificationKind = keyof typeof NOTIFICATION_KIND_LABEL
+
+/** The Inbox's views. */
+export const NOTIFICATION_VIEWS = ['unread', 'all', 'archived'] as const
+export type NotificationView = (typeof NOTIFICATION_VIEWS)[number]
 
 /** A notice is plain text with line breaks: short enough to read in the bell's popover. */
 export const NOTICE_TITLE_MAX = 120

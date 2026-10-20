@@ -38,7 +38,7 @@ Ideas agreed on but not planned yet. Each gets its own `[feature]-plan.md` when 
 - [ ] **Custom notification triggers.** Rules such as "notify me when a new asset is assigned to my program" or "when an asset comes back in poor condition". Default audience: Edit/Full in the section plus Super Admins. The notifications tables are designed so this needs only a rules table.
 - [ ] **Show many workspaces cleanly.** Staff keep asking for more features and workspaces. Decide how the workspace switcher should look with many of them (grouped list, a launcher, search), before a fifth workspace is added.
 - [ ] **Mailbox in My Space.** Messages between people, with replies.
-- [ ] **Personal Dashboard in My Space.** A home page each person can arrange, within limits. Also a placeholder until then.
+- [ ] **Personal Dashboard in My Space.** A home page each person can arrange, within limits.
 
 ## Maybe
 

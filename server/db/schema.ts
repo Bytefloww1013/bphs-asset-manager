@@ -680,7 +680,7 @@ export const notifications = sqliteTable(
     userId: integer('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    /** One of NOTIFICATION_KINDS. Open text, so a new kind needs no migration. */
+    /** One of NOTIFICATION_KIND_LABEL's keys. Open text, so a new kind needs no migration. */
     kind: text('kind').notNull(),
     /** What the notification is about, as in `asset:113`. */
     sourceKey: text('source_key').notNull(),
@@ -695,6 +695,8 @@ export const notifications = sqliteTable(
   (t) => [
     index('ix_notifications_user').on(t.userId, t.archivedAt, t.createdAt),
     index('ix_notifications_unread').on(t.userId).where(sql`${t.readAt} is null and ${t.archivedAt} is null`),
+    // The overdue reminders and the notices look rows up by what they are about.
+    index('ix_notifications_source').on(t.sourceKey, t.kind),
   ],
 )
 

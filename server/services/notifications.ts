@@ -81,7 +81,6 @@ export function sectionTeam(db: DbLike, section: Section): number[] {
 const toRow = (row: typeof notifications.$inferSelect): NotificationRow => ({
   id: row.id,
   kind: row.kind as NotificationKind,
-  sourceKey: row.sourceKey,
   title: row.title,
   body: row.body,
   link: row.link,
@@ -174,7 +173,8 @@ export function sendNotice(db: Db, actor: Actor, input: NoticeInput, now = new D
     const recipients = input.audience === 'all' ? tx.select({ id: users.id }).from(users).all().map((row) => row.id) : input.audience.userIds
     const sent = notify(tx, actor, { recipients, kind: 'notice', sourceKey: `notice:${id}`, title: input.title, body: input.body, link: `/me/inbox/${id}` }, now)
     if (sent === 0) throw invalid('Nobody would get this notice. It goes only to active accounts, and never to you.', { field: 'audience' })
-    writeAudit(tx, actor, { action: 'create', entityType: 'notice', entityId: id, details: `${input.title} · to ${input.audience === 'all' ? 'everyone' : 'picked accounts'} · ${sent} recipient${sent === 1 ? '' : 's'}`, at: now })
+    // No title: the main audit log is open to every Assets reader, and a picked notice is for its recipients.
+    writeAudit(tx, actor, { action: 'create', entityType: 'notice', entityId: id, details: `notice #${id} · to ${input.audience === 'all' ? 'everyone' : 'picked accounts'} · ${sent} recipient${sent === 1 ? '' : 's'}`, at: now })
     return listNotices(tx, id)[0]!
   })
 }
@@ -191,11 +191,25 @@ export function readNotice(db: DbLike, userId: number, id: number, now = new Dat
   return { id: noticeId, title, body, sentBy, createdAt }
 }
 
-/** Notifications over a year old go, read or not. Runs on the 6-hourly timer. */
+/** Notifications over a year old go, read or not, and so do the notices: a notice's recipients are its notifications. Runs on the 6-hourly timer. */
 export function purgeNotifications(db: DbLike, now = new Date()) {
   const cutoff = new Date(now)
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1)
   db.delete(notifications).where(lt(notifications.createdAt, cutoff)).run()
+  db.delete(notices).where(lt(notices.createdAt, cutoff)).run()
+}
+
+/** What an account is told as the employee linked to it. When the link changes, these belong to someone else. */
+const AS_EMPLOYEE: NotificationKind[] = ['asset_issued', 'digital_issued', 'asset_overdue', 'maintenance_dispatched', 'maintenance_changed']
+
+/** Drops what an account was told as the employee it was linked to. Call inside the transaction that changes the link. */
+export function forgetEmployeeNotifications(tx: DbLike, userId: number) {
+  tx.delete(notifications).where(and(eq(notifications.userId, userId), inArray(notifications.kind, AS_EMPLOYEE))).run()
+}
+
+/** Keeps the links to an asset's page working after its tag changes. Call inside the transaction that renames it. */
+export function relinkAsset(tx: DbLike, oldTag: string, newTag: string) {
+  tx.update(notifications).set({ link: `/assets/${newTag}` }).where(eq(notifications.link, `/assets/${oldTag}`)).run()
 }
 
 /**

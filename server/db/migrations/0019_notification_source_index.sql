@@ -1,0 +1,1 @@
+CREATE INDEX `ix_notifications_source` ON `notifications` (`source_key`,`kind`);

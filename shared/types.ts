@@ -598,7 +598,6 @@ export interface MaintenanceNote {
 export interface NotificationRow {
   id: number
   kind: NotificationKind
-  sourceKey: string
   title: string
   body: string | null
   /** An in-app path. */
