@@ -16,6 +16,7 @@ import { conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { describeRowProblem } from '../../shared/rows.ts'
 import { daysBetween } from '../lib/time.ts'
 import { issueInTx } from './assignments.ts'
+import { relinkAsset } from './notifications.ts'
 import { assessorFor, fullName, requireActiveRating } from './refs.ts'
 
 interface AssetBase {
@@ -244,7 +245,7 @@ function assertTagFree(db: DbLike, tag: string, exceptId?: number) {
   }
 }
 
-function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date): number {
+function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date, notifyHolder = true): number {
   const type = requireType(tx, input.typeId)
   const rating = requireActiveRating(tx, input.conditionRatingId)
   assertTagFree(tx, input.tag)
@@ -269,6 +270,7 @@ function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date
         notes: input.notes,
       },
       now,
+      notifyHolder,
     )
   } else {
     tx.insert(conditions)
@@ -332,6 +334,7 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
             holderId,
           },
           new Date(),
+          false,
         ),
       )
       result.created += 1
@@ -366,6 +369,7 @@ export function updateAsset(db: Db, actor: Actor, id: number, input: AssetUpdate
     }
     if (changes.length === 0) return
     tx.update(assets).set(patch).where(eq(assets.id, id)).run()
+    if (patch.tag) relinkAsset(tx, current.tag, patch.tag)
     writeAudit(tx, actor, { action: 'update', entityType: 'asset', entityId: id, details: `${patch.tag ?? current.tag} · ${changes.join('; ')}` })
   })
   return getAssetRow(db, id)

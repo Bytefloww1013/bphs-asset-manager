@@ -29,6 +29,8 @@ export async function setup() {
     db.insert(users).values({ name, email, passwordHash, mustChangePassword: false, ...extra }).returning().get()
   const superUser = add('Priya Raghunathan', 'p.raghunathan@bphs.local', { superAdmin: true, employeeId: person.id })
   const adminUser = add('Marcus Oyelaran', 'm.oyelaran@bphs.local', { access: ADMIN })
+  /** Another account, with the same password as the others. */
+  const addUser = (email: string, extra: Partial<typeof users.$inferInsert> = {}) => add(email, email, extra)
 
   async function call(method: string, path: string, options: { cookie?: string; body?: unknown } = {}) {
     const headers: Record<string, string> = {}
@@ -65,7 +67,7 @@ export async function setup() {
       conditionRatings: { id: number; name: string }[]
     }
 
-  return { db, sqlite, app, call, signIn, asSuper, asAdmin, superUser, adminUser, person, lookups }
+  return { db, sqlite, app, call, signIn, asSuper, asAdmin, superUser, adminUser, person, lookups, addUser }
 }
 
 export const findUser = (db: Db, email: string) => db.select().from(users).where(eq(users.email, email)).get()

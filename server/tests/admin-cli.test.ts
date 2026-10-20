@@ -5,7 +5,7 @@ import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createDb, runMigrations } from '../db/client.ts'
-import { auditLog, users } from '../db/schema.ts'
+import { auditLog, notifications, users } from '../db/schema.ts'
 import { hashPassword } from '../lib/password.ts'
 import { login } from '../services/auth.ts'
 
@@ -56,6 +56,17 @@ describe('server/admin.ts (break-glass recovery)', () => {
     const entries = db.select().from(auditLog).all()
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ actor: 'server-cli', entityType: 'user', entityId: row?.id, userId: null })
+    expect(db.select().from(notifications).all()).toMatchObject([{ userId: row?.id, kind: 'account_unlocked', body: expect.stringContaining('command line') }])
+    sqlite.close()
+  })
+
+  it('does not tell an account that was not locked that it was unlocked', async () => {
+    const t = await fixture()
+    expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
+    expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
+    const { db, sqlite } = t.reopen()
+    expect(db.select().from(notifications).all()).toHaveLength(1)
+    expect(db.select().from(auditLog).all()).toHaveLength(2)
     sqlite.close()
   })
 
@@ -75,6 +86,10 @@ describe('server/admin.ts (break-glass recovery)', () => {
     expect(db.select().from(auditLog).all().map((e) => e.details)).toEqual([
       expect.stringContaining('password reset via server CLI'),
       'admin@bphs.local · signed in',
+    ])
+    // The CLI is the actor, so the account itself is told.
+    expect(db.select().from(notifications).all()).toMatchObject([
+      { userId: row?.id, kind: 'account_password_reset', title: 'Your password was reset', body: expect.stringContaining('command line') },
     ])
     sqlite.close()
   })

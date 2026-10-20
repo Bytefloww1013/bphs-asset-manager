@@ -21,6 +21,7 @@ import { Route as AppGrievancesRouteImport } from './routes/_app/grievances'
 import { Route as AppImportExportRouteImport } from './routes/_app/import-export'
 import { Route as AppListsRouteImport } from './routes/_app/lists'
 import { Route as AppMaintenanceRouteImport } from './routes/_app/maintenance'
+import { Route as AppMeRouteImport } from './routes/_app/me'
 import { Route as AppProgramsRouteImport } from './routes/_app/programs'
 import { Route as AppReviewsRouteImport } from './routes/_app/reviews'
 import { Route as AppUsersRouteImport } from './routes/_app/users'
@@ -36,6 +37,10 @@ import { Route as AppGrievancesNewRouteImport } from './routes/_app/grievances.n
 import { Route as AppMaintenanceIndexRouteImport } from './routes/_app/maintenance.index'
 import { Route as AppMaintenanceIdRouteImport } from './routes/_app/maintenance.$id'
 import { Route as AppMaintenanceNewRouteImport } from './routes/_app/maintenance.new'
+import { Route as AppMeIndexRouteImport } from './routes/_app/me.index'
+import { Route as AppMeInboxRouteImport } from './routes/_app/me.inbox'
+import { Route as AppMeNoticesRouteImport } from './routes/_app/me.notices'
+import { Route as AppMeProfileRouteImport } from './routes/_app/me.profile'
 import { Route as AppReviewsIndexRouteImport } from './routes/_app/reviews.index'
 import { Route as AppReviewsActionsRouteImport } from './routes/_app/reviews.actions'
 import { Route as AppReviewsAuditRouteImport } from './routes/_app/reviews.audit'
@@ -46,6 +51,7 @@ import { Route as ReviewsCodeCaseFileRouteImport } from './routes/reviews.$code.
 import { Route as AppGrievancesCodeIndexRouteImport } from './routes/_app/grievances.$code.index'
 import { Route as AppGrievancesCodeEditRouteImport } from './routes/_app/grievances.$code.edit'
 import { Route as AppGrievancesCodeVersionsRouteImport } from './routes/_app/grievances.$code.versions'
+import { Route as AppMeInboxNoticeIdRouteImport } from './routes/_app/me.inbox_.$noticeId'
 import { Route as AppReviewsCodeIndexRouteImport } from './routes/_app/reviews.$code.index'
 import { Route as AppReviewsCodeEditRouteImport } from './routes/_app/reviews.$code.edit'
 import { Route as AppGrievancesCodeEntriesSeqRouteImport } from './routes/_app/grievances.$code.entries.$seq'
@@ -112,6 +118,11 @@ const AppListsRoute = AppListsRouteImport.update({
 const AppMaintenanceRoute = AppMaintenanceRouteImport.update({
   id: '/maintenance',
   path: '/maintenance',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMeRoute = AppMeRouteImport.update({
+  id: '/me',
+  path: '/me',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProgramsRoute = AppProgramsRouteImport.update({
@@ -189,6 +200,26 @@ const AppMaintenanceNewRoute = AppMaintenanceNewRouteImport.update({
   path: '/new',
   getParentRoute: () => AppMaintenanceRoute,
 } as any)
+const AppMeIndexRoute = AppMeIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppMeRoute,
+} as any)
+const AppMeInboxRoute = AppMeInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AppMeRoute,
+} as any)
+const AppMeNoticesRoute = AppMeNoticesRouteImport.update({
+  id: '/notices',
+  path: '/notices',
+  getParentRoute: () => AppMeRoute,
+} as any)
+const AppMeProfileRoute = AppMeProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppMeRoute,
+} as any)
 const AppReviewsIndexRoute = AppReviewsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -240,6 +271,11 @@ const AppGrievancesCodeVersionsRoute =
     path: '/$code/versions',
     getParentRoute: () => AppGrievancesRoute,
   } as any)
+const AppMeInboxNoticeIdRoute = AppMeInboxNoticeIdRouteImport.update({
+  id: '/inbox_/$noticeId',
+  path: '/inbox/$noticeId',
+  getParentRoute: () => AppMeRoute,
+} as any)
 const AppReviewsCodeIndexRoute = AppReviewsCodeIndexRouteImport.update({
   id: '/$code/',
   path: '/$code/',
@@ -298,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/import-export': typeof AppImportExportRoute
   '/lists': typeof AppListsRoute
   '/maintenance': typeof AppMaintenanceRouteWithChildren
+  '/me': typeof AppMeRouteWithChildren
   '/programs': typeof AppProgramsRoute
   '/reviews': typeof AppReviewsRouteWithChildren
   '/users': typeof AppUsersRoute
@@ -309,6 +346,9 @@ export interface FileRoutesByFullPath {
   '/grievances/new': typeof AppGrievancesNewRoute
   '/maintenance/$id': typeof AppMaintenanceIdRoute
   '/maintenance/new': typeof AppMaintenanceNewRoute
+  '/me/inbox': typeof AppMeInboxRoute
+  '/me/notices': typeof AppMeNoticesRoute
+  '/me/profile': typeof AppMeProfileRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/audit': typeof AppReviewsAuditRoute
   '/reviews/employees': typeof AppReviewsEmployeesRoute
@@ -319,9 +359,11 @@ export interface FileRoutesByFullPath {
   '/employees/': typeof AppEmployeesIndexRoute
   '/grievances/': typeof AppGrievancesIndexRoute
   '/maintenance/': typeof AppMaintenanceIndexRoute
+  '/me/': typeof AppMeIndexRoute
   '/reviews/': typeof AppReviewsIndexRoute
   '/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
   '/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
+  '/me/inbox/$noticeId': typeof AppMeInboxNoticeIdRoute
   '/reviews/$code/edit': typeof AppReviewsCodeEditRoute
   '/grievances/$code/': typeof AppGrievancesCodeIndexRoute
   '/reviews/$code/': typeof AppReviewsCodeIndexRoute
@@ -352,6 +394,9 @@ export interface FileRoutesByTo {
   '/grievances/new': typeof AppGrievancesNewRoute
   '/maintenance/$id': typeof AppMaintenanceIdRoute
   '/maintenance/new': typeof AppMaintenanceNewRoute
+  '/me/inbox': typeof AppMeInboxRoute
+  '/me/notices': typeof AppMeNoticesRoute
+  '/me/profile': typeof AppMeProfileRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/audit': typeof AppReviewsAuditRoute
   '/reviews/employees': typeof AppReviewsEmployeesRoute
@@ -362,9 +407,11 @@ export interface FileRoutesByTo {
   '/employees': typeof AppEmployeesIndexRoute
   '/grievances': typeof AppGrievancesIndexRoute
   '/maintenance': typeof AppMaintenanceIndexRoute
+  '/me': typeof AppMeIndexRoute
   '/reviews': typeof AppReviewsIndexRoute
   '/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
   '/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
+  '/me/inbox/$noticeId': typeof AppMeInboxNoticeIdRoute
   '/reviews/$code/edit': typeof AppReviewsCodeEditRoute
   '/grievances/$code': typeof AppGrievancesCodeIndexRoute
   '/reviews/$code': typeof AppReviewsCodeIndexRoute
@@ -388,6 +435,7 @@ export interface FileRoutesById {
   '/_app/import-export': typeof AppImportExportRoute
   '/_app/lists': typeof AppListsRoute
   '/_app/maintenance': typeof AppMaintenanceRouteWithChildren
+  '/_app/me': typeof AppMeRouteWithChildren
   '/_app/programs': typeof AppProgramsRoute
   '/_app/reviews': typeof AppReviewsRouteWithChildren
   '/_app/users': typeof AppUsersRoute
@@ -400,6 +448,9 @@ export interface FileRoutesById {
   '/_app/grievances/new': typeof AppGrievancesNewRoute
   '/_app/maintenance/$id': typeof AppMaintenanceIdRoute
   '/_app/maintenance/new': typeof AppMaintenanceNewRoute
+  '/_app/me/inbox': typeof AppMeInboxRoute
+  '/_app/me/notices': typeof AppMeNoticesRoute
+  '/_app/me/profile': typeof AppMeProfileRoute
   '/_app/reviews/actions': typeof AppReviewsActionsRoute
   '/_app/reviews/audit': typeof AppReviewsAuditRoute
   '/_app/reviews/employees': typeof AppReviewsEmployeesRoute
@@ -410,9 +461,11 @@ export interface FileRoutesById {
   '/_app/employees/': typeof AppEmployeesIndexRoute
   '/_app/grievances/': typeof AppGrievancesIndexRoute
   '/_app/maintenance/': typeof AppMaintenanceIndexRoute
+  '/_app/me/': typeof AppMeIndexRoute
   '/_app/reviews/': typeof AppReviewsIndexRoute
   '/_app/grievances/$code/edit': typeof AppGrievancesCodeEditRoute
   '/_app/grievances/$code/versions': typeof AppGrievancesCodeVersionsRoute
+  '/_app/me/inbox_/$noticeId': typeof AppMeInboxNoticeIdRoute
   '/_app/reviews/$code/edit': typeof AppReviewsCodeEditRoute
   '/_app/grievances/$code/': typeof AppGrievancesCodeIndexRoute
   '/_app/reviews/$code/': typeof AppReviewsCodeIndexRoute
@@ -437,6 +490,7 @@ export interface FileRouteTypes {
     | '/import-export'
     | '/lists'
     | '/maintenance'
+    | '/me'
     | '/programs'
     | '/reviews'
     | '/users'
@@ -448,6 +502,9 @@ export interface FileRouteTypes {
     | '/grievances/new'
     | '/maintenance/$id'
     | '/maintenance/new'
+    | '/me/inbox'
+    | '/me/notices'
+    | '/me/profile'
     | '/reviews/actions'
     | '/reviews/audit'
     | '/reviews/employees'
@@ -458,9 +515,11 @@ export interface FileRouteTypes {
     | '/employees/'
     | '/grievances/'
     | '/maintenance/'
+    | '/me/'
     | '/reviews/'
     | '/grievances/$code/edit'
     | '/grievances/$code/versions'
+    | '/me/inbox/$noticeId'
     | '/reviews/$code/edit'
     | '/grievances/$code/'
     | '/reviews/$code/'
@@ -491,6 +550,9 @@ export interface FileRouteTypes {
     | '/grievances/new'
     | '/maintenance/$id'
     | '/maintenance/new'
+    | '/me/inbox'
+    | '/me/notices'
+    | '/me/profile'
     | '/reviews/actions'
     | '/reviews/audit'
     | '/reviews/employees'
@@ -501,9 +563,11 @@ export interface FileRouteTypes {
     | '/employees'
     | '/grievances'
     | '/maintenance'
+    | '/me'
     | '/reviews'
     | '/grievances/$code/edit'
     | '/grievances/$code/versions'
+    | '/me/inbox/$noticeId'
     | '/reviews/$code/edit'
     | '/grievances/$code'
     | '/reviews/$code'
@@ -526,6 +590,7 @@ export interface FileRouteTypes {
     | '/_app/import-export'
     | '/_app/lists'
     | '/_app/maintenance'
+    | '/_app/me'
     | '/_app/programs'
     | '/_app/reviews'
     | '/_app/users'
@@ -538,6 +603,9 @@ export interface FileRouteTypes {
     | '/_app/grievances/new'
     | '/_app/maintenance/$id'
     | '/_app/maintenance/new'
+    | '/_app/me/inbox'
+    | '/_app/me/notices'
+    | '/_app/me/profile'
     | '/_app/reviews/actions'
     | '/_app/reviews/audit'
     | '/_app/reviews/employees'
@@ -548,9 +616,11 @@ export interface FileRouteTypes {
     | '/_app/employees/'
     | '/_app/grievances/'
     | '/_app/maintenance/'
+    | '/_app/me/'
     | '/_app/reviews/'
     | '/_app/grievances/$code/edit'
     | '/_app/grievances/$code/versions'
+    | '/_app/me/inbox_/$noticeId'
     | '/_app/reviews/$code/edit'
     | '/_app/grievances/$code/'
     | '/_app/reviews/$code/'
@@ -654,6 +724,13 @@ declare module '@tanstack/react-router' {
       path: '/maintenance'
       fullPath: '/maintenance'
       preLoaderRoute: typeof AppMaintenanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/me': {
+      id: '/_app/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof AppMeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/programs': {
@@ -761,6 +838,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMaintenanceNewRouteImport
       parentRoute: typeof AppMaintenanceRoute
     }
+    '/_app/me/': {
+      id: '/_app/me/'
+      path: '/'
+      fullPath: '/me/'
+      preLoaderRoute: typeof AppMeIndexRouteImport
+      parentRoute: typeof AppMeRoute
+    }
+    '/_app/me/inbox': {
+      id: '/_app/me/inbox'
+      path: '/inbox'
+      fullPath: '/me/inbox'
+      preLoaderRoute: typeof AppMeInboxRouteImport
+      parentRoute: typeof AppMeRoute
+    }
+    '/_app/me/notices': {
+      id: '/_app/me/notices'
+      path: '/notices'
+      fullPath: '/me/notices'
+      preLoaderRoute: typeof AppMeNoticesRouteImport
+      parentRoute: typeof AppMeRoute
+    }
+    '/_app/me/profile': {
+      id: '/_app/me/profile'
+      path: '/profile'
+      fullPath: '/me/profile'
+      preLoaderRoute: typeof AppMeProfileRouteImport
+      parentRoute: typeof AppMeRoute
+    }
     '/_app/reviews/': {
       id: '/_app/reviews/'
       path: '/'
@@ -830,6 +935,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/grievances/$code/versions'
       preLoaderRoute: typeof AppGrievancesCodeVersionsRouteImport
       parentRoute: typeof AppGrievancesRoute
+    }
+    '/_app/me/inbox_/$noticeId': {
+      id: '/_app/me/inbox_/$noticeId'
+      path: '/inbox/$noticeId'
+      fullPath: '/me/inbox/$noticeId'
+      preLoaderRoute: typeof AppMeInboxNoticeIdRouteImport
+      parentRoute: typeof AppMeRoute
     }
     '/_app/reviews/$code/': {
       id: '/_app/reviews/$code/'
@@ -936,6 +1048,24 @@ const AppMaintenanceRouteWithChildren = AppMaintenanceRoute._addFileChildren(
   AppMaintenanceRouteChildren,
 )
 
+interface AppMeRouteChildren {
+  AppMeInboxRoute: typeof AppMeInboxRoute
+  AppMeNoticesRoute: typeof AppMeNoticesRoute
+  AppMeProfileRoute: typeof AppMeProfileRoute
+  AppMeIndexRoute: typeof AppMeIndexRoute
+  AppMeInboxNoticeIdRoute: typeof AppMeInboxNoticeIdRoute
+}
+
+const AppMeRouteChildren: AppMeRouteChildren = {
+  AppMeInboxRoute: AppMeInboxRoute,
+  AppMeNoticesRoute: AppMeNoticesRoute,
+  AppMeProfileRoute: AppMeProfileRoute,
+  AppMeIndexRoute: AppMeIndexRoute,
+  AppMeInboxNoticeIdRoute: AppMeInboxNoticeIdRoute,
+}
+
+const AppMeRouteWithChildren = AppMeRoute._addFileChildren(AppMeRouteChildren)
+
 interface AppReviewsRouteChildren {
   AppReviewsActionsRoute: typeof AppReviewsActionsRoute
   AppReviewsAuditRoute: typeof AppReviewsAuditRoute
@@ -977,6 +1107,7 @@ interface AppRouteChildren {
   AppImportExportRoute: typeof AppImportExportRoute
   AppListsRoute: typeof AppListsRoute
   AppMaintenanceRoute: typeof AppMaintenanceRouteWithChildren
+  AppMeRoute: typeof AppMeRouteWithChildren
   AppProgramsRoute: typeof AppProgramsRoute
   AppReviewsRoute: typeof AppReviewsRouteWithChildren
   AppUsersRoute: typeof AppUsersRoute
@@ -996,6 +1127,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImportExportRoute: AppImportExportRoute,
   AppListsRoute: AppListsRoute,
   AppMaintenanceRoute: AppMaintenanceRouteWithChildren,
+  AppMeRoute: AppMeRouteWithChildren,
   AppProgramsRoute: AppProgramsRoute,
   AppReviewsRoute: AppReviewsRouteWithChildren,
   AppUsersRoute: AppUsersRoute,

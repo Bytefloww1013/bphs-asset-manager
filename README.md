@@ -135,6 +135,17 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 | Employees | `/reviews/employees` |
 | Review audit log (filter, search, CSV export) | `/reviews/audit` |
 
+**My Space**, the signed-in person's own pages, opened from the account menu. Every account has it, whatever its access. It is not a workspace: workspaces are shared work areas that access is granted to, and they are the ones in the switcher. Its sidebar has a Back link to the last workspace in place of the switcher, and a greyed-out Personal Dashboard entry marked "Coming later".
+
+| Screen | Route |
+| --- | --- |
+| Inbox: Unread, All and Archived; mark read or unread, or archive | `/me/inbox` |
+| A notice in full (opening it marks it read) | `/me/inbox/1` |
+| Profile: name, email, linked employee, access in each section (read-only) | `/me/profile` (`/me` opens it) |
+| Notices (Super Admins only): send one to everyone or to picked accounts, and see "n of m read" for each sent | `/me/notices` |
+
+**Notifications** are in-app only, never email. A bell with a red count of unread ones sits in the sidebar header and the mobile top bar; it opens the latest eight, with Mark all read and See all. The count is fetched every 30 seconds and when the tab regains focus. An account is notified when an asset or digital asset is issued to its employee, when an asset it holds goes overdue (once), when a maintenance request is dispatched to it, taken from it, changes status or gets a note, and when its own account changes (password reset, access, unlock, employee link). The Assets team (Edit or Full, plus Super Admins) is told of returns in poor condition, one notification per bulk return. Your own actions never notify you, deactivated accounts and imports get nothing, and **Grievances and Administrative Reviews never notify anyone**: a notification would show that a case exists. Notifications over a year old are deleted by the 6-hourly timer that also clears expired sessions and sends the overdue reminders.
+
 ### Rules the system enforces
 
 - One open assignment per asset, in the app **and** by a partial unique index in the database.
@@ -188,7 +199,8 @@ The design was reworked for legibility and comfort, not just restyled:
 - The audit log export caps at 50,000 rows per download, and is CSV only.
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
 - Every account that works in Grievances can read every grievance, and every account in Administrative Reviews every review except one about itself; there is no limit to named people.
-- Review due dates are recorded but nothing is flagged overdue, and nobody is notified.
+- Review due dates are recorded but nothing is flagged overdue. Reviews and grievances send no notifications at all, on purpose.
+- Notifications are in-app only: no email, and nothing is pushed live (the bell checks every 30 seconds). Notices cannot be edited or withdrawn once sent.
 - The grievance and review case-file PDFs come from the browser's print dialog, so its page header and footer are the browser's.
 - Grievance and review files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
 - Zoho Forms does not retry a webhook. A request sent while the app is down never arrives; it is still in the form's Entries in Zoho, and can be entered by hand (RUNBOOK section 9).

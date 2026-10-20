@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronLeft, FileText, Plus } from 'lucide-react'
-import type { ReactNode } from 'react'
 import { grievanceEntryCode, grievanceEntryKindLabel } from '@shared/constants.ts'
 import type { GrievancePerson } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { buttonStyles } from '@/components/ui/button.tsx'
-import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
+import { Fact, Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
@@ -30,15 +29,6 @@ export const Route = createFileRoute('/_app/grievances/$code/')({
   errorComponent: GrievanceLoadError,
   component: GrievancePage,
 })
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0 px-5 py-4">
-      <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-ink">{children}</dd>
-    </div>
-  )
-}
 
 /** People keep their place on a grievance after they leave; one who has been archived is marked, not removed. */
 function People({ people }: { people: GrievancePerson[] }) {

@@ -168,3 +168,33 @@ export const maintenanceCode = (id: number) => `MR-${String(id).padStart(4, '0')
 export const MAINTENANCE_NOTE_MAX = 5000
 /** The longest description a request keeps: far more than the form produces. */
 export const MAINTENANCE_DESCRIPTION_MAX = 50_000
+
+/**
+ * What a notification can be about. Nothing is ever sent about Grievances or Administrative Reviews: a notification would leak
+ * that a case exists.
+ */
+export const NOTIFICATION_KIND_LABEL = {
+  asset_issued: 'Asset issued',
+  digital_issued: 'Digital asset issued',
+  asset_returned_poor: 'Poor-condition return',
+  maintenance_dispatched: 'Maintenance dispatched',
+  maintenance_changed: 'Maintenance update',
+  asset_overdue: 'Overdue asset',
+  account_password_reset: 'Password reset',
+  account_access_changed: 'Access change',
+  account_unlocked: 'Account unlocked',
+  account_employee_linked: 'Linked employee change',
+  notice: 'Notice',
+} as const
+export type NotificationKind = keyof typeof NOTIFICATION_KIND_LABEL
+
+/** The Inbox's views. */
+export const NOTIFICATION_VIEWS = ['unread', 'all', 'archived'] as const
+export type NotificationView = (typeof NOTIFICATION_VIEWS)[number]
+
+/** A notice is plain text with line breaks: short enough to read in the bell's popover. */
+export const NOTICE_TITLE_MAX = 120
+export const NOTICE_BODY_MAX = 2000
+
+/** A link that stays in the app: one leading slash, never two and never a backslash, which browsers read as another host. */
+export const isInAppPath = (value: string) => /^\/(?![/\\])/.test(value)

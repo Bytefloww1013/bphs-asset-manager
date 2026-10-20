@@ -19,10 +19,13 @@ export function setSessionCookie(c: Context, token: string, expiresAt?: Date) {
 /** Paths a user who must change their password may still reach. */
 const ALLOWED_WHEN_PASSWORD_EXPIRED = new Set(['/api/auth/me', '/api/auth/logout', '/api/auth/password-change'])
 
+// The bell asks for its count every 30 seconds by itself: counting that as activity would keep an unattended tab signed in for ever.
+const NOT_ACTIVITY = new Set(['/api/me/notifications/count'])
+
 export function authenticate(db: Db): MiddlewareHandler<Env> {
   return async (c, next) => {
     const token = getCookie(c, COOKIE)
-    const found = token ? findSession(db, token) : null
+    const found = token ? findSession(db, token, new Date(), !NOT_ACTIVITY.has(c.req.path)) : null
     if (!token || !found) throw new HttpError(401, 'unauthenticated', 'Sign in to continue.')
     // Without this, a session the server keeps moving forward still ends in the browser at a fixed time after sign-in.
     if (found.extendedTo) setSessionCookie(c, token, found.extendedTo)

@@ -199,6 +199,12 @@ curl -fsS http://localhost:8080/api/health
 
 Expect a short gap (seconds) while the container is recreated. Sessions live in the database, so people stay signed in.
 
+The notifications release adds migration `server/db/migrations/0017_notifications.sql` (notifications and notices). Like every migration it runs on the first start and cannot be undone, so take the backup above before upgrading to it.
+
+It is followed by `0018_drop_notification_mutes.sql`, which removes muting (it drops the mutes table and the `muted` column, so any mutes people set are gone), and `0019_notification_source_index.sql`, which adds an index for the overdue reminders. Take the same backup first. `server/admin.ts` now runs pending migrations too, so the break-glass commands work on a database the server has not started on yet.
+
+**Housekeeping timer.** Every 6 hours (and once at start) the server signs out expired sessions, deletes notifications and notices over a year old, read or not, and sends the overdue-asset reminders (once per assignment). Nothing needs scheduling outside the container.
+
 **Rolling back:** check out the previous version, restore the pre-upgrade backup (5.1) and rebuild (`docker compose up -d --build`). Do not run an older version against a database a newer version has migrated.
 
 **Cleaning up:** old images pile up with every rebuild: `docker image prune` (removes dangling images only).
@@ -296,6 +302,7 @@ Zoho Forms posts each *Maintenance Work Order Request* entry to `POST /api/webho
 - **Imported files stay in the browser.** A `.csv` or `.xlsx` chosen on Import/Export is opened by the page, and only its rows are sent, as JSON, to be validated again by the server. The server never opens a workbook. Reading and writing Excel files of any size zips in a Web Worker the page starts from a `blob:` URL, so the Content-Security-Policy carries `worker-src 'self' blob:`. Scripts are still limited to the app's own (`script-src 'self'`), and only a script the page already runs can create such a URL.
 - **Grievance and review files are never shown in the page.** Uploads are accepted only as PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by their content as well as their name, up to 10 MB each. Downloads are always sent as a file to save (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`), so a file cannot run as part of the app. Files are not virus-scanned: the staff who open them rely on their own machine's protection.
 - **No credentials in digital assets.** The License/Account field refuses values that label themselves a password, key or token. That catches the obvious cases; it cannot recognise a bare secret, so tell staff the field is for naming a seat.
+- **Notifications stay in the app.** No email or push is sent. Each account reads and changes only its own notifications (another account's ID answers "not found"), a notification links only to a path inside the app (checked when it is written and again when it is opened), and it names the thing it is about, never sensitive details. Grievances and Administrative Reviews never send notifications. Only Super Admins send notices; each one is in the Audit Log.
 - **Secrets.** The one secret is `MAINTENANCE_WEBHOOK_SECRET`, shared with the Zoho webhook. Anyone who can edit the form's integrations in Zoho can read it, and anyone who has it can create maintenance requests; rotate it as in section 9 when that is a worry. There are no API keys. The first Super Admin's starting password (`Brightpath1!`) is known in advance, so it must be changed at first sign-in, which the app enforces.
 
 ## 11. What has been verified

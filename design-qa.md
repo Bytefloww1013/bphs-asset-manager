@@ -46,3 +46,91 @@ Final project checks pass: client/server typecheck, production build, and 176 te
 **Runtime follow-up:** built revision 9ff3e69 using the unchanged Dockerfile and Bun 1.3.14. The actual non-root Node v24.21.0 Linux container was healthy and served eight byte-identical images plus the correct nested-route SPA shell. The headed Chromium/WSLg screenshot was opened and judged at 1440×1000/DPR 1; the real CSS hover produces #062B3E and the old placeholder cache does not replace the new versioned icon. Disposable review container/volume removed; image retained. No app source changed.
 
 **Historical public-domain probe (outside the brand-update scope):** both names currently resolve to 204.11.56.246 in this environment, differing from the guide's VPS at 50.6.205.113. Initial HTTPS probes rejected a testexp hostname mismatch; later probes timed out. See release-probe.json. A future deployment should confirm its target and DNS/TLS setup. The user clarified that this work is a brand update only; these probe results do not block completion.
+
+# My Space end-to-end check (2026-10-19)
+
+Result: passed, 33 of 33. This is the check for slice 2.2 of [MySpace-plan.md](MySpace-plan.md).
+
+**Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with isolated seeded data. Headless Firefox driven by puppeteer-core, at 1366×860 (wide) and 390×844 (narrow, drawer). All accounts use the seed password.
+
+**Accounts:**
+- Super Admin (the first account, with no employee). Maintenance was the last workspace used.
+- Assets-only, at Edit, linked to E-1201.
+- Maintenance-only, at Edit, linked to E-1288, an archived employee.
+
+**Each account, wide:**
+- **My Space** is the first item in the account menu and opens `/me/profile`.
+- The sidebar shows **Back to *last workspace*** in place of the switcher: Maintenance, Assets and Maintenance respectively.
+- Personal Dashboard is `role="link"` with `aria-disabled="true"`, tabIndex −1 and no href. "Coming later" is part of its name.
+- Clicking the placeholder leaves the page where it is.
+- The Profile page shows the linked employee:
+  - "None. The first account needs no employee." for the Super Admin.
+  - "Tomas Berger E-1201" for Assets-only.
+  - "Alice Nkemdirim E-1288 archived" for Maintenance-only. It loads because `GET /api/employees` is open to every account.
+- A reload stays on `/me/profile` with the My Space sidebar.
+- The Back link returns to that workspace's home, and that workspace is still the one remembered (`bphs.workspace`).
+
+**Each account, narrow:**
+- My Space from the account menu inside the drawer opens the page and closes the drawer.
+- The drawer shows the Back link and both placeholders. Tapping a placeholder does nothing and the drawer stays open.
+- The drawer's Back link navigates and closes the drawer.
+
+**Also checked (Phase 1 check):**
+- The Super Admin's tab order from the top runs Skip to content → Back to Maintenance → Profile → account menu → Change password, so the placeholders are never focused.
+- An account that must change its password is still sent to `/password-change` from `/me/profile`.
+- Signed out, `/me/profile` goes to `/login?redirect=%2Fme%2Fprofile`.
+
+**Fixed during the build:**
+- [P1] The Profile page first read the linked employee from `/api/lookups`, which needs Assets read, so a Maintenance-only account saw "…" for ever. It now uses `employeesQuery`.
+- [P2] "Personal Dashboard" wrapped beside its "Coming later" hint in the 15.5rem rail. The hint now sits under the name.
+
+**Screenshots** (local, gitignored): `qa-shots/myspace/e2e-{super,assets,maint}-{wide,drawer}.png`.
+
+**Not covered:**
+- A real screen reader. The name was checked from the DOM.
+- An account with no workspace at all. The app already assumes every account has one.
+
+# Notifications end-to-end check (2026-10-19)
+
+Result: passed, 47 of 47. This is the check for slice 5.2 of [NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md). Muting, Notification settings and the Mailbox placeholder were removed after this check (Oct 19 2026), so its steps about them no longer apply.
+
+**Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with freshly seeded data and `TZ=America/New_York`. Headless Firefox driven by puppeteer-core, with the two accounts in separate browser contexts side by side, at 1280×900 (wide) and 390×844 (narrow). All accounts use the seed password.
+
+**Accounts:**
+- Priya Raghunathan, the Super Admin, who acts.
+- Marcus Oyelaran, at Edit in Assets and linked to E-0988, who receives. He starts with the seed's 2 unread; a muted seed row is left out of the count.
+
+**What Priya did, in order:** changed Marcus's access to add Maintenance at Edit; issued BPHS-0003 to E-0988; returned BPHS-0046 rated Poor; created MR-0001 and dispatched it to Marcus; set MR-0001 to On Hold; sent a notice to everyone ("To 4 accounts"). Later: set MR-0001 to Finished, returned BPHS-0097 rated Damaged, and reset Marcus's password.
+
+**Marcus, wide:**
+- Mark all read takes the seed count to 0. The badge is gone and the bell's name is plain "Notifications".
+- After the six events the bell's name is "Notifications, 6 unread", the badge shows 6, and so does the Inbox entry in the sidebar.
+- The popover lists 8 rows, newest first. The six new ones are bold with a dot, and the older read ones are plain. The two MR-0001 rows (dispatched, on hold) are separate.
+- Opening the issued notification goes to `/assets/BPHS-0003`, and the count drops to 5.
+- The notice and the access change offer only Mark read and Archive, with no Mute.
+- **Mute this item** on the dispatched row (24 hours) and **Mute this kind** on the poor return (until changed), each with its toast.
+- MR-0001 set to Finished and BPHS-0097 returned Damaged both arrive muted. The count stays at 5, and in the Inbox and the popover both show the muted bell and "Muted.", with no highlight.
+- Notification settings lists both mutes, "Everything about this item" and "Assets returned in poor condition: All of them", and the five kinds that are never muted. Unmute takes one off the list.
+
+**Marcus, narrow:**
+- The bell is in the top bar with its count, and the popover stays on screen (12 to 378 px).
+- The Inbox and Notification settings have no sideways scroll.
+
+**Password reset:**
+- Priya gets a one-time password. Her own bell is unchanged (2 unread before and after), since her own actions never notify her.
+- Marcus signs in with it and is sent to `/password-change`. After the change the bell shows 6 unread, and "Your password was reset" offers no Mute.
+
+**Fixed during the build:**
+- [P1] "Mute this item" matched the notification's kind as well as its item. Muting MR-0001 from its "dispatched" row therefore did not mute "MR-0001 was set to Finished", which is another kind. An item mute now covers every notification about that item, whatever its kind, and an item has at most one mute. Settings calls it "Everything about this item", not the kind it was muted from. Two server tests cover it.
+- [P2] At 390 wide, each row's kind and time sat in two columns, so "just now" broke over two lines beside the kind. They now wrap together as one line of text, in the Inbox and the popover.
+
+**Screenshots** (local, gitignored): `qa-shots/notifications/{1-popover-wide,2-inbox-wide,3-popover-muted,4-settings-wide,5-popover-narrow,6-inbox-narrow,7-settings-narrow}.png`.
+
+**Not covered:**
+- A real screen reader. Names and "Muted." were checked from the DOM.
+- In the browser: the overdue reminder, a digital asset issue, a bulk return, an account unlock and a linked-employee change. Each is covered by `server/tests/notification-events.test.ts`.
+- The 30-second refetch was not timed. Counts were read after navigating or bringing the tab to the front.
+
+**Follow-up fixes (same day):** two gaps from the slice 3 check, rechecked on a seeded production build, 11 of 11 (the pre-fix build failed 6 of them).
+- Opening a notification whose link goes to a workspace the account cannot read now only marks it read. Dana Whitfield (Grievances only, linked to E-1130) was issued BPHS-0003 and DA-00001. Before the fix, opening either one sent her to `/grievances`, because the asset pages turned her away. Now she stays on her Inbox, whether she opens it from the popover or the Inbox. Marcus, at Assets Edit, is still taken to `/assets/BPHS-0033`.
+- When the bell's popover opens, focus goes to the popover itself, not to Mark all read. Enter straight after opening with the keyboard no longer marks everything read. Tab goes to Mark all read, then to the first row. Escape closes the popover and returns focus to the bell. Screenshot: `qa-shots/notifications/8-holder-no-assets-fixed.png`.

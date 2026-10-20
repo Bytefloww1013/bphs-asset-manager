@@ -6,7 +6,7 @@ import { grievanceEntryCode, grievanceEntryKindLabel } from '@shared/constants.t
 import type { GrievanceEntry } from '@shared/types.ts'
 import { buttonStyles } from '@/components/ui/button.tsx'
 import { Alert, EmptyState } from '@/components/ui/feedback.tsx'
-import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
+import { Fact, Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
@@ -29,15 +29,6 @@ export const Route = createFileRoute('/_app/grievances/$code/entries/$seq')({
 
 /** The address names an entry as the pages do, E06; a bare 6 is read the same way. */
 const seqOf = (text: string) => Number(/^e?0*([1-9]\d*)$/i.exec(text.trim())?.[1] ?? Number.NaN)
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0 px-5 py-4">
-      <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-ink">{children}</dd>
-    </div>
-  )
-}
 
 function EntryLink({ code, entry, className, children }: { code: string; entry: GrievanceEntry; className?: string; children?: ReactNode }) {
   return (

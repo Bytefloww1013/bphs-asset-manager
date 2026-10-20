@@ -37,8 +37,8 @@ Ideas agreed on but not planned yet. Each gets its own `[feature]-plan.md` when 
 - [ ] **@mentions.** Typing `@` in a note or comment opens a list of people who have accounts, at the cursor, narrowed with each character typed. The person mentioned gets a notification with a link to where they were mentioned. Never in Grievances or Administrative Reviews. Builds on [NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md).
 - [ ] **Custom notification triggers.** Rules such as "notify me when a new asset is assigned to my program" or "when an asset comes back in poor condition". Default audience: Edit/Full in the section plus Super Admins. The notifications tables are designed so this needs only a rules table.
 - [ ] **Show many workspaces cleanly.** Staff keep asking for more features and workspaces. Decide how the workspace switcher should look with many of them (grouped list, a launcher, search), before a fifth workspace is added.
-- [ ] **Mailbox in My Space.** Messages between people, with replies. A greyed-out placeholder from [MySpace-plan.md](MySpace-plan.md) until then.
-- [ ] **Personal Dashboard in My Space.** A home page each person can arrange, within limits. Also a placeholder until then.
+- [ ] **Mailbox in My Space.** Messages between people, with replies.
+- [ ] **Personal Dashboard in My Space.** A home page each person can arrange, within limits.
 
 ## Maybe
 
