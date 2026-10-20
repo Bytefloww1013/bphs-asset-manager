@@ -30,7 +30,7 @@ for a detail its output didn't cover. If the MCP tool is unavailable, run
 
 # Handoff guard
 
-`handoff/` holds handoffs written by the user-level handoff skill and hook, which run when context gets full. If a handoff isn't pasted in as "Previous context", the guard blocks tools it shouldn't, or the state looks off, see "Handoff guard (troubleshooting)" in `~/.claude/CLAUDE.md`. Mention anything odd about it to the user.
+`handoff/` holds handoffs written by the user-level handoff skill and hook, which run when context gets full. It is gitignored: handoffs are never committed, and the hook keeps only the newest three on disk (older ones are in git history before they were untracked). If a handoff isn't pasted in as "Previous context", the guard blocks tools it shouldn't, or the state looks off, see "Handoff guard (troubleshooting)" in `~/.claude/CLAUDE.md`. Mention anything odd about it to the user.
 
 # Plans
 
