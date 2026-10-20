@@ -296,7 +296,7 @@ for (const user of [priya!, marcus!, rosa!]) {
     .values([
       { kind: 'asset_returned_poor', sourceKey: 'asset:5', title: 'BPHS-0005 came back in poor condition', link: '/assets/BPHS-0005', createdAt: at(12), readAt: at(11), archivedAt: at(11) },
       { kind: 'account_access_changed', sourceKey: `user:${user.id}`, title: 'Your access was changed', body: 'See your Profile for what you can do now.', link: '/me/profile', createdAt: at(6), readAt: at(5) },
-      { kind: 'asset_overdue', sourceKey: 'assignment:12', title: 'BPHS-0012 is overdue', link: '/assets/BPHS-0012', createdAt: at(2), muted: true },
+      { kind: 'asset_overdue', sourceKey: 'assignment:12', title: 'BPHS-0012 is overdue', link: '/assets/BPHS-0012', createdAt: at(2) },
       { kind: 'asset_issued', sourceKey: 'asset:7', title: 'BPHS-0007 was issued to you', link: '/assets/BPHS-0007', createdAt: at(1) },
       { kind: 'asset_issued', sourceKey: 'asset:3', title: 'BPHS-0003 was issued to you', body: 'Laptop, issued by Marcus Oyelaran.', link: '/assets/BPHS-0003', createdAt: at(0.02) },
     ].map((row) => ({ userId: user.id, ...row })))

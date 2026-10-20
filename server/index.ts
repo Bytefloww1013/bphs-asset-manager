@@ -11,7 +11,7 @@ const { db, sqlite } = createDb(path.join(config.dataDir, 'bphs.sqlite'))
 runMigrations(db)
 ensureDefaultLists(db)
 await ensureBootstrapAdmin(db)
-// Sessions are checked on every request, but keep the tables tidy: expired sessions, year-old notifications and ended mutes.
+// Sessions are checked on every request, but keep the tables tidy: expired sessions and year-old notifications.
 // The same timer sends the overdue reminders.
 function tidy() {
   purgeExpiredSessions(db)

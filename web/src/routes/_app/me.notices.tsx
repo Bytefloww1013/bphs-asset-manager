@@ -30,7 +30,7 @@ function NoticesPage() {
       <div className="flex flex-col gap-6">
         <PageHeader title="Notices" />
         <Panel>
-          <EmptyState icon={Lock} title="Super Admin only" description="Notices go to every account's Inbox and cannot be muted, so only Super Admins send them." className="py-20" />
+          <EmptyState icon={Lock} title="Super Admin only" description="Notices go to every account's Inbox, so only Super Admins send them." className="py-20" />
         </Panel>
       </div>
     )
@@ -39,7 +39,7 @@ function NoticesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Notices"
-        description="A notice goes to the Inbox of each account it is sent to. It cannot be muted, changed or taken back."
+        description="A notice goes to the Inbox of each account it is sent to. It cannot be changed or taken back."
         actions={
           <Button variant="primary" icon={<Megaphone className="size-4" aria-hidden />} onClick={() => setWriting(true)}>
             New notice
@@ -146,7 +146,7 @@ function NoticeSheet({ onClose }: { onClose: () => void }) {
       open
       onOpenChange={(open) => !open && onClose()}
       title="New notice"
-      description="It lands in each recipient's Inbox and on their bell. Nobody can mute it."
+      description="It lands in each recipient's Inbox and on their bell."
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>

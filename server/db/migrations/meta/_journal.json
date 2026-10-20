@@ -127,6 +127,13 @@
       "when": 1792450635706,
       "tag": "0017_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792458172215,
+      "tag": "0018_drop_notification_mutes",
+      "breakpoints": true
     }
   ]
 }

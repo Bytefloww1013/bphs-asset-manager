@@ -1,16 +1,13 @@
 import * as Popover from '@radix-ui/react-popover'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useRouter } from '@tanstack/react-router'
-import { Bell, BellOff } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { useState } from 'react'
-import { MUTE_DURATIONS, MUTE_DURATION_LABEL, NOTIFICATION_KINDS, isInAppPath, type MuteDuration } from '@shared/constants.ts'
-import type { MuteInput } from '@shared/schemas.ts'
+import { NOTIFICATION_KINDS, isInAppPath } from '@shared/constants.ts'
 import { canUseWorkspace } from '@shared/permissions.ts'
 import type { NotificationRow } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Spinner } from '@/components/ui/feedback.tsx'
-import { Segmented } from '@/components/ui/form.tsx'
-import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { api } from '@/lib/api.ts'
 import { cn } from '@/lib/cn.ts'
@@ -45,9 +42,9 @@ export function useOpenNotification() {
   }
 }
 
-/** One notification's text. A muted one is never highlighted: it shows the muted bell instead. */
+/** One notification's text. */
 export function NotificationLine({ row }: { row: NotificationRow }) {
-  const highlight = !row.readAt && !row.muted
+  const highlight = !row.readAt
   return (
     <>
       <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', highlight && 'bg-accent')} aria-hidden />
@@ -57,19 +54,11 @@ export function NotificationLine({ row }: { row: NotificationRow }) {
           {row.title}
         </span>
         {row.body && <span className="mt-0.5 line-clamp-3 whitespace-pre-line text-sm text-ink-3 [overflow-wrap:anywhere]">{row.body}</span>}
-        <span className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-3">
-          {row.muted && (
-            <>
-              <BellOff className="size-3.5 shrink-0" aria-hidden />
-              <span className="sr-only">Muted.</span>
-            </>
-          )}
-          <span>
-            {NOTIFICATION_KINDS[row.kind].label} ·{' '}
-            <time dateTime={row.createdAt} title={formatDateTime(row.createdAt)}>
-              {formatRelative(row.createdAt)}
-            </time>
-          </span>
+        <span className="mt-0.5 block text-xs text-ink-3">
+          {NOTIFICATION_KINDS[row.kind].label} ·{' '}
+          <time dateTime={row.createdAt} title={formatDateTime(row.createdAt)}>
+            {formatRelative(row.createdAt)}
+          </time>
         </span>
       </span>
     </>
@@ -157,43 +146,5 @@ function Latest({ onDone }: { onDone: () => void }) {
         </Link>
       </div>
     </>
-  )
-}
-
-const DURATION_OPTIONS = MUTE_DURATIONS.map((value) => ({ value, label: MUTE_DURATION_LABEL[value] }))
-
-/** Mute the item a notification is about (`item`), or every notification of its kind. Only offered for kinds that can be muted. */
-export function MuteDialog({ row, item, onClose }: { row: NotificationRow; item: boolean; onClose: () => void }) {
-  const [duration, setDuration] = useState<MuteDuration>('7d')
-  const mute = useWrite((input: MuteInput) => api.post('/me/mutes', input), {
-    success: (_, input) => (input.duration === 'forever' ? 'Muted until you unmute it' : `Muted for ${MUTE_DURATION_LABEL[input.duration]}`),
-  })
-  return (
-    <ConfirmDialog
-      open
-      onOpenChange={(open) => !open && onClose()}
-      title={item ? 'Mute this item?' : 'Mute this kind?'}
-      description="New notifications from this source will still arrive in your Inbox, but they won't add to the red count on the bell or appear as new anywhere else. You can unmute it in Notification settings."
-      confirmLabel="Mute"
-      onConfirm={() => mute.mutateAsync({ kind: row.kind, sourceKey: item ? row.sourceKey : undefined, duration })}
-    >
-      <div className="mt-4 flex flex-col gap-4">
-        <MutedThing kind={row.kind} about={item ? row.title : null} className="rounded-control bg-sunken px-3 py-2" />
-        <div className="flex flex-col gap-1.5">
-          <p className="text-sm font-medium text-ink">For how long</p>
-          <Segmented label="For how long" value={duration} onChange={setDuration} options={DURATION_OPTIONS} />
-        </div>
-      </div>
-    </ConfirmDialog>
-  )
-}
-
-/** What a mute covers: one item, whatever its notifications' kind (named by its notification's title), or the whole kind. */
-export function MutedThing({ kind, about, className }: { kind: NotificationRow['kind']; about: string | null; className?: string }) {
-  return (
-    <div className={cn('min-w-0 text-sm', className)}>
-      <p className="font-medium text-ink">{about === null ? NOTIFICATION_KINDS[kind].label : 'Everything about this item'}</p>
-      <p className="text-ink-2 [overflow-wrap:anywhere]">{about === null ? 'All of them' : about}</p>
-    </div>
   )
 }

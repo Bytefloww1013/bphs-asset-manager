@@ -171,44 +171,27 @@ export const MAINTENANCE_DESCRIPTION_MAX = 50_000
 
 /**
  * What a notification can be about. Nothing is ever sent about Grievances or Administrative Reviews: a notification would leak
- * that a case exists. Account and security events and notices are `unmutable`.
+ * that a case exists.
  */
 export const NOTIFICATION_KINDS = {
-  asset_issued: { label: 'Assets issued to you', unmutable: false },
-  digital_issued: { label: 'Digital assets issued to you', unmutable: false },
-  asset_returned_poor: { label: 'Assets returned in poor condition', unmutable: false },
-  maintenance_dispatched: { label: 'Maintenance requests dispatched to you', unmutable: false },
-  maintenance_changed: { label: 'Changes to your maintenance requests', unmutable: false },
-  asset_overdue: { label: 'Overdue assets', unmutable: false },
-  account_password_reset: { label: 'Password resets', unmutable: true },
-  account_access_changed: { label: 'Access changes', unmutable: true },
-  account_unlocked: { label: 'Account unlocks', unmutable: true },
-  account_employee_linked: { label: 'Linked employee changes', unmutable: true },
-  notice: { label: 'Notices', unmutable: true },
-} as const satisfies Record<string, { label: string; unmutable: boolean }>
+  asset_issued: { label: 'Assets issued to you' },
+  digital_issued: { label: 'Digital assets issued to you' },
+  asset_returned_poor: { label: 'Assets returned in poor condition' },
+  maintenance_dispatched: { label: 'Maintenance requests dispatched to you' },
+  maintenance_changed: { label: 'Changes to your maintenance requests' },
+  asset_overdue: { label: 'Overdue assets' },
+  account_password_reset: { label: 'Password resets' },
+  account_access_changed: { label: 'Access changes' },
+  account_unlocked: { label: 'Account unlocks' },
+  account_employee_linked: { label: 'Linked employee changes' },
+  notice: { label: 'Notices' },
+} as const satisfies Record<string, { label: string }>
 export type NotificationKind = keyof typeof NOTIFICATION_KINDS
 export const NOTIFICATION_KIND_KEYS = Object.keys(NOTIFICATION_KINDS) as [NotificationKind, ...NotificationKind[]]
 
 /** A notice is plain text with line breaks: short enough to read in the bell's popover. */
 export const NOTICE_TITLE_MAX = 120
 export const NOTICE_BODY_MAX = 2000
-
-export const MUTE_DURATIONS = ['24h', '7d', '1m', 'forever'] as const
-export type MuteDuration = (typeof MUTE_DURATIONS)[number]
-export const MUTE_DURATION_LABEL: Record<MuteDuration, string> = { '24h': '24 hours', '7d': '7 days', '1m': '1 month', forever: 'Until I change it' }
-
-/** When a mute started at `now` ends; null for one that lasts until the person changes it. A month from Jan 31 ends on the last day of February. */
-export function muteEnds(duration: MuteDuration, now: Date): Date | null {
-  if (duration === 'forever') return null
-  const end = new Date(now)
-  if (duration === '24h') end.setUTCDate(end.getUTCDate() + 1)
-  if (duration === '7d') end.setUTCDate(end.getUTCDate() + 7)
-  if (duration === '1m') {
-    end.setUTCMonth(end.getUTCMonth() + 1)
-    if (end.getUTCDate() !== now.getUTCDate()) end.setUTCDate(0)
-  }
-  return end
-}
 
 /** A link that stays in the app: one leading slash, never two and never a backslash, which browsers read as another host. */
 export const isInAppPath = (value: string) => /^\/(?![/\\])/.test(value)

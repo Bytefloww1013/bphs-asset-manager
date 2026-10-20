@@ -54,7 +54,7 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
   const read = method === 'GET' || method === 'HEAD'
   const at = (section: Section) => ({ section, level: read ? 'read' : 'edit' }) as const
   if (/^\/api\/(users|notices)(\/|$)/.test(path)) return null
-  // My Space: every account's own notifications and mutes, whatever its access.
+  // My Space: every account's own notifications, whatever its access.
   if (/^\/api\/me(\/|$)/.test(path)) return null
   if (/^\/api\/employees(\/|$)/.test(path)) return read ? null : at('employees')
   // Each importer checks Edit in the section it writes to.

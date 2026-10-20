@@ -1,16 +1,14 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, BellOff, CheckCheck, Inbox, Mail, MailOpen, Settings2 } from 'lucide-react'
-import { useState } from 'react'
-import { NOTIFICATION_KINDS } from '@shared/constants.ts'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Archive, ArchiveRestore, CheckCheck, Inbox, Mail, MailOpen } from 'lucide-react'
 import type { NotificationRow } from '@shared/types.ts'
-import { Button, buttonStyles } from '@/components/ui/button.tsx'
+import { Button } from '@/components/ui/button.tsx'
 import { EmptyState, Spinner } from '@/components/ui/feedback.tsx'
 import { FilterTabs } from '@/components/ui/form.tsx'
 import { PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { Menu, type MenuItem } from '@/components/ui/overlay.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
-import { MuteDialog, NotificationLine, useOpenNotification } from '@/features/notifications/parts.tsx'
+import { NotificationLine, useOpenNotification } from '@/features/notifications/parts.tsx'
 import { api } from '@/lib/api.ts'
 import { notificationsQuery, type NotificationView } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
@@ -33,22 +31,16 @@ function InboxPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   const list = useInfiniteQuery(notificationsQuery(view))
   const readAll = useWrite(() => api.post('/me/notifications/read-all'), { success: 'All marked read' })
-  const [muting, setMuting] = useState<{ row: NotificationRow; item: boolean } | null>(null)
   const rows = list.data?.pages.flatMap((page) => page.items) ?? []
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Inbox"
-        description="Notifications about things that involve you. Each is kept for a year."
+        description="Notifications about things that involve you."
         actions={
-          <>
-            <Link to="/me/notifications" className={buttonStyles()}>
-              <Settings2 className="size-4" aria-hidden /> Notification settings
-            </Link>
-            <Button loading={readAll.isPending} onClick={() => readAll.mutate()}>
-              <CheckCheck className="size-4" aria-hidden /> Mark all read
-            </Button>
-          </>
+          <Button loading={readAll.isPending} onClick={() => readAll.mutate()}>
+            <CheckCheck className="size-4" aria-hidden /> Mark all read
+          </Button>
         }
       />
 
@@ -73,7 +65,7 @@ function InboxPage() {
         ) : (
           <ul aria-label={`${VIEW_LABEL[view]} notifications`} className="divide-y divide-line">
             {rows.map((row) => (
-              <InboxRow key={row.id} row={row} onMute={(item) => setMuting({ row, item })} />
+              <InboxRow key={row.id} row={row} />
             ))}
           </ul>
         )}
@@ -85,13 +77,11 @@ function InboxPage() {
           </div>
         )}
       </Panel>
-
-      {muting && <MuteDialog row={muting.row} item={muting.item} onClose={() => setMuting(null)} />}
     </div>
   )
 }
 
-function InboxRow({ row, onMute }: { row: NotificationRow; onMute: (item: boolean) => void }) {
+function InboxRow({ row }: { row: NotificationRow }) {
   const openRow = useOpenNotification()
   const act = useWrite((action: 'read' | 'unread' | 'archive' | 'unarchive') => api.post(`/me/notifications/${row.id}/${action}`))
   const items: MenuItem[] = [
@@ -99,13 +89,6 @@ function InboxRow({ row, onMute }: { row: NotificationRow; onMute: (item: boolea
     row.archivedAt
       ? { label: 'Unarchive', icon: ArchiveRestore, onSelect: () => act.mutate('unarchive') }
       : { label: 'Archive', icon: Archive, onSelect: () => act.mutate('archive') },
-    // Account and security events, and notices, can never be muted, so they are not offered.
-    ...(NOTIFICATION_KINDS[row.kind].unmutable
-      ? []
-      : [
-          { label: 'Mute this item…', icon: BellOff, onSelect: () => onMute(true), separatorBefore: true },
-          { label: 'Mute this kind…', icon: BellOff, onSelect: () => onMute(false) },
-        ]),
   ]
   return (
     <li className="flex items-start">

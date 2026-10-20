@@ -35,13 +35,13 @@ describe('the notices API', () => {
     expect(t.db.select().from(notices).all()).toEqual([])
   })
 
-  it('sends to every active account but the sender, unmuted, and writes an audit line', async () => {
+  it('sends to every active account but the sender, and writes an audit line', async () => {
     const t = await setup()
     const gone = addUser(t, 'gone@bphs.local', { isActive: false })
     const res = await t.call('POST', '/api/notices', { cookie: await t.asSuper(), body: { ...NOTICE, audience: 'all' } })
     expect(res.status).toBe(201)
     expect(res.data).toMatchObject({ title: NOTICE.title, body: NOTICE.body, audience: 'all', sentBy: 'Priya Raghunathan', recipients: 1, read: 0 })
-    expect(noticesOf(t, t.adminUser.id)).toMatchObject([{ title: NOTICE.title, sourceKey: `notice:${res.data.id}`, link: `/me/inbox/${res.data.id}`, muted: false }])
+    expect(noticesOf(t, t.adminUser.id)).toMatchObject([{ title: NOTICE.title, sourceKey: `notice:${res.data.id}`, link: `/me/inbox/${res.data.id}` }])
     expect(noticesOf(t, t.superUser.id)).toEqual([])
     expect(noticesOf(t, gone.id)).toEqual([])
     expect(t.db.select().from(auditLog).where(eq(auditLog.entityType, 'notice')).all()).toMatchObject([

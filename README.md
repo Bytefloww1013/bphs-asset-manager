@@ -139,13 +139,12 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 
 | Screen | Route |
 | --- | --- |
-| Inbox: Unread, All and Archived; mark read or unread, archive, mute an item or a kind | `/me/inbox` |
+| Inbox: Unread, All and Archived; mark read or unread, or archive | `/me/inbox` |
 | A notice in full (opening it marks it read) | `/me/inbox/1` |
-| Notification settings: active mutes with Unmute, and the kinds that are never muted | `/me/notifications` |
 | Profile: name, email, linked employee, access in each section (read-only) | `/me/profile` (`/me` opens it) |
 | Notices (Super Admins only): send one to everyone or to picked accounts, and see "n of m read" for each sent | `/me/notices` |
 
-**Notifications** are in-app only, never email. A bell with a red count of unread ones sits in the sidebar header and the mobile top bar; it opens the latest eight, with Mark all read and See all. The count is fetched every 30 seconds and when the tab regains focus. An account is notified when an asset or digital asset is issued to its employee, when an asset it holds goes overdue (once), when a maintenance request is dispatched to it, taken from it, changes status or gets a note, and when its own account changes (password reset, access, unlock, employee link). The Assets team (Edit or Full, plus Super Admins) is told of returns in poor condition, one notification per bulk return. Your own actions never notify you, deactivated accounts and imports get nothing, and **Grievances and Administrative Reviews never notify anyone**: a notification would show that a case exists. A muted item or kind still arrives in the Inbox, with a muted-bell icon, but does not count; account events and notices cannot be muted. Notifications over a year old and expired mutes are deleted by the 6-hourly timer that also clears expired sessions and sends the overdue reminders.
+**Notifications** are in-app only, never email. A bell with a red count of unread ones sits in the sidebar header and the mobile top bar; it opens the latest eight, with Mark all read and See all. The count is fetched every 30 seconds and when the tab regains focus. An account is notified when an asset or digital asset is issued to its employee, when an asset it holds goes overdue (once), when a maintenance request is dispatched to it, taken from it, changes status or gets a note, and when its own account changes (password reset, access, unlock, employee link). The Assets team (Edit or Full, plus Super Admins) is told of returns in poor condition, one notification per bulk return. Your own actions never notify you, deactivated accounts and imports get nothing, and **Grievances and Administrative Reviews never notify anyone**: a notification would show that a case exists. Notifications over a year old are deleted by the 6-hourly timer that also clears expired sessions and sends the overdue reminders.
 
 ### Rules the system enforces
 

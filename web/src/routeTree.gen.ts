@@ -40,7 +40,6 @@ import { Route as AppMaintenanceNewRouteImport } from './routes/_app/maintenance
 import { Route as AppMeIndexRouteImport } from './routes/_app/me.index'
 import { Route as AppMeInboxRouteImport } from './routes/_app/me.inbox'
 import { Route as AppMeNoticesRouteImport } from './routes/_app/me.notices'
-import { Route as AppMeNotificationsRouteImport } from './routes/_app/me.notifications'
 import { Route as AppMeProfileRouteImport } from './routes/_app/me.profile'
 import { Route as AppReviewsIndexRouteImport } from './routes/_app/reviews.index'
 import { Route as AppReviewsActionsRouteImport } from './routes/_app/reviews.actions'
@@ -216,11 +215,6 @@ const AppMeNoticesRoute = AppMeNoticesRouteImport.update({
   path: '/notices',
   getParentRoute: () => AppMeRoute,
 } as any)
-const AppMeNotificationsRoute = AppMeNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => AppMeRoute,
-} as any)
 const AppMeProfileRoute = AppMeProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -354,7 +348,6 @@ export interface FileRoutesByFullPath {
   '/maintenance/new': typeof AppMaintenanceNewRoute
   '/me/inbox': typeof AppMeInboxRoute
   '/me/notices': typeof AppMeNoticesRoute
-  '/me/notifications': typeof AppMeNotificationsRoute
   '/me/profile': typeof AppMeProfileRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/audit': typeof AppReviewsAuditRoute
@@ -403,7 +396,6 @@ export interface FileRoutesByTo {
   '/maintenance/new': typeof AppMaintenanceNewRoute
   '/me/inbox': typeof AppMeInboxRoute
   '/me/notices': typeof AppMeNoticesRoute
-  '/me/notifications': typeof AppMeNotificationsRoute
   '/me/profile': typeof AppMeProfileRoute
   '/reviews/actions': typeof AppReviewsActionsRoute
   '/reviews/audit': typeof AppReviewsAuditRoute
@@ -458,7 +450,6 @@ export interface FileRoutesById {
   '/_app/maintenance/new': typeof AppMaintenanceNewRoute
   '/_app/me/inbox': typeof AppMeInboxRoute
   '/_app/me/notices': typeof AppMeNoticesRoute
-  '/_app/me/notifications': typeof AppMeNotificationsRoute
   '/_app/me/profile': typeof AppMeProfileRoute
   '/_app/reviews/actions': typeof AppReviewsActionsRoute
   '/_app/reviews/audit': typeof AppReviewsAuditRoute
@@ -513,7 +504,6 @@ export interface FileRouteTypes {
     | '/maintenance/new'
     | '/me/inbox'
     | '/me/notices'
-    | '/me/notifications'
     | '/me/profile'
     | '/reviews/actions'
     | '/reviews/audit'
@@ -562,7 +552,6 @@ export interface FileRouteTypes {
     | '/maintenance/new'
     | '/me/inbox'
     | '/me/notices'
-    | '/me/notifications'
     | '/me/profile'
     | '/reviews/actions'
     | '/reviews/audit'
@@ -616,7 +605,6 @@ export interface FileRouteTypes {
     | '/_app/maintenance/new'
     | '/_app/me/inbox'
     | '/_app/me/notices'
-    | '/_app/me/notifications'
     | '/_app/me/profile'
     | '/_app/reviews/actions'
     | '/_app/reviews/audit'
@@ -871,13 +859,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeNoticesRouteImport
       parentRoute: typeof AppMeRoute
     }
-    '/_app/me/notifications': {
-      id: '/_app/me/notifications'
-      path: '/notifications'
-      fullPath: '/me/notifications'
-      preLoaderRoute: typeof AppMeNotificationsRouteImport
-      parentRoute: typeof AppMeRoute
-    }
     '/_app/me/profile': {
       id: '/_app/me/profile'
       path: '/profile'
@@ -1070,7 +1051,6 @@ const AppMaintenanceRouteWithChildren = AppMaintenanceRoute._addFileChildren(
 interface AppMeRouteChildren {
   AppMeInboxRoute: typeof AppMeInboxRoute
   AppMeNoticesRoute: typeof AppMeNoticesRoute
-  AppMeNotificationsRoute: typeof AppMeNotificationsRoute
   AppMeProfileRoute: typeof AppMeProfileRoute
   AppMeIndexRoute: typeof AppMeIndexRoute
   AppMeInboxNoticeIdRoute: typeof AppMeInboxNoticeIdRoute
@@ -1079,7 +1059,6 @@ interface AppMeRouteChildren {
 const AppMeRouteChildren: AppMeRouteChildren = {
   AppMeInboxRoute: AppMeInboxRoute,
   AppMeNoticesRoute: AppMeNoticesRoute,
-  AppMeNotificationsRoute: AppMeNotificationsRoute,
   AppMeProfileRoute: AppMeProfileRoute,
   AppMeIndexRoute: AppMeIndexRoute,
   AppMeInboxNoticeIdRoute: AppMeInboxNoticeIdRoute,

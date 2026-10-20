@@ -21,7 +21,6 @@ import type {
   Lookups,
   MaintenanceDetail,
   MaintenanceRow,
-  MuteRow,
   NoticeRow,
   NoticeText,
   NotificationPage,
@@ -293,11 +292,6 @@ export const notificationsQuery = (view: NotificationView) =>
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   })
-
-export const mutesQuery = queryOptions({
-  queryKey: ['notifications', 'mutes'],
-  queryFn: () => api.get<MuteRow[]>('/me/mutes'),
-})
 
 /** A notice as its recipient reads it. Fetching it marks it read. */
 export const noticeQuery = (id: number) => queryOptions({ queryKey: ['notice', id], queryFn: () => api.get<NoticeText>(`/me/notices/${id}`) })

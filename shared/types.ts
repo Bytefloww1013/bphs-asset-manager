@@ -606,26 +606,12 @@ export interface NotificationRow {
   createdAt: string
   readAt: string | null
   archivedAt: string | null
-  /** A mute applied when it arrived: it is in the Inbox but not in the bell's count. */
-  muted: boolean
 }
 
 export interface NotificationPage {
   items: NotificationRow[]
   /** Pass as `before` for the next page; null on the last one. */
   nextCursor: number | null
-}
-
-export interface MuteRow {
-  id: number
-  kind: NotificationKind
-  /** Null when the whole kind is muted. */
-  sourceKey: string | null
-  /** The title of the latest notification from the muted item, so the settings page can name it. Null for a kind, or once it is gone. */
-  about: string | null
-  /** Null means until the person changes it. */
-  until: string | null
-  createdAt: string
 }
 
 /** A sent notice, as the Notices page lists it. */

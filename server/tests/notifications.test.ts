@@ -3,8 +3,7 @@ import path from 'node:path'
 import Database from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { muteEnds } from '../../shared/constants.ts'
-import { employees, notificationMutes, notifications, users } from '../db/schema.ts'
+import { employees, notifications, users } from '../db/schema.ts'
 import { accountOf, notify, purgeNotifications, sectionTeam, type NewNotification } from '../services/notifications.ts'
 import { setup } from './helpers.ts'
 
@@ -51,7 +50,7 @@ describe('notify()', () => {
     const t = await setup()
     const gone = addUser(t, 'gone@bphs.local', { isActive: false })
     send(t, [t.superUser.id, t.adminUser.id, t.adminUser.id, gone.id], {}, t.superUser)
-    expect(rowsOf(t, t.adminUser.id)).toMatchObject([{ kind: 'asset_issued', sourceKey: 'asset:1', muted: false, readAt: null }])
+    expect(rowsOf(t, t.adminUser.id)).toMatchObject([{ kind: 'asset_issued', sourceKey: 'asset:1', readAt: null }])
     expect(rowsOf(t, t.superUser.id)).toEqual([])
     expect(rowsOf(t, gone.id)).toEqual([])
   })
@@ -74,30 +73,6 @@ describe('notify()', () => {
     expect(sectionTeam(t.db, 'assets').sort()).toEqual([t.superUser.id, t.adminUser.id, full.id].sort())
     expect(sectionTeam(t.db, 'assets')).not.toContain(reader.id)
     expect(sectionTeam(t.db, 'maintenance')).toEqual([t.superUser.id])
-  })
-
-  it('marks a row muted under a live item or kind mute, but never for an unmutable kind', async () => {
-    const t = await setup()
-    const now = new Date()
-    const mute = (userId: number, kind: string, sourceKey: string | null, until: Date | null = null) =>
-      t.db.insert(notificationMutes).values({ userId, kind, sourceKey, until, createdAt: now }).run()
-    const other = addUser(t, 'other@bphs.local')
-    mute(t.adminUser.id, 'asset_issued', 'asset:1')
-    mute(t.superUser.id, 'asset_issued', null)
-    mute(other.id, 'asset_issued', null, new Date(now.getTime() - 1))
-    mute(t.adminUser.id, 'account_password_reset', null)
-
-    const everyone = [t.adminUser.id, t.superUser.id, other.id]
-    send(t, everyone)
-    send(t, everyone, { sourceKey: 'asset:2' })
-    send(t, [t.adminUser.id], { kind: 'account_password_reset', sourceKey: 'user:2', link: '/me' })
-    // The item mute covers asset:1 whatever the kind; the superUser's kind mute does not reach another kind.
-    send(t, [t.adminUser.id, t.superUser.id], { kind: 'asset_returned_poor' })
-    const muted = (userId: number) => rowsOf(t, userId).map((row) => [row.sourceKey, row.muted])
-    expect(muted(t.adminUser.id)).toEqual([['asset:1', true], ['asset:2', false], ['user:2', false], ['asset:1', true]])
-    expect(muted(t.superUser.id)).toEqual([['asset:1', true], ['asset:2', true], ['asset:1', false]])
-    // A mute that has ended mutes nothing.
-    expect(muted(other.id)).toEqual([['asset:1', false], ['asset:2', false]])
   })
 
   it('leaves nothing behind when the change it belongs to rolls back', async () => {
@@ -143,14 +118,12 @@ describe('the Inbox API', () => {
     expect((await t.call('GET', '/api/me/notifications/count')).status).toBe(401)
   })
 
-  it('counts unread rows that are not muted or archived, and read-all leaves archived rows alone', async () => {
+  it('counts unread rows that are not archived, and read-all leaves archived rows alone', async () => {
     const t = await setup()
     const id = t.superUser.id
-    t.db.insert(notificationMutes).values({ userId: id, kind: 'asset_overdue', createdAt: new Date() }).run()
     send(t, [id], { sourceKey: 'asset:1' })
     send(t, [id], { sourceKey: 'asset:2' })
     send(t, [id], { sourceKey: 'asset:3' })
-    send(t, [id], { kind: 'asset_overdue', sourceKey: 'assignment:9' })
     const [first, second] = rowsOf(t, id)
     const cookie = await t.asSuper()
     const count = async () => (await t.call('GET', '/api/me/notifications/count', { cookie })).data.unread
@@ -167,7 +140,6 @@ describe('the Inbox API', () => {
     expect(await count()).toBe(0)
     expect(rowsOf(t, id).map((row) => [row.archivedAt !== null, row.readAt !== null])).toEqual([
       [true, false],
-      [false, true],
       [false, true],
       [false, true],
     ])
@@ -197,88 +169,8 @@ describe('the Inbox API', () => {
   })
 })
 
-describe('the Mutes API', () => {
-  it('refuses kinds that can never be muted', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    for (const kind of ['account_password_reset', 'account_access_changed', 'account_unlocked', 'account_employee_linked', 'notice']) {
-      const res = await t.call('POST', '/api/me/mutes', { cookie, body: { kind, duration: '7d' } })
-      expect(res.status).toBe(422)
-    }
-    expect((await t.call('POST', '/api/me/mutes', { cookie, body: { kind: 'grievance_filed', duration: '7d' } })).status).toBe(422)
-    expect((await t.call('GET', '/api/me/mutes', { cookie })).data).toEqual([])
-  })
-
-  it('ends each duration where it should', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    for (const duration of ['24h', '7d', '1m', 'forever'] as const) {
-      const made = (await t.call('POST', '/api/me/mutes', { cookie, body: { kind: 'asset_issued', sourceKey: `asset:${duration}`, duration } })).data
-      expect(made.until).toBe(muteEnds(duration, new Date(made.createdAt))?.toISOString() ?? null)
-    }
-    const at = (iso: string) => new Date(iso)
-    expect(muteEnds('24h', at('2026-10-19T08:00:00Z'))).toEqual(at('2026-10-20T08:00:00Z'))
-    expect(muteEnds('7d', at('2026-10-19T08:00:00Z'))).toEqual(at('2026-10-26T08:00:00Z'))
-    expect(muteEnds('1m', at('2026-10-19T08:00:00Z'))).toEqual(at('2026-11-19T08:00:00Z'))
-    // A month from the 31st is the last day of a shorter month.
-    expect(muteEnds('1m', at('2027-01-31T08:00:00Z'))).toEqual(at('2027-02-28T08:00:00Z'))
-    expect(muteEnds('1m', at('2028-01-31T08:00:00Z'))).toEqual(at('2028-02-29T08:00:00Z'))
-    expect(muteEnds('forever', at('2026-10-19T08:00:00Z'))).toBeNull()
-  })
-
-  it('replaces a mute of the same thing rather than stacking, and keeps item and kind mutes apart', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const mute = (body: object) => t.call('POST', '/api/me/mutes', { cookie, body })
-    expect((await mute({ kind: 'maintenance_changed', sourceKey: 'maintenance:4', duration: '24h' })).status).toBe(201)
-    await mute({ kind: 'maintenance_changed', sourceKey: 'maintenance:4', duration: 'forever' })
-    await mute({ kind: 'maintenance_changed', duration: '7d' })
-    await mute({ kind: 'maintenance_changed', duration: '1m' })
-    const list = (await t.call('GET', '/api/me/mutes', { cookie })).data
-    expect(list.map((row: { sourceKey: string | null; until: string | null }) => [row.sourceKey, row.until === null])).toEqual([
-      [null, false],
-      ['maintenance:4', true],
-    ])
-    expect(muteEnds('1m', new Date(list[0].createdAt))?.toISOString()).toBe(list[0].until)
-    // Muting the item again from a notification of another kind is still one mute of it.
-    await mute({ kind: 'maintenance_dispatched', sourceKey: 'maintenance:4', duration: '7d' })
-    const again = (await t.call('GET', '/api/me/mutes', { cookie })).data
-    expect(again.map((row: { kind: string; sourceKey: string | null }) => [row.kind, row.sourceKey])).toEqual([
-      ['maintenance_dispatched', 'maintenance:4'],
-      ['maintenance_changed', null],
-    ])
-  })
-
-  it('names a muted item by its latest notification', async () => {
-    const t = await setup()
-    send(t, [t.superUser.id], { title: 'Older' })
-    send(t, [t.superUser.id])
-    send(t, [t.adminUser.id], { title: 'Not yours' })
-    const cookie = await t.asSuper()
-    const made = (await t.call('POST', '/api/me/mutes', { cookie, body: { kind: 'asset_issued', sourceKey: 'asset:1', duration: '7d' } })).data
-    expect(made.about).toBe(ISSUED.title)
-    await t.call('POST', '/api/me/mutes', { cookie, body: { kind: 'asset_issued', duration: '7d' } })
-    await t.call('POST', '/api/me/mutes', { cookie, body: { kind: 'asset_overdue', sourceKey: 'assignment:9', duration: '7d' } })
-    const list = (await t.call('GET', '/api/me/mutes', { cookie })).data
-    expect(list.map((row: { about: string | null }) => row.about)).toEqual([null, null, ISSUED.title])
-  })
-
-  it('unmutes only your own, and lists only live mutes', async () => {
-    const t = await setup()
-    const theirs = t.db.insert(notificationMutes).values({ userId: t.adminUser.id, kind: 'asset_issued', createdAt: new Date() }).returning().get()
-    t.db.insert(notificationMutes).values({ userId: t.superUser.id, kind: 'asset_overdue', until: new Date(Date.now() - 1000), createdAt: new Date() }).run()
-    const cookie = await t.asSuper()
-    expect((await t.call('GET', '/api/me/mutes', { cookie })).data).toEqual([])
-    expect((await t.call('DELETE', `/api/me/mutes/${theirs.id}`, { cookie })).status).toBe(404)
-    const mine = (await t.call('POST', '/api/me/mutes', { cookie, body: { kind: 'asset_issued', duration: 'forever' } })).data
-    expect((await t.call('DELETE', `/api/me/mutes/${mine.id}`, { cookie })).status).toBe(204)
-    expect((await t.call('GET', '/api/me/mutes', { cookie })).data).toEqual([])
-    expect(t.db.select().from(notificationMutes).where(eq(notificationMutes.id, theirs.id)).get()).toBeTruthy()
-  })
-})
-
 describe('retention', () => {
-  it('deletes notifications over a year old, read or not, and mutes that have ended', async () => {
+  it('deletes notifications over a year old, read or not', async () => {
     const t = await setup()
     const now = new Date('2026-10-19T12:00:00Z')
     const yearAgo = new Date('2025-10-19T12:00:00Z')
@@ -288,13 +180,8 @@ describe('retention', () => {
     at(new Date(yearAgo.getTime() - 1), 'a year and a moment, unread')
     at(new Date(yearAgo.getTime() - 1), 'a year and a moment, read', now)
     at(now, 'today')
-    const mute = (until: Date | null, kind: string) => t.db.insert(notificationMutes).values({ userId: t.adminUser.id, kind, until, createdAt: yearAgo }).run()
-    mute(now, 'ended now')
-    mute(new Date(now.getTime() + 1), 'ends next')
-    mute(null, 'forever')
 
     purgeNotifications(t.db, now)
     expect(rowsOf(t, t.adminUser.id).map((row) => row.title)).toEqual(['exactly a year', 'today'])
-    expect(t.db.select().from(notificationMutes).all().map((row) => row.kind)).toEqual(['ends next', 'forever'])
   })
 })

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
-import { assetTypes, conditionRatings, digitalAssetTypes, employees, notificationMutes, notifications, programs, users } from '../db/schema.ts'
+import { assetTypes, conditionRatings, digitalAssetTypes, employees, notifications, programs, users } from '../db/schema.ts'
 import { createAsset, createAssetsBulk } from '../services/assets.ts'
 import { issueAsset, issueInTx, returnAssignment, returnMany } from '../services/assignments.ts'
 import { createDigitalAsset, issueDigitalAsset } from '../services/digital-assets.ts'
@@ -159,12 +159,9 @@ describe('maintenance', () => {
 })
 
 describe('account and security events', () => {
-  it('tells the account about access, Super Admin, linked employee, password reset and unlock, and never mutes them', async () => {
+  it('tells the account about access, Super Admin, linked employee, password reset and unlock', async () => {
     const t = await setup()
     const linked = person(t, 'E-2').employee
-    for (const kind of ['account_access_changed', 'account_employee_linked', 'account_password_reset', 'account_unlocked']) {
-      t.db.insert(notificationMutes).values({ userId: t.adminUser.id, kind, createdAt: new Date() }).run()
-    }
     const id = t.adminUser.id
     updateUser(t.db, t.superUser, id, { name: 'Marcus O.' })
     updateUser(t.db, t.superUser, id, { access: { assets: 'full' } })
@@ -175,7 +172,7 @@ describe('account and security events', () => {
     t.db.update(users).set({ lockedUntil: new Date(Date.now() + 60_000) }).where(eq(users.id, id)).run()
     clearLock(t.db, t.superUser, id)
 
-    const common = { sourceKey: `user:${id}`, link: '/me/profile', muted: false }
+    const common = { sourceKey: `user:${id}`, link: '/me/profile' }
     expect(rowsOf(t, id)).toMatchObject([
       { ...common, kind: 'account_access_changed', title: 'Your access was changed', body: 'Changed by Priya Raghunathan. See your Profile for what you can do now.' },
       { ...common, kind: 'account_access_changed' },

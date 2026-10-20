@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, MUTE_DURATIONS, NOTICE_BODY_MAX, NOTICE_TITLE_MAX, NOTIFICATION_KIND_KEYS, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
+import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, NOTICE_BODY_MAX, NOTICE_TITLE_MAX, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS } from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 
@@ -510,14 +510,6 @@ export const notificationListSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(25),
 })
 export type NotificationListInput = z.infer<typeof notificationListSchema>
-
-/** Mute one source (with `sourceKey`) or the whole kind (without). */
-export const muteSchema = z.object({
-  kind: z.enum(NOTIFICATION_KIND_KEYS),
-  sourceKey: z.string().trim().min(1).max(100).optional(),
-  duration: z.enum(MUTE_DURATIONS),
-})
-export type MuteInput = z.infer<typeof muteSchema>
 
 /** A Super Admin's notice, to every active account or to the accounts picked. */
 export const noticeSchema = z.object({

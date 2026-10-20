@@ -74,7 +74,7 @@ function employeeLabel(db: DbLike, id: number | null) {
   return row ? `${row.code} ${fullName(row.firstName, row.lastName)}` : 'none'
 }
 
-/** Tells an account about a change to it. These kinds cannot be muted, so a change nobody expected is noticed. Null actor: the server CLI. */
+/** Tells an account about a change to it, so a change nobody expected is noticed. Null actor: the server CLI. */
 export function notifyAccount(tx: DbLike, actor: Actor | null, userId: number, kind: Extract<NotificationKind, `account_${string}`>, title: string, body: string) {
   notify(tx, actor, { recipients: [userId], kind, sourceKey: `user:${userId}`, title, body, link: '/me/profile' })
 }

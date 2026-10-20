@@ -682,7 +682,7 @@ export const notifications = sqliteTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     /** One of NOTIFICATION_KINDS. Open text, so a new kind needs no migration. */
     kind: text('kind').notNull(),
-    /** What the notification is about, as in `asset:113`. It is what "Mute this item" matches. */
+    /** What the notification is about, as in `asset:113`. */
     sourceKey: text('source_key').notNull(),
     title: text('title').notNull(),
     body: text('body'),
@@ -691,31 +691,11 @@ export const notifications = sqliteTable(
     createdAt: ms('created_at').notNull(),
     readAt: ms('read_at'),
     archivedAt: ms('archived_at'),
-    /** Whether a mute applied when it arrived: it is in the Inbox but not in the bell's count. */
-    muted: integer('muted', { mode: 'boolean' }).notNull().default(false),
   },
   (t) => [
     index('ix_notifications_user').on(t.userId, t.archivedAt, t.createdAt),
-    index('ix_notifications_unread').on(t.userId).where(sql`${t.readAt} is null and ${t.archivedAt} is null and ${t.muted} = 0`),
+    index('ix_notifications_unread').on(t.userId).where(sql`${t.readAt} is null and ${t.archivedAt} is null`),
   ],
-)
-
-/** "Mute this item" (with a source key) or "Mute this kind" (without), until a time or until the person changes it. */
-export const notificationMutes = sqliteTable(
-  'notification_mutes',
-  {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    userId: integer('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    kind: text('kind').notNull(),
-    sourceKey: text('source_key'),
-    /** Null means until the person changes it. */
-    until: ms('until'),
-    createdAt: ms('created_at').notNull(),
-  },
-  // Muting the same thing again replaces the mute; it never stacks.
-  (t) => [uniqueIndex('uq_notification_mutes').on(t.userId, t.kind, sql`coalesce(${t.sourceKey}, '')`)],
 )
 
 /** An announcement a Super Admin sends. Each recipient gets a `notice` notification with the source key `notice:<id>`. */
