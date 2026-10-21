@@ -213,7 +213,7 @@ export function EmployeeEditSheet({ employee, onClose }: { employee: EmployeeRow
       lastName: employee.lastName,
       department: employee.department ?? '',
       jobTitle: employee.jobTitle ?? '',
-    } as Body,
+    },
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}

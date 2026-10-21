@@ -1,5 +1,5 @@
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
+import { StarterKit } from '@tiptap/starter-kit'
 import {
   Bold,
   Heading2,
@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { RICH_TEXT_LINK_SCHEMES, RICH_TEXT_MAX_CHARS, richTextHref, richTextToPlain } from '@shared/richtext.ts'
 import { cn } from '@/lib/cn.ts'
 import { Button } from './button.tsx'
@@ -360,7 +360,9 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const frame = useRef<HTMLDivElement>(null)
   const changed = useRef(onChange)
-  changed.current = onChange
+  useLayoutEffect(() => {
+    changed.current = onChange
+  })
 
   // ProseMirror takes attributes as strings and `class`, not `className`; the ones not set are left out.
   const attributes: Record<string, string> = {

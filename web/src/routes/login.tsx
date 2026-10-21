@@ -45,8 +45,9 @@ function LoginPage() {
     },
   })
 
+  const defaultValues: LoginInput = { email: '', password: '', remember: false }
   const form = useForm({
-    defaultValues: { email: '', password: '', remember: false } as LoginInput,
+    defaultValues,
     validators: { onSubmit: loginSchema },
     onSubmit: async ({ value }) => {
       await login.mutateAsync(value).catch(() => undefined)

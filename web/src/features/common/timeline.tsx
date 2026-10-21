@@ -1,5 +1,6 @@
 import { Check, ChevronDown, Diamond, Flag, Pencil } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { GrievanceEntry } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Mono } from '@/components/ui/layout.tsx'
@@ -262,7 +263,6 @@ export function Timeline<E extends TimelineEntry>({
   const [hideAutomatic, setHideAutomatic] = useState(false)
   const [order, setOrder] = useState<Order>(() => savedOrder(orderKey))
   const [drawn, setDrawn] = useState(PAGE)
-  const [goTo, setGoTo] = useState<number | null>(null)
   const more = useRef<HTMLButtonElement>(null)
 
   const rows = useMemo(() => {
@@ -301,22 +301,18 @@ export function Timeline<E extends TimelineEntry>({
   }, [remaining])
 
   // Following a chip to another entry: it is drawn first if it was not, then scrolled to and given focus.
-  useEffect(() => {
-    if (goTo === null) return
-    const target = document.getElementById(anchor(entryCode(goTo)))
+  const follow = (seq: number) => {
+    flushSync(() => {
+      setShow('all')
+      setDrawn(entries.length)
+    })
+    const target = document.getElementById(anchor(entryCode(seq)))
     if (!target) return
     target.scrollIntoView({
       block: 'center',
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     })
     target.focus({ preventScroll: true })
-    setGoTo(null)
-  }, [goTo, visible.length, entryCode])
-
-  const follow = (seq: number) => {
-    setShow('all')
-    setDrawn(entries.length)
-    setGoTo(seq)
   }
   const reorder = (next: Order) => {
     setOrder(next)

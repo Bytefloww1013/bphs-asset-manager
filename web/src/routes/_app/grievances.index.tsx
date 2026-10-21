@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Plus, Scale, SearchX } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { grievanceStatusLabel } from '@shared/constants.ts'
 import type { GrievancePerson, GrievanceRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -12,6 +12,7 @@ import { DateInput, FilterTabs, SearchInput, Select } from '@/components/ui/form
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { GrievanceStatusBadge } from '@/features/grievances/status.tsx'
+import { useSearchBox } from '@/features/common/hooks.ts'
 import { formatDateTime, formatRelative, startOfLocalDay } from '@/lib/format.ts'
 import { grievanceCategoriesQuery, grievancesQuery } from '@/lib/queries.ts'
 import { useDenied } from '@/lib/session.ts'
@@ -77,21 +78,7 @@ function GrievancesPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   const setFilter = (patch: GrievanceSearch, replace = false) =>
     void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
-  // The box holds what is being typed and follows the address only when something else changes it (the Back button).
-  const [q, setQ] = useState(search.q ?? '')
-  const typing = useRef(false)
-  useEffect(() => {
-    if (!typing.current && (search.q ?? '') !== q.trim()) setQ(search.q ?? '')
-  }, [search.q])
-  useEffect(() => {
-    typing.current = q.trim() !== (search.q ?? '')
-    if (!typing.current) return
-    const timer = setTimeout(() => {
-      typing.current = false
-      setFilter({ q: q.trim() || undefined }, true)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [q])
+  const [q, setQ] = useSearchBox(search.q, (q) => setFilter({ q }, true))
 
   const tab = search.status ?? 'open'
   const { data, isPending, isPlaceholderData } = useQuery(grievancesQuery({ ...search, status: tab }))

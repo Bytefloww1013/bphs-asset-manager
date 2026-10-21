@@ -133,7 +133,7 @@ describe('returned in poor condition', () => {
     returnAssignment(t.db, t.adminUser, fair.assignmentId!, { conditionRatingId: ratingId(t, 'Fair') })
     returnAssignment(t.db, t.adminUser, poor.assignmentId!, { conditionRatingId: ratingId(t, 'Poor') })
     const sent = everything(t).filter((row) => row.kind === 'asset_returned_poor')
-    expect(sent.map((row) => row.userId).sort()).toEqual([t.superUser.id, full.id].sort())
+    expect(sent.map((row) => row.userId).sort((a, b) => a - b)).toEqual([t.superUser.id, full.id].sort((a, b) => a - b))
     expect(sent[0]).toMatchObject({
       sourceKey: `asset:${poor.id}`,
       title: 'BPHS-0002 came back rated Poor',

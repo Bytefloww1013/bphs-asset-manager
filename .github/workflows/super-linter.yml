@@ -45,6 +45,10 @@ jobs:
       - name: Check formatting
         run: bun run format:check
 
+      # Oxlint, type-aware; --format github turns each finding into an annotation on the PR.
+      - name: Lint
+        run: bun run lint --format github
+
       - name: Typecheck
         run: bun run typecheck
 
@@ -53,10 +57,6 @@ jobs:
 
       - name: Build
         run: bun run build
-
-      # Turn this on once a linter is set up (Oxlint, its own issue).
-      # - name: Lint
-      #   run: bun run lint
 
   lint:
     name: Super-Linter
@@ -83,7 +83,7 @@ jobs:
           DEFAULT_BRANCH: 'main'
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'push' }}
           ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: true
-          # Only these linters run. TypeScript is left to the test job (Oxfmt; Super-Linter doesn't bundle it).
+          # Only these linters run. TypeScript is left to the test job (Oxfmt and Oxlint; Super-Linter doesn't bundle them).
           VALIDATE_GITLEAKS: true # leaked secrets
           VALIDATE_DOCKERFILE_HADOLINT: true # Dockerfile
           VALIDATE_BASH: true # shellcheck on scripts/ and docs/verify/

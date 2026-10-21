@@ -255,7 +255,7 @@ describe('grievance tables and IDs', () => {
     const keys = Object.keys(row)
     return t.sqlite
       .prepare(`insert into grievances (${keys.join(', ')}) values (${keys.map(() => '?').join(', ')})`)
-      .run(...(Object.values(row) as (string | number)[]))
+      .run(...Object.values(row))
   }
 
   it('number grievances within the year they were entered in', async () => {
@@ -1341,7 +1341,9 @@ describe('editing a grievance', () => {
       status: 'open',
       owner: { id: ines.id },
     })
-    expect(first.data.employees.map((person: any) => person.id).sort()).toEqual([dana.id, t.person.id].sort())
+    expect(first.data.employees.map((person: any) => person.id).sort((a: number, b: number) => a - b)).toEqual(
+      [dana.id, t.person.id].sort((a, b) => a - b),
+    )
     expect(timeline(t)[1]).toEqual({
       seq: 2,
       kind: 'system',
@@ -1771,7 +1773,7 @@ describe('reading the grievance audit log', () => {
     const res = await t.app.request('/api/grievances/audit.csv?action=entry', { headers: { cookie: owner } })
     expect(res.headers.get('content-disposition')).toBe('attachment; filename="grievance-audit-log.csv"')
     const bytes = new Uint8Array(await res.arrayBuffer())
-    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    expect(bytes.slice(0, 3)).toEqual(new Uint8Array([0xef, 0xbb, 0xbf]))
     const lines = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes).slice(1).trim().split('\r\n')
     expect(lines[0]).toBe('occurred_at,user,action,entity_type,entity_id,details')
     expect(lines.slice(1)).toEqual([

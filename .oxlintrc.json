@@ -1,0 +1,89 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Setting plugins replaces Oxlint's defaults, so every plugin we want is listed.
+  "plugins": ["typescript", "react", "jsx-a11y", "import", "unicorn", "vitest", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error",
+    "no-console": "error",
+    // Vitest's expect takes a failure message as a second argument.
+    "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // Side-effect imports: stylesheets, fonts and the global Zod setup.
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css", "@fontsource-variable/*", "./zod-config.ts"] }],
+    // TanStack Table `cell`/`header` and our `detail`/`link` props take render functions, not components.
+    "react/no-unstable-nested-components": ["warn", { "allowAsProps": true }],
+    // The automatic JSX runtime (React 17+) needs no React import.
+    "react/react-in-jsx-scope": "off",
+    // Casts narrow values Zod or Drizzle already typed; a type guard at each would add code, not safety.
+    "typescript/no-unsafe-type-assertion": "off",
+    // Reusing names like `row` or `path` in an inner scope is deliberate here.
+    "eslint/no-shadow": "off",
+    // Small helpers sit next to their only caller on purpose.
+    "unicorn/consistent-function-scoping": "off",
+    // Effects return a cleanup on some paths only, which React allows; tsc already checks return types.
+    "typescript/consistent-return": "off",
+    // Overlap react-hooks/exhaustive-deps (on); their "extra dependency" reports are deliberate re-run triggers.
+    "react/exhaustive-effect-dependencies": "off",
+    "react/memo-dependencies": "off",
+    // Every sort here is on a fresh copy (`[...x].sort()`, `.map().sort()`), so in-place sorting mutates nothing shared.
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-array-reverse": "off",
+    // Raw-SQL rows are typed by hand: Boolean(row.isActive) turns SQLite's 0/1 into a boolean the types already promise.
+    "typescript/no-unnecessary-type-conversion": "off",
+    // Type parameters like useChange<T> let callers name a response type the arguments don't carry.
+    "typescript/no-unnecessary-type-parameters": "off",
+    // Each autoFocus is the first field of a sheet, dialog or sign-in page just opened, where WAI-ARIA expects focus to go.
+    "jsx-a11y/no-autofocus": "off",
+    // Its suggested tags (select for a listbox, input for a radio, img for a chart bar) cannot do what our ARIA widgets do.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // It cannot see labels that come from rendered children (grid cells) or a datalist option's value; jsx-a11y's recommended set leaves it off too.
+    "jsx-a11y/control-has-associated-label": "off",
+    // Every hit is delegation (a form's Enter key, a drop zone's drag events) or a mousedown that keeps focus in an input.
+    "jsx-a11y/no-noninteractive-element-interactions": "off",
+    // The exceptions jsx-a11y's recommended set allows, for the combobox's listbox and options.
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": [
+      "error",
+      {
+        "ul": ["listbox", "menu", "menubar", "radiogroup", "tablist", "tree", "treegrid"],
+        "li": ["menuitem", "option", "row", "tab", "treeitem"]
+      }
+    ],
+    // DateInput renders the input that its wrapping label names.
+    "jsx-a11y/label-has-associated-control": ["error", { "controlComponents": ["DateInput"] }]
+  },
+  "ignorePatterns": [
+    "web/src/routeTree.gen.ts",
+    "server/db/migrations/**",
+    "brand-assets/**",
+    "docs/**",
+    ".impeccable/**",
+    ".rtk/**",
+    "handoff/**"
+  ],
+  "overrides": [
+    {
+      "files": ["server/**"],
+      "env": { "node": true },
+      // The server has no logger: console is its log, and admin/seed/backup are CLI scripts.
+      "rules": { "no-console": "off" }
+    },
+    { "files": ["web/src/**"], "env": { "browser": true } },
+    { "files": ["**/*.test.ts"], "env": { "vitest": true } },
+    {
+      "files": ["web/src/components/ui/combobox.tsx", "web/src/components/ui/form.tsx"],
+      // WAI-ARIA APG combobox and radio group: focus stays in the input, or roves among the radios, and they take the keys.
+      "rules": {
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-static-element-interactions": "off",
+        "jsx-a11y/interactive-supports-focus": "off"
+      }
+    }
+  ]
+}

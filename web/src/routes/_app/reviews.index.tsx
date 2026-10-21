@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { ClipboardCheck, Plus, SearchX } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
 import { REVIEW_STATUSES, reviewStatusLabel } from '@shared/constants.ts'
 import type { ReviewPerson, ReviewRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -12,6 +11,7 @@ import { DateInput, FilterTabs, SearchInput, Select } from '@/components/ui/form
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { useReviewPageTitle } from '@/features/reviews/page-title.ts'
 import { ReviewStatusBadge } from '@/features/reviews/status.tsx'
+import { useSearchBox } from '@/features/common/hooks.ts'
 import { formatDateTime, formatRelative, startOfLocalDay } from '@/lib/format.ts'
 import { reviewsQuery } from '@/lib/queries.ts'
 import { useDenied } from '@/lib/session.ts'
@@ -152,21 +152,7 @@ function ReviewsPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   const setFilter = (patch: ReviewSearch, replace = false) =>
     void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
-  // The box holds what is being typed and follows the address only when something else changes it (the Back button).
-  const [q, setQ] = useState(search.q ?? '')
-  const typing = useRef(false)
-  useEffect(() => {
-    if (!typing.current && (search.q ?? '') !== q.trim()) setQ(search.q ?? '')
-  }, [search.q])
-  useEffect(() => {
-    typing.current = q.trim() !== (search.q ?? '')
-    if (!typing.current) return
-    const timer = setTimeout(() => {
-      typing.current = false
-      setFilter({ q: q.trim() || undefined }, true)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [q])
+  const [q, setQ] = useSearchBox(search.q, (q) => setFilter({ q }, true))
 
   const tab = search.status ?? 'open'
   const { data, isPending, isPlaceholderData } = useQuery(reviewsQuery({ ...search, status: tab }))

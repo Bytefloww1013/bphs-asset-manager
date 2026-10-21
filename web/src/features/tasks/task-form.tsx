@@ -231,9 +231,9 @@ export function TaskForm({ task }: { task?: TaskDetail }) {
           description: rows[0]!.title,
         })
         // One task opens; several go back to the list, where they all are.
-        return void (await (rows.length === 1
+        return await (rows.length === 1
           ? navigate({ to: '/tasks/$id', params: { id: String(rows[0]!.id) } })
-          : navigate({ to: '/tasks' })))
+          : navigate({ to: '/tasks' }))
       }
       // An edit sends only what changed, so a past-due task keeps its due time and a sent one never names a send time.
       const changed = (name: keyof Values) => JSON.stringify(values[name]) !== JSON.stringify(initial[name])

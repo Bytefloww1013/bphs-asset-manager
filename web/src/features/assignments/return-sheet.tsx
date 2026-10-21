@@ -4,7 +4,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { TrendingDown } from 'lucide-react'
 import { useState } from 'react'
 import { defaultRating } from '@shared/constants.ts'
-import type { AssignmentRow, EmployeeRef, ReturnBulkResult } from '@shared/types.ts'
+import type { AssignmentRow, ReturnBulkResult } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
@@ -28,8 +28,6 @@ export function ReturnSheet() {
   if (search.return === undefined) return null
   return <ReturnForm key={search.return} assignmentId={search.return} onClose={close} />
 }
-
-type Values = { ratingId: number | null; assessor: EmployeeRef | null; notes: string }
 
 /**
  * What to say when the assignment turned out to be closed already. Only sometimes is that a colleague a moment ago: it can be the
@@ -92,7 +90,7 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
       ratingId: issueRating?.id ?? null,
       assessor: people.find((person) => person.id === user.employeeId) ?? null,
       notes: '',
-    } as Values,
+    },
     validators: {
       onSubmit: ({ value }) => (value.ratingId ? undefined : { fields: { ratingId: 'Rate its condition on return.' } }),
     },
@@ -307,7 +305,7 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
       ratingId: defaultRating(ratings)?.id ?? null,
       assessor: people.find((person) => person.id === user.employeeId) ?? null,
       notes: '',
-    } as Values,
+    },
     validators: {
       onSubmit: ({ value }) => (value.ratingId ? undefined : { fields: { ratingId: 'Rate their condition.' } }),
     },

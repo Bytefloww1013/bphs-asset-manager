@@ -292,7 +292,7 @@ describe('request limits', () => {
       headers: { 'content-type': 'multipart/form-data; boundary=x', origin: 'http://localhost' },
       body: endless,
       duplex: 'half',
-    } as RequestInit)
+    })
     expect(res.status).toBe(401)
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(read).toBe(0)
@@ -1587,7 +1587,7 @@ describe('lists, users and audit', () => {
     const res = await t.app.request('/api/audit.csv', { headers: { cookie } })
     expect(res.headers.get('content-type')).toMatch(/text\/csv/)
     const bytes = new Uint8Array(await res.arrayBuffer())
-    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+    expect(bytes.slice(0, 3)).toEqual(new Uint8Array([0xef, 0xbb, 0xbf]))
     const text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
     expect(text.slice(1)).toMatch(/^occurred_at,user,action,entity_type,entity_id,details\r\n/)
     expect(text).toContain(",'=SUM(A1:A9)\r\n")

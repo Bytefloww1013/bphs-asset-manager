@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useToast } from '@/components/ui/feedback.tsx'
 import { ApiError } from '@/lib/api.ts'
 import { refreshData } from '@/lib/queries.ts'
@@ -33,4 +34,30 @@ export function useWrite<TData, TVars>(
       toast({ tone: 'bad', title: 'That did not go through', description: error.message })
     },
   })
+}
+
+/**
+ * A search box: it holds what is being typed and sends it on to `commit` after a pause, and follows `current` (the address)
+ * only when something else changes it (the Back button).
+ */
+export function useSearchBox(current: string | undefined, commit: (q: string | undefined) => void) {
+  const [q, setQ] = useState(current ?? '')
+  const typing = useRef(false)
+  // Effect events see the latest q and commit without making the effects below re-run when those change.
+  const follow = useEffectEvent((next: string) => {
+    if (!typing.current && next !== q.trim()) setQ(next)
+  })
+  const edited = useEffectEvent(() => q.trim() !== (current ?? ''))
+  const send = useEffectEvent(() => {
+    typing.current = false
+    commit(q.trim() || undefined)
+  })
+  useEffect(() => follow(current ?? ''), [current])
+  useEffect(() => {
+    typing.current = edited()
+    if (!typing.current) return
+    const timer = setTimeout(() => send(), 300)
+    return () => clearTimeout(timer)
+  }, [q])
+  return [q, setQ] as const
 }

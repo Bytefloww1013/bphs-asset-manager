@@ -43,7 +43,7 @@ const LOOKS_LIKE: Record<AttachmentExtension, (bytes: Buffer) => boolean> = {
 
 /** The name without any folder or control characters, cut to a length any page can show, keeping its extension. */
 function cleanName(raw: string) {
-  const name = (raw.split(/[\\/]/).pop() ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  const name = (raw.split(/[\\/]/).pop() ?? '').replace(/\p{Cc}/gu, '').trim()
   if (name.length <= FILENAME_MAX) return name
   const extension = fileExtension(name)
   return `${name.slice(0, FILENAME_MAX - extension.length - 1)}.${extension}`

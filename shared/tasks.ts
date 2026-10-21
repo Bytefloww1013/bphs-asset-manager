@@ -24,7 +24,7 @@ export function taskStatus(task: TaskTimes, now: Date = new Date()): TaskStatus 
 /** Whether a time zone name is one this runtime knows, as in America/Chicago. */
 export function isTimeZone(zone: string): boolean {
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: zone })
+    void new Intl.DateTimeFormat('en-US', { timeZone: zone })
     return true
   } catch {
     return false

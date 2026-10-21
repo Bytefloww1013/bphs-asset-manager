@@ -166,7 +166,11 @@ export function Combobox<T>({
 
   // Follow the selected value when the parent changes it (reset, prefill).
   const label = value ? getLabel(value) : ''
-  useEffect(() => setText(label), [label])
+  const [followed, setFollowed] = useState(label)
+  if (followed !== label) {
+    setFollowed(label)
+    setText(label)
+  }
 
   const found = useMemo(
     () => (value && label === text ? items : searchItems(items, text, getLabel, getSearch)),
@@ -233,10 +237,10 @@ export function Combobox<T>({
               } else if (event.key === 'Enter' && open && (matches[active] || value)) {
                 event.preventDefault()
                 event.stopPropagation()
-                if (matches[active]) select(matches[active]!)
+                if (matches[active]) select(matches[active])
                 else setOpen(false)
               } else if (event.key === 'Tab' && open && !value && text.trim() && matches[active]) {
-                select(matches[active]!)
+                select(matches[active])
               } else if (event.key === 'Escape' && open) {
                 event.stopPropagation()
                 setOpen(false)
@@ -491,10 +495,10 @@ export function MultiCombobox<T>({
               } else if (event.key === 'Enter' && open) {
                 event.preventDefault()
                 event.stopPropagation()
-                if (matches[active]) add(matches[active]!, false)
+                if (matches[active]) add(matches[active], false)
                 else setOpen(false)
               } else if (event.key === 'Tab' && open && text.trim() && matches[active]) {
-                add(matches[active]!, false)
+                add(matches[active], false)
               } else if (event.key === 'Escape' && open) {
                 event.stopPropagation()
                 setOpen(false)

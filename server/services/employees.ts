@@ -207,7 +207,7 @@ export function updateEmployee(db: Db, actor: Actor, id: number, input: Employee
     const track = <K extends 'code' | 'firstName' | 'lastName' | 'department' | 'jobTitle'>(key: K, label: string) => {
       const next = input[key]
       if (next === undefined) return
-      const value = (next ?? null) as string | null
+      const value = next ?? null
       if (value === current[key]) return
       patch[key] = value as never
       changes.push(`${label}: ${current[key] ?? '—'} → ${value ?? '—'}`)

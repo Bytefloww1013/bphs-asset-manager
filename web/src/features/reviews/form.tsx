@@ -50,6 +50,8 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
   const noCreate = useDenied('reviews', 'edit')
   // What the form started from, read once: a review that changes underneath is for the save to refuse, not for the form to follow.
   const [was] = useState(review)
+  // The year the new code will most likely carry, for the placeholder; the server assigns the real one.
+  const [year] = useState(() => new Date().getFullYear())
   const find = (id?: number) => employees.find((row) => row.id === id) ?? null
   // Someone already named stays offered after they are archived; anyone newly named must be active.
   const offered = (keep?: number) => employees.filter((person) => person.state === 'active' || person.id === keep)
@@ -145,7 +147,7 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
                 <Mono className="text-ink-2">{was.code}</Mono>
               ) : (
                 <>
-                  <Mono>AR-{new Date().getFullYear()}-····</Mono> Assigned when saved
+                  <Mono>AR-{year}-····</Mono> Assigned when saved
                 </>
               )}
             </dd>

@@ -629,7 +629,7 @@ function NewAccountSheet({
     defaultValues: {
       name: '',
       email: '',
-      grant: { access: {}, superAdmin: false } as Grantee,
+      grant: { access: {}, superAdmin: false },
       employee: null as (typeof people)[number] | null,
     },
     validators: {

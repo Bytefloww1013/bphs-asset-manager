@@ -252,9 +252,9 @@ describe('fan-out', () => {
     const w = await world()
     const res = await assign(w, w.boss, [w.amy.id, w.reader.id, w.amy.id])
     expect(res.status).toBe(201)
-    expect(res.data.map((task: { assignee: { id: number } }) => task.assignee.id).sort()).toEqual(
-      [w.amy.id, w.reader.id].sort(),
-    )
+    expect(
+      res.data.map((task: { assignee: { id: number } }) => task.assignee.id).sort((a: number, b: number) => a - b),
+    ).toEqual([w.amy.id, w.reader.id].sort((a, b) => a - b))
     for (const task of res.data) {
       const detail = await w.t.call('GET', `/api/tasks/${task.id}`, { cookie: w.boss.cookie })
       expect(detail.data.events.map((event: { kind: string }) => event.kind)).toEqual(['assigned'])

@@ -69,12 +69,12 @@ function ReviewPage() {
   const counted = caps.filter((cap) => cap.status !== 'cancelled')
   const count = (kind: string) => entries.filter((entry) => entry.kind === kind).length
   const times = entries.map((entry) => entry.occurredAt).sort()
-  const summary: [string, ReactNode][] = [
-    ['Status', <ReviewStatusBadge status={review.status} />],
-    ['Review date', <Mono>{review.reviewDate}</Mono>],
-    [
-      'CAPs',
-      caps.length ? (
+  const summary: { label: string; value: ReactNode }[] = [
+    { label: 'Status', value: <ReviewStatusBadge status={review.status} /> },
+    { label: 'Review date', value: <Mono>{review.reviewDate}</Mono> },
+    {
+      label: 'CAPs',
+      value: caps.length ? (
         <>
           {counted.filter((cap) => cap.status === 'completed').length} of {counted.length} done
           <ul className="mt-1.5 flex flex-col gap-1 font-normal">
@@ -89,21 +89,22 @@ function ReviewPage() {
       ) : (
         <span className="font-normal text-ink-3">None yet</span>
       ),
-    ],
-    [
-      'Entries',
-      <>
-        {entries.length}
-        <span className="block text-xs font-normal text-ink-3">
-          {plural(count('update'), 'update')}, {plural(count('correction'), 'correction')}, {count('system')} automatic
-        </span>
-      </>,
-    ],
-    ['First activity', <Mono>{formatDateTime(times[0])}</Mono>],
-    ['Latest activity', <Mono>{formatDateTime(times.at(-1))}</Mono>],
-    ...(review.completedAt
-      ? [['Completed', <Mono>{formatDateTime(review.completedAt)}</Mono>] as [string, ReactNode]]
-      : []),
+    },
+    {
+      label: 'Entries',
+      value: (
+        <>
+          {entries.length}
+          <span className="block text-xs font-normal text-ink-3">
+            {plural(count('update'), 'update')}, {plural(count('correction'), 'correction')}, {count('system')}{' '}
+            automatic
+          </span>
+        </>
+      ),
+    },
+    { label: 'First activity', value: <Mono>{formatDateTime(times[0])}</Mono> },
+    { label: 'Latest activity', value: <Mono>{formatDateTime(times.at(-1))}</Mono> },
+    ...(review.completedAt ? [{ label: 'Completed', value: <Mono>{formatDateTime(review.completedAt)}</Mono> }] : []),
   ]
 
   return (
@@ -191,7 +192,7 @@ function ReviewPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
         <Panel aria-label="Summary" className="lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 print:hidden">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-5 py-4 lg:grid-cols-1">
-            {summary.map(([label, value]) => (
+            {summary.map(({ label, value }) => (
               <div key={label} className="min-w-0">
                 <dt className="text-xs text-ink-3">{label}</dt>
                 <dd className="mt-0.5 text-sm font-medium text-ink">{value}</dd>

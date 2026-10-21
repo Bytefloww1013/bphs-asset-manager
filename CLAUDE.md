@@ -46,6 +46,7 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 # TOOLS AND COMMANDS
 
 - `bun run format` / `bun run format:check` - Oxfmt (config `.oxfmtrc.json`); run `format` before committing.
+- `bun run lint` / `bun run lint:fix` - Oxlint, type-aware via oxlint-tsgolint (config `.oxlintrc.json`); must exit 0 with no warnings.
 # WORKFLOWS
 
 - PRs to `main` are squash-merge-only: a blame-ignore-revs SHA can only be added in a follow-up PR after the merge.
@@ -53,5 +54,8 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 # GOTCHAS
 
 - Oxfmt isn't in Super-Linter -> it runs in the `test` job; never enable `VALIDATE_*_PRETTIER` or `VALIDATE_BIOME_FORMAT`.
+- Oxlint isn't in Super-Linter either -> it runs in the `test` job; never enable `VALIDATE_TYPESCRIPT_ES`, `VALIDATE_TSX`, `VALIDATE_JSX` or `VALIDATE_BIOME_LINT`.
+- `plugins` in `.oxlintrc.json` replaces Oxlint's default list -> name every plugin wanted. Turn a noisy rule off there with a one-line reason, never with `oxlint-disable` comments.
+- tsgolint reads the root `tsconfig.json` (a solution file) -> keep it referencing `web` and `server`, or files under `shared/` are linted without their strict options.
 - Markdown and generated files are in Oxfmt's `ignorePatterns` -> don't format them by hand either.
 - Bun runs `node-gyp rebuild` for `better-sqlite3` (it ignores `"gypfile": false`), which fails in CI and Docker -> keep `trustedDependencies` in `package.json` explicit (it replaces Bun's default list); add a new dependency there only if its install script is really needed.

@@ -1,4 +1,5 @@
 import { CSV_BOM, parseCsv, toCsv } from '@shared/csv.ts'
+import type { CellValue } from 'read-excel-file/browser'
 
 export type SheetCell = string | number | null | undefined
 export type FileFormat = 'csv' | 'xlsx'
@@ -24,7 +25,7 @@ function save(blob: Blob, filename: string) {
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** What a cell holds, as the text a person would read in it. */
-function cellText(value: unknown): string {
+function cellText(value: CellValue | null): string {
   if (value == null) return ''
   if (value instanceof Date) {
     // Excel keeps a date as a day count with no time zone; the reader hands it back as that day in UTC.
