@@ -8,9 +8,9 @@ An internal register of company IT equipment: what exists, who holds it, since w
 
 - **Front end:** React 19, Vite, Tailwind v4, TanStack Router, Query, Table (v9) and Form, Radix primitives, Lucide icons, Geist type (self-hosted).
 - **Back end:** Hono on Node 24+, Drizzle ORM over `better-sqlite3`, Zod validation, scrypt password hashing, cookie sessions stored in SQLite.
-- **No Django, no external services.** It runs on an office network with no internet. The one exception is optional: Maintenance requests arrive from Zoho Forms through an inbound webhook, which needs the server reachable from the internet. The app itself makes no outbound calls.
+- **No Django, no external services.** It runs on a remote VPS at [bphs-connect.com](https://bphs-connect.com), behind Nginx with HTTPS. The only traffic from outside is the optional Zoho Forms webhook that delivers Maintenance requests. The app itself makes no outbound calls.
 
-The design system lives in [DESIGN.md](DESIGN.md) and the product brief in [PRODUCT.md](PRODUCT.md). **Running it in production** (backups, restore, upgrades, account recovery, HTTPS, troubleshooting): [RUNBOOK.md](RUNBOOK.md).
+The design system lives in [DESIGN.md](DESIGN.md) and the product brief in [PRODUCT.md](PRODUCT.md). **Setting up the VPS and deploying updates:** [DEPLOY-GUIDE.md](DEPLOY-GUIDE.md). **Running it in production** (backups, restore, upgrades, account recovery, HTTPS, troubleshooting): [RUNBOOK.md](RUNBOOK.md).
 
 ## Run it locally
 
@@ -46,35 +46,50 @@ Bun only installs packages and runs these scripts; every script still executes o
 
 For browser checks, `docs/verify/scratch-server.sh start|stop` runs a freshly seeded build on :3388 (its data under `/home/josh/tmp/bphs-qa-tasks`, never the real `DATA_DIR`), and `node docs/verify/tasks-smoke.mjs` drives it in headless Firefox: a task is assigned, shows on the assignee's bell, and is marked complete. puppeteer-core is installed outside the repo, in `/home/josh/tmp/bphs-qa-tools`; `FIREFOX` overrides `/snap/bin/firefox`.
 
-## Deploy with Docker
+## Deploy
+
+Production runs on an Ubuntu VPS with this stack:
+
+```text
+Browser → bphs-connect.com:443 → Nginx → 127.0.0.1:8080 → app container:3000
+```
+
+- **HTTPS:** Nginx terminates TLS with a Let's Encrypt certificate from Certbot, which renews it automatically.
+- **Port:** the container listens only on `127.0.0.1`, so it is not reachable from outside except through Nginx.
+- **Compose file:** production uses its own Compose file, `/etc/bphs-connect/compose.yml` on the VPS, kept outside the checkout. The repository's `docker-compose.yml` is not used there.
+- **Data:** the database lives in the `bphs-connect-data` volume.
+
+[DEPLOY-GUIDE.md](DEPLOY-GUIDE.md) covers the whole setup, from DNS to the firewall, Docker, Nginx, HTTPS, backups and the Zoho webhook. Step 13 is the routine for shipping an update: back up, `git pull`, rebuild, check `/api/health`. Migrations run automatically on start.
+
+To try the container on your own machine, use the repository's `docker-compose.yml`:
 
 ```bash
 docker compose up -d --build
 docker compose logs assets      # first run: shows the Super Admin email and starting password
 ```
 
-Then open `http://<this-machine>:8080`, sign in with the starting password `Brightpath1!`, and choose a new one when asked. The database lives in the `bphs-data` volume at `/data/bphs.sqlite`. Migrations run automatically on start.
+Then open `http://localhost:8080`, sign in with the starting password `Brightpath1!`, and choose a new one when asked. The database lives in the `bphs-data` volume at `/data/bphs.sqlite`.
 
-Configuration (environment variables, set in `docker-compose.yml`):
+Configuration (environment variables, set in the Compose file):
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `3000` | Port inside the container |
 | `DATA_DIR` | `/data` | Where `bphs.sqlite` lives. Keep it on a local disk, not a network share (SQLite WAL) |
-| `COOKIE_SECURE` | `false` | Set `true` only when users reach the app over HTTPS. On plain HTTP a Secure cookie is never stored and nobody can sign in |
+| `COOKIE_SECURE` | `false` | `true` in production, which is served over HTTPS. Leave it `false` for plain HTTP, such as a local try-out: there a Secure cookie is never stored and nobody can sign in |
 | `SESSION_IDLE_HOURS` | `12` | Idle time before a session expires. A whole number of hours, 1 or more; the server will not start with anything else. A sign-in with "Keep me signed in" ticked lasts 30 idle days instead, with a cookie that survives closing the browser; untick it and the cookie ends with the browser |
 | `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_NAME` | `admin@bphs.local`, `Super Admin` | Used once, when the database has no users |
 | `MAINTENANCE_WEBHOOK_SECRET` | unset | The shared secret Zoho Forms sends in the `X-Webhook-Secret` header with each maintenance request. Unset, the webhook answers 404 and requests can only be entered by hand. At least 32 characters (`openssl rand -hex 32`); the server will not start with a shorter one. Setup: DEPLOY-GUIDE step 15 |
 
-Put a reverse proxy with TLS in front if you want HTTPS (and then set `COOKIE_SECURE=true`).
-
 ### Backups
 
+On the VPS:
+
 ```bash
-docker compose exec assets node server/backup.ts        # writes /data/backups/bphs-<timestamp>.sqlite
+sudo docker compose -f /etc/bphs-connect/compose.yml exec assets node server/backup.ts   # writes /data/backups/bphs-<timestamp>.sqlite
 ```
 
-This uses SQLite's backup API, so it is safe while the app is running. `scripts/backup-offbox.sh` does the same, checks the copy, and streams it to a folder on the host for cron. Restore and the rest of the operating procedures are in [RUNBOOK.md](RUNBOOK.md).
+This uses SQLite's backup API, so it is safe while the app is running. `scripts/backup-offbox.sh` does the same, checks the copy, and streams it to a folder on the host. It runs nightly from cron and can also send the copy off the VPS (DEPLOY-GUIDE step 12). Restore and the rest of the operating procedures are in [RUNBOOK.md](RUNBOOK.md). There, use `sudo docker compose -f /etc/bphs-connect/compose.yml` in place of `docker compose`.
 
 ## What it does
 
@@ -215,7 +230,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - Supplied Brightpath artwork, clean SVG logos, browser icons, the desktop login hero, and the measured navy palette were recorded in BRAND-UPDATE.md, with per-phase rollback; it has since been removed and is in git history before commit `1a562fe`. Official vector originals and an exact corporate color specification remain welcome.
 - Bulk return applies one condition to every selected asset.
 - No dark theme yet (the tokens are semantic, so it is additive).
-- Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).
+- HTTPS and scheduled backups live on the VPS (Nginx with Certbot, and a cron job running `scripts/backup-offbox.sh`), not in the container, so a fresh server needs DEPLOY-GUIDE followed again.
 - The audit log export caps at 50,000 rows per download, and is CSV only.
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
 - Every account that works in Grievances can read every grievance, and every account in Administrative Reviews every review except one about itself; there is no limit to named people.
