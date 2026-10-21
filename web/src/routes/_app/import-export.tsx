@@ -174,7 +174,8 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
     columns,
     getRowId,
     pageSize: 50,
-    resetKey: `${show}:${done ? 'done' : 'preview'}:${latest.current}`,
+    // Memoized on the answer shown and the tab, so it is new exactly when the table should start again.
+    resetKey: rows,
   })
 
   const unmapped = importer.fields.filter((field) => field.required && mapping[field.key] == null)

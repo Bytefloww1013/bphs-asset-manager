@@ -57,6 +57,8 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
   const noCreate = useDenied('grievances', 'edit')
   // What the form started from. It is read once: a grievance that changes underneath is for the save to refuse, not for the form to follow.
   const [was] = useState(grievance)
+  // The year the new code will most likely carry, for the placeholder; the server assigns the real one.
+  const [year] = useState(() => new Date().getFullYear())
   const named = (people: GrievancePerson[] = []) =>
     people.flatMap((person) => employees.find((row) => row.id === person.id) ?? [])
   // A category no longer in use is still offered to the grievance that has it.
@@ -183,7 +185,7 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
                 <Mono className="text-ink-2">{was.code}</Mono>
               ) : (
                 <>
-                  <Mono>GR-{new Date().getFullYear()}-····</Mono> Assigned when saved
+                  <Mono>GR-{year}-····</Mono> Assigned when saved
                 </>
               )}
             </dd>

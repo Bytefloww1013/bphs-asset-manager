@@ -68,7 +68,9 @@ describe('notify()', () => {
     const reader = t.addUser('reader@bphs.local', { access: { assets: 'read' } })
     const full = t.addUser('full@bphs.local', { access: { assets: 'full' } })
     t.addUser('off@bphs.local', { access: { assets: 'edit' }, isActive: false })
-    expect(sectionTeam(t.db, 'assets').sort()).toEqual([t.superUser.id, t.adminUser.id, full.id].sort())
+    expect(sectionTeam(t.db, 'assets').sort((a, b) => a - b)).toEqual(
+      [t.superUser.id, t.adminUser.id, full.id].sort((a, b) => a - b),
+    )
     expect(sectionTeam(t.db, 'assets')).not.toContain(reader.id)
     expect(sectionTeam(t.db, 'maintenance')).toEqual([t.superUser.id])
   })

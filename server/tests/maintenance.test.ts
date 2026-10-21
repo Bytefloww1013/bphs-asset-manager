@@ -47,7 +47,7 @@ async function maintenance(secret = SECRET) {
 }
 
 const count = (t: Awaited<ReturnType<typeof setup>>, table: string) =>
-  t.db.get<{ n: number }>(sql.raw(`select count(*) as n from ${table}`))!.n
+  t.db.get<{ n: number }>(sql.raw(`select count(*) as n from ${table}`)).n
 
 describe('the Zoho webhook', () => {
   it('is off until a secret is configured, and refuses a missing or wrong one', async () => {

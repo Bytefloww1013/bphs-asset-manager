@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { REMEMBER_DAYS } from '@shared/constants.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -54,12 +54,13 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
   }
 
   // Signing in again in another tab renews the cookie both tabs share, so this one can carry on without asking.
+  const resumeLatest = useEffectEvent((next: SessionUser) => resume(next))
   useEffect(() => {
     const check = () => {
       if (document.visibilityState !== 'visible') return
       api
         .get<{ user: SessionUser }>('/auth/me')
-        .then((result) => resume(result.user))
+        .then((result) => resumeLatest(result.user))
         .catch(() => undefined)
     }
     window.addEventListener('focus', check)

@@ -190,7 +190,7 @@ export function ProgramEditSheet({ program, onClose }: { program: ProgramRow; on
     success: `${program.name} updated`,
   })
   const form = useForm({
-    defaultValues: { name: program.name, code: program.code, address: program.address ?? '' } as Body,
+    defaultValues: { name: program.name, code: program.code, address: program.address ?? '' },
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}

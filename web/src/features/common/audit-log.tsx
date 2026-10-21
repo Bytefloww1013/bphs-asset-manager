@@ -1,6 +1,6 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Download, ScrollText } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useEffectEvent, type ReactNode } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid, type GridFeatures } from '@/components/data-grid/grid.ts'
@@ -8,6 +8,7 @@ import { IconButton, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { DateInput, FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
+import { useSearchBox } from '@/features/common/hooks.ts'
 import { formatDateTime, startOfLocalDay } from '@/lib/format.ts'
 import type { AuditParams } from '@/lib/queries.ts'
 
@@ -141,23 +142,10 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
   onSearch: (update: (prev: AuditSearch<A>) => AuditSearch<A>, replace?: boolean) => void
 }) {
   // A new filter starts on the first page. The search lives in the URL with the other filters so that it does too, in the
-  // same step; the box holds what is being typed, and follows the URL only when something else changes it (the Back button).
+  // same step.
   const setFilter = (patch: AuditSearch<A>, replace = false) =>
     onSearch((prev) => ({ ...prev, ...patch, page: undefined }), replace)
-  const [q, setQ] = useState(search.q ?? '')
-  const typing = useRef(false)
-  useEffect(() => {
-    if (!typing.current && (search.q ?? '') !== q.trim()) setQ(search.q ?? '')
-  }, [search.q])
-  useEffect(() => {
-    typing.current = q.trim() !== (search.q ?? '')
-    if (!typing.current) return
-    const timer = setTimeout(() => {
-      typing.current = false
-      setFilter({ q: q.trim() || undefined }, true)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [q])
+  const [q, setQ] = useSearchBox(search.q, (q) => setFilter({ q }, true))
 
   const page = search.page ?? 1
   const filters = { action: search.action, from: search.from, to: search.to, q: search.q }
@@ -169,8 +157,9 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
   // A link to a page the log does not have (or has no longer) goes to the last one. Only an answer to the current question can
   // say so: while a new filter loads, the total shown is the previous filter's.
   const pastTheEnd = !!data && !isPlaceholderData && page > pages
+  const toLastPage = useEffectEvent(() => onSearch((prev) => ({ ...prev, page: pages > 1 ? pages : undefined }), true))
   useEffect(() => {
-    if (pastTheEnd) onSearch((prev) => ({ ...prev, page: pages > 1 ? pages : undefined }), true)
+    if (pastTheEnd) toLastPage()
   }, [pastTheEnd, pages])
 
   return (
@@ -189,7 +178,7 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
           <FilterTabs
             label="Filter by action"
             value={search.action ?? 'all'}
-            onChange={(next) => setFilter({ action: next === 'all' ? undefined : (next as A) })}
+            onChange={(next) => setFilter({ action: next === 'all' ? undefined : next })}
             options={[
               { value: 'all', label: 'All' },
               ...actions.map((action) => ({ value: action, label: actionLabel(action) })),

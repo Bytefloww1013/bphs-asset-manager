@@ -92,7 +92,7 @@ export function ConfirmDialog({
   description: ReactNode
   confirmLabel: string
   tone?: 'default' | 'danger'
-  onConfirm: () => Promise<unknown> | unknown
+  onConfirm: () => unknown
   children?: ReactNode
 }) {
   const [busy, setBusy] = useState(false)

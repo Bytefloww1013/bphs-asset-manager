@@ -170,7 +170,7 @@ const [priya, marcus, dana, , , rosa] = db
           lastLoginAt: daysAgo(3),
         },
       ] satisfies Partial<typeof users.$inferInsert>[]
-    ).map((u) => ({ passwordHash, mustChangePassword: false, ...u }) as typeof users.$inferInsert),
+    ).map((u) => ({ passwordHash, mustChangePassword: false, ...u })),
   )
   .returning()
   .all()

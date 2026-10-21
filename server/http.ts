@@ -37,13 +37,13 @@ export function jsonOrFiles<T extends ZodType>(schema: T) {
     if (isMultipart(c)) {
       const data = (await c.req.parseBody({ all: true })).data
       try {
-        value = JSON.parse(String(data))
+        value = typeof data === 'string' ? JSON.parse(data) : {}
       } catch {
         value = {}
       }
     }
     const result = schema.safeParse(value)
-    return result.success ? (result.data as z.output<T>) : validationFailed(c, result.error.issues)
+    return result.success ? result.data : validationFailed(c, result.error.issues)
   })
 }
 
