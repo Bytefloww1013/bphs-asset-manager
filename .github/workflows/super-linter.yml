@@ -1,0 +1,60 @@
+name: Lint Code Base
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - ".impeccable/**"
+      - ".rtk/**"
+      - "brand-assets/**"
+      - "docs/**"
+      - ".dockerignore"
+      - ".env.example"
+      - ".gitignore"
+      - "**.md"
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - ".impeccable/**"
+      - ".rtk/**"
+      - "brand-assets/**"
+      - "docs/**"
+      - ".dockerignore"
+      - ".env.example"
+      - ".gitignore"
+      - "**.md"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  call-super-linter:
+    name: Call Super-Linter
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
+      issues: write
+      statuses: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Lint Code Base
+        uses: super-linter/super-linter@v9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: "main"
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'push' }}
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: true
+          # Completely disable the Markdown linter for faster execution
+          VALIDATE_MARKDOWN: false
+          # Exclude target directories, specific dotfiles, and any .md files
+          FILTER_REGEX_EXCLUDE: "(^|/)(\\.impeccable|\\.rtk|brand-assets|docs)/.*|(^|/)(\\.dockerignore|\\.env\\.example|\\.gitignore)$|.*\\.md$"
