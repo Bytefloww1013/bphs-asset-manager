@@ -1,5 +1,5 @@
 import { eq, sql, type SQL } from 'drizzle-orm'
-import { openReviewWork, WORKSPACES } from '../../shared/constants.ts'
+import { openReviewWork, WORKSPACES, type Workspace } from '../../shared/constants.ts'
 import { canUseWorkspace, type Grantee } from '../../shared/permissions.ts'
 import type { EmployeeCreateInput, EmployeeUpdateInput } from '../../shared/schemas.ts'
 import type { EmployeeRow } from '../../shared/types.ts'
@@ -111,7 +111,9 @@ const listRaw = (db: DbLike, viewer: Viewer, id?: number) => {
       order by e.last_name collate nocase, e.first_name collate nocase`)
 }
 
-const seesEverything = (user: Grantee) => WORKSPACES.every((workspace) => canUseWorkspace(user, workspace))
+/** Workspaces whose records belong to accounts, not employees, so nothing about an employee is kept there. */
+const ACCOUNT_WORKSPACES: readonly Workspace[] = ['tasks']
+const seesEverything = (user: Grantee) => WORKSPACES.filter((workspace) => !ACCOUNT_WORKSPACES.includes(workspace)).every((workspace) => canUseWorkspace(user, workspace))
 /** Why delete is refused, to someone who cannot see every workspace: the reason itself can name any of them, or an account. */
 const HIDDEN_BLOCK = 'Has records you cannot see. Archive instead; history is never deleted.'
 

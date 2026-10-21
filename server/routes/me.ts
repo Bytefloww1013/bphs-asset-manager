@@ -3,6 +3,7 @@ import { notificationListSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, query, type Env } from '../http.ts'
 import { countUnread, listNotifications, markAllRead, readNotice, setArchived, setRead } from '../services/notifications.ts'
+import { myTaskRoutes } from './tasks.ts'
 
 /** The signed-in account's own things. Each route reads and changes the caller's rows only, so another account's id is a 404. */
 export function meRoutes(db: Db) {
@@ -32,6 +33,7 @@ export function meRoutes(db: Db) {
   })
 
   app.get('/notices/:id', (c) => c.json(readNotice(db, c.get('user').id, intParam(c, 'id'))))
+  app.route('/tasks', myTaskRoutes(db))
 
   return app
 }

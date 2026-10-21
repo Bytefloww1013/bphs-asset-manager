@@ -83,6 +83,10 @@ export function intParam(c: Context, name: string): number {
   return value
 }
 
+/** A stored file, always as a download: never shown in the page, and never sniffed into something else, so a file someone added cannot run as part of the app. */
+export const sendFile = (c: Context, file: { filename: string; contentType: string; bytes: Buffer }) =>
+  c.body(new Uint8Array(file.bytes), 200, { 'Content-Type': file.contentType, 'Content-Disposition': contentDisposition(file.filename), 'X-Content-Type-Options': 'nosniff' })
+
 /** Save as, under the file's own name: plain ASCII for old browsers, the exact name (RFC 5987) for the rest. */
 export const contentDisposition = (filename: string) =>
   `attachment; filename="${filename.replace(/[^ -~]|["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(filename).replace(/['()*]/g, (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`)}`

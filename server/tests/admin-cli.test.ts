@@ -14,6 +14,12 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true })
 })
 
+const run = (dataDir: string, ...args: string[]) =>
+  spawnSync(process.execPath, [path.join(import.meta.dirname, '..', 'admin.ts'), ...args], {
+    env: { ...process.env, DATA_DIR: dataDir },
+    encoding: 'utf8',
+  })
+
 /** A real database file with one locked Super Admin, then the real CLI run against it as a child process. */
 async function fixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bphs-admin-cli-'))
@@ -34,20 +40,14 @@ async function fixture() {
     .run()
   sqlite.close()
 
-  const run = (...args: string[]) =>
-    spawnSync(process.execPath, [path.join(import.meta.dirname, '..', 'admin.ts'), ...args], {
-      env: { ...process.env, DATA_DIR: dir },
-      encoding: 'utf8',
-    })
   const reopen = () => createDb(file)
-  return { run, reopen }
+  return { run: (...args: string[]) => run(dir, ...args), reopen }
 }
 
 describe('server/admin.ts (break-glass recovery)', () => {
-  it('unlocks an account and records it in the audit log', async () => {
+  it('unlocks an account and records it in the audit log, but tells the account only when it was locked', async () => {
     const t = await fixture()
-    const result = t.run('unlock', 'Admin@BPHS.local')
-    expect(result.status).toBe(0)
+    expect(t.run('unlock', 'Admin@BPHS.local').status).toBe(0)
 
     const { db, sqlite } = t.reopen()
     const row = db.select().from(users).where(eq(users.email, 'admin@bphs.local')).get()
@@ -57,14 +57,8 @@ describe('server/admin.ts (break-glass recovery)', () => {
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ actor: 'server-cli', entityType: 'user', entityId: row?.id, userId: null })
     expect(db.select().from(notifications).all()).toMatchObject([{ userId: row?.id, kind: 'account_unlocked', body: expect.stringContaining('command line') }])
-    sqlite.close()
-  })
 
-  it('does not tell an account that was not locked that it was unlocked', async () => {
-    const t = await fixture()
     expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
-    expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
-    const { db, sqlite } = t.reopen()
     expect(db.select().from(notifications).all()).toHaveLength(1)
     expect(db.select().from(auditLog).all()).toHaveLength(2)
     sqlite.close()
@@ -102,10 +96,7 @@ describe('server/admin.ts (break-glass recovery)', () => {
 
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'bphs-admin-empty-'))
     dirs.push(empty)
-    const none = spawnSync(process.execPath, [path.join(import.meta.dirname, '..', 'admin.ts'), 'list'], {
-      env: { ...process.env, DATA_DIR: empty },
-      encoding: 'utf8',
-    })
+    const none = run(empty, 'list')
     expect(none.status).toBe(1)
     expect(none.stderr).toMatch(/No database/)
   })

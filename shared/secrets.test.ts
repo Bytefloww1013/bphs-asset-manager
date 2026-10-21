@@ -35,12 +35,8 @@ describe('looksLikeSecret', () => {
     }
   })
 
-  it('is what the License/Account field refuses, and says why', () => {
-    const bad = digitalAssetCreateSchema.safeParse({ typeId: 1, account: 'j.doe@bphs.org password: hunter2' })
-    expect(bad.success).toBe(false)
-    expect(bad.error?.issues[0]?.path).toEqual(['account'])
-    expect(bad.error?.issues[0]?.message).toMatch(/never a password or key/i)
+  // The refusals are checked through the API in api.test.ts.
+  it('trims the License/Account field', () => {
     expect(digitalAssetCreateSchema.safeParse({ typeId: 1, account: ' j.doe@bphs.org ' }).data?.account).toBe('j.doe@bphs.org')
-    expect(digitalAssetCreateSchema.safeParse({ typeId: 1, account: 'x'.repeat(201) }).success).toBe(false)
   })
 })

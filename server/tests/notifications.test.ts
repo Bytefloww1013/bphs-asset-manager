@@ -1,11 +1,8 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import Database from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { employees, notices, notifications, sessions } from '../db/schema.ts'
 import { accountOf, notify, purgeNotifications, sectionTeam, type NewNotification } from '../services/notifications.ts'
-import { setup } from './helpers.ts'
+import { migratedBefore, setup } from './helpers.ts'
 
 type T = Awaited<ReturnType<typeof setup>>
 
@@ -17,15 +14,10 @@ const send = (t: T, recipients: number[], extra: Partial<NewNotification> = {}, 
 
 describe('the notifications migrations', () => {
   it('apply on top of a database that already has notifications, and keep its rows', () => {
-    const folder = path.join(import.meta.dirname, '../db/migrations')
-    const statements = (file: string) => fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint')
-    const files = fs.readdirSync(folder).filter((file) => file.endsWith('.sql')).sort()
-    const after = files.findIndex((file) => file.startsWith('0018_'))
-    const sqlite = new Database(':memory:')
-    for (const file of files.slice(0, after)) for (const statement of statements(file)) sqlite.exec(statement)
+    const { sqlite, rest } = migratedBefore('0018_')
     sqlite.exec(`insert into users (id, name, email, password_hash) values (1, 'S', 's@x.example', 'x')`)
     sqlite.exec(`insert into notifications (user_id, kind, source_key, title, link, created_at) values (1, 'asset_issued', 'asset:1', 'T', '/', 0)`)
-    for (const file of files.slice(after)) for (const statement of statements(file)) sqlite.exec(statement)
+    rest()
 
     expect(sqlite.prepare(`select title from notifications`).all()).toEqual([{ title: 'T' }])
     expect(sqlite.prepare(`select name from pragma_table_info('notifications') where name = 'muted'`).all()).toEqual([])

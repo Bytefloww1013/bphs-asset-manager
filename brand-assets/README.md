@@ -8,4 +8,4 @@ The mark and header SVGs reconstruct the original contours, including lettering,
 
 Use the navy/orange SVGs on light backgrounds. A dark placement needs a light backing or a separately approved inverse export. The full lighthouse remains decorative beside live BPHS-Connect text; the corporate signature is named Brightpath Human Services. The login hero preserves the original composition/texture in a 1916×821 WebP at quality 0.94, rather than approximating it with vector shapes. Its source is `hero-banner.png` and its published path is `/brand/brightpath-hero.webp` (added in Phase 4).
 
-See [BRAND-UPDATE.md](../BRAND-UPDATE.md) for placement, sizes, visual evidence, and rollback details.
+Placement, sizes, visual evidence and rollback details were in `BRAND-UPDATE.md`, since removed; it is in git history before commit `1a562fe`.

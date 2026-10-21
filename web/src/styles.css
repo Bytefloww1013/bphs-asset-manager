@@ -33,7 +33,7 @@
   --color-accent-line: #b8ced9;
   --color-on-accent: #ffffff;
 
-  /* Both workspaces share the navy action accent. Their switcher text and Confidential label identify the workspace. */
+  /* Every workspace shares the navy action accent. Their switcher text and Confidential label identify the workspace. */
   --color-workspace: var(--color-accent);
 
   /* Status */

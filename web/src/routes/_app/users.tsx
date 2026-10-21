@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Copy, KeyRound, Lock, LockOpen, Link2, Shield, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
-import { ACCESS_LEVEL_LABEL, ACCESS_LEVELS, SECTION_LABEL, SECTIONS, type Access, type AccessLevel, type Section } from '@shared/constants.ts'
+import { ACCESS_LEVEL_LABEL, levelsFor, SECTION_LABEL, SECTIONS, SHARED_LEVELS, type Access, type AccessLevel, type Section } from '@shared/constants.ts'
 import { describeAccess, type Grantee } from '@shared/permissions.ts'
 import type { UserRow, UserWithPassword } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -128,7 +128,9 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
   )
 }
 
-const LEVEL_OPTIONS = ACCESS_LEVELS.map((level) => ({ value: level, label: ACCESS_LEVEL_LABEL[level] }))
+const levelOptions = (levels: readonly AccessLevel[]) => levels.map((level) => ({ value: level, label: ACCESS_LEVEL_LABEL[level] }))
+// "Set all to" offers the levels every section has: Assign is Tasks' alone.
+const SHARED_OPTIONS = levelOptions(SHARED_LEVELS)
 
 /** These sections at this level. None is left out rather than stored. */
 function withLevel(access: Access, sections: readonly Section[], level: AccessLevel): Access {
@@ -145,11 +147,11 @@ function SectionLevels({ id, section, value, onChange }: { id?: string; section:
   const label = `What each level means in ${SECTION_LABEL[section]}`
   return (
     <div className="flex items-start gap-1.5">
-      <Segmented id={id} label={SECTION_LABEL[section]} value={value} onChange={onChange} options={LEVEL_OPTIONS} />
+      <Segmented id={id} label={SECTION_LABEL[section]} value={value} onChange={onChange} options={levelOptions(levelsFor(section))} />
       <InfoPopover label={label}>
         <p className="mb-2 font-medium">{label}</p>
         <dl className="flex flex-col gap-2">
-          {ACCESS_LEVELS.map((level) => (
+          {levelsFor(section).map((level) => (
             <div key={level}>
               <dt className="text-xs font-semibold text-ink">{ACCESS_LEVEL_LABEL[level]}</dt>
               <dd className="text-xs text-ink-2">{LEVEL_HELP[section][level]}</dd>
@@ -177,7 +179,7 @@ function AccessFields({ value, onChange, error }: { value: Grantee; onChange: (n
       {!value.superAdmin && (
         <>
           <Field label="Set all to" hint="Read Only sees a section. Edit also adds and changes records. Full also deletes, archives and voids.">
-            <Segmented label="Set all to" value={all} onChange={(level) => onChange({ ...value, access: withLevel(value.access, SECTIONS, level) })} options={LEVEL_OPTIONS} />
+            <Segmented label="Set all to" value={all} onChange={(level) => onChange({ ...value, access: withLevel(value.access, SECTIONS, level) })} options={SHARED_OPTIONS} />
           </Field>
           {SECTIONS.map((section) => (
             <Field key={section} label={SECTION_LABEL[section]} hint={section === 'employees' ? 'None hides the Employees page. Every account can still choose employees in a form.' : undefined}>
