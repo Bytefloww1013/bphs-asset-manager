@@ -68,9 +68,18 @@ export function Checkbox({ className, ...rest }: Omit<ComponentProps<'input'>, '
 }
 
 /** `disabledReason` keeps the switch focusable but inert and explains why, like the same option on Button. */
-export function Switch({ checked, onChange, label, disabled, disabledReason }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean; disabledReason?: string }) {
+/** A switch. Give it an `id` for a visible `<label htmlFor>`, which then presses it too. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  disabled,
+  disabledReason,
+  ...rest
+}: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean; disabledReason?: string } & Pick<ComponentProps<'button'>, 'id' | 'aria-describedby' | 'aria-invalid'>) {
   const control = (
     <button
+      {...rest}
       type="button"
       role="switch"
       aria-checked={checked}

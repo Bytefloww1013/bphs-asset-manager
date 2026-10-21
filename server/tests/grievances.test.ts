@@ -46,17 +46,22 @@ describe('the grievance audit log', () => {
     t.sqlite.prepare('delete from users where id = ?').run(t.adminUser.id)
     expect(t.sqlite.prepare('select user_id, actor from grievance_audit_log').all()).toEqual([{ user_id: null, actor: 'm.oyelaran@bphs.local' }])
   })
+})
 
-  // The two logs are kept apart in the source as well: grievance code never writes to the Audit Log, and nothing else writes to this one.
-  it('is written by grievance code only, which never writes to the audit log or notifies', () => {
+// The logs are kept apart in the source as well: grievance and review code never write to the Audit Log, and nothing else writes to theirs.
+describe('the grievance and review audit logs', () => {
+  it.each([
+    { prefix: 'grievance', writers: /\bwriteGrievanceAudit\b|\bgrievanceAuditLog\b/ },
+    { prefix: 'review', writers: /\bwriteReviewAudit\b|\breviewAuditLog\b/ },
+  ])('the $prefix one is written by $prefix code only, which never writes to the audit log or notifies',({ prefix, writers }) => {
     const server = path.resolve(import.meta.dirname, '..')
     const sources = (fs.readdirSync(server, { recursive: true }) as string[])
       .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.startsWith('tests' + path.sep))
       .map((file) => ({ file: file.split(path.sep).join('/'), text: fs.readFileSync(path.join(server, file), 'utf8') }))
-    const isGrievance = (file: string) => path.basename(file).startsWith('grievance')
-    expect(sources.filter((s) => isGrievance(s.file)).map((s) => s.file)).toContain('lib/grievance-audit.ts')
-    expect(sources.filter((s) => isGrievance(s.file) && /\bwriteAudit\b|\bauditLog\b|\bnotify\b/.test(s.text)).map((s) => s.file)).toEqual([])
-    expect(sources.filter((s) => !isGrievance(s.file) && s.file !== 'db/schema.ts' && /\bwriteGrievanceAudit\b|\bgrievanceAuditLog\b/.test(s.text)).map((s) => s.file)).toEqual([])
+    const isOwn = (file: string) => path.basename(file).startsWith(prefix)
+    expect(sources.filter((s) => isOwn(s.file)).map((s) => s.file)).toContain(`lib/${prefix}-audit.ts`)
+    expect(sources.filter((s) => isOwn(s.file) && /\bwriteAudit\b|\bauditLog\b|\bnotify\b/.test(s.text)).map((s) => s.file)).toEqual([])
+    expect(sources.filter((s) => !isOwn(s.file) && s.file !== 'db/schema.ts' && writers.test(s.text)).map((s) => s.file)).toEqual([])
   })
 })
 
@@ -74,9 +79,8 @@ describe('grievance categories', () => {
   it('can be added, renamed and deactivated by an admin, with each change in the grievance audit log only', async () => {
     const t = await setup()
     const cookie = await t.asAdmin()
-    const before = t.sqlite.prepare('select count(*) as n from audit_log').get()
 
-    const added = await t.call('POST', '/api/grievances/categories', { cookie, body: { name: 'Scheduling' } })
+    const added =await t.call('POST', '/api/grievances/categories', { cookie, body: { name: 'Scheduling' } })
     expect(added.status).toBe(201)
     const id = added.data.id
     expect((await t.call('POST', '/api/grievances/categories', { cookie, body: { name: 'scheduling' } })).data.error).toBe('duplicate_name')
@@ -94,7 +98,6 @@ describe('grievance categories', () => {
       { actor: 'm.oyelaran@bphs.local', action: 'update', entity_type: 'category', entity_id: id, details: 'Rotas · name: Scheduling → Rotas' },
       { actor: 'm.oyelaran@bphs.local', action: 'update', entity_type: 'category', entity_id: id, details: 'Rotas · active: true → false' },
     ])
-    expect(t.sqlite.prepare('select count(*) as n from audit_log').get()).toEqual(before)
   })
 
   it('can be deleted by a super admin only, and only when unused', async () => {
@@ -182,13 +185,29 @@ function grievanceFixture(t: T) {
   return { dana, femi, ines, body }
 }
 
+/** One grievance owned by Ines, whose account is the admin's, recorded by Noor, an outsider. Priya is the Super Admin and owns nothing. */
+async function ownedFixture() {
+  const t = await setup()
+  const { dana, ines, femi, body } = grievanceFixture(t)
+  t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
+  const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, access: ADMIN, mustChangePassword: false }).returning().get()
+  const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
+  const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
+  // Both read Grievances and no more, so only owning it lets the owner change it.
+  t.sqlite.prepare(`update users set access = '{"grievances":"read"}' where id in (?, ?)`).run(t.adminUser.id, outsider.id)
+  const { ownerId: _, ...fields } = body
+  return { t, dana, ines, femi, owner, superAdmin, other, made, fields, path: `/api/grievances/${made.code}` }
+}
+const timeline = (t: T) => t.sqlite.prepare('select seq, kind, title, body_html, documented_by_label from grievance_entries order by seq').all()
+const audit = (t: T) => t.sqlite.prepare("select action, entity_type, details from grievance_audit_log where action <> 'create' order by id").all()
+const stored = (t: T) => t.sqlite.prepare('select title, version from grievances').get()
+
 describe('creating a grievance', () => {
   it('is open to either role, numbers each one, and gives the body back with its formatting', async () => {
     const t = await setup()
     const { dana, femi, body } = grievanceFixture(t)
     expect((await t.call('POST', '/api/grievances', { body })).status).toBe(401)
     const [admin, superAdmin] = [await t.asAdmin(), await t.asSuper()]
-    const before = t.sqlite.prepare('select count(*) as n from audit_log').get()
 
     const first = await t.call('POST', '/api/grievances', { cookie: admin, body })
     expect(first.status).toBe(201)
@@ -201,7 +220,7 @@ describe('creating a grievance', () => {
       dateMade: '2026-10-01',
       status: 'open',
       version: 1,
-      category: { id: 1 },
+      category: { id: 1, name: 'Conduct' },
       owner: { id: t.person.id, code: 'E-1042', name: 'Priya Raghunathan', archived: false },
       employees: [{ id: dana.id, code: 'E-2001', name: 'Dana Whitlock', archived: false }],
       management: [{ id: femi.id, code: 'E-2002', name: 'Femi Adeyemi', archived: false }],
@@ -217,25 +236,22 @@ describe('creating a grievance', () => {
       { actor: 'm.oyelaran@bphs.local', action: 'create', entity_type: 'grievance', entity_id: first.data.id, details: `GR-${year}-0001 · ${body.title}` },
       { actor: 'p.raghunathan@bphs.local', action: 'create', entity_type: 'grievance', entity_id: second.data.id, details: `GR-${year}-0002 · A second one` },
     ])
-    expect(t.sqlite.prepare('select count(*) as n from audit_log').get()).toEqual(before)
   })
 
-  it('stores a sanitised body, whatever it was sent', async () => {
+  it('stores a sanitised body, whatever it was sent, and names a person once however often they are sent', async () => {
     const t = await setup()
-    const { body } = grievanceFixture(t)
+    const { dana, femi, body } = grievanceFixture(t)
     const res = await t.call('POST', '/api/grievances', {
       cookie: await t.asAdmin(),
-      body: { ...body, body: '<p onclick="steal()" style="color:red">Said <a href="javascript:alert(1)">this</a>.</p><script>alert(1)</script><img src="x">' },
+      body: {
+        ...body,
+        body: '<p onclick="steal()" style="color:red">Said <a href="javascript:alert(1)">this</a>.</p><script>alert(1)</script><img src="x">',
+        employeeIds: [dana.id, dana.id],
+        managementIds: [femi.id, femi.id],
+      },
     })
     expect(res.status).toBe(201)
     expect(res.data.bodyHtml).toBe('<p>Said this.</p>')
-  })
-
-  it('names a person once however often they are sent', async () => {
-    const t = await setup()
-    const { dana, femi, body } = grievanceFixture(t)
-    const res = await t.call('POST', '/api/grievances', { cookie: await t.asAdmin(), body: { ...body, employeeIds: [dana.id, dana.id], managementIds: [femi.id, femi.id] } })
-    expect(res.status).toBe(201)
     expect(res.data.employees).toHaveLength(1)
     expect(res.data.management).toHaveLength(1)
   })
@@ -404,27 +420,15 @@ describe('browsing grievances', () => {
 describe('opening a grievance', () => {
   it('gives either role the whole grievance by its ID, in any letter case, and 404 for one that does not exist', async () => {
     const t = await setup()
-    const { dana, femi, body } = grievanceFixture(t)
+    const { body } = grievanceFixture(t)
     const [admin, superAdmin] = [await t.asAdmin(), await t.asSuper()]
     const made = (await t.call('POST', '/api/grievances', { cookie: admin, body })).data as { code: string }
     expect((await t.call('GET', `/api/grievances/${made.code}`)).status).toBe(401)
     for (const cookie of [admin, superAdmin]) {
       const res = await t.call('GET', `/api/grievances/${made.code.toLowerCase()}`, { cookie })
       expect(res.status).toBe(200)
-      expect(res.data).toMatchObject({
-        code: made.code,
-        title: body.title,
-        shortDescription: body.shortDescription,
-        bodyHtml: body.body,
-        dateMade: '2026-10-01',
-        status: 'open',
-        version: 1,
-        category: { id: 1, name: 'Conduct' },
-        owner: { id: t.person.id, archived: false },
-        employees: [{ id: dana.id, name: 'Dana Whitlock', archived: false }],
-        management: [{ id: femi.id, name: 'Femi Adeyemi', archived: false }],
-        recordedBy: 'Marcus Oyelaran',
-      })
+      // What creating it gave back, checked field by field there.
+      expect(res.data).toMatchObject(made)
     }
     for (const code of ['GR-2026-9999', 'GR-1', 'nothing', '1']) expect((await t.call('GET', `/api/grievances/${code}`, { cookie: admin })).status, code).toBe(404)
     // The fixed paths beside it are not taken for an ID.
@@ -657,25 +661,10 @@ describe('adding to the timeline', () => {
 })
 
 describe('changing a grievance\'s status and owner', () => {
-  const timeline = (t: T) => t.sqlite.prepare('select seq, kind, title, body_html, documented_by_label from grievance_entries order by seq').all()
-  const audit = (t: T) => t.sqlite.prepare("select action, entity_type, details from grievance_audit_log where action <> 'create' order by id").all()
   const statusOf = (t: T) => (t.sqlite.prepare('select status from grievances').get() as { status: string }).status
 
-  /** One grievance owned by Ines, whose account is the admin's. Priya is the Super Admin and owns nothing. */
-  async function one() {
-    const t = await setup()
-    const { ines, femi, body } = grievanceFixture(t)
-    t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
-    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, access: ADMIN, mustChangePassword: false }).returning().get()
-    const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
-    const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
-    // Both read Grievances and no more, so only owning it lets the owner change it.
-    t.sqlite.prepare(`update users set access = '{"grievances":"read"}' where id in (?, ?)`).run(t.adminUser.id, outsider.id)
-    return { t, ines, femi, owner, superAdmin, other, made, path: `/api/grievances/${made.code}` }
-  }
-
   it('says whether the owner has an account that can sign in, and lists the employees who do', async () => {
-    const { t, ines, owner, made, path } = await one()
+    const { t, ines, owner, made, path } = await ownedFixture()
     expect((await t.call('GET', path, { cookie: owner })).data.ownerHasAccount).toBe(true)
     expect((await t.call('GET', '/api/grievances/account-holders')).status).toBe(401)
     expect((await t.call('GET', '/api/grievances/account-holders', { cookie: owner })).data).toEqual([t.person.id, ines.id].sort((a, b) => a - b))
@@ -686,8 +675,7 @@ describe('changing a grievance\'s status and owner', () => {
   })
 
   it('lets the owner\'s account and a Super Admin move it between the four statuses, with a timeline entry and an audit entry each time', async () => {
-    const { t, owner, superAdmin, path } = await one()
-    const before = t.sqlite.prepare('select count(*) as n from audit_log').get()
+    const { t, owner, superAdmin, path } = await ownedFixture()
     const moved = await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'in_progress', note: 'Meeting booked.\n\nRoom <b>2</b>' } })
     expect(moved.status).toBe(200)
     expect(moved.data.status).toBe('in_progress')
@@ -705,11 +693,10 @@ describe('changing a grievance\'s status and owner', () => {
     expect(audit(t)).toEqual(
       ['Open → In progress', 'In progress → Resolved', 'Resolved → Closed', 'Closed → Open'].map((change) => ({ action: 'status', entity_type: 'grievance', details: `GR-2026-0001 · ${title} · Status: ${change}` })),
     )
-    expect(t.sqlite.prepare('select count(*) as n from audit_log').get()).toEqual(before)
   })
 
   it('refuses a status change that breaks a rule and changes nothing', async () => {
-    const { t, owner, path } = await one()
+    const { t, owner, path } = await ownedFixture()
     const closing = await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'closed', note: '  ' } })
     expect(closing.status).toBe(422)
     expect(closing.data.details.fields.note).toBe('Say why it is being closed')
@@ -722,24 +709,29 @@ describe('changing a grievance\'s status and owner', () => {
     expect(audit(t)).toEqual([])
   })
 
-  it('answers 403 to any other account, for a status, an owner or a void, whatever it sends', async () => {
-    const { t, femi, other, owner, path } = await one()
+  it('answers 403 to any other account, for a status, an owner, an edit or a void, whatever it sends, and 401 to none', async () => {
+    const { t, femi, other, owner, fields, path } = await ownedFixture()
     const reason = 'Only the owner (Ines Carvalho) or someone with Edit access to Grievances can do this.'
-    for (const [action, body] of [['status', { status: 'resolved' }], ['owner', { ownerId: femi.id }]] as const) {
-      const res = await t.call('POST', `${path}/${action}`, { cookie: other, body })
-      expect(res.status, action).toBe(403)
+    for (const [method, target, body] of [
+      ['POST', `${path}/status`, { status: 'resolved' }],
+      ['POST', `${path}/owner`, { ownerId: femi.id }],
+      ['PATCH', path, { ...fields, version: 1, reason: 'The title named the wrong month.', title: 'Changed' }],
+    ] as const) {
+      const res = await t.call(method, target, { cookie: other, body })
+      expect(res.status, target).toBe(403)
       expect(res.data.message).toBe(reason)
-      expect((await t.call('POST', `${path}/${action}`, { body })).status).toBe(401)
+      expect((await t.call(method, target, { body })).status).toBe(401)
     }
     // Voiding is for a Super Admin: not even the owner's account may.
     for (const cookie of [other, owner]) expect((await t.call('POST', `${path}/void`, { cookie, body: { reason: 'Entered twice.' } })).status).toBe(403)
     expect(statusOf(t)).toBe('open')
+    expect(stored(t)).toEqual({ title: 'Shift swaps refused without a reason', version: 1 })
     expect(timeline(t)).toHaveLength(1)
     expect(audit(t)).toEqual([])
   })
 
   it('lets Edit in Grievances manage any grievance, Full void it, and Read print it', async () => {
-    const { t, femi, other, path } = await one()
+    const { t, femi, other, path } = await ownedFixture()
     expect((await t.call('POST', `${path}/exports`, { cookie: other, body: { format: 'pdf' } })).status).toBe(204)
     t.sqlite.prepare(`update users set access = '{"grievances":"edit"}' where email = 'n.haddad@bphs.local'`).run()
     expect((await t.call('POST', `${path}/status`, { cookie: other, body: { status: 'in_progress' } })).status).toBe(200)
@@ -750,18 +742,11 @@ describe('changing a grievance\'s status and owner', () => {
     expect((await t.call('POST', `${path}/void`, { cookie: other, body: { reason: 'Entered twice.' } })).data.status).toBe('voided')
   })
 
-  it('leaves a grievance whose owner has no account to Super Admins', async () => {
-    const { t, femi, owner, superAdmin, path } = await one()
-    expect((await t.call('POST', `${path}/owner`, { cookie: superAdmin, body: { ownerId: femi.id } })).data).toMatchObject({ owner: { id: femi.id }, ownerHasAccount: false })
-    expect((await t.call('POST', `${path}/status`, { cookie: owner, body: { status: 'resolved' } })).status).toBe(403)
-    expect((await t.call('POST', `${path}/status`, { cookie: superAdmin, body: { status: 'resolved' } })).status).toBe(200)
-  })
-
   it('hands it to another owner, which ends the previous owner\'s say over it', async () => {
-    const { t, ines, femi, owner, path } = await one()
+    const { t, ines, femi, owner, path } = await ownedFixture()
     const handed = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: femi.id, note: 'Femi runs that team.' } })
     expect(handed.status).toBe(200)
-    expect(handed.data.owner).toMatchObject({ id: femi.id, name: 'Femi Adeyemi' })
+    expect(handed.data).toMatchObject({ owner: { id: femi.id, name: 'Femi Adeyemi' }, ownerHasAccount: false })
     expect(timeline(t)[1]).toEqual({ seq: 2, kind: 'system', title: 'Owner: Ines Carvalho → Femi Adeyemi', body_html: '<p>Femi runs that team.</p>', documented_by_label: 'Marcus Oyelaran' })
     expect(audit(t)).toEqual([{ action: 'owner', entity_type: 'grievance', details: 'GR-2026-0001 · Shift swaps refused without a reason · Owner: Ines Carvalho → Femi Adeyemi' }])
     const back = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: ines.id } })
@@ -771,7 +756,7 @@ describe('changing a grievance\'s status and owner', () => {
   })
 
   it('refuses an owner who is the same, archived or unknown, and any new owner while it is Closed', async () => {
-    const { t, ines, femi, owner, path } = await one()
+    const { t, ines, femi, owner, path } = await ownedFixture()
     const same = await t.call('POST', `${path}/owner`, { cookie: owner, body: { ownerId: ines.id } })
     expect(same.status).toBe(422)
     expect(same.data.details.fields.ownerId).toBe('Ines Carvalho already owns GR-2026-0001.')
@@ -786,7 +771,7 @@ describe('changing a grievance\'s status and owner', () => {
   })
 
   it('is voided by a Super Admin with a reason, and after that nothing about it changes', async () => {
-    const { t, femi, owner, superAdmin, path } = await one()
+    const { t, femi, owner, superAdmin, path } = await ownedFixture()
     expect((await t.call('POST', `${path}/void`, { cookie: superAdmin, body: { reason: ' ' } })).data.details.fields.reason).toBe('Required')
     const voided = await t.call('POST', `${path}/void`, { cookie: superAdmin, body: { reason: 'Entered twice; see GR-2026-0002.' } })
     expect(voided.status).toBe(200)
@@ -808,23 +793,10 @@ describe('changing a grievance\'s status and owner', () => {
 })
 
 describe('editing a grievance', () => {
-  const timeline = (t: T) => t.sqlite.prepare('select seq, kind, title, body_html, documented_by_label from grievance_entries order by seq').all()
-  const audit = (t: T) => t.sqlite.prepare("select action, entity_type, details from grievance_audit_log where action <> 'create' order by id").all()
-  const stored = (t: T) => t.sqlite.prepare('select title, version from grievances').get()
-
-  /** One grievance owned by Ines, whose account is the admin's, about Dana with Femi as management. */
+  /** The owned grievance, with an edit of it that changes nothing yet. */
   async function one() {
-    const t = await setup()
-    const { dana, ines, femi, body } = grievanceFixture(t)
-    t.sqlite.prepare('update users set employee_id = ? where id = ?').run(ines.id, t.adminUser.id)
-    const outsider = t.db.insert(users).values({ name: 'Noor Haddad', email: 'n.haddad@bphs.local', passwordHash: t.superUser.passwordHash, access: ADMIN, mustChangePassword: false }).returning().get()
-    const [owner, superAdmin, other] = [await t.asAdmin(), await t.asSuper(), (await t.signIn(outsider.email)).cookie]
-    const { ownerId: _, ...fields } = { ...body, ownerId: ines.id }
-    const made = (await t.call('POST', '/api/grievances', { cookie: other, body: { ...body, ownerId: ines.id } })).data as { id: number; code: string }
-    // Both read Grievances and no more, so only owning it lets the owner change it.
-    t.sqlite.prepare(`update users set access = '{"grievances":"read"}' where id in (?, ?)`).run(t.adminUser.id, outsider.id)
-    const edit = { ...fields, version: 1, reason: 'The title named the wrong month.' }
-    return { t, dana, ines, femi, owner, superAdmin, other, made, edit, path: `/api/grievances/${made.code}` }
+    const fixture = await ownedFixture()
+    return { ...fixture, edit: { ...fixture.fields, version: 1, reason: 'The title named the wrong month.' } }
   }
 
   it('replaces what the owner or a Super Admin changed, keeps what it said before as a version, and says which fields on the timeline and in the audit log', async () => {
@@ -863,17 +835,6 @@ describe('editing a grievance', () => {
     // Search reads what it says now, not what it said.
     expect((await t.call('GET', '/api/grievances?q=two+dates', { cookie: owner })).data.rows).toHaveLength(1)
     expect((await t.call('GET', '/api/grievances?q=happened', { cookie: owner })).data.rows).toHaveLength(0)
-  })
-
-  it('answers 403 to any other account and 401 to none, and changes nothing', async () => {
-    const { t, other, edit, path } = await one()
-    const res = await t.call('PATCH', path, { cookie: other, body: { ...edit, title: 'Changed' } })
-    expect(res.status).toBe(403)
-    expect(res.data.message).toBe('Only the owner (Ines Carvalho) or someone with Edit access to Grievances can do this.')
-    expect((await t.call('PATCH', path, { body: { ...edit, title: 'Changed' } })).status).toBe(401)
-    expect(stored(t)).toEqual({ title: 'Shift swaps refused without a reason', version: 1 })
-    expect(timeline(t)).toHaveLength(1)
-    expect(audit(t)).toEqual([])
   })
 
   it('refuses a save made from a version that has since been replaced, and one that changes nothing', async () => {
@@ -1023,8 +984,8 @@ describe('reading the grievance audit log', () => {
   }
 
   it('gets one entry in it, and none in the audit log, for every change to a grievance or a category', async () => {
-    const { t, femi, owner, superAdmin, made, fields, path } = await one()
-    const count = (table: string) => (t.sqlite.prepare(`select count(*) as n from ${table}`).get() as { n: number }).n
+    const { t, femi, owner, superAdmin, fields, path } = await one()
+    const count =(table: string) => (t.sqlite.prepare(`select count(*) as n from ${table}`).get() as { n: number }).n
     const category = (await t.call('POST', '/api/grievances/categories', { cookie: owner, body: { name: 'Rostering' } })).data as { id: number }
     const changes: [string, () => ReturnType<T['call']>][] = [
       ['create', () => t.call('POST', '/api/grievances', { cookie: owner, body: { ...fields, ownerId: femi.id, title: 'A second one' } })],
@@ -1045,7 +1006,6 @@ describe('reading the grievance audit log', () => {
       expect(t.sqlite.prepare('select action from grievance_audit_log order by id desc limit 1').get()).toEqual({ action })
     }
     expect(count('audit_log')).toBe(audited)
-    expect(made.code).toBe(`GR-${new Date().getFullYear()}-0001`)
   })
 
   it('lists entries newest first to either role, with the grievance and the timeline entry each one is about', async () => {

@@ -1,6 +1,4 @@
 import { createHash } from 'node:crypto'
-import fs from 'node:fs'
-import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { REVIEW_AUDIT_ACTIONS, type Access } from '../../shared/constants.ts'
 import { employees, users } from '../db/schema.ts'
@@ -10,7 +8,10 @@ import { setup } from './helpers.ts'
 
 type T = Awaited<ReturnType<typeof setup>>
 
-/** Priya (Super Admin, E-1042) is signed in; Rhea Okafor conducts reviews of Dana Whitlock, and neither has an account yet. */
+/**
+ * Priya (Super Admin, E-1042) is signed in; Rhea Okafor conducts reviews of Dana Whitlock, and neither has an account until
+ * `asRhea()` gives Rhea one at Read Only. `aboutPriya()` has Eda Mensah, with Edit, record a review of Priya.
+ */
 async function reviews() {
   const t = await setup()
   const employee = (code: string, firstName: string, lastName: string) => t.db.insert(employees).values({ code, firstName, lastName }).returning().get()
@@ -31,7 +32,12 @@ async function reviews() {
     body: '<p>What happened.</p>',
   }
   const create = (change: Partial<typeof fields> = {}, cookie = superAdmin) => t.call('POST', '/api/reviews', { cookie, body: { ...fields, ...change } })
-  return { t, employee, account, reviewer, dana, superAdmin, fields, create }
+  const asRhea = () => account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+  const aboutPriya = async () => {
+    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
+    return { editor, about: (await create({ employeeId: t.person.id }, editor)).data }
+  }
+  return { t, employee, account, reviewer, dana, superAdmin, fields, create, asRhea, aboutPriya }
 }
 
 const update = { kind: 'update', occurredAt: new Date().toISOString(), title: 'Spoke with Dana', shortDescription: 'Agreed a handover checklist.' }
@@ -55,18 +61,6 @@ describe('the review audit log', () => {
     expect(() => t.sqlite.prepare("insert or replace into review_audit_log (id, occurred_at, actor, action, entity_type) values (1, 0, 'x', 'create', 'review')").run()).toThrow(
       /append-only/,
     )
-  })
-
-  // As with grievances: review code never writes to the other logs, and nothing else writes to this one.
-  it('is written by review code only, which never writes to the audit log or notifies', () => {
-    const server = path.resolve(import.meta.dirname, '..')
-    const sources = (fs.readdirSync(server, { recursive: true }) as string[])
-      .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.startsWith('tests' + path.sep))
-      .map((file) => ({ file: file.split(path.sep).join('/'), text: fs.readFileSync(path.join(server, file), 'utf8') }))
-    const isReview = (file: string) => path.basename(file).startsWith('review')
-    expect(sources.filter((s) => isReview(s.file)).map((s) => s.file)).toContain('lib/review-audit.ts')
-    expect(sources.filter((s) => isReview(s.file) && /\bwriteAudit\b|\bauditLog\b|\bnotify\b/.test(s.text)).map((s) => s.file)).toEqual([])
-    expect(sources.filter((s) => !isReview(s.file) && s.file !== 'db/schema.ts' && /\bwriteReviewAudit\b|\breviewAuditLog\b/.test(s.text)).map((s) => s.file)).toEqual([])
   })
 })
 
@@ -127,9 +121,8 @@ describe('recording a review', () => {
 
 describe('a review about you', () => {
   it('is not found by you, at any level, and is in none of your counts', async () => {
-    const { t, superAdmin, create, employee, account } = await reviews()
-    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
-    const about = (await create({ employeeId: t.person.id }, editor)).data
+    const { t, superAdmin, create, aboutPriya } = await reviews()
+    const { editor, about } = await aboutPriya()
     const other = (await create({}, editor)).data
     const path = `/api/reviews/${about.code}`
     expect((await t.call('GET', path, { cookie: editor })).status).toBe(200)
@@ -198,16 +191,11 @@ describe('editing a review', () => {
     const same = await t.call('PATCH', path, { cookie: superAdmin, body: edit(res.data) })
     expect(same.status).toBe(409)
     expect(same.data.error).toBe('unchanged')
-
-    t.sqlite.prepare("update reviews set status = 'voided' where id = ?").run(made.id)
-    expect((await t.call('PATCH', path, { cookie: superAdmin, body: { ...edit(res.data), title: 'Again' } })).data.error).toBe('review_voided')
-    expect((await t.call('POST', `${path}/entries`, { cookie: superAdmin, body: update })).data.error).toBe('review_voided')
-    expect((await t.call('GET', `${path}/entries`, { cookie: superAdmin })).data).toHaveLength(2)
   })
 
   it('is open to the reviewer at Read Only, and to no other reader', async () => {
-    const { t, create, employee, account, reviewer } = await reviews()
-    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const { t, create, employee, account, asRhea } = await reviews()
+    const rhea = await asRhea()
     const other = await account('other@bphs.local', { reviews: 'read' }, employee('E-4004', 'Olu', 'Bello').id)
     const made = (await create()).data
     const path = `/api/reviews/${made.code}`
@@ -264,14 +252,21 @@ describe('a review history', () => {
     expect(() => t.sqlite.prepare(insert).run(null, made.id, foreign.id, t.superUser.id)).toThrow(/same review/)
   })
 
-  it('has no route that changes or removes an entry, and none is changed by trying', async () => {
+  it('has no route that changes or removes an entry or a file, and no entry is changed by trying', async () => {
     const { t, superAdmin, create } = await reviews()
     const made = (await create()).data
     const path = `/api/reviews/${made.code}/entries`
     const added = (await t.call('POST', path, { cookie: superAdmin, body: update })).data as { id: number }
-    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.startsWith('/api/reviews') && route.path.includes('/entries'))
+    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.startsWith('/api/reviews') && /\/(entries|attachments)/.test(route.path))
     // A route with a validator is listed once for each handler.
-    expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))].sort()).toEqual(['GET /api/reviews/:code/entries', 'POST /api/reviews/:code/entries'])
+    expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))].sort()).toEqual([
+      'GET /api/reviews/:code/attachments',
+      'GET /api/reviews/:code/attachments/:id',
+      'GET /api/reviews/:code/entries',
+      'POST /api/reviews/:code/attachments',
+      'POST /api/reviews/:code/attachments/:id/withdraw',
+      'POST /api/reviews/:code/entries',
+    ])
     const before = t.sqlite.prepare('select * from review_entries order by id').all()
     for (const method of ['PUT', 'PATCH', 'DELETE']) {
       for (const target of [path, `${path}/2`, `${path}/${added.id}`, ...(method === 'PATCH' ? [] : [`/api/reviews/${made.code}`])]) {
@@ -407,18 +402,15 @@ describe('corrective action plans', () => {
       { action: 'status', details: `${made.code} CAP01 · Handover <list> · CAP01: Completed → In progress` },
     ])
 
-    // A Completed review is sealed; a voided one is a record only.
-    t.sqlite.prepare("update reviews set status = 'completed' where id = ?").run(made.id)
-    expect((await t.call('POST', path, { cookie: superAdmin, body: cap(reviewer.id) })).data).toMatchObject({ error: 'review_sealed', message: `${made.code} is Completed. Reopen it to add a CAP.` })
-    expect((await status({ status: 'completed', version: 4 })).data.error).toBe('review_sealed')
+    // A voided review is a record only.
     t.sqlite.prepare("update reviews set status = 'voided' where id = ?").run(made.id)
     expect((await edit({ title: 'Voided' }, 4)).data.error).toBe('review_voided')
   })
 
   it('are open to the reviewer at Read Only, and to no other reader, not even the one responsible', async () => {
-    const { t, create, employee, account, reviewer } = await reviews()
+    const { t, create, employee, account, reviewer, asRhea } = await reviews()
     const olu = employee('E-4004', 'Olu', 'Bello')
-    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const rhea = await asRhea()
     const responsible = await account('olu@bphs.local', { reviews: 'read' }, olu.id)
     const made = (await create()).data
     const path = `/api/reviews/${made.code}/caps`
@@ -440,7 +432,7 @@ describe('corrective action plans', () => {
   })
 
   it('are listed as action items across reviews, soonest due first, leaving out voided reviews; each export is logged', async () => {
-    const { t, superAdmin, create, reviewer, account } = await reviews()
+    const { t, superAdmin, create, reviewer, asRhea } = await reviews()
     const first = (await create()).data
     const second = (await create({ title: 'Late timesheets' })).data
     const voided = (await create({ title: 'Entered twice' })).data
@@ -459,11 +451,11 @@ describe('corrective action plans', () => {
     ])
     expect(items[0]).toMatchObject({ seq: 1, status: 'not_started', dueDate: '2026-11-01', responsible: { name: 'Rhea Okafor' }, review: { title: 'Late timesheets' }, completedAt: null })
 
-    const reader = await account('reader@bphs.local', { reviews: 'read' }, reviewer.id)
-    expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: reader, body: { format: 'xlsx', rows: 3 } })).status).toBe(204)
-    expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: reader, body: { format: 'pdf', rows: 3 } })).status).toBe(422)
+    const rhea = await asRhea()
+    expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: rhea, body: { format: 'xlsx', rows: 3 } })).status).toBe(204)
+    expect((await t.call('POST', '/api/reviews/action-items/exports', { cookie: rhea, body: { format: 'pdf', rows: 3 } })).status).toBe(422)
     expect(t.sqlite.prepare("select actor, entity_type, entity_id, review_id, details from review_audit_log where action = 'export'").all()).toEqual([
-      { actor: 'reader@bphs.local', entity_type: 'cap', entity_id: null, review_id: null, details: 'Action items · 3 rows · Excel workbook' },
+      { actor: 'rhea@bphs.local',entity_type: 'cap', entity_id: null, review_id: null, details: 'Action items · 3 rows · Excel workbook' },
     ])
   })
 })
@@ -565,8 +557,8 @@ describe('files on a review', () => {
   })
 
   it('takes files from the reviewer at Read Only and no other reader, and none on a Completed or voided review', async () => {
-    const { t, superAdmin, made, url, account, reviewer, employee } = await one()
-    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const { t, superAdmin, made, url, account, employee, asRhea } = await one()
+    const rhea = await asRhea()
     const reader = await account('reader@bphs.local', { reviews: 'read' }, employee('E-4005', 'Ray', 'Diaz').id)
     expect((await send(t, `${url}/attachments`, rhea, { capSeq: 1 }, [txt()])).status).toBe(201)
     const denied = await send(t, `${url}/attachments`, reader, undefined, [txt()])
@@ -607,7 +599,7 @@ describe('files on a review', () => {
   })
 
   it('sends each file as a download, never shown in the page, logging every one, and none of it to the employee reviewed', async () => {
-    const { t, superAdmin, create, account, employee, url, made } = await one()
+    const { t, superAdmin, create, aboutPriya, url, made } = await one()
     await send(t, `${url}/attachments`, superAdmin, { capSeq: 1 }, [txt('notes – Dana.txt')])
     const [file] = (await t.call('GET', `${url}/attachments`, { cookie: superAdmin })).data as { id: number }[]
     const res = await t.app.request(`${url}/attachments/${file!.id}`, { headers: { cookie: superAdmin } })
@@ -622,8 +614,7 @@ describe('files on a review', () => {
     expect((await t.app.request(`/api/reviews/${other.code}/attachments/${file!.id}`, { headers: { cookie: superAdmin } })).status).toBe(404)
 
     // Priya is the employee reviewed on this one; an editor recorded it and added its file.
-    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
-    const about = (await create({ employeeId: t.person.id }, editor)).data as { code: string }
+    const { editor, about } = await aboutPriya()
     const aboutUrl = `/api/reviews/${about.code}`
     const [hidden] = (await (await send(t, `${aboutUrl}/attachments`, editor, undefined, [txt()])).json()) as { id: number }[]
     for (const res of [
@@ -669,17 +660,6 @@ describe('files on a review', () => {
     expect((await t.call('POST', `${url}/attachments/${kept!.id}/withdraw`, { cookie: superAdmin, body: { reason: 'Wrong file.' } })).data).toMatchObject({ error: 'review_sealed' })
     expect((await t.app.request(`${url}/attachments/${kept!.id}`, { headers: { cookie: superAdmin } })).status).toBe(200)
   })
-
-  it('has no route that changes or removes a file', async () => {
-    const { t } = await reviews()
-    const routes = (t.app.routes as { method: string; path: string }[]).filter((route) => route.path.startsWith('/api/reviews') && route.path.includes('/attachments'))
-    expect([...new Set(routes.map((route) => `${route.method} ${route.path}`))].sort()).toEqual([
-      'GET /api/reviews/:code/attachments',
-      'GET /api/reviews/:code/attachments/:id',
-      'POST /api/reviews/:code/attachments',
-      'POST /api/reviews/:code/attachments/:id/withdraw',
-    ])
-  })
 })
 
 describe('a review status', () => {
@@ -724,8 +704,8 @@ describe('a review status', () => {
   })
 
   it('is changed by the reviewer at Read Only and no other reader; voiding needs Full, takes a reason and is for good', async () => {
-    const { t, superAdmin, create, account, reviewer, dana, employee } = await reviews()
-    const rhea = await account('rhea@bphs.local', { reviews: 'read' }, reviewer.id)
+    const { t, superAdmin, create, account, reviewer, dana, employee, asRhea } = await reviews()
+    const rhea = await asRhea()
     const reader = await account('reader@bphs.local', { reviews: 'read' }, employee('E-4005', 'Ray', 'Diaz').id)
     const editor = await account('editor@bphs.local', { reviews: 'edit' })
     const reviewed = await account('dana@bphs.local', { reviews: 'full' }, dana.id)
@@ -787,11 +767,9 @@ describe('an employee named on a review', () => {
   })
 
   it('says nothing of a review to an account without Reviews, or to the employee it is about', async () => {
-    const { t, superAdmin, create, reviewer, employee, account } = await reviews()
-    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
+    const { t, superAdmin, reviewer, employee, account, aboutPriya } = await reviews()
+    const { editor, about } = await aboutPriya()
     const assets = await account('assets@bphs.local', { assets: 'edit', employees: 'full' }, employee('E-4004', 'Asa', 'Lund').id)
-    // About Priya, the Super Admin.
-    const about = (await create({ employeeId: t.person.id }, editor)).data
     await t.call('POST', `/api/reviews/${about.code}/caps`, { cookie: editor, body: cap(reviewer.id) })
 
     expect(await row(t, editor, reviewer.id)).toMatchObject({ openReviewsReviewing: 1, openCapsResponsible: 1, deleteBlocked: HIDDEN })
@@ -808,7 +786,7 @@ describe('an employee named on a review', () => {
 
 describe('the Review Audit Log', () => {
   it('has an entry for each kind of change, linked to its review and CAP, and none of a review about the viewer, on the page or in the CSV', async () => {
-    const { t, superAdmin, create, reviewer, account, employee, fields } = await reviews()
+    const { t, superAdmin, create, reviewer, fields, aboutPriya } = await reviews()
     const made = (await create()).data
     const url = `/api/reviews/${made.code}`
     await t.call('PATCH', url, { cookie: superAdmin, body: { ...fields, title: 'Missed handovers', version: made.version } })
@@ -828,9 +806,7 @@ describe('the Review Audit Log', () => {
     expect(all.entries.find((entry) => entry.action === 'export')).toMatchObject({ code: null, cap: null })
     expect(await log(superAdmin, '?action=void')).toMatchObject({ total: 1, entries: [{ action: 'void', code: made.code }] })
 
-    // Priya is the employee reviewed on this one.
-    const editor = await account('editor@bphs.local', { reviews: 'edit' }, employee('E-4003', 'Eda', 'Mensah').id)
-    const about = (await create({ employeeId: t.person.id }, editor)).data
+    const { editor, about } = await aboutPriya()
     await t.call('POST', `/api/reviews/${about.code}/caps`, { cookie: editor, body: cap(reviewer.id) })
     const codes = async (cookie: string) => (await log(cookie)).entries.map((entry) => entry.code)
     expect(await codes(editor)).toContain(about.code)

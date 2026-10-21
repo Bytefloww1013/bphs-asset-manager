@@ -16,7 +16,7 @@ import {
 } from '../../shared/schemas.ts'
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
-import { contentDisposition, formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
+import { formFiles, intParam, json, jsonOrFiles, query, requireFull, sendFile, type Env } from '../http.ts'
 import { readUploads } from '../lib/uploads.ts'
 import { listReviewAudit, listReviewAuditForExport } from '../services/review-audit.ts'
 import { addReviewAttachments, downloadReviewAttachment, listReviewAttachments, withdrawReviewAttachment } from '../services/review-attachments.ts'
@@ -85,15 +85,7 @@ export function reviewRoutes(db: Db) {
     c.json(addReviewAttachments(db, c.get('user'), c.req.param('code'), c.req.valid('json'), await readUploads(await formFiles(c))), 201),
   )
   app.get('/:code/attachments', (c) => c.json(listReviewAttachments(db, c.get('user'), c.req.param('code'))))
-  // Always a download, never shown in the page, and never sniffed into something else, as grievance files are.
-  app.get('/:code/attachments/:id', (c) => {
-    const file = downloadReviewAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'))
-    return c.body(new Uint8Array(file.bytes), 200, {
-      'Content-Type': file.contentType,
-      'Content-Disposition': contentDisposition(file.filename),
-      'X-Content-Type-Options': 'nosniff',
-    })
-  })
+  app.get('/:code/attachments/:id', (c) => sendFile(c, downloadReviewAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'))))
   app.post('/:code/attachments/:id/withdraw', requireFull('reviews'), json(reviewAttachmentWithdrawSchema), (c) =>
     c.json(withdrawReviewAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'), c.req.valid('json'))),
   )

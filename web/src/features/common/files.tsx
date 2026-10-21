@@ -1,5 +1,5 @@
 import { FileText, Loader2, Paperclip, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, grievanceEntryCode, reviewCapCode, reviewEntryCode } from '@shared/constants.ts'
 import { GRIEVANCE_NOTE_MAX } from '@shared/schemas.ts'
 import type { GrievanceAttachment } from '@shared/types.ts'
@@ -27,7 +27,8 @@ const RECORDS = {
 type RecordSection = keyof typeof RECORDS
 const recordPath = (section: RecordSection, code: string) => `/${section}/${encodeURIComponent(code)}`
 
-export const FILES_HINT = `PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, up to ${ATTACHMENT_MAX_BYTES / MB} MB each and ${ATTACHMENTS_PER_REQUEST} at a time. Once saved, a file cannot be changed or removed.`
+export const FILE_RULES = `PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, up to ${ATTACHMENT_MAX_BYTES / MB} MB each and ${ATTACHMENTS_PER_REQUEST} at a time.`
+export const FILES_HINT = `${FILE_RULES} Once saved, a file cannot be changed or removed.`
 
 export const fileSize = (bytes: number) => (bytes < MB ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / MB).toFixed(1)} MB`)
 
@@ -130,6 +131,47 @@ export function AttachFiles({ section, code, cap }: { section: RecordSection; co
   )
 }
 
+/** One file in a list: a link that downloads it, or, once withdrawn, its struck-through name and the reason. The action shows until then. */
+export function FileRow({
+  file,
+  href,
+  details,
+  action,
+}: {
+  file: { filename: string; size: number; uploadedBy: string; uploadedAt: string; withdrawnAt: string | null; withdrawnReason: string | null }
+  href: string
+  details?: ReactNode
+  action?: ReactNode
+}) {
+  return (
+    <li className="flex flex-wrap items-start gap-x-4 gap-y-2 px-5 py-3">
+      <FileText className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+          {file.withdrawnAt ? (
+            <span className="text-ink-3 line-through [overflow-wrap:anywhere]">{file.filename}</span>
+          ) : (
+            <a href={href} download className="text-accent hover:underline [overflow-wrap:anywhere]">
+              {file.filename}
+            </a>
+          )}
+          {file.withdrawnAt && <Badge tone="warn">Withdrawn</Badge>}
+        </div>
+        <div className="mt-0.5 text-xs text-ink-3">
+          {fileSize(file.size)} · {file.uploadedBy} · {formatDateTime(file.uploadedAt)}
+          {details}
+        </div>
+        {file.withdrawnAt && (
+          <p className="mt-1 text-xs text-ink-2 [overflow-wrap:anywhere]">
+            Withdrawn {formatDateTime(file.withdrawnAt)}: {file.withdrawnReason}
+          </p>
+        )}
+      </div>
+      {!file.withdrawnAt && action}
+    </li>
+  )
+}
+
 /**
  * A record's files, or one entry's. Each downloads as a file to save; the page never shows one. A withdrawn file stays on the
  * list, with the reason, but no longer downloads.
@@ -141,36 +183,24 @@ export function AttachmentList({ section, code, files, sealed }: { section: Reco
     <>
       <ul className="divide-y divide-line">
         {files.map((file) => (
-          <li key={file.id} className="flex flex-wrap items-start gap-x-4 gap-y-2 px-5 py-3">
-            <FileText className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                {file.withdrawnAt ? (
-                  <span className="text-ink-3 line-through [overflow-wrap:anywhere]">{file.filename}</span>
-                ) : (
-                  <a href={`/api${recordPath(section, code)}/attachments/${file.id}`} download className="text-accent hover:underline [overflow-wrap:anywhere]">
-                    {file.filename}
-                  </a>
-                )}
-                {file.withdrawnAt && <Badge tone="warn">Withdrawn</Badge>}
-              </div>
-              <div className="mt-0.5 text-xs text-ink-3">
-                {fileSize(file.size)} · {file.uploadedBy} · {formatDateTime(file.uploadedAt)}
+          <FileRow
+            key={file.id}
+            file={file}
+            href={`/api${recordPath(section, code)}/attachments/${file.id}`}
+            details={
+              <>
                 {file.entrySeq !== null && <> · with {RECORDS[section].entryCode(file.entrySeq)}</>}
                 {file.cap != null && <> · {reviewCapCode(file.cap)}</>}
-              </div>
-              {file.withdrawnAt && (
-                <p className="mt-1 text-xs text-ink-2 [overflow-wrap:anywhere]">
-                  Withdrawn {formatDateTime(file.withdrawnAt)}: {file.withdrawnReason}
-                </p>
-              )}
-            </div>
-            {!sealed && !file.withdrawnAt && (
-              <Button size="sm" variant="danger-ghost" disabledReason={noWithdraw} onClick={() => setWithdrawing(file)}>
-                Withdraw
-              </Button>
-            )}
-          </li>
+              </>
+            }
+            action={
+              !sealed && (
+                <Button size="sm" variant="danger-ghost" disabledReason={noWithdraw} onClick={() => setWithdrawing(file)}>
+                  Withdraw
+                </Button>
+              )
+            }
+          />
         ))}
       </ul>
       {withdrawing && <WithdrawSheet section={section} code={code} file={withdrawing} onClose={() => setWithdrawing(null)} />}

@@ -4,7 +4,7 @@
 
 Application: [BPHS-Connect](https://bphs-connect.com).
 
-An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to, a third, **Maintenance**, tracks the work order requests staff send from a Zoho form, and a fourth, **Administrative Reviews**, keeps reviews of employees' work and the corrective action plans (CAPs) that follow from them, each hidden from the employee it is about. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
+An internal register of company IT equipment: what exists, who holds it, since when, and what condition it was in at every handoff. Behind the same sign-in, a second workspace, the **Grievance Tracker**, keeps employee grievances with a timeline that is only ever added to, a third, **Maintenance**, tracks the work order requests staff send from a Zoho form, a fourth, **Administrative Reviews**, keeps reviews of employees' work and the corrective action plans (CAPs) that follow from them, each hidden from the employee it is about, and a fifth, **Employee Tasks**, assigns tasks to accounts, which each person completes in their own My Space. One TypeScript codebase: a React single-page app and a small API over a SQLite file, shipped as a single Docker container.
 
 - **Front end:** React 19, Vite, Tailwind v4, TanStack Router, Query, Table (v9) and Form, Radix primitives, Lucide icons, Geist type (self-hosted).
 - **Back end:** Hono on Node 24+, Drizzle ORM over `better-sqlite3`, Zod validation, scrypt password hashing, cookie sessions stored in SQLite.
@@ -18,7 +18,7 @@ Requires [Bun](https://bun.sh) 1.3 or newer (package manager and script runner) 
 
 ```bash
 bun install
-bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, 5 grievances, 5 administrative reviews, history, 6 users)
+bun run db:seed        # optional: synthetic demo data (employees, programs, 116 physical assets, 32 digital assets, 5 grievances, 5 administrative reviews, 9 tasks, history, 6 users)
 bun run dev            # API on :3000, app on http://localhost:5173
 ```
 
@@ -30,7 +30,7 @@ Other scripts:
 
 | Script | What it does |
 | --- | --- |
-| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files, maintenance and its webhook, administrative reviews with their CAPs, files and who may see them) against an in-memory database |
+| `bun run test` | API integration tests (auth, lockout, one-active-assignment, programs, digital assets, import, permissions, audit, grievances and their files, maintenance and its webhook, administrative reviews with their CAPs, files and who may see them, employee tasks with their clock, approval and files) against an in-memory database |
 | `bun run typecheck` | Strict TypeScript for `web/` and `server/` |
 | `bun run build` | Builds the SPA to `dist/web` |
 | `bun run start` | Production mode: builds the SPA first, so it is never an older one, then the API serves it from `dist/web` |
@@ -39,6 +39,8 @@ Other scripts:
 | `bun run admin <command>` | Break-glass account recovery: `list`, `unlock <email>`, `reset-password <email>` (see the runbook) |
 
 Bun only installs packages and runs these scripts; every script still executes on Node, because `better-sqlite3` is a native addon that Bun's runtime cannot load. Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest. Commit `bun.lock`.
+
+For browser checks, `docs/verify/scratch-server.sh start|stop` runs a freshly seeded build on :3388 (its data under `/home/josh/tmp/bphs-qa-tasks`, never the real `DATA_DIR`), and `node docs/verify/tasks-smoke.mjs` drives it in headless Firefox: a task is assigned, shows on the assignee's bell, and is marked complete. puppeteer-core is installed outside the repo, in `/home/josh/tmp/bphs-qa-tools`; `FIREFOX` overrides `/snap/bin/firefox`.
 
 ## Deploy with Docker
 
@@ -72,7 +74,7 @@ This uses SQLite's backup API, so it is safe while the app is running. `scripts/
 
 ## What it does
 
-Four workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
+Five workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 
 | Screen | Route |
 | --- | --- |
@@ -108,7 +110,7 @@ Four workspaces, chosen at the top of the sidebar. **Assets**, sixteen screens:
 | Grievance categories | `/grievances/categories` |
 | Grievance audit log (filter, search, CSV export) | `/grievances/audit` |
 
-**Maintenance**, Super Admins only, three screens:
+**Maintenance**, three screens:
 
 | Screen | Route |
 | --- | --- |
@@ -135,50 +137,64 @@ Requests sent from the Zoho form arrive at `POST /api/webhooks/maintenance`.
 | Employees | `/reviews/employees` |
 | Review audit log (filter, search, CSV export) | `/reviews/audit` |
 
+**Employee Tasks**, four screens:
+
+| Screen | Route |
+| --- | --- |
+| All tasks: a tab per status, assignee and assigner filters | `/tasks` |
+| Assign a task to one or more accounts, now or at a set time, with files | `/tasks/new` |
+| Task detail: facts, body, files, history, approve, send back, cancel, delete | `/tasks/1` |
+| Edit task | `/tasks/1/edit` |
+
 **My Space**, the signed-in person's own pages, opened from the account menu. Every account has it, whatever its access. It is not a workspace: workspaces are shared work areas that access is granted to, and they are the ones in the switcher. Its sidebar has a Back link to the last workspace in place of the switcher, and a greyed-out Personal Dashboard entry marked "Coming later".
 
 | Screen | Route |
 | --- | --- |
 | Inbox: Unread, All and Archived; mark read or unread, or archive | `/me/inbox` |
 | A notice in full (opening it marks it read) | `/me/inbox/1` |
+| Tasks: Open and Completed, with a switch to show cancelled ones | `/me/tasks` |
+| A task: body, files, history, Mark complete (with a note and files) | `/me/tasks/1` |
 | Profile: name, email, linked employee, access in each section (read-only) | `/me/profile` (`/me` opens it) |
 | Notices (Super Admins only): send one to everyone or to picked accounts, and see "n of m read" for each sent | `/me/notices` |
 
-**Notifications** are in-app only, never email. A bell with a red count of unread ones sits in the sidebar header and the mobile top bar; it opens the latest eight, with Mark all read and See all. The count is fetched every 30 seconds and when the tab regains focus. An account is notified when an asset or digital asset is issued to its employee, when an asset it holds goes overdue (once), when a maintenance request is dispatched to it, taken from it, changes status or gets a note, and when its own account changes (password reset, access, unlock, employee link). The Assets team (Edit or Full, plus Super Admins) is told of returns in poor condition, one notification per bulk return. Your own actions never notify you, deactivated accounts and imports get nothing, and **Grievances and Administrative Reviews never notify anyone**: a notification would show that a case exists. Notifications over a year old are deleted by the 6-hourly timer that also clears expired sessions and sends the overdue reminders.
+**Notifications** are in-app only, never email. A bell with a red count of unread ones sits in the sidebar header and the mobile top bar; it opens the latest eight, with Mark all read and See all. The count is fetched every 30 seconds and when the tab regains focus. An account is notified when an asset or digital asset is issued to its employee, when an asset it holds goes overdue (once), when a maintenance request is dispatched to it, taken from it, changes status or gets a note, when a task is assigned to it, changed, cancelled, approved, sent back or past due, when a task it assigned is completed, waits for its approval or goes past due, and when its own account changes (password reset, access, unlock, employee link). The Assets team (Edit or Full, plus Super Admins) is told of returns in poor condition, one notification per bulk return. Your own actions never notify you, deactivated accounts and imports get nothing, and **Grievances and Administrative Reviews never notify anyone**: a notification would show that a case exists. Notifications over a year old are deleted by the 6-hourly timer that also clears expired sessions and sends the overdue reminders. A separate task clock runs every minute: it delivers scheduled tasks when their send time comes, tells the assigner when a task goes past due, and sends the reminders.
 
 ### Rules the system enforces
 
 - One open assignment per asset, in the app **and** by a partial unique index in the database.
 - Every issue and return records a condition snapshot (rating, assessor, notes). A handoff is a return then an issue.
-- Assets and people with history are retired or archived, never deleted. Delete is Super Admin only and only for records with no history.
+- Assets and people with history are retired or archived, never deleted. Delete needs Full in that section and only works for records with no history.
 - The audit log is append-only. SQLite triggers reject any `UPDATE` or `DELETE` on it.
 - Five wrong passwords lock an account for 15 minutes. New and reset accounts get a one-time password and must change it before any other page works (the API refuses everything else until then).
 - A physical asset is held by exactly one employee or one program, never both and never neither, in the app **and** by a `CHECK` constraint in the database.
 - A digital asset gets its Asset ID from the system (`DA-00001`, never typed, edited or reused), is issued to employees only, and reads Active while someone has it. Its License/Account field names a seat and refuses anything that labels itself a password, key or token: no credential is stored.
 - An import only adds employees and programs. It never changes an existing record and never issues anything; a row whose ID already exists is skipped, so running the same file twice is safe. Each record created gets its own audit entry.
 - A grievance gets its ID from the system (`GR-2026-0001`), and each entry on its timeline one of its own (`GR-2026-0001-E01`). Entries, earlier versions and file contents are never changed or deleted, in the app **and** by triggers in the database; a mistake is fixed by a correction entry linked to it. Status changes, new owners, edits and files add automatic entries.
-- Only the owner's account or a Super Admin can edit a grievance, change its status or give it a new owner; voiding a grievance and withdrawing a file are Super Admin only. A Closed or Voided grievance takes no new entries or files. An edit made from an older version than the one saved is refused.
+- Only the owner's account or Grievances Edit can edit a grievance, change its status or give it a new owner; voiding a grievance and withdrawing a file need Grievances Full. A Closed or Voided grievance takes no new entries or files. An edit made from an older version than the one saved is refused.
 - Grievance files: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by content, up to 10 MB each and 10 at a time, stored inside the database. Downloads are always a file to save, never shown in the page.
 - The Grievance Audit Log is separate from the asset Audit Log and records every grievance change, download and print, by ID, title and filename only, never body text. The case file prints only after that entry is written.
-- A maintenance request gets its ID from the system (`MR-0001`) and starts Not Started. Choosing an employee dispatches it; clearing the employee on a Dispatched request returns it to Not Started. Statuses are Not Started, Dispatched, On Hold, Rejected and Finished. Every dispatch, status change and note adds a line to its timeline, and a delete (Super Admin, after a confirmation) is recorded in the Audit Log by ID only. An employee dispatched on a request can be archived but not deleted.
+- A maintenance request gets its ID from the system (`MR-0001`) and starts Not Started. Choosing an employee dispatches it; clearing the employee on a Dispatched request returns it to Not Started. Statuses are Not Started, Dispatched, On Hold, Rejected and Finished. Every dispatch, status change and note adds a line to its timeline, and a delete (Maintenance Full, after a confirmation) is recorded in the Audit Log by ID only. An employee dispatched on a request can be archived but not deleted.
 - The webhook needs the shared secret in `X-Webhook-Secret` and a non-empty `description`; every other field may be missing, over-long text is cut rather than refused (Zoho does not retry), and the same entry sent twice (same email and Added Time) is stored once.
 - A review gets its ID from the system (`AR-2026-0001`), each CAP a number within it (`CAP01`), and each entry on its history one of its own (`E01`). Entries and file contents are never changed or deleted, in the app **and** by triggers in the database; a mistaken update is fixed by a correction, a CAP added by mistake is cancelled with a reason, and a review entered by mistake is voided. Every change to the review or a CAP adds an automatic entry.
 - A review is never shown to the account linked to its employee reviewed, whatever its level, Super Admin included: it is left out of every list, count, search, export and audit entry, and its address answers 404. So every account is linked to an employee (except the first account), and nobody can change their own account's link.
 - The reviewer's account can manage the review with Read Only, as an owner can a grievance; Reviews Edit can manage any review. Voiding a review and withdrawing a file need Reviews Full. A review is Completed only when every CAP is Completed or Cancelled, and then takes no new CAPs, updates or files until it is reopened; a voided one never does. Review files follow the grievance file rules, and the Review Audit Log is a third log, kept apart from the other two.
-- Access: each account has a level in each of Assets, Grievances, Maintenance, Administrative Reviews and Employees. **None** hides the section, **Read Only** sees it, **Edit** also adds and changes records, **Full** also deletes, archives, voids and withdraws. **Super Admin** is Full everywhere, including sections added later, and is the only way to manage accounts. The owner of a grievance can edit it, change its status and hand it on with Read; Grievances Edit can do that to any grievance. Employees are shared: every account can choose them in a form, Employees None only hides the Employees page, and each workspace shows only its own counts.
+- A task assigned to several accounts becomes one task each, with its own copy of the files (at most 200 MB in all). Its status is worked out, never stored: Scheduled until its send time, then Outstanding, Past-Due after its due time, Awaiting Approval once completed if it needs approval, then Completed; or Cancelled. A task needing approval is approved by its assigner or Tasks Edit, never its assignee, and a task you assign yourself cannot need it. Its send time cannot be in the past and is fixed once sent. A task can require a file before it is marked complete. Cancel keeps the task (its assignee sees it under Show cancelled); delete (Tasks Full) removes it with its history, files and notifications. Withdrawn files keep their contents but can no longer be downloaded. Tasks write to no audit log, only their own history.
+- Reminders go out on the task's reminder days (weekdays unless changed) at its reminder time, 09:00 unless changed, in the assigner's time zone, while it is past due. A reminder day missed while the server was down is skipped, not sent late.
+- Access: each account has a level in each of Assets, Grievances, Maintenance, Administrative Reviews, Employee Tasks and Employees. **None** hides the section, **Read Only** sees it, **Assign** (Employee Tasks only) also assigns tasks and changes or cancels its own, **Edit** also adds and changes records, **Full** also deletes, archives, voids and withdraws. **Super Admin** is Full everywhere, including sections added later, and is the only way to manage accounts. The owner of a grievance can edit it, change its status and hand it on with Read; Grievances Edit can do that to any grievance. Employees are shared: every account can choose them in a form, Employees None only hides the Employees page, and each workspace shows only its own counts. Tasks Edit can change or cancel any task except one a Super Admin assigned, which needs Tasks Full. Every account sees its own tasks in My Space, whatever its Tasks level.
 
 ## Project layout
 
 ```
 server/            Hono API: app.ts, routes/, services/ (business rules), db/ (Drizzle schema + SQL migrations), tests/
-                   plus the command-line tools backup.ts, admin.ts and seed.ts
+                   plus the command-line tools backup.ts, admin.ts and seed.ts (with grievance-, review- and task-seed.ts)
 scripts/           backup-offbox.sh (scheduled, checked backups to the host)
+docs/verify/       scratch-server.sh and tasks-smoke.mjs, for browser checks against seeded data
 shared/            Types, Zod schemas, password rules, permissions, the importable record types and the CSV reader and writer, used by both sides
 web/src/           React app: routes/ (file-based), components/ui (kit), components/data-grid (TanStack Table), features/ (common/ holds the timeline, files, print, audit log and picker pieces that Grievances and Reviews share)
 dist/web/          Built SPA (generated)
 ```
 
-Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances, maintenance and reviews, `server/tests/grievances.test.ts`, `server/tests/maintenance.test.ts` and `server/tests/reviews.test.ts`.
+Node runs the server TypeScript directly (type stripping), so there is no server build step; imports use explicit `.ts` extensions and only erasable syntax. Business rules live in `server/services/*` and are covered by `server/tests/api.test.ts` and, for grievances, maintenance, reviews and tasks, `server/tests/grievances.test.ts`, `server/tests/maintenance.test.ts`, `server/tests/reviews.test.ts` and `server/tests/tasks.test.ts`.
 
 ## How it differs from the design spec
 
@@ -192,7 +208,7 @@ The design was reworked for legibility and comfort, not just restyled:
 
 ## Known gaps and next steps
 
-- Supplied Brightpath artwork, clean SVG logos, browser icons, the desktop login hero, and the measured navy palette are recorded in [BRAND-UPDATE.md](BRAND-UPDATE.md), including per-phase rollback. Official vector originals and an exact corporate color specification remain welcome.
+- Supplied Brightpath artwork, clean SVG logos, browser icons, the desktop login hero, and the measured navy palette were recorded in BRAND-UPDATE.md, with per-phase rollback; it has since been removed and is in git history before commit `1a562fe`. Official vector originals and an exact corporate color specification remain welcome.
 - Bulk return applies one condition to every selected asset.
 - No dark theme yet (the tokens are semantic, so it is additive).
 - Backups and HTTPS are documented, not built in: schedule `scripts/backup-offbox.sh` and, if wanted, put a TLS proxy in front (see the runbook).
@@ -202,7 +218,8 @@ The design was reworked for legibility and comfort, not just restyled:
 - Review due dates are recorded but nothing is flagged overdue. Reviews and grievances send no notifications at all, on purpose.
 - Notifications are in-app only: no email, and nothing is pushed live (the bell checks every 30 seconds). Notices cannot be edited or withdrawn once sent.
 - The grievance and review case-file PDFs come from the browser's print dialog, so its page header and footer are the browser's.
-- Grievance and review files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2).
+- Grievance, review and task files live inside the database, so every backup holds all of them and backups grow with them (RUNBOOK section 4.2). A task's files are copied once per assignee.
+- Tasks have no export, no recurring tasks and no email; reminders are in-app like every other notification.
 - Zoho Forms does not retry a webhook. A request sent while the app is down never arrives; it is still in the form's Entries in Zoho, and can be entered by hand (RUNBOOK section 9).
 - Maintenance dates (Date, Noticed, Submitted in Zoho) are kept as the text Zoho sends, so they are shown but not sorted or filtered as dates.
 - An import takes one file of at most 2,000 rows and 5 MB, reads the first sheet of a workbook, and does not read the old `.xls` format.

@@ -25,6 +25,7 @@ import { maintenanceRoutes } from './routes/maintenance.ts'
 import { meRoutes } from './routes/me.ts'
 import { noticeRoutes } from './routes/notices.ts'
 import { reviewRoutes } from './routes/reviews.ts'
+import { taskRoutes } from './routes/tasks.ts'
 import { programRoutes } from './routes/programs.ts'
 import { webhookRoutes } from './routes/webhooks.ts'
 
@@ -41,9 +42,9 @@ export interface AppOptions {
 // The largest thing anyone sends is an import: 2,000 rows of at most five 300-character cells as JSON, which fits with room to spare; signing in and changing a password send two short strings.
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_AUTH_BODY_BYTES = 16 * 1024
-// The routes that take a grievance's or a review's files, as multipart: ten files at their limit, and room for the form beside them.
+// The routes that take a grievance's, a review's or a task's files, as multipart: ten files at their limit, and room for the form beside them.
 const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
-const UPLOAD_PATH = /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|reviews\/[^/]+\/(entries|attachments|caps(\/[^/]+\/status)?))$/
+const UPLOAD_PATH = /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|reviews\/[^/]+\/(entries|attachments|caps(\/[^/]+\/status)?)|tasks(\/[^/]+)?|me\/tasks\/[^/]+\/complete)$/
 
 /**
  * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
@@ -71,6 +72,8 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
       (method === 'POST' && /^\/api\/reviews\/[^/]+\/(status|entries|caps|caps\/[^/]+\/status|attachments|exports)$/.test(path))
     return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
   }
+  // Read lets a request in: the service decides who may assign, edit, cancel and approve.
+  if (/^\/api\/tasks(\/|$)/.test(path)) return { section: 'tasks', level: 'read' }
   return at('assets')
 }
 
@@ -112,8 +115,11 @@ export function createApp(db: Db, options: AppOptions = {}) {
   // An upload is the exception: its larger limit buffers the body, so it waits until the session is checked (below).
   app.use('/api/auth/*', limitBody(MAX_AUTH_BODY_BYTES))
   const [uploadLimit, bodyLimitAll] = [limitBody(MAX_UPLOAD_BODY_BYTES), limitBody(MAX_BODY_BYTES)]
+  // Only a task's edit takes files with a PATCH.
   const isUpload = (c: Context) =>
-    c.req.method === 'POST' && UPLOAD_PATH.test(c.req.path) && /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '')
+    (c.req.method === 'POST' || (c.req.method === 'PATCH' && c.req.path.startsWith('/api/tasks/'))) &&
+    UPLOAD_PATH.test(c.req.path) &&
+    /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '')
   app.use('/api/*', (c, next) => (isUpload(c) ? next() : bodyLimitAll(c, next)))
 
   app.get('/api/health', (c) => c.json({ ok: true }))
@@ -140,6 +146,7 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.route('/grievances', grievanceRoutes(db))
   api.route('/maintenance', maintenanceRoutes(db))
   api.route('/reviews', reviewRoutes(db))
+  api.route('/tasks', taskRoutes(db))
   api.route('/me', meRoutes(db))
   api.use('/notices/*', requireSuperAdmin)
   api.use('/notices', requireSuperAdmin)

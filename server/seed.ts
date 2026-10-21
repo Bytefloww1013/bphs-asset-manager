@@ -1,5 +1,5 @@
 /**
- * Development seed: synthetic employees, programs, physical and digital assets, grievances and administrative reviews with their timelines, history and users modelled on the design spec.
+ * Development seed: synthetic employees, programs, physical and digital assets, grievances and administrative reviews with their timelines, employee tasks, history and users modelled on the design spec.
  * Every name and serial here is made up. Never run against production data.
  *
  *   bun run db:seed            # fills an empty database
@@ -29,6 +29,7 @@ import {
 import { seedGrievances } from './grievance-seed.ts'
 import { hashPassword } from './lib/password.ts'
 import { seedReviews } from './review-seed.ts'
+import { seedTasks } from './task-seed.ts'
 
 if (isProduction) {
   console.error('Refusing to seed in production.')
@@ -111,15 +112,15 @@ const people = db
 const active = people.filter((p) => !p.archivedAt)
 const byCode = (code: string) => people.find((p) => p.code === code)!
 
-const [priya, marcus, , , , rosa] = db
+const [priya, marcus, dana, , , rosa] = db
   .insert(users)
   .values(([
     { name: 'Priya Raghunathan', email: 'p.raghunathan@bphs.local', superAdmin: true, employeeId: byCode('E-1042').id, lastLoginAt: daysAgo(0) },
-    { name: 'Marcus Oyelaran', email: 'm.oyelaran@bphs.local', access: { assets: 'edit', grievances: 'edit', reviews: 'edit', employees: 'edit' }, employeeId: byCode('E-0988').id, lastLoginAt: daysAgo(0) },
-    { name: 'Dana Whitfield', email: 'd.whitfield@bphs.local', access: { grievances: 'edit', employees: 'edit' }, employeeId: byCode('E-1130').id, mustChangePassword: true },
+    { name: 'Marcus Oyelaran', email: 'm.oyelaran@bphs.local', access: { assets: 'edit', grievances: 'edit', reviews: 'edit', employees: 'edit', tasks: 'edit' }, employeeId: byCode('E-0988').id, lastLoginAt: daysAgo(0) },
+    { name: 'Dana Whitfield', email: 'd.whitfield@bphs.local', access: { grievances: 'edit', employees: 'edit', tasks: 'assign' }, employeeId: byCode('E-1130').id, mustChangePassword: true },
     { name: 'Ops Account', email: 'ops@bphs.local', access: { assets: 'edit', employees: 'edit' }, employeeId: byCode('E-0761').id, failedLogins: 5, lockedUntil: new Date(now + 11 * 60_000), lastLoginAt: daysAgo(1) },
     { name: 'Neil Abernathy', email: 'n.abernathy@bphs.local', access: { assets: 'edit', grievances: 'edit', employees: 'edit' }, employeeId: byCode('E-0442').id, isActive: false, lastLoginAt: daysAgo(150) },
-    { name: 'Rosa Delgado', email: 'r.delgado@bphs.local', access: { assets: 'read', grievances: 'read', maintenance: 'read', reviews: 'read', employees: 'read' }, employeeId: byCode('E-1102').id, lastLoginAt: daysAgo(3) },
+    { name: 'Rosa Delgado', email: 'r.delgado@bphs.local', access: { assets: 'read', grievances: 'read', maintenance: 'read', reviews: 'read', employees: 'read', tasks: 'read' }, employeeId: byCode('E-1102').id, lastLoginAt: daysAgo(3) },
   ] satisfies Partial<typeof users.$inferInsert>[]).map((u) => ({ passwordHash, mustChangePassword: false, ...u }) as typeof users.$inferInsert))
   .returning()
   .all()
@@ -288,6 +289,7 @@ db.transaction((tx) => {
 
 const grievanceCount = seedGrievances(db, now, byCode, { priya: priya!, marcus: marcus! })
 const reviewCount = seedReviews(db, now, byCode, { priya: priya!, marcus: marcus!, rosa: rosa! })
+const taskCount = seedTasks(db, now, { priya: priya!, marcus: marcus!, dana: dana!, rosa: rosa! })
 
 // Sample notifications, so the bell and the Inbox have something to show. Oldest first: the lists sort by id. An asset's id is its tag number.
 for (const user of [priya!, marcus!, rosa!]) {
@@ -304,7 +306,7 @@ for (const user of [priya!, marcus!, rosa!]) {
 }
 
 console.log(
-  `Seeded ${people.length} employees, ${programCount} programs, ${tagNumber} physical assets, ${seatCount} digital assets, ${grievanceCount} grievances, ${reviewCount} reviews and 6 users into ${file}`,
+  `Seeded ${people.length} employees, ${programCount} programs, ${tagNumber} physical assets, ${seatCount} digital assets, ${grievanceCount} grievances, ${reviewCount} reviews, ${taskCount} tasks and 6 users into ${file}`,
 )
 console.log(`Sign in as p.raghunathan@bphs.local (Super Admin), m.oyelaran@bphs.local (Edit) or r.delgado@bphs.local (Read Only), password: ${PASSWORD}`)
 sqlite.close()

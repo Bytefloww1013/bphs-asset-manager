@@ -1,0 +1,1 @@
+CREATE INDEX `ix_tasks_unsent` ON `tasks` (`send_at`) WHERE "tasks"."arrived_at" is null;

@@ -16,6 +16,8 @@ import {
   LayoutDashboard,
   LayoutGrid,
   ListChecks,
+  ListPlus,
+  ListTodo,
   Lock,
   LogOut,
   Megaphone,
@@ -33,7 +35,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { canAt, canSendNotices, describeAccess, workspacesOf } from '@shared/permissions.ts'
+import { canAssignTasks, canAt, canSendNotices, describeAccess, workspacesOf } from '@shared/permissions.ts'
 import { cn } from '@/lib/cn.ts'
 import { api } from '@/lib/api.ts'
 import { notificationCountQuery } from '@/lib/queries.ts'
@@ -48,7 +50,7 @@ import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
   /** Left out only for an entry that is disabled. */
-  to?: '/me/inbox' | '/me/profile' | '/me/notices' | '/'| '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/employees' | '/reviews/audit'
+  to?: '/me/inbox' | '/me/tasks' | '/me/profile' | '/me/notices' | '/'| '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/employees' | '/reviews/audit' | '/tasks' | '/tasks/new'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -70,6 +72,7 @@ function useNav(area: Area): { heading: string; items: NavEntry[] }[] {
         heading: 'My Space',
         items: [
           { to: '/me/inbox', label: 'Inbox', icon: Inbox, count: unread },
+          { to: '/me/tasks', label: 'Tasks', icon: ListTodo },
           { to: '/me/profile', label: 'Profile', icon: UserRound },
           ...(canSendNotices(user) ? [{ to: '/me/notices', label: 'Notices', icon: Megaphone } as const] : []),
           { label: 'Personal Dashboard', icon: LayoutGrid, disabled: 'Coming later' },
@@ -78,6 +81,17 @@ function useNav(area: Area): { heading: string; items: NavEntry[] }[] {
     ]
   }
   if (area === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
+  if (area === 'tasks') {
+    return [
+      {
+        heading: 'Records',
+        items: [
+          { to: '/tasks', label: 'All tasks', icon: ListTodo },
+          { to: '/tasks/new', label: 'Assign task', icon: ListPlus, locked: !canAssignTasks(user) },
+        ],
+      },
+    ]
+  }
   if (area === 'reviews') {
     return [
       {

@@ -16,7 +16,7 @@ import {
 import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
 import { readUploads } from '../lib/uploads.ts'
-import { contentDisposition, formFiles, intParam, json, jsonOrFiles, query, requireFull, type Env } from '../http.ts'
+import { formFiles, intParam, json, jsonOrFiles, query, requireFull, sendFile, type Env } from '../http.ts'
 import { changeGrievanceOwner, changeGrievanceStatus, createGrievance, getGrievance, listGrievanceAccountHolders, listGrievances, recordGrievanceExport, voidGrievance } from '../services/grievances.ts'
 import {
   addGrievanceAttachments,
@@ -89,15 +89,7 @@ export function grievanceRoutes(db: Db) {
   // A file is added and never changed; taking one back is a withdrawal, not a delete.
   app.post('/:code/attachments', async (c) => c.json(addGrievanceAttachments(db, c.get('user'), c.req.param('code'), await readUploads(await formFiles(c))), 201))
   app.get('/:code/attachments', (c) => c.json(listGrievanceAttachments(db, c.req.param('code'))))
-  // Always a download, never shown in the page, and never sniffed into something else: a file someone added cannot run as part of the app.
-  app.get('/:code/attachments/:id', (c) => {
-    const file = downloadGrievanceAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'))
-    return c.body(new Uint8Array(file.bytes), 200, {
-      'Content-Type': file.contentType,
-      'Content-Disposition': contentDisposition(file.filename),
-      'X-Content-Type-Options': 'nosniff',
-    })
-  })
+  app.get('/:code/attachments/:id', (c) => sendFile(c, downloadGrievanceAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'))))
   app.post('/:code/attachments/:id/withdraw', requireFull('grievances'), json(grievanceAttachmentWithdrawSchema), (c) =>
     c.json(withdrawGrievanceAttachment(db, c.get('user'), c.req.param('code'), intParam(c, 'id'), c.req.valid('json'))),
   )

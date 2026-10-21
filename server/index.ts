@@ -6,6 +6,7 @@ import { config, isProduction } from './config.ts'
 import { createDb, runMigrations } from './db/client.ts'
 import { purgeExpiredSessions } from './services/auth.ts'
 import { purgeNotifications, sendOverdueReminders } from './services/notifications.ts'
+import { runTaskClock } from './services/tasks.ts'
 
 const { db, sqlite } = createDb(path.join(config.dataDir, 'bphs.sqlite'))
 runMigrations(db)
@@ -43,3 +44,11 @@ process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
 
 setInterval(tidy, 6 * 60 * 60 * 1000).unref()
+// The task clock: scheduled arrivals and past-due reminders. It marks what it sends, so a missed or repeated tick is harmless.
+setInterval(() => {
+  try {
+    runTaskClock(db)
+  } catch (error) {
+    console.error(error)
+  }
+}, 60_000).unref()

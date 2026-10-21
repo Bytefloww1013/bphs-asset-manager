@@ -1,6 +1,6 @@
 # BPHS-Connect: Runbook
 
-**Brand compatibility:** the application is BPHS-Connect (https://bphs-connect.com), with Brightpath Human Services artwork. The repository/checkout `bphs-asset-manager`, image `bphs-asset-manager:latest`, container `bphs-assets`, service `assets`, and existing data-volume bindings are retained working identifiers. Branding does not rename them. Keep deployed Compose overrides and backup callers aligned; use BRAND-UPDATE.md for code/artwork rollback. No infrastructure-name migration is included.
+**Brand compatibility:** the application is BPHS-Connect (https://bphs-connect.com), with Brightpath Human Services artwork. The repository/checkout `bphs-asset-manager`, image `bphs-asset-manager:latest`, container `bphs-assets`, service `assets`, and existing data-volume bindings are retained working identifiers. Branding does not rename them. Keep deployed Compose overrides and backup callers aligned; code/artwork rollback was in BRAND-UPDATE.md, now removed (git history before commit `1a562fe`). No infrastructure-name migration is included.
 
 How to run, back up, restore, upgrade and rescue the production deployment. For building and changing the code, see the [README](README.md).
 
@@ -97,9 +97,9 @@ Then schedule it (`crontab -e` for a user who may run `docker`; adjust the path)
 | `REMOTE` | none | rclone remote that each copy is also uploaded to, for example `bphs-backup:`. Empty means no upload. A failed upload exits non-zero |
 | `REMOTE_KEEP_DAYS` | `180` | Remote copies older than this are deleted |
 
-Copies kept inside the volume are pruned after 7 days. Files are created owner-only (mode 600) because they contain password hashes and employee records, and, from the Grievance Tracker and Administrative Reviews, the full text of every grievance and every review, with every file attached to them. Treat every copy, including the off-box ones, with the same care as HR files: limit who can read them, and keep them off shared drives.
+Copies kept inside the volume are pruned after 7 days. Files are created owner-only (mode 600) because they contain password hashes and employee records, and, from the Grievance Tracker, Administrative Reviews and Employee Tasks, the full text of every grievance, review and task, with every file attached to them. Treat every copy, including the off-box ones, with the same care as HR files: limit who can read them, and keep them off shared drives.
 
-**Watch the size.** Every copy is the whole database, and 30 of them are kept on the host. The Grievance Tracker and Administrative Reviews store file attachments inside the database (see `implementation.md`, G10), and nothing is ever deleted (a withdrawn file keeps its bytes), so each nightly copy contains every attachment ever added and the copies only grow: 1 GB of attachments is about 30 GB of backups. Check now and then with `du -sh /srv/backups/bphs`. If size becomes a problem, review other ways of storing attachments, such as keeping the files on the data volume with only their details in the database, so a backup run copies just the files that are new or changed instead of all of them every night.
+**Watch the size.** Every copy is the whole database, and 30 of them are kept on the host. The Grievance Tracker, Administrative Reviews and Employee Tasks store file attachments inside the database, and nothing is ever deleted (a withdrawn file keeps its bytes; only deleting a whole task removes its files), so each nightly copy contains every attachment ever added and the copies only grow: 1 GB of attachments is about 30 GB of backups. A task sent to several people stores its files once for each of them, up to 200 MB per assignment. Check now and then with `du -sh /srv/backups/bphs`. If size becomes a problem, review other ways of storing attachments, such as keeping the files on the data volume with only their details in the database, so a backup run copies just the files that are new or changed instead of all of them every night.
 
 Then get the copies off the machine too: set `REMOTE` (DEPLOY-GUIDE.md step 12 sets up an encrypted Google Drive remote), or use rsync to another host, your backup tool, or a USB rotation. One copy on the same disk is not a backup.
 
@@ -115,7 +115,7 @@ Once a quarter, restore the newest backup into a scratch volume (section 5.3) an
 
 ## 5. Restore
 
-A restore **rolls back everything since the backup**: assets issued and returned, new employees, user accounts, password changes, grievances with their entries, edits and files, and both audit logs. Tell people which window was lost. Anyone who changed their password after the backup was taken will need a reset (section 6).
+A restore **rolls back everything since the backup**: assets issued and returned, new employees, user accounts, password changes, grievances with their entries, edits and files, reviews, tasks with their files, notifications, and the audit logs. Tell people which window was lost. Anyone who changed their password after the backup was taken will need a reset (section 6).
 
 ### 5.1 Restore into the live system
 
@@ -203,7 +203,11 @@ The notifications release adds migration `server/db/migrations/0017_notification
 
 It is followed by `0018_drop_notification_mutes.sql`, which removes muting (it drops the mutes table and the `muted` column, so any mutes people set are gone), and `0019_notification_source_index.sql`, which adds an index for the overdue reminders. Take the same backup first. `server/admin.ts` now runs pending migrations too, so the break-glass commands work on a database the server has not started on yet.
 
+The Employee Tasks release adds `0020_tasks.sql` (tasks and their history), `0021_task_attachments.sql` (task files, and whether a task requires one) and `0022_tasks_unsent_index.sql` (an index for the task clock). Take the same backup first. After upgrading, every existing account has Tasks None: give a Tasks level on the Users screen to whoever should assign tasks (Assign) or oversee them (Read, Edit or Full). Everyone sees tasks assigned to them in My Space either way.
+
 **Housekeeping timer.** Every 6 hours (and once at start) the server signs out expired sessions, deletes notifications and notices over a year old, read or not, and sends the overdue-asset reminders (once per assignment). Nothing needs scheduling outside the container.
+
+**Task clock.** Every minute (the first tick a minute after start) the server delivers tasks whose send time has come, notifies assigners of tasks newly past due, and sends the past-due reminders due at that minute. It marks what it has sent, so a restart neither repeats nor loses a delivery; a reminder day missed entirely while the server was down is skipped. It logs nothing when healthy. A task it cannot handle logs `Task clock: task <id> failed` and the others still run; a broken clock logs an error every minute. Check with `docker compose logs --since 1h assets | grep -iA3 "task clock\|error"`. To see it work, assign a test task to yourself with a send time two minutes ahead: it should appear in My Space › Tasks, with a notification, within a minute of that time.
 
 **Rolling back:** check out the previous version, restore the pre-upgrade backup (5.1) and rebuild (`docker compose up -d --build`). Do not run an older version against a database a newer version has migrated.
 
@@ -215,7 +219,7 @@ The container speaks plain HTTP. If you put a TLS-terminating proxy in front (re
 
 1. In `docker-compose.yml` set `COOKIE_SECURE: 'true'`, and publish the port to the proxy only: `'127.0.0.1:8080:3000'`. Then `docker compose up -d`. People may need to sign in again.
 2. The proxy needs no special headers. The app does not read `Host` or any `X-Forwarded-*` header: whether the cookie is marked Secure depends on `COOKIE_SECURE` alone, which is why step 1 is not optional.
-3. Raise the proxy's request-size limit. Most requests are small, but two kinds are not: the Import/Export page sends a file's rows as JSON (the API accepts up to 4 MB), and grievance file uploads send up to 10 files of 10 MB each in one request (the API accepts up to 101 MB, on the upload paths only). nginx's default of 1 MB would reject both with a 413. The sketch below allows 101 MB on the grievance paths and keeps 4 MB everywhere else.
+3. Raise the proxy's request-size limit. Most requests are small, but two kinds are not: the Import/Export page sends a file's rows as JSON (the API accepts up to 4 MB), and grievance, review and task file uploads send up to 10 files of 10 MB each in one request (the API accepts up to 101 MB, on the upload paths only). nginx's default of 1 MB would reject both with a 413. The sketch below allows 101 MB on the grievance, review and task paths (including `/api/me/tasks`, where an assignee completes a task with files) and keeps 4 MB everywhere else.
 4. Do not let the proxy replace the app's `Content-Security-Policy` header. If you must set your own, keep `worker-src 'self' blob:` (see section 10), or large Excel files will stop importing and exporting.
 
 Sketch for nginx (adapt names and certificate paths; **not tested here**):
@@ -230,7 +234,7 @@ server {
   location / {
     proxy_pass http://127.0.0.1:8080;
   }
-  location /api/grievances {
+  location ~ ^/api/(grievances|reviews|tasks|me/tasks)(/|$) {
     client_max_body_size 101m;
     proxy_pass http://127.0.0.1:8080;
   }
@@ -249,7 +253,7 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Container shows `unhealthy` or keeps restarting | `docker compose logs --tail 100 assets`. Most common: the `/data` volume is not writable by the `node` user (if you replaced the named volume with a bind mount, `chown 1000:1000` the folder), or the database file is corrupt (restore, section 5) |
 | `database is locked` errors, or odd write failures | `DATA_DIR` is on a network share. SQLite in WAL mode needs a local disk |
 | Port 8080 already in use | Change the left number in `ports:` in `docker-compose.yml`, then `docker compose up -d` |
-| Import or a grievance file upload fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8). Raise it to 4 MB, and to 101 MB for `/api/grievances`. Without a proxy, the app itself refuses one file over 10 MB or more than 10 at once, with that reason |
+| Import or a grievance, review or task file upload fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8). Raise it to 4 MB, and to 101 MB for `/api/grievances`, `/api/reviews`, `/api/tasks` and `/api/me/tasks`. Without a proxy, the app itself refuses one file over 10 MB or more than 10 at once, with that reason |
 | Import refuses the file before any preview | Over 2,000 rows or 5 MB (split it), the old `.xls` format (save as `.xlsx` or `.csv`), or no header in the first row. Only the first sheet of a workbook is read |
 | A large Excel file never finishes reading, or an Excel export never downloads | Something is overriding the page's `Content-Security-Policy` and blocking `worker-src blob:` (a proxy or a browser policy; section 8). CSV import and export do not need it |
 | Audit log export is cut short | Exports cap at 50,000 rows per download. Narrow the filters and export in pieces |
@@ -271,22 +275,26 @@ Zoho Forms posts each *Maintenance Work Order Request* entry to `POST /api/webho
 | Request | Why it is refused |
 | --- | --- |
 | Issue an asset that is already issued | One open assignment per asset. Return it first |
-| Delete an asset | Anything with history cannot be deleted. Retire it instead. Only Super Admins can delete, and only assets that never had an assignment |
+| Delete an asset | Anything with history cannot be deleted. Retire it instead. Only Assets Full can delete, and only assets that never had an assignment |
 | Retire an asset someone holds | Return it first |
 | Archive an employee who holds assets | Return their assets first |
 | Deactivate yourself, or the last active Super Admin | Blocked so the system always has a way in |
 | Two people return the same asset at once | The second gets a conflict message showing who got there first. Refresh and retry |
-| Edit a grievance, change its status or give it a new owner | Only the owner's account (the user linked to the employee named as Owner) or a Super Admin can. If the owner has no account, only a Super Admin can |
-| Add an entry or a file to a Closed grievance | Closed and Voided grievances take nothing new. The owner or a Super Admin reopens it first; a Voided one stays voided |
+| Edit a grievance, change its status or give it a new owner | Only the owner's account (the user linked to the employee named as Owner) or an account with Grievances Edit can. If the owner has no account, only Grievances Edit can |
+| Add an entry or a file to a Closed grievance | Closed and Voided grievances take nothing new. The owner or Grievances Edit reopens it first; a Voided one stays voided |
 | Change or delete an entry | Entries are never changed. Add a correction linked to it |
-| Delete an attached file | Files are never deleted. A Super Admin can withdraw one, with a reason: it stops downloading but stays listed |
+| Delete an attached file | Files are never deleted. Grievances Full (Reviews Full for a review file) can withdraw one, with a reason: it stops downloading but stays listed. A task file can be withdrawn by whoever added it or anyone who may edit the task; only deleting the task removes it |
 | Save an edit: "was edited by … while you had it open" | Someone else saved first and nothing of yours was saved. Reload, check their change, and edit again |
 | Delete an employee named on a grievance, or archive one who owns an open grievance | The grievance needs them. Give it a new owner, or close or void it, before archiving |
-| See Maintenance | Only Super Admins can open it, or see it in the workspace switcher |
+| See Maintenance, or Employee Tasks | It needs Read in that section, given on the Users screen; without it the workspace is not in the switcher. Tasks assigned to you are in My Space › Tasks whatever your level |
 | Set a maintenance request to Dispatched | Choose who it is dispatched to first. Choosing someone sets Dispatched by itself |
 | Delete an employee dispatched on a maintenance request | The request's history needs them. Archive them instead |
 | See a review about yourself | Never, at any level, Super Admin included. A review is hidden from the account linked to its employee reviewed, and its link answers "not found". Someone else with access to Administrative Reviews has to look |
 | Open Administrative Reviews from an account with no linked employee | Reviews needs to know who the account is, to hide the reviews about them. A Super Admin links it to its employee on the Users screen. Nobody can change their own account's link |
+| Change or cancel a task | Assign can change or cancel only the tasks it assigned; Tasks Edit any task, except one a Super Admin assigned, which needs Tasks Full. Deleting needs Tasks Full. A Completed or Cancelled task cannot be changed, and one Awaiting Approval must be sent back first |
+| Approve a task you were assigned | Never: the assigner or Tasks Edit approves it. A task you assign yourself cannot need approval |
+| Mark a task complete | It needs a file first if the assigner required one |
+| Change a task's send time | Once a task has been sent, its send time is fixed. A new send time cannot be in the past |
 | Change a review, its CAPs or their status | Only the reviewer's account (the user linked to the employee named as Reviewed by) or an account with Reviews Edit can |
 | Complete a review | Every CAP must be Completed or Cancelled first. Cancelling a CAP needs a reason |
 | Add a CAP, an update or a file to a Completed review | Reopen it first with Change status. A Voided review stays voided |
@@ -294,15 +302,15 @@ Zoho Forms posts each *Maintenance Work Order Request* entry to `POST /api/webho
 
 ## 10. Security notes
 
-- **Who can do what.** Roles are Admin and Super Admin. Deleting, archiving, managing users and everything in Maintenance are Super Admin only. **Every account can read every grievance**: there are no per-grievance limits, so give accounts only to people who may see all of them. The same goes for Administrative Reviews, with one exception: a review is never shown to the account linked to the employee it is about, at any level, so every account must be linked to its own employee.
+- **Who can do what.** Each account has a level in each section (None, Read Only, Edit, Full; Employee Tasks also has Assign). Deleting, archiving, voiding and withdrawing files need Full in that section; managing users and sending notices are Super Admin only. **Every account can read every grievance**: there are no per-grievance limits, so give accounts only to people who may see all of them. The same goes for Administrative Reviews, with one exception: a review is never shown to the account linked to the employee it is about, at any level, so every account must be linked to its own employee.
 - **The audit logs are append-only inside the app and inside the database** (triggers refuse `UPDATE` and `DELETE` on them). There are three: the Audit Log for assets, employees and accounts; the Grievance Audit Log, which records every grievance change, file download and export with IDs, titles and filenames but never body text; and the Review Audit Log, which does the same for reviews. The grievance and review entries, earlier versions and file contents are append-only the same way; a file can be withdrawn once, which keeps its bytes. That guards against mistakes and misuse of the app. It does not stop someone with access to the server or the volume, who can replace the whole file. Restrict shell and Docker access to the server accordingly, and keep off-box backups: they are your independent record.
-- **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), hashed session tokens, every grievance's and every review's text and attached files, and every maintenance request with the requester's name and email. Keep them owner-only and out of shared folders.
+- **Backups and the volume contain everything**: employee names and IDs, password hashes (scrypt), hashed session tokens, every grievance's, review's and task's text and attached files, and every maintenance request with the requester's name and email. Keep them owner-only and out of shared folders.
 - **Passwords** are stored as scrypt hashes; sessions as hashes in the database, so a copy of the database does not hand over working sessions.
 - **No outbound calls.** The app needs no internet access, and sends nothing anywhere. The one thing that comes in from outside is the Zoho maintenance webhook. It only creates requests: it cannot read, change or delete anything, and it is refused without the shared secret, which is compared in constant time and travels in a header, so it never appears in the Nginx access log.
 - **Imported files stay in the browser.** A `.csv` or `.xlsx` chosen on Import/Export is opened by the page, and only its rows are sent, as JSON, to be validated again by the server. The server never opens a workbook. Reading and writing Excel files of any size zips in a Web Worker the page starts from a `blob:` URL, so the Content-Security-Policy carries `worker-src 'self' blob:`. Scripts are still limited to the app's own (`script-src 'self'`), and only a script the page already runs can create such a URL.
 - **Grievance and review files are never shown in the page.** Uploads are accepted only as PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, checked by their content as well as their name, up to 10 MB each. Downloads are always sent as a file to save (`Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`), so a file cannot run as part of the app. Files are not virus-scanned: the staff who open them rely on their own machine's protection.
 - **No credentials in digital assets.** The License/Account field refuses values that label themselves a password, key or token. That catches the obvious cases; it cannot recognise a bare secret, so tell staff the field is for naming a seat.
-- **Notifications stay in the app.** No email or push is sent. Each account reads and changes only its own notifications (another account's ID answers "not found"), a notification links only to a path inside the app (checked when it is written and again when it is opened), and it names the thing it is about, never sensitive details. Grievances and Administrative Reviews never send notifications. Only Super Admins send notices; each one is in the Audit Log.
+- **Notifications stay in the app.** No email or push is sent. Each account reads and changes only its own notifications (another account's ID answers "not found"), a notification links only to a path inside the app (checked when it is written and again when it is opened), and it names the thing it is about, never sensitive details. Grievances and Administrative Reviews never send notifications. Task notifications name the task's title. Only Super Admins send notices; each one is in the Audit Log.
 - **Secrets.** The one secret is `MAINTENANCE_WEBHOOK_SECRET`, shared with the Zoho webhook. Anyone who can edit the form's integrations in Zoho can read it, and anyone who has it can create maintenance requests; rotate it as in section 9 when that is a worry. There are no API keys. The first Super Admin's starting password (`Brightpath1!`) is known in advance, so it must be changed at first sign-in, which the app enforces.
 
 ## 11. What has been verified
@@ -332,7 +340,7 @@ Checked by running them against a real container and scratch Docker volumes whil
   - The audit log showed no grievance ID on file entries.
   - In Firefox, a date being typed was wiped.
   - Zod's eval probe broke the Content-Security-Policy.
-- Maintenance in headless Chromium (Playwright) against the production build, Oct 15 2026, on a scratch data directory and a throwaway secret: entries posted to the webhook as Zoho would, the list's tabs and search, dispatching through the employee picker, a status change and a note, hand entry with its validation, delete with its confirmation, an unknown ID, and phone width. The webhook's secret checks, lenient reading, duplicates and rules are covered by `server/tests/maintenance.test.ts`, and the Super Admin limit by `server/tests/workspaces.test.ts`. **A real Zoho post was not seen**: do the test in DEPLOY-GUIDE step 15 the first time.
+- Maintenance in headless Chromium (Playwright) against the production build, Oct 15 2026, on a scratch data directory and a throwaway secret: entries posted to the webhook as Zoho would, the list's tabs and search, dispatching through the employee picker, a status change and a note, hand entry with its validation, delete with its confirmation, an unknown ID, and phone width. The webhook's secret checks, lenient reading, duplicates and rules are covered by `server/tests/maintenance.test.ts`, and who may open Maintenance by `server/tests/access.test.ts`. **A real Zoho post was not seen**: do the test in DEPLOY-GUIDE step 15 the first time.
 - Administrative Reviews in headless Chromium (Playwright) against the production build, Oct 17 2026, on freshly seeded data, at 1400 px and at 390 px wide:
   1. Marcus (Reviews Edit) recorded a review through the form, with Rosa as the reviewer and Priya as the employee reviewed.
   2. Rosa (Reviews Read Only, but the reviewer) added three CAPs and an update on CAP01 with a file.

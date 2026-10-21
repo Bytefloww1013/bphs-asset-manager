@@ -49,7 +49,7 @@ Final project checks pass: client/server typecheck, production build, and 176 te
 
 # My Space end-to-end check (2026-10-19)
 
-Result: passed, 33 of 33. This is the check for slice 2.2 of [MySpace-plan.md](MySpace-plan.md).
+Result: passed, 33 of 33. This is the check for the My Space slice 2.2 (the plan is in git history).
 
 **Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with isolated seeded data. Headless Firefox driven by puppeteer-core, at 1366×860 (wide) and 390×844 (narrow, drawer). All accounts use the seed password.
 
@@ -92,7 +92,7 @@ Result: passed, 33 of 33. This is the check for slice 2.2 of [MySpace-plan.md](M
 
 # Notifications end-to-end check (2026-10-19)
 
-Result: passed, 47 of 47. This is the check for slice 5.2 of [NotificationsAndMessages-plan.md](NotificationsAndMessages-plan.md). Muting, Notification settings and the Mailbox placeholder were removed after this check (Oct 19 2026), so its steps about them no longer apply.
+Result: passed, 47 of 47. This is the check for the notifications slice 5.2 (the plan is in git history). Muting, Notification settings and the Mailbox placeholder were removed after this check (Oct 19 2026), so its steps about them no longer apply.
 
 **Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with freshly seeded data and `TZ=America/New_York`. Headless Firefox driven by puppeteer-core, with the two accounts in separate browser contexts side by side, at 1280×900 (wide) and 390×844 (narrow). All accounts use the seed password.
 

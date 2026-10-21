@@ -207,6 +207,11 @@ export function forgetEmployeeNotifications(tx: DbLike, userId: number) {
   tx.delete(notifications).where(and(eq(notifications.userId, userId), inArray(notifications.kind, AS_EMPLOYEE))).run()
 }
 
+/** Drops everything sent about one record, for everyone, when the record itself is deleted. */
+export function forgetNotifications(tx: DbLike, sourceKey: string) {
+  tx.delete(notifications).where(eq(notifications.sourceKey, sourceKey)).run()
+}
+
 /** Keeps the links to an asset's page working after its tag changes. Call inside the transaction that renames it. */
 export function relinkAsset(tx: DbLike, oldTag: string, newTag: string) {
   tx.update(notifications).set({ link: `/assets/${newTag}` }).where(eq(notifications.link, `/assets/${oldTag}`)).run()

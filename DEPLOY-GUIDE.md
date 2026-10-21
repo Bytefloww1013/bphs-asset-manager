@@ -4,7 +4,7 @@
 
 This guide deploys this repository on **Ubuntu Server 26.04 LTS** at **50.6.205.113**, with the web app available at **https://bphs-connect.com**. It also enables **https://www.bphs-connect.com**.
 
-The existing Dockerfile builds the React frontend and runs the Hono API on Node 24. Nginx on the VPS forwards web requests to that container, and Certbot installs a free Let's Encrypt HTTPS certificate. SQLite stores the application data, including grievance attachments, in a persistent Docker volume.
+The existing Dockerfile builds the React frontend and runs the Hono API on Node 24. Nginx on the VPS forwards web requests to that container, and Certbot installs a free Let's Encrypt HTTPS certificate. SQLite stores the application data, including grievance, review and task attachments, in a persistent Docker volume.
 
 ```text
 Browser → bphs-connect.com:443 → Nginx → 127.0.0.1:8080 → app container:3000
@@ -233,7 +233,7 @@ server {
         proxy_pass http://127.0.0.1:8080;
     }
 
-    location /api/grievances {
+    location ~ ^/api/(grievances|reviews|tasks|me/tasks)(/|$) {
         client_max_body_size 101m;
         proxy_pass http://127.0.0.1:8080;
     }
@@ -315,15 +315,15 @@ Before inviting users:
 
 - Create a second Super Admin from **Users** so account recovery has a second route.
 - Confirm you can sign out and back in, and refresh a direct URL such as `/assets`.
-- Check that the Assets and Grievances workspaces open, and, as a Super Admin, Maintenance.
-- Try an import/export and, when appropriate, a grievance attachment upload/download through HTTPS.
+- Check that each workspace opens (Assets, Grievances, Maintenance, Administrative Reviews, Employee Tasks); as a Super Admin you see all five.
+- Try an import/export and, when appropriate, a grievance or task attachment over 4 MB, uploaded and downloaded through HTTPS (it checks the 101m limit above).
 - In browser developer tools, confirm the session cookie has `Secure`, `HttpOnly` and `SameSite=Lax`.
 
 Give accounts only to people who may read all grievances: the current app allows every signed-in account to read every grievance. See [RUNBOOK.md](RUNBOOK.md#10-security-notes) for the existing access model.
 
 ## 12. Schedule backups and copy them off the VPS
 
-The database is `/data/bphs.sqlite` in Docker volume **`bphs-connect-data`**. It contains accounts, asset records, grievances and attachment contents. Rebuilding or recreating the container preserves this volume.
+The database is `/data/bphs.sqlite` in Docker volume **`bphs-connect-data`**. It contains accounts, asset records, grievances, reviews, tasks and attachment contents. Rebuilding or recreating the container preserves this volume.
 
 Run the repository's existing backup script once:
 
@@ -466,7 +466,7 @@ df -h
 | Sign-in returns to the login page | Use `https://bphs-connect.com`; verify `COOKIE_SECURE: 'true'`, then recreate with the production Compose file after any setting change. |
 | Sign-in says "Too many sign-in attempts from this network" | The Nginx limit from step 9. It clears within minutes. If a whole office keeps hitting it, raise `burst` in the site file and reload Nginx. |
 | Backup log shows `invalid_grant` or `couldn't fetch token` | Google withdrew rclone's access. Run `sudo rclone config reconnect gdrive:`, answer `n` to the browser question, and repeat the `rclone authorize` step from step 12. |
-| Upload/import fails with 413 | Preserve the 4m and 101m Nginx limits after Certbot changes; the app also limits each attachment to 10 MiB. |
+| Upload/import fails with 413 | Preserve the 4m and 101m Nginx limits after Certbot changes (101m covers `/api/grievances`, `/api/reviews`, `/api/tasks` and `/api/me/tasks`); the app also limits each attachment to 10 MiB. |
 | Excel import/export stalls | Check whether a proxy or browser policy changed the app's Content-Security-Policy or blocked its blob workers. |
 | Build is killed or reports no space | Check `free -h`, `df -h` and `sudo docker system df`; provide enough RAM/disk for the frontend build. Do not delete the data volume. |
 | App is unhealthy or repeatedly restarts | Read the container log for migration errors, configuration errors or an unwritable `/data`. |
@@ -477,7 +477,7 @@ The HTTPS URL to share with users is **https://bphs-connect.com**.
 
 ## 15. Connect the Zoho maintenance form
 
-Maintenance requests come from the Zoho Forms form *Maintenance Work Order Request*. When someone submits it, Zoho posts the entry to the app with a shared secret in a header. Nothing is sent the other way. Until this step is done, the webhook answers 404 and Super Admins can still enter requests by hand under **Maintenance → New request**.
+Maintenance requests come from the Zoho Forms form *Maintenance Work Order Request*. When someone submits it, Zoho posts the entry to the app with a shared secret in a header. Nothing is sent the other way. Until this step is done, the webhook answers 404 and accounts with Maintenance Edit can still enter requests by hand under **Maintenance → New request**.
 
 **1. The secret.** One value goes in two places: the server and Zoho's custom header. If you do not have one yet, make one with:
 

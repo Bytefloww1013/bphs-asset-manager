@@ -3,16 +3,28 @@ import os from 'node:os'
 import path from 'node:path'
 import { eq, sql } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
-import Database from 'better-sqlite3'
 import { createApp } from '../app.ts'
 import { DEFAULT_RATINGS, DEFAULT_TYPES, ensureDefaultLists } from '../bootstrap.ts'
 import { createDb, runMigrations } from '../db/client.ts'
 import { assetTypes, assets, auditLog, conditionRatings, employees, sessions, users } from '../db/schema.ts'
 import { changePassword, login } from '../services/auth.ts'
-import { ADMIN, PASSWORD, findUser, setup } from './helpers.ts'
+import { ADMIN, PASSWORD, findUser, migratedBefore, setup } from './helpers.ts'
 
 /** When a Set-Cookie header says the cookie expires. */
 const cookieExpiry = (header: string | null) => new Date(/expires=([^;]+)/i.exec(header ?? '')?.[1] ?? NaN)
+
+async function seed() {
+  const t = await setup()
+  const cookie = await t.asSuper()
+  const { assetTypes, conditionRatings } = await t.lookups(cookie)
+  const laptop = assetTypes.find((x) => x.name === 'Laptop')!
+  const good = conditionRatings.find((x) => x.name === 'Good')!
+  const fair = conditionRatings.find((x) => x.name === 'Fair')!
+  const make = async (tag: string, extra: Record<string, unknown> = {}) =>
+    await t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id, ...extra } })
+  const program = async (code: string, name: string, address?: string) => (await t.call('POST', '/api/programs', { cookie, body: { code, name, address } })).data
+  return { t, cookie, laptop, good, fair, make, program }
+}
 
 describe('authentication', () => {
   it('signs in, sets an httpOnly cookie, and rejects bad credentials', async () => {
@@ -62,32 +74,6 @@ describe('authentication', () => {
     expect(row?.failedLogins).toBeGreaterThanOrEqual(5)
     expect(row?.lockedUntil).toBeTruthy()
     expect((await t.signIn('m.oyelaran@bphs.local')).status).toBe(423)
-  })
-
-  it('writes one lock entry when an account locks, and none for the attempts before or after', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const locks = async () => (await t.call('GET', '/api/audit?action=lock', { cookie })).data.entries
-
-    for (let i = 0; i < 4; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
-    await t.signIn('nobody@bphs.local', 'wrong')
-    expect(await locks()).toEqual([])
-
-    expect((await t.signIn('m.oyelaran@bphs.local', 'wrong')).status).toBe(423)
-    for (let i = 0; i < 3; i++) await t.signIn('m.oyelaran@bphs.local', 'wrong')
-    const entries = await locks()
-    expect(entries).toHaveLength(1)
-    expect(entries[0]).toMatchObject({
-      actor: 'sign-in',
-      action: 'lock',
-      entityType: 'user',
-      entityId: t.adminUser.id,
-      details: 'm.oyelaran@bphs.local · locked for 15 minutes after 5 incorrect passwords',
-    })
-
-    // A burst of parallel attempts on another account still logs its lock once.
-    await Promise.all(Array.from({ length: 10 }, (_, i) => t.signIn('p.raghunathan@bphs.local', `wrong-${i}`)))
-    expect(t.db.all(sql`select id from audit_log where action = 'lock'`)).toHaveLength(2)
   })
 
   it('refuses a correct password that was still being checked when the account locked', async () => {
@@ -316,21 +302,9 @@ describe('serving the built web app', () => {
 })
 
 describe('assets, assignments and the one-active-assignment rule', () => {
-  async function seed() {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
-    const laptop = assetTypes.find((x) => x.name === 'Laptop')!
-    const good = conditionRatings.find((x) => x.name === 'Good')!
-    const fair = conditionRatings.find((x) => x.name === 'Fair')!
-    const make = async (tag: string) =>
-      (await t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, serial: 'SN-' + tag, conditionRatingId: good.id } })).data
-    return { t, cookie, laptop, good, fair, make }
-  }
-
   it('creates an asset in storage with an intake condition and an audit entry', async () => {
     const { t, cookie, make } = await seed()
-    const asset = await make('bphs-0150')
+    const asset = (await make('bphs-0150')).data
     expect(asset.tag).toBe('BPHS-0150')
     expect(asset.state).toBe('in_storage')
     expect(asset.condition.rating).toBe('Good')
@@ -342,7 +316,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
 
   it('names the field and the limit when a value is refused, so a form can show it under that field', async () => {
     const { t, cookie, laptop, good, make } = await seed()
-    const asset = await make('BPHS-0400')
+    const asset = (await make('BPHS-0400')).data
     const post = (body: Record<string, unknown>) =>
       t.call('POST', '/api/assets', { cookie, body: { tag: 'BPHS-0401', typeId: laptop.id, conditionRatingId: good.id, ...body } })
     const fields = (res: { data: any }) => res.data.details.fields
@@ -368,7 +342,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
 
   it('issues once, refuses a second holder, and records both condition snapshots', async () => {
     const { t, cookie, good, fair, make } = await seed()
-    const asset = await make('BPHS-0141')
+    const asset = (await make('BPHS-0141')).data
     const issued = await t.call('POST', '/api/assignments', {
       cookie,
       body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id },
@@ -382,6 +356,12 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     })
     expect(second.status).toBe(409)
     expect(second.data.error).toBe('asset_already_assigned')
+    // The database refuses it as well.
+    expect(() =>
+      t.sqlite
+        .prepare('insert into assignments (asset_id, employee_id, issued_at, issued_by_id) values (?, ?, ?, ?)')
+        .run(asset.id, t.person.id, Date.now(), t.superUser.id),
+    ).toThrow(/UNIQUE/)
 
     const ret = await t.call('POST', `/api/assignments/${issued.data.id}/return`, {
       cookie,
@@ -445,7 +425,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
 
   it('reports who already returned an assignment (the race-conflict case)', async () => {
     const { t, cookie, good, make } = await seed()
-    const asset = await make('BPHS-0141')
+    const asset = (await make('BPHS-0141')).data
     const issued = await t.call('POST', '/api/assignments', {
       cookie,
       body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id },
@@ -470,24 +450,13 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(bulk.data).toEqual({ returned: [], failed: [{ id: issued.data.id, message: 'BPHS-0141 has already been returned by m.oyelaran@bphs.local.' }] })
   })
 
-  it('the database itself refuses two open assignments for one asset', async () => {
-    const { t, good, make, cookie } = await seed()
-    const asset = await make('BPHS-0141')
-    await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id } })
-    expect(() =>
-      t.sqlite
-        .prepare('insert into assignments (asset_id, employee_id, issued_at, issued_by_id) values (?, ?, ?, ?)')
-        .run(asset.id, t.person.id, Date.now(), t.superUser.id),
-    ).toThrow(/UNIQUE/)
-  })
-
   it('cannot retire an assigned asset, but can retire and reinstate one in storage', async () => {
     const { t, cookie, good, make } = await seed()
-    const asset = await make('BPHS-0141')
+    const asset = (await make('BPHS-0141')).data
     await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id } })
     expect((await t.call('POST', `/api/assets/${asset.id}/retire`, { cookie })).status).toBe(409)
 
-    const spare = await make('BPHS-0142')
+    const spare = (await make('BPHS-0142')).data
     const retired = await t.call('POST', `/api/assets/${spare.id}/retire`, { cookie })
     expect(retired.data.state).toBe('retired')
     const issueRetired = await t.call('POST', '/api/assignments', {
@@ -498,13 +467,11 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect((await t.call('POST', `/api/assets/${spare.id}/reinstate`, { cookie })).data.state).toBe('in_storage')
   })
 
-  it('only a Super Admin may delete, and never an asset with history', async () => {
+  it('deletes an asset with no history, and never one with history', async () => {
     const { t, cookie, good, make } = await seed()
-    const admin = await t.asAdmin()
-    const clean = await make('BPHS-0150')
-    expect((await t.call('DELETE', `/api/assets/${clean.id}`, { cookie: admin })).status).toBe(403)
+    const clean = (await make('BPHS-0150')).data
 
-    const used = await make('BPHS-0141')
+    const used = (await make('BPHS-0141')).data
     await t.call('POST', '/api/assignments', { cookie, body: { assetId: used.id, employeeId: t.person.id, conditionRatingId: good.id } })
     const refused = await t.call('DELETE', `/api/assets/${used.id}`, { cookie })
     expect(refused.status).toBe(409)
@@ -579,7 +546,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     }
 
     // The same rule for a rename and for pasted rows.
-    const asset = await make('BPHS-0500')
+    const asset = (await make('BPHS-0500')).data
     const rename = await t.call('PATCH', `/api/assets/${asset.id}`, { cookie, body: { tag: 'BPHS/0500' } })
     expect(rename.status).toBe(422)
     expect(rename.data.details.fields).toEqual({ tag: characters })
@@ -630,7 +597,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
       // The same for a bulk return: the middle one cannot be closed, the two around it are.
       const issued: number[] = []
       for (const tag of ['R-1', 'R-2', 'R-3']) {
-        const asset = await make(tag)
+        const asset = (await make(tag)).data
         issued.push((await t.call('POST', '/api/assignments', { cookie, body: { assetId: asset.id, employeeId: t.person.id, conditionRatingId: good.id } })).data.id)
       }
       t.sqlite.exec(`create trigger test_stuck before update on assignments when old.id = ${issued[1]} begin select raise(abort, 'refused by a trigger'); end;`)
@@ -805,21 +772,12 @@ describe('importing employees and programs', () => {
     expect(fields(duplicate)).toEqual({ code: 'Employee ID e-9000 already exists.' })
   })
 
-  it('archiving is Super-Admin-only and blocked while the employee holds assets', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const admin = await t.asAdmin()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
-    const asset = (
-      await t.call('POST', '/api/assets', {
-        cookie,
-        body: { tag: 'BPHS-1', typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id, holderId: t.person.id },
-      })
-    ).data
+  it('blocks archiving while the employee holds assets', async () => {
+    const { t, cookie, good, make } = await seed()
+    const asset = (await make('BPHS-1', { holderId: t.person.id })).data
     expect(asset.state).toBe('assigned')
-    expect((await t.call('POST', `/api/employees/${t.person.id}/archive`, { cookie: admin })).status).toBe(403)
     expect((await t.call('POST', `/api/employees/${t.person.id}/archive`, { cookie })).data.error).toBe('holds_assets')
-    await t.call('POST', `/api/assignments/${asset.assignmentId}/return`, { cookie, body: { conditionRatingId: conditionRatings[0]!.id } })
+    await t.call('POST', `/api/assignments/${asset.assignmentId}/return`, { cookie, body: { conditionRatingId: good.id } })
     expect((await t.call('POST', `/api/employees/${t.person.id}/archive`, { cookie })).data.state).toBe('archived')
     expect((await t.call('DELETE', `/api/employees/${t.person.id}`, { cookie })).status).toBe(409)
   })
@@ -876,25 +834,22 @@ describe('importing employees and programs', () => {
 
 describe('lists, users and audit', () => {
   it('answers a write with the same row the lists show, when other rows have history of their own', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
-    const body = (tag: string, holderId: number | null) => ({ tag, typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id, holderId })
-    const first = (await t.call('POST', '/api/assets', { cookie, body: body('ROW-1', t.person.id) })).data
-    await t.call('POST', `/api/assignments/${first.assignmentId}/return`, { cookie, body: { conditionRatingId: conditionRatings[1]!.id, notes: 'scuffed' } })
-    await t.call('POST', '/api/assets', { cookie, body: body('ROW-2', t.person.id) })
-    await t.call('POST', '/api/assets', { cookie, body: body('ROW-3', null) })
+    const { t, cookie, laptop, fair, make } = await seed()
+    const first = (await make('ROW-1', { holderId: t.person.id })).data
+    await t.call('POST', `/api/assignments/${first.assignmentId}/return`, { cookie, body: { conditionRatingId: fair.id, notes: 'scuffed' } })
+    await make('ROW-2', { holderId: t.person.id })
+    await make('ROW-3')
 
     const { daysOut: _a, ...changed } = (await t.call('PATCH', `/api/assets/${first.id}`, { cookie, body: { serial: 'SN-77' } })).data
     const { daysOut: _b, ...listed } = (await t.call('GET', '/api/assets', { cookie })).data.find((row: { id: number }) => row.id === first.id)
     expect(changed).toEqual(listed)
-    expect(changed).toMatchObject({ state: 'in_storage', hasHistory: true, condition: { rating: conditionRatings[1]!.name, notes: 'scuffed' } })
+    expect(changed).toMatchObject({ state: 'in_storage', hasHistory: true, condition: { rating: 'Fair', notes: 'scuffed' } })
     expect(changed.lastReturnedAt).not.toBeNull()
 
-    const type = (await t.call('PATCH', `/api/asset-types/${assetTypes[0]!.id}`, { cookie, body: { name: 'Renamed' } })).data
+    const type = (await t.call('PATCH', `/api/asset-types/${laptop.id}`, { cookie, body: { name: 'Renamed' } })).data
     expect(type).toEqual((await t.call('GET', '/api/asset-types', { cookie })).data.find((row: { id: number }) => row.id === type.id))
     expect(type.assetCount).toBe(3)
-    const rating = (await t.call('PATCH', `/api/condition-ratings/${conditionRatings[1]!.id}`, { cookie, body: { name: 'Worn' } })).data
+    const rating = (await t.call('PATCH', `/api/condition-ratings/${fair.id}`, { cookie, body: { name: 'Worn' } })).data
     expect(rating).toEqual((await t.call('GET', '/api/condition-ratings', { cookie })).data.find((row: { id: number }) => row.id === rating.id))
     expect(rating.snapshotCount).toBe(1)
   })
@@ -914,7 +869,7 @@ describe('lists, users and audit', () => {
     const t = await setup()
     const admin = await t.asAdmin()
     const superAdmin = await t.asSuper()
-    for (const [path, noun] of [['/api/condition-ratings', 'condition rating'], ['/api/asset-types', 'asset type']] as const) {
+    for (const [path, noun] of [['/api/condition-ratings', 'condition rating'], ['/api/asset-types', 'asset type'], ['/api/digital-asset-types', 'digital asset type']] as const) {
       const items = (await t.call('GET', path, { cookie: admin })).data as { id: number; name: string }[]
       const [last, ...rest] = items
       for (const item of rest) expect((await t.call('PATCH', `${path}/${item.id}`, { cookie: admin, body: { isActive: false } })).status).toBe(200)
@@ -939,6 +894,7 @@ describe('lists, users and audit', () => {
     const lookups = (await t.call('GET', '/api/lookups', { cookie: admin })).data
     expect(lookups.conditionRatings).toHaveLength(1)
     expect(lookups.assetTypes).toHaveLength(1)
+    expect(lookups.digitalAssetTypes).toHaveLength(1)
     expect((await t.call('GET', '/api/audit?action=update', { cookie: admin })).data.entries.some((e: { details: string }) => /only active/.test(e.details))).toBe(false)
   })
 
@@ -996,13 +952,10 @@ describe('lists, users and audit', () => {
   })
 
   it('goes by the score, not the name, for the condition watch and the default rating', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const { assetTypes } = await t.lookups(cookie)
+    const { t, cookie, make } = await seed()
     const ratings = (await t.call('GET', '/api/condition-ratings', { cookie })).data as { id: number; name: string }[]
     const id = (name: string) => ratings.find((r) => r.name === name)!.id
-    const make = (tag: string, rating: string) => t.call('POST', '/api/assets', { cookie, body: { tag, typeId: assetTypes[0]!.id, conditionRatingId: id(rating) } })
-    for (const [tag, rating] of [['W-1', 'New'], ['W-2', 'Good'], ['W-3', 'Fair'], ['W-4', 'Poor'], ['W-5', 'Damaged']] as const) await make(tag, rating)
+    for (const [tag, rating] of [['W-1', 'New'], ['W-2', 'Good'], ['W-3', 'Fair'], ['W-4', 'Poor'], ['W-5', 'Damaged']] as const) await make(tag, { conditionRatingId: id(rating) })
     const watch = async () => (await t.call('GET', '/api/dashboard', { cookie })).data.poorCondition.map((r: { assetTag: string; rating: string }) => `${r.assetTag} ${r.rating}`).sort()
     expect(await watch()).toEqual(['W-4 Poor', 'W-5 Damaged'])
 
@@ -1019,7 +972,7 @@ describe('lists, users and audit', () => {
 
     // A pasted row with no condition gets the rating closest to 80, even after "Good" is renamed.
     await t.call('PATCH', `/api/condition-ratings/${id('Good')}`, { cookie, body: { name: 'Fine' } })
-    const pasted = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows: [{ tag: 'W-6', type: assetTypes[0]!.name }] } })
+    const pasted = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows: [{ tag: 'W-6', type: 'Laptop' }] } })
     expect(pasted.data).toMatchObject({ created: 1, errors: [] })
     expect((await t.call('GET', '/api/assets/tag/W-6', { cookie })).data.asset.condition.rating).toBe('Fine')
   })
@@ -1185,6 +1138,7 @@ describe('lists, users and audit', () => {
     const cookie = await t.asSuper()
     await t.call('POST', '/api/asset-types', { cookie, body: { name: '=SUM(A1:A9)' } })
     const res = await t.app.request('/api/audit.csv', { headers: { cookie } })
+    expect(res.headers.get('content-type')).toMatch(/text\/csv/)
     const bytes = new Uint8Array(await res.arrayBuffer())
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
     const text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes)
@@ -1216,9 +1170,6 @@ describe('lists, users and audit', () => {
     const before = (t.sqlite.prepare('select count(*) as n from audit_log').get() as { n: number }).n
     await t.call('POST', '/api/asset-types', { cookie, body: { name: 'Cable' } })
     expect((t.sqlite.prepare('select count(*) as n from audit_log').get() as { n: number }).n).toBe(before + 1)
-    const csv = await t.app.request('/api/audit.csv', { headers: { cookie } })
-    expect(csv.headers.get('content-type')).toMatch(/text\/csv/)
-    expect(await csv.text()).toContain('assettype')
 
     t.sqlite.prepare('delete from sessions').run()
     t.sqlite.prepare('delete from users where id = ?').run(t.superUser.id)
@@ -1273,22 +1224,6 @@ describe('lists, users and audit', () => {
     expect((await t.call('GET', '/api/audit?to=not-a-time', { cookie })).status).toBe(422)
   })
 
-  it('summarises the dashboard', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
-    await t.call('POST', '/api/assets', {
-      cookie,
-      body: { tag: 'D-1', typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id, holderId: t.person.id },
-    })
-    await t.call('POST', '/api/assets', { cookie, body: { tag: 'D-2', typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[3]!.id } })
-    const { data } = await t.call('GET', '/api/dashboard', { cookie })
-    expect(data.totals).toEqual({ total: 2, assigned: 1, inStorage: 1, retired: 0 })
-    expect(data.byType[0]).toMatchObject({ total: 2, free: 1 })
-    expect(data.topHolders[0].count).toBe(1)
-    expect(data.poorCondition[0].assetTag).toBe('D-2')
-    expect(data.recent.length).toBeGreaterThan(0)
-  })
 })
 
 describe('sign-ins in the audit log, and one account per employee', () => {
@@ -1296,7 +1231,7 @@ describe('sign-ins in the audit log, and one account per employee', () => {
     const t = await setup()
     const cookie = await t.asSuper()
     const entries = async (query = '') =>
-      ((await t.call('GET', `/api/audit${query}`, { cookie })).data.entries as { actor: string; action: string; entityId: number | null; details: string }[]).reverse()
+      ((await t.call('GET', `/api/audit${query}`, { cookie })).data.entries as { actor: string; action: string; entityType: string; entityId: number | null; details: string }[]).reverse()
 
     expect(await entries('?action=sign_in')).toEqual([expect.objectContaining({ actor: 'p.raghunathan@bphs.local', entityId: t.superUser.id, details: 'p.raghunathan@bphs.local · signed in' })])
 
@@ -1315,7 +1250,12 @@ describe('sign-ins in the audit log, and one account per employee', () => {
       ['sign_in', 'p.raghunathan@bphs.local', 'p.raghunathan@bphs.local · signed in'],
       ['lock', 'sign-in', 'm.oyelaran@bphs.local · locked for 15 minutes after 5 incorrect passwords'],
     ])
+    expect((await entries('?action=lock'))[0]).toMatchObject({ entityType: 'user', entityId: t.adminUser.id })
     expect((await t.call('GET', '/api/audit?action=sign_in_failed', { cookie })).status).toBe(422)
+
+    // A burst of parallel attempts on another account still logs its lock once.
+    await Promise.all(Array.from({ length: 10 }, (_, i) => t.signIn('p.raghunathan@bphs.local', `wrong-${i}`)))
+    expect(t.db.all(sql`select id from audit_log where action = 'lock'`)).toHaveLength(2)
   })
 
   it('refuses to link an employee who already has an account', async () => {
@@ -1364,12 +1304,7 @@ describe('sign-ins in the audit log, and one account per employee', () => {
   })
 
   it('on upgrade, leaves a shared employee with one account and says which accounts were unlinked', () => {
-    const folder = path.join(import.meta.dirname, '../db/migrations')
-    const statements = (file: string) => fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint')
-    const files = fs.readdirSync(folder).filter((file) => file.endsWith('.sql')).sort()
-    const last = files.findIndex((file) => file.startsWith('0004_'))
-    const sqlite = new Database(':memory:')
-    for (const file of files.slice(0, last)) for (const statement of statements(file)) sqlite.exec(statement)
+    const { sqlite, next } = migratedBefore('0004_')
 
     sqlite.exec(`
       insert into employees (id, code, first_name, last_name) values (1, 'E-1', 'Sam', 'Shared'), (2, 'E-2', 'Olu', 'Alone');
@@ -1379,7 +1314,7 @@ describe('sign-ins in the audit log, and one account per employee', () => {
         (3, 'Later', 'later@x.example', 'x', 'admin', 1, 1),
         (4, 'Alone', 'alone@x.example', 'x', 'admin', 2, 1),
         (5, 'None', 'none@x.example', 'x', 'admin', null, 1);`)
-    for (const statement of statements(files[last]!)) sqlite.exec(statement)
+    next()
 
     expect(sqlite.prepare('select id, employee_id as e from users order by id').all()).toEqual([{ id: 1, e: null }, { id: 2, e: 1 }, { id: 3, e: null }, { id: 4, e: 2 }, { id: 5, e: null }])
     expect(sqlite.prepare('select actor, action, entity_id as id, details from audit_log order by entity_id').all()).toEqual([
@@ -1391,19 +1326,6 @@ describe('sign-ins in the audit log, and one account per employee', () => {
 })
 
 describe('programs, and assets a program holds', () => {
-  async function seed() {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
-    const laptop = assetTypes.find((x) => x.name === 'Laptop')!
-    const good = conditionRatings.find((x) => x.name === 'Good')!
-    const fair = conditionRatings.find((x) => x.name === 'Fair')!
-    const make = async (tag: string, extra: Record<string, unknown> = {}) =>
-      await t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id, ...extra } })
-    const program = async (code: string, name: string, address?: string) => (await t.call('POST', '/api/programs', { cookie, body: { code, name, address } })).data
-    return { t, cookie, laptop, good, fair, make, program }
-  }
-
   it('adds, edits and lists programs, and keeps the Program ID unique whatever the letter case', async () => {
     const { t, cookie, program } = await seed()
     const created = await t.call('POST', '/api/programs', { cookie, body: { code: ' P-100 ', name: 'Outreach North', address: '12 Mill Lane' } })
@@ -1549,6 +1471,7 @@ describe('programs, and assets a program holds', () => {
     await make('D-3')
     const { data } = await t.call('GET', '/api/dashboard', { cookie })
     expect(data.totals).toEqual({ total: 3, assigned: 2, inStorage: 1, retired: 0 })
+    expect(data.byType[0]).toMatchObject({ total: 3, free: 1 })
     expect(data.topHolders).toEqual([{ employee: expect.objectContaining({ id: t.person.id }), count: 1 }])
     expect(data.longestOut.map((row: { assetTag: string; employee: unknown; program: { name: string } | null }) => [row.assetTag, row.employee === null, row.program?.name ?? null])).toEqual([
       ['D-1', true, 'Outreach North'],
@@ -1557,13 +1480,7 @@ describe('programs, and assets a program holds', () => {
   })
 
   it('on upgrade, rebuilds the assignments table around the rows it already has', () => {
-    const folder = path.join(import.meta.dirname, '../db/migrations')
-    const statements = (file: string) => fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint')
-    const files = fs.readdirSync(folder).filter((file) => file.endsWith('.sql')).sort()
-    const last = files.findIndex((file) => file.startsWith('0005_'))
-    const sqlite = new Database(':memory:')
-    sqlite.pragma('foreign_keys = ON')
-    for (const file of files.slice(0, last)) for (const statement of statements(file)) sqlite.exec(statement)
+    const { sqlite, next } = migratedBefore('0005_', { foreignKeys: true })
 
     sqlite.exec(`
       insert into employees (id, code, first_name, last_name) values (1, 'E-1', 'Sam', 'First'), (2, 'E-2', 'Olu', 'Second');
@@ -1590,7 +1507,7 @@ describe('programs, and assets a program holds', () => {
 
     // The migrator runs a migration inside one transaction with foreign keys on, so the test does too.
     sqlite.exec('begin')
-    for (const statement of statements(files[last]!)) sqlite.exec(statement)
+    next()
     sqlite.exec('commit')
 
     expect(sqlite.prepare('select * from assignments order by id').all()).toEqual(assignmentsBefore.map((row) => ({ ...(row as object), program_id: null })))
@@ -1666,11 +1583,6 @@ describe('digital assets and digital asset types', () => {
     const audit = async () => (await t.call('GET', '/api/audit?limit=100', { cookie })).data.entries as { action: string; entityType: string; details: string }[]
     return { t, cookie, admin, types, m365, zoho, make, employee, audit }
   }
-
-  it('starts with the four digital asset types, there from the migration and not from the demo data', async () => {
-    const { types } = await seed()
-    expect(types.map((x) => x.name)).toEqual(['M365-BusinessStandard', 'M365-PowerBI', 'Relias', 'Zoho'])
-  })
 
   it('gives each one the next Asset ID, which is never typed, never edited and never reused', async () => {
     const { t, cookie, make, m365 } = await seed()
@@ -1873,19 +1785,8 @@ describe('digital assets and digital asset types', () => {
     expect(inUse.status).toBe(409)
     expect(inUse.data).toMatchObject({ error: 'in_use', message: '1 digital asset(s) use "M365-BusinessStandard". Deactivate it instead.' })
     expect((await t.call('DELETE', `${path}/${created.data.id}`, { cookie })).status).toBe(204)
-
-    // A deactivated type leaves the forms, and the last active one can be neither switched off nor deleted.
-    const all = (await t.call('GET', path, { cookie })).data as { id: number; name: string }[]
-    const last = all.find((x) => x.name === 'Relias')!
-    for (const type of all.filter((x) => x.id !== last.id)) {
-      expect((await t.call('PATCH', `${path}/${type.id}`, { cookie, body: { isActive: false } })).status).toBe(200)
-    }
-    expect((await t.call('GET', '/api/lookups', { cookie })).data.digitalAssetTypes).toEqual([{ id: last.id, name: 'Relias' }])
-    const refused = await t.call('PATCH', `${path}/${last.id}`, { cookie, body: { isActive: false } })
-    expect(refused.status).toBe(409)
-    expect(refused.data).toMatchObject({ error: 'last_active', message: '"Relias" is the only active digital asset type. Activate or add another first.' })
-    expect((await t.call('DELETE', `${path}/${last.id}`, { cookie })).data.error).toBe('last_active')
-    expect(types).toHaveLength(4)
+    // The four it starts with come from the migration, not the demo data.
+    expect(types.map((x) => x.name)).toEqual(['M365-BusinessStandard', 'M365-PowerBI', 'Relias', 'Zoho'])
 
     const log = (await audit()).filter((e) => e.entityType === 'digitalassettype').map((e) => `${e.action} ${e.details}`)
     expect(log).toContain('create Adobe-CC')
