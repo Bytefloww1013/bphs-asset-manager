@@ -93,7 +93,7 @@ On the VPS:
 sudo docker compose -f /etc/bphs-connect/compose.yml exec assets node server/backup.ts   # writes /data/backups/bphs-<timestamp>.sqlite
 ```
 
-This uses SQLite's backup API, so it is safe while the app is running. `scripts/backup-offbox.sh` does the same, checks the copy, and streams it to a folder on the host. It runs nightly from cron and can also send the copy off the VPS (DEPLOY-GUIDE step 12). Restore and the rest of the operating procedures are in [RUNBOOK.md](RUNBOOK.md). There, use `sudo docker compose -f /etc/bphs-connect/compose.yml` in place of `docker compose`.
+This uses SQLite's backup API, so it is safe while the app is running. `scripts/backup-offbox.sh` does the same, checks the copy, and streams it to a folder on the host. It runs nightly from cron and also sends an encrypted copy to Google Drive through rclone (DEPLOY-GUIDE step 12). Restore and the rest of the operating procedures are in [RUNBOOK.md](RUNBOOK.md). There, use `sudo docker compose -f /etc/bphs-connect/compose.yml` in place of `docker compose`.
 
 ## What it does
 
