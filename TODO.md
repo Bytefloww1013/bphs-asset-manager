@@ -16,11 +16,13 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 ## Backups
 
-- [ ] Connect Google Drive for off-site copies ([DEPLOY-GUIDE.md step 12](DEPLOY-GUIDE.md#12-schedule-backups-and-copy-them-off-the-vps)). It needs a browser sign-in on your computer.
+- [x] Connect Google Drive for off-site copies ([DEPLOY-GUIDE.md step 12](DEPLOY-GUIDE.md#12-schedule-backups-and-copy-them-off-the-vps)). It needs a browser sign-in on your computer.
   - Save both encryption passwords in your password manager. Without them, nobody can decrypt the Drive copies.
-  - Then add `REMOTE=bphs-backup:` to the line in `/etc/cron.d/bphs-connect-backup`; a comment in the file shows where.
-  - Copy `/etc/bphs-connect` and `/etc/nginx/sites-available` to Drive, as the guide shows.
-- [ ] Get alerted when the newest backup is more than a day old. Nightly copies currently run at 02:15 UTC, and only to the VPS, logged to `/var/log/bphs-backup.log`.
+  - Then add `REMOTE=bphs-backup:` to the line in `/etc/cron.d/bphs-connect-backup`.
+  - Copy `/etc/bphs-connect` and `/etc/nginx/sites-available` to Drive, as the guide shows. Copy them again whenever they change.
+  - 2026-10-21: rclone remotes `gdrive` and `bphs-backup:` set up, the cron line uploads each copy, and a backup sent by hand showed up in both listings.
+- [ ] Check that the first nightly upload worked: on 2026-10-22, `/var/log/bphs-backup.log` should show an `uploaded: bphs-backup:bphs-20261022-…` line.
+- [ ] Get alerted when the newest backup is more than a day old. Nightly copies run at 02:15 UTC, to the VPS and then to Google Drive, logged to `/var/log/bphs-backup.log`. A failed upload still leaves a fresh copy on the VPS, so also alert when the newest line in the log is not `uploaded:`.
 - [ ] Practise a restore into a scratch volume ([RUNBOOK.md section 5.3](RUNBOOK.md#53-restore-into-a-scratch-volume-drill-or-to-inspect-old-data)).
 
 ## Open security findings
@@ -69,3 +71,4 @@ Ideas agreed on but not planned yet. Each gets its own `[feature]-plan.md` when 
 - 2026-10-15: first deploy to the VPS at 50.6.205.113. HTTPS with automatic renewal, nightly local backups.
 - 2026-10-15: SSH is key-only, except the host's web console at 50.87.241.21, which still signs in with a password (`/etc/ssh/sshd_config.d/10-keys-only.conf`).
 - 2026-10-16: deployed `f433cbc` (section access and US maintenance dates) over `3e31bab`. Both accounts stayed Super Admin and every table kept its rows. Pre-deploy backup: `/srv/backups/bphs/bphs-20261016-133431.sqlite`.
+- 2026-10-21: encrypted off-site backups to Google Drive, through the rclone remote `bphs-backup:` (folder `bphs-backups`). Drive keeps 180 days of copies.

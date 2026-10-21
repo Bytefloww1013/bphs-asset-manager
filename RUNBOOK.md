@@ -103,10 +103,18 @@ Copies kept inside the volume are pruned after 7 days. Files are created owner-o
 
 Then get the copies off the machine too: set `REMOTE` (DEPLOY-GUIDE.md step 12 sets up an encrypted Google Drive remote), or use rsync to another host, your backup tool, or a USB rotation. One copy on the same disk is not a backup.
 
+The production VPS does this. Its schedule is `/etc/cron.d/bphs-connect-backup`, which runs as root with `REMOTE=bphs-backup:`, so each nightly copy also goes to Google Drive (set up 2026-10-21). Keep the two encryption passwords for `bphs-backup:` in a password manager, away from the VPS. Without them, nobody can decrypt the Drive copies. Restoring from Drive is in DEPLOY-GUIDE.md step 12.
+
 **Know when it stops working.** Cron fails silently. Alert on a stale backup, for example from your monitoring tool:
 
 ```bash
 find /srv/backups/bphs -name 'bphs-*.sqlite' -mtime -1 | grep -q . || echo "BPHS backup is more than a day old"
+```
+
+With `REMOTE` set, a failed upload still leaves a fresh copy on the host. So also check the log: a successful run ends with an `uploaded:` line.
+
+```bash
+tail -n 1 /var/log/bphs-backup.log | grep -q '^uploaded:' || echo "BPHS off-box upload failed"
 ```
 
 ### 4.3 Practise the restore
@@ -355,5 +363,6 @@ Checked by running them against a real container and scratch Docker volumes whil
 
 - The nginx snippet in section 8.
 - `docker compose stop`/`restart` on the production container (the build sandbox did not allow stopping a running container; the underlying SIGTERM handling was tested).
-- The cron line in section 4.2 (the script it calls was run by hand).
+- The `crontab -e` line in section 4.2 (the script it calls was run by hand). Production uses the `/etc/cron.d` form from DEPLOY-GUIDE.md step 12 instead.
+- The first upload to Google Drive from cron, due 2026-10-22 at 02:15 (the uploads so far were run by hand).
 - Running a second container on a scratch volume to browse old data (end of section 5.3).
