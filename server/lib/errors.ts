@@ -23,12 +23,14 @@ export class HttpError extends Error {
  * conflict; anything else is a fault of ours, which the caller logs. Used for a whole request and for one row of a bulk request.
  */
 export function describeError(error: unknown): { status: number; code: string; message: string; details?: unknown } {
-  if (error instanceof HttpError) return { status: error.status, code: error.code, message: error.message, details: error.details }
+  if (error instanceof HttpError)
+    return { status: error.status, code: error.code, message: error.message, details: error.details }
   const code = (error as { code?: string } | null)?.code ?? ''
   if (code === 'SQLITE_CONSTRAINT_UNIQUE' && error instanceof Error && /assignments\.asset_id/.test(error.message)) {
     return { status: 409, code: 'asset_already_assigned', message: 'This asset is already assigned.' }
   }
-  if (code.startsWith('SQLITE_CONSTRAINT')) return { status: 409, code: 'conflict', message: 'That change conflicts with existing records.' }
+  if (code.startsWith('SQLITE_CONSTRAINT'))
+    return { status: 409, code: 'conflict', message: 'That change conflicts with existing records.' }
   return { status: 500, code: 'internal_error', message: 'Something went wrong on the server.' }
 }
 
@@ -46,9 +48,7 @@ export function rowFailure(error: unknown, log: { done: boolean }): string {
 }
 
 export const notFound = (what: string) => new HttpError(404, 'not_found', `${what} not found.`)
-export const conflict = (code: string, message: string, details?: unknown) =>
-  new HttpError(409, code, message, details)
+export const conflict = (code: string, message: string, details?: unknown) => new HttpError(409, code, message, details)
 export const forbidden = (message = 'You do not have permission to do this.') =>
   new HttpError(403, 'forbidden', message)
-export const invalid = (message: string, details?: unknown) =>
-  new HttpError(422, 'validation_failed', message, details)
+export const invalid = (message: string, details?: unknown) => new HttpError(422, 'validation_failed', message, details)

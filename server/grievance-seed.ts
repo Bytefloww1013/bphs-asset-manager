@@ -1,9 +1,21 @@
 import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import { grievanceEntryCode, grievanceStatusLabel, type GrievanceAuditAction, type GrievanceStatus } from '../shared/constants.ts'
+import {
+  grievanceEntryCode,
+  grievanceStatusLabel,
+  type GrievanceAuditAction,
+  type GrievanceStatus,
+} from '../shared/constants.ts'
 import { localToday } from '../shared/schemas.ts'
 import type { Db } from './db/client.ts'
-import { employees, grievanceAttachments, grievanceCategories, grievancePeople, grievances, grievanceVersions } from './db/schema.ts'
+import {
+  employees,
+  grievanceAttachments,
+  grievanceCategories,
+  grievancePeople,
+  grievances,
+  grievanceVersions,
+} from './db/schema.ts'
 import type { Actor } from './lib/audit.ts'
 import { writeGrievanceAudit } from './lib/grievance-audit.ts'
 import { plainToRichText, requireRichText } from './lib/richtext.ts'
@@ -34,7 +46,12 @@ const textFile = (filename: string, text: string): Upload => {
 }
 
 /** Write the demo grievances. `person` finds an employee by code; Priya is a Super Admin and Marcus an Admin. */
-export function seedGrievances(db: Db, now: number, person: (code: string) => Person, { priya, marcus }: { priya: Actor; marcus: Actor }): number {
+export function seedGrievances(
+  db: Db,
+  now: number,
+  person: (code: string) => Person,
+  { priya, marcus }: { priya: Actor; marcus: Actor },
+): number {
   /** `days` ago, at `hour` o'clock local time. */
   const at = (days: number, hour = 10, minute = 0) => {
     const date = new Date(now - days * DAY)
@@ -44,13 +61,29 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
   const nameOf = (p: Person) => fullName(p.firstName, p.lastName)
 
   return db.transaction((tx) => {
-    const categories = Object.fromEntries(tx.select().from(grievanceCategories).all().map((c) => [c.name, c.id])) as Record<string, number>
+    const categories = Object.fromEntries(
+      tx
+        .select()
+        .from(grievanceCategories)
+        .all()
+        .map((c) => [c.name, c.id]),
+    ) as Record<string, number>
     let count = 0
 
     const create = (
       actor: Actor,
       when: Date,
-      g: { title: string; shortDescription: string; body: string; madeDaysAgo: number; category: string; owner: string; employees: string[]; management: string[]; files?: Upload[] },
+      g: {
+        title: string
+        shortDescription: string
+        body: string
+        madeDaysAgo: number
+        category: string
+        owner: string
+        employees: string[]
+        management: string[]
+        files?: Upload[]
+      },
     ): Case => {
       const { code, year, seq } = nextGrievanceCode(tx, when)
       const body = requireRichText(g.body, 'body')
@@ -81,7 +114,13 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
         ])
         .run()
       appendGrievanceEntry(tx, actor, id, { kind: 'system', occurredAt: when, title: GRIEVANCE_RECORDED, at: when })
-      writeGrievanceAudit(tx, actor, { action: 'create', entityType: 'grievance', entityId: id, details: `${code} · ${g.title}`, at: when })
+      writeGrievanceAudit(tx, actor, {
+        action: 'create',
+        entityType: 'grievance',
+        entityId: id,
+        details: `${code} · ${g.title}`,
+        at: when,
+      })
       saveAttachments(tx, actor, { id, code }, null, g.files ?? [], when)
       count++
       return { id, code, title: g.title, status: 'open', owner: nameOf(owner) }
@@ -92,7 +131,15 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
       g: Case,
       actor: Actor,
       when: Date,
-      e: { kind: 'action' | 'event' | 'correction'; occurredAt?: Date; corrects?: { id: number }; title: string; shortDescription?: string; body?: string; files?: Upload[] },
+      e: {
+        kind: 'action' | 'event' | 'correction'
+        occurredAt?: Date
+        corrects?: { id: number }
+        title: string
+        shortDescription?: string
+        body?: string
+        files?: Upload[]
+      },
     ) => {
       const row = appendGrievanceEntry(tx, actor, g.id, {
         kind: e.kind,
@@ -103,19 +150,53 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
         body: e.body ? requireRichText(e.body, 'body') : undefined,
         at: when,
       })
-      writeGrievanceAudit(tx, actor, { action: 'entry', entityType: 'grievance_entry', entityId: row.id, details: `${g.code} ${grievanceEntryCode(row.seq)} · ${e.title}`, at: when })
+      writeGrievanceAudit(tx, actor, {
+        action: 'entry',
+        entityType: 'grievance_entry',
+        entityId: row.id,
+        details: `${g.code} ${grievanceEntryCode(row.seq)} · ${e.title}`,
+        at: when,
+      })
       const files = saveAttachments(tx, actor, g, row, e.files ?? [], when)
       return { id: row.id, files }
     }
 
     /** A status, owner or void change, with its automatic entry, as `applyChange` makes it. */
-    const change = (g: Case, actor: Actor, when: Date, action: GrievanceAuditAction, summary: string, note: string, set: Partial<typeof grievances.$inferInsert>) => {
+    const change = (
+      g: Case,
+      actor: Actor,
+      when: Date,
+      action: GrievanceAuditAction,
+      summary: string,
+      note: string,
+      set: Partial<typeof grievances.$inferInsert>,
+    ) => {
       tx.update(grievances).set(set).where(eq(grievances.id, g.id)).run()
-      appendGrievanceEntry(tx, actor, g.id, { kind: 'system', occurredAt: when, title: summary, body: plainToRichText(note), at: when })
-      writeGrievanceAudit(tx, actor, { action, entityType: 'grievance', entityId: g.id, details: `${g.code} · ${g.title} · ${summary}`, at: when })
+      appendGrievanceEntry(tx, actor, g.id, {
+        kind: 'system',
+        occurredAt: when,
+        title: summary,
+        body: plainToRichText(note),
+        at: when,
+      })
+      writeGrievanceAudit(tx, actor, {
+        action,
+        entityType: 'grievance',
+        entityId: g.id,
+        details: `${g.code} · ${g.title} · ${summary}`,
+        at: when,
+      })
     }
     const status = (g: Case, actor: Actor, when: Date, to: GrievanceStatus, note: string) => {
-      change(g, actor, when, to === 'voided' ? 'void' : 'status', `Status: ${grievanceStatusLabel(g.status)} → ${grievanceStatusLabel(to)}`, note, { status: to })
+      change(
+        g,
+        actor,
+        when,
+        to === 'voided' ? 'void' : 'status',
+        `Status: ${grievanceStatusLabel(g.status)} → ${grievanceStatusLabel(to)}`,
+        note,
+        { status: to },
+      )
       g.status = to
     }
     const handOver = (g: Case, actor: Actor, when: Date, to: string, note: string) => {
@@ -125,11 +206,22 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
     }
 
     /** An edit of the title and short description, keeping what they were as a version, as `updateGrievance` does. */
-    const edit = (g: Case, actor: Actor, when: Date, to: { title: string; shortDescription: string }, reason: string) => {
+    const edit = (
+      g: Case,
+      actor: Actor,
+      when: Date,
+      to: { title: string; shortDescription: string },
+      reason: string,
+    ) => {
       const was = tx.select().from(grievances).where(eq(grievances.id, g.id)).get()!
       const category = tx.select().from(grievanceCategories).where(eq(grievanceCategories.id, was.categoryId)).get()!
       const named = tx
-        .select({ role: grievancePeople.role, code: employees.code, firstName: employees.firstName, lastName: employees.lastName })
+        .select({
+          role: grievancePeople.role,
+          code: employees.code,
+          firstName: employees.firstName,
+          lastName: employees.lastName,
+        })
         .from(grievancePeople)
         .innerJoin(employees, eq(employees.id, grievancePeople.employeeId))
         .where(eq(grievancePeople.grievanceId, g.id))
@@ -152,17 +244,48 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
           reason,
         })
         .run()
-      tx.update(grievances).set({ ...to, version: was.version + 1 }).where(eq(grievances.id, g.id)).run()
+      tx.update(grievances)
+        .set({ ...to, version: was.version + 1 })
+        .where(eq(grievances.id, g.id))
+        .run()
       const summary = 'Edited: Title, Short description'
-      appendGrievanceEntry(tx, actor, g.id, { kind: 'system', occurredAt: when, title: summary, body: plainToRichText(reason), at: when })
-      writeGrievanceAudit(tx, actor, { action: 'update', entityType: 'grievance', entityId: g.id, details: `${g.code} · ${to.title} · ${summary}`, at: when })
+      appendGrievanceEntry(tx, actor, g.id, {
+        kind: 'system',
+        occurredAt: when,
+        title: summary,
+        body: plainToRichText(reason),
+        at: when,
+      })
+      writeGrievanceAudit(tx, actor, {
+        action: 'update',
+        entityType: 'grievance',
+        entityId: g.id,
+        details: `${g.code} · ${to.title} · ${summary}`,
+        at: when,
+      })
       g.title = to.title
     }
 
     const withdraw = (g: Case, actor: Actor, when: Date, file: { id: number; filename: string }, reason: string) => {
-      tx.update(grievanceAttachments).set({ withdrawnAt: when, withdrawnReason: reason }).where(eq(grievanceAttachments.id, file.id)).run()
-      appendGrievanceEntry(tx, actor, g.id, { kind: 'system', occurredAt: when, title: 'File withdrawn', shortDescription: file.filename, body: plainToRichText(reason), at: when })
-      writeGrievanceAudit(tx, actor, { action: 'withdraw', entityType: 'grievance_attachment', entityId: file.id, details: `${g.code} · ${file.filename}`, at: when })
+      tx.update(grievanceAttachments)
+        .set({ withdrawnAt: when, withdrawnReason: reason })
+        .where(eq(grievanceAttachments.id, file.id))
+        .run()
+      appendGrievanceEntry(tx, actor, g.id, {
+        kind: 'system',
+        occurredAt: when,
+        title: 'File withdrawn',
+        shortDescription: file.filename,
+        body: plainToRichText(reason),
+        at: when,
+      })
+      writeGrievanceAudit(tx, actor, {
+        action: 'withdraw',
+        entityType: 'grievance_attachment',
+        entityId: file.id,
+        details: `${g.code} · ${file.filename}`,
+        at: when,
+      })
     }
 
     // Created oldest first, so their numbers follow the order they were entered in.
@@ -179,12 +302,33 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
       owner: 'E-1042',
       employees: ['E-1201', 'E-1219'],
       management: ['E-1296'],
-      files: [textFile('july-timesheet-summary.txt', 'Harbour House, 1-15 July\nT. Berger: 4 x double (32h)\nB. Osman: 4 x double (30h)\n')],
+      files: [
+        textFile(
+          'july-timesheet-summary.txt',
+          'Harbour House, 1-15 July\nT. Berger: 4 x double (32h)\nB. Osman: 4 x double (30h)\n',
+        ),
+      ],
     })
-    entry(overtime, priya, at(93, 14), { kind: 'action', occurredAt: at(93, 11), title: 'Met with Tomas and Bilal', shortDescription: 'Went through the shifts they covered, one by one.', body: '<p>Both brought their own notes of the dates. They agree with each other on every shift.</p>' })
+    entry(overtime, priya, at(93, 14), {
+      kind: 'action',
+      occurredAt: at(93, 11),
+      title: 'Met with Tomas and Bilal',
+      shortDescription: 'Went through the shifts they covered, one by one.',
+      body: '<p>Both brought their own notes of the dates. They agree with each other on every shift.</p>',
+    })
     status(overtime, priya, at(93, 14, 20), 'in_progress', 'Taking this to Payroll.')
-    entry(overtime, priya, at(88, 16), { kind: 'event', occurredAt: at(88, 15), title: 'Payroll confirmed the hours were missed', shortDescription: 'The rota change was never sent to Payroll.' })
-    entry(overtime, priya, at(80, 10), { kind: 'action', occurredAt: at(80, 9, 30), title: 'Back pay approved', shortDescription: 'Back pay for all claimed hours, in the next pay run.' })
+    entry(overtime, priya, at(88, 16), {
+      kind: 'event',
+      occurredAt: at(88, 15),
+      title: 'Payroll confirmed the hours were missed',
+      shortDescription: 'The rota change was never sent to Payroll.',
+    })
+    entry(overtime, priya, at(80, 10), {
+      kind: 'action',
+      occurredAt: at(80, 9, 30),
+      title: 'Back pay approved',
+      shortDescription: 'Back pay for all claimed hours, in the next pay run.',
+    })
     status(overtime, priya, at(70, 11), 'resolved', 'Back pay went out in the pay run on the 15th.')
     status(overtime, priya, at(60, 9), 'closed', 'Both confirmed they were paid in full.')
 
@@ -200,19 +344,54 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
       management: ['E-0761'],
     })
     // Written down days after it happened: its place on the timeline is by when it happened.
-    entry(lighting, marcus, at(58, 9), { kind: 'event', occurredAt: at(63, 22, 30), title: 'Earlier near-fall reported by night staff', shortDescription: 'A second support worker says the same happened to them three nights before.' })
+    entry(lighting, marcus, at(58, 9), {
+      kind: 'event',
+      occurredAt: at(63, 22, 30),
+      title: 'Earlier near-fall reported by night staff',
+      shortDescription: 'A second support worker says the same happened to them three nights before.',
+    })
     status(lighting, marcus, at(57, 10), 'in_progress', 'Facilities asked to look at it this week.')
     const walk = entry(lighting, marcus, at(55, 15), {
       kind: 'action',
       occurredAt: at(55, 14),
       title: 'Facilities walk-through',
       shortDescription: 'Grant found a faulty timer on the stairwell circuit.',
-      files: [textFile('walkthrough-notes.txt', 'Back stairwell: timer relay cuts the circuit at 22:00. Replacement ordered.\n')],
+      files: [
+        textFile(
+          'walkthrough-notes.txt',
+          'Back stairwell: timer relay cuts the circuit at 22:00. Replacement ordered.\n',
+        ),
+      ],
     })
-    entry(lighting, marcus, at(54, 9, 10), { kind: 'correction', corrects: walk, title: 'Walk-through was with Ivo, not Grant', body: '<p>Grant was off that day. Ivo Petrov did the walk-through; the finding is the same.</p>' })
-    edit(lighting, marcus, at(50, 11), { title: 'Stairwell lights failing at night, Harbour House', shortDescription: 'A timer cuts the back stairwell lights at 10 pm; staff report near-falls.' }, 'The cause is known now, so the title says what is wrong.')
-    entry(lighting, marcus, at(21, 16), { kind: 'event', occurredAt: at(22, 10), title: 'Timer replaced', shortDescription: 'Lights now stay on through the night.' })
-    status(lighting, marcus, at(20, 9, 30), 'resolved', 'Fixed. Will close once Callum has had a week of night shifts with it.')
+    entry(lighting, marcus, at(54, 9, 10), {
+      kind: 'correction',
+      corrects: walk,
+      title: 'Walk-through was with Ivo, not Grant',
+      body: '<p>Grant was off that day. Ivo Petrov did the walk-through; the finding is the same.</p>',
+    })
+    edit(
+      lighting,
+      marcus,
+      at(50, 11),
+      {
+        title: 'Stairwell lights failing at night, Harbour House',
+        shortDescription: 'A timer cuts the back stairwell lights at 10 pm; staff report near-falls.',
+      },
+      'The cause is known now, so the title says what is wrong.',
+    )
+    entry(lighting, marcus, at(21, 16), {
+      kind: 'event',
+      occurredAt: at(22, 10),
+      title: 'Timer replaced',
+      shortDescription: 'Lights now stay on through the night.',
+    })
+    status(
+      lighting,
+      marcus,
+      at(20, 9, 30),
+      'resolved',
+      'Fixed. Will close once Callum has had a week of night shifts with it.',
+    )
 
     // In progress, handed to someone who cannot sign in, so only a Super Admin can change it; one file withdrawn.
     const accent = create(priya, at(40, 10, 5), {
@@ -239,7 +418,10 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
       occurredAt: at(30, 10),
       title: 'Statements taken',
       shortDescription: 'Two people present at the meetings gave statements.',
-      files: [textFile('witness-statement-1.txt', 'Statement taken 10:00. Confirms remarks at the meeting on the 4th.\n'), textFile('rota-notes.txt', 'Notes on the Intake rota. Not about this grievance.\n')],
+      files: [
+        textFile('witness-statement-1.txt', 'Statement taken 10:00. Confirms remarks at the meeting on the 4th.\n'),
+        textFile('rota-notes.txt', 'Notes on the Intake rota. Not about this grievance.\n'),
+      ],
     })
     withdraw(accent, priya, at(29, 9), statements.files[1]!, 'Attached to the wrong grievance by mistake.')
 
@@ -254,7 +436,12 @@ export function seedGrievances(db: Db, now: number, person: (code: string) => Pe
       employees: ['E-1102', 'E-1304'],
       management: ['E-1315'],
     })
-    entry(rota, marcus, at(10, 14), { kind: 'action', occurredAt: at(10, 13), title: 'Asked Intake for the last three rotas', shortDescription: 'Sasha will send them by Friday.' })
+    entry(rota, marcus, at(10, 14), {
+      kind: 'action',
+      occurredAt: at(10, 13),
+      title: 'Asked Intake for the last three rotas',
+      shortDescription: 'Sasha will send them by Friday.',
+    })
 
     // Voided: entered twice by mistake.
     const twice = create(marcus, at(8, 9), {

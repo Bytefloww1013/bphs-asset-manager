@@ -21,13 +21,29 @@ const where = (viewer: { employeeId: number | null }, query: Omit<ReviewAuditQue
   sql`${auditWhere(query)} and (l.review_id is null or ${reviewsVisibleTo(viewer)})`
 
 /** The Review Audit Log, newest first. Read-only: nothing here or in any route changes it. */
-export function listReviewAudit(db: DbLike, viewer: { employeeId: number | null }, query: ReviewAuditQuery): ReviewAuditPage {
+export function listReviewAudit(
+  db: DbLike,
+  viewer: { employeeId: number | null },
+  query: ReviewAuditQuery,
+): ReviewAuditPage {
   const seen = where(viewer, query)
   const total = db.get<{ n: number }>(sql`select count(*) as n ${FROM} where ${seen}`)?.n ?? 0
-  const entries = db.all<Raw>(sql`select ${COLUMNS} ${FROM} where ${seen} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`).map(toEntry)
+  const entries = db
+    .all<Raw>(
+      sql`select ${COLUMNS} ${FROM} where ${seen} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`,
+    )
+    .map(toEntry)
   return { total, entries }
 }
 
-export function listReviewAuditForExport(db: DbLike, viewer: { employeeId: number | null }, query: Omit<ReviewAuditQuery, 'limit' | 'offset'>): ReviewAuditEntry[] {
-  return db.all<Raw>(sql`select ${COLUMNS} ${FROM} where ${where(viewer, query)} order by l.occurred_at desc, l.id desc limit 50000`).map(toEntry)
+export function listReviewAuditForExport(
+  db: DbLike,
+  viewer: { employeeId: number | null },
+  query: Omit<ReviewAuditQuery, 'limit' | 'offset'>,
+): ReviewAuditEntry[] {
+  return db
+    .all<Raw>(
+      sql`select ${COLUMNS} ${FROM} where ${where(viewer, query)} order by l.occurred_at desc, l.id desc limit 50000`,
+    )
+    .map(toEntry)
 }

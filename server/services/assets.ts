@@ -1,6 +1,11 @@
 import { eq, sql, type SQL } from 'drizzle-orm'
 import { defaultRating } from '../../shared/constants.ts'
-import { assetBulkRowFields, type AssetBulkInput, type AssetCreateInput, type AssetUpdateInput } from '../../shared/schemas.ts'
+import {
+  assetBulkRowFields,
+  type AssetBulkInput,
+  type AssetCreateInput,
+  type AssetUpdateInput,
+} from '../../shared/schemas.ts'
 import type {
   AssetBulkResult,
   AssetDetail,
@@ -52,11 +57,7 @@ interface LatestCondition {
 /** Every asset with its derived state, holder, latest condition and days out. */
 export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }): AssetRow[] {
   const now = new Date()
-  const where = only?.id
-    ? sql`where s.id = ${only.id}`
-    : only?.tag
-      ? sql`where s.tag = ${only.tag}`
-      : sql``
+  const where = only?.id ? sql`where s.id = ${only.id}` : only?.tag ? sql`where s.tag = ${only.tag}` : sql``
   const base = db.all<AssetBase>(sql`
     select s.id as id, s.tag as tag, s.type_id as typeId, t.name as type, s.serial as serial,
            s.status as status, s.created_at as createdAt
@@ -65,7 +66,8 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
   if (base.length === 0) return []
   // Asked for one asset, read only its rows below instead of every asset's.
   const one = only ? base[0]!.id : null
-  const forOne = (column: SQL, word: 'and' | 'where') => (one === null ? sql`` : sql`${sql.raw(word)} ${column} = ${one}`)
+  const forOne = (column: SQL, word: 'and' | 'where') =>
+    one === null ? sql`` : sql`${sql.raw(word)} ${column} = ${one}`
 
   const open = new Map(
     db
@@ -94,7 +96,9 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
   )
   const counts = new Map(
     db
-      .all<{ assetId: number; n: number }>(sql`select asset_id as assetId, count(*) as n from assignments ${forOne(sql`asset_id`, 'where')} group by asset_id`)
+      .all<{ assetId: number; n: number }>(
+        sql`select asset_id as assetId, count(*) as n from assignments ${forOne(sql`asset_id`, 'where')} group by asset_id`,
+      )
       .map((row) => [row.assetId, row.n]),
   )
 
@@ -102,7 +106,12 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
     const assignment = open.get(row.id)
     const last = latest.get(row.id)
     const condition: ConditionSummary | null = last
-      ? { ratingId: last.ratingId, rating: last.rating, notes: last.notes, recordedAt: new Date(last.recordedAt).toISOString() }
+      ? {
+          ratingId: last.ratingId,
+          rating: last.rating,
+          notes: last.notes,
+          recordedAt: new Date(last.recordedAt).toISOString(),
+        }
       : null
     const lastReturned = returned.get(row.id)
     const issuedAt = assignment ? new Date(assignment.issuedAt) : null
@@ -123,7 +132,10 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
               department: assignment.eDept,
             }
           : null,
-      program: assignment && assignment.pId !== null ? { id: assignment.pId, code: assignment.pCode!, name: assignment.pName! } : null,
+      program:
+        assignment && assignment.pId !== null
+          ? { id: assignment.pId, code: assignment.pCode!, name: assignment.pName! }
+          : null,
       assignmentId: assignment?.assignmentId ?? null,
       condition,
       issuedAt: issuedAt ? issuedAt.toISOString() : null,
@@ -184,7 +196,10 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
       const returnedAt = row.returnedAt ? new Date(row.returnedAt) : null
       return {
         id: row.id,
-        employee: row.eId === null ? null : { id: row.eId, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept },
+        employee:
+          row.eId === null
+            ? null
+            : { id: row.eId, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept },
         program: row.pId === null ? null : { id: row.pId, code: row.pCode!, name: row.pName! },
         issuedAt: issuedAt.toISOString(),
         returnedAt: returnedAt ? returnedAt.toISOString() : null,
@@ -216,18 +231,16 @@ export function getAssetDetail(db: DbLike, tag: string): AssetDetail {
       left join employees e on e.id = c.assessed_by_id
       where c.asset_id = ${asset.id}
       order by c.recorded_at desc, c.id desc`)
-    .map(
-      (row): ConditionEntry => ({
-        id: row.id,
-        kind: row.kind,
-        rating: row.rating,
-        notes: row.notes,
-        assessedBy: row.first && row.last ? fullName(row.first, row.last) : null,
-        recordedBy: row.recordedBy,
-        recordedAt: new Date(row.recordedAt).toISOString(),
-        assignmentId: row.assignmentId,
-      }),
-    )
+    .map((row): ConditionEntry => ({
+      id: row.id,
+      kind: row.kind,
+      rating: row.rating,
+      notes: row.notes,
+      assessedBy: row.first && row.last ? fullName(row.first, row.last) : null,
+      recordedBy: row.recordedBy,
+      recordedAt: new Date(row.recordedAt).toISOString(),
+      assignmentId: row.assignmentId,
+    }))
 
   return { asset, history, conditions: entries }
 }
@@ -239,7 +252,11 @@ function requireType(db: DbLike, id: number) {
 }
 
 function assertTagFree(db: DbLike, tag: string, exceptId?: number) {
-  const dup = db.select({ id: assets.id }).from(assets).where(sql`${assets.tag} = ${tag} collate nocase`).get()
+  const dup = db
+    .select({ id: assets.id })
+    .from(assets)
+    .where(sql`${assets.tag} = ${tag} collate nocase`)
+    .get()
   if (dup && dup.id !== exceptId) {
     throw conflict('duplicate_tag', `Asset tag ${tag} already exists.`, { field: 'tag' })
   }
@@ -255,7 +272,13 @@ function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date
     .values({ tag: input.tag, typeId: type.id, serial: input.serial ?? null, createdAt: now })
     .returning({ id: assets.id })
     .get()
-  writeAudit(tx, actor, { action: 'create', entityType: 'asset', entityId: asset.id, details: `${input.tag} · ${type.name}`, at: now })
+  writeAudit(tx, actor, {
+    action: 'create',
+    entityType: 'asset',
+    entityId: asset.id,
+    details: `${input.tag} · ${type.name}`,
+    at: now,
+  })
 
   if (input.holderId || input.programId) {
     issueInTx(
@@ -296,8 +319,16 @@ export function createAsset(db: Db, actor: Actor, input: AssetCreateInput): Asse
 /** Paste-from-spreadsheet import. Rows are independent; bad rows are reported by number. */
 export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): AssetBulkResult {
   const types = db.select().from(assetTypes).all()
-  const ratings = db.select().from(conditionRatings).all().filter((rating) => rating.isActive)
-  const people = db.select().from(employees).all().filter((employee) => !employee.archivedAt)
+  const ratings = db
+    .select()
+    .from(conditionRatings)
+    .all()
+    .filter((rating) => rating.isActive)
+  const people = db
+    .select()
+    .from(employees)
+    .all()
+    .filter((employee) => !employee.archivedAt)
   const byName = <T extends { name: string }>(list: T[], value: string) =>
     list.find((item) => item.name.toLowerCase() === value.toLowerCase())
   const fallbackRating = defaultRating(ratings)
@@ -309,7 +340,8 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
     const fail = (message: string) => result.errors.push({ row: line, message })
     if (!row.tag) return fail('Missing asset tag.')
     const fields = assetBulkRowFields.safeParse({ tag: row.tag, serial: row.serial })
-    if (!fields.success) return fail(`${describeRowProblem(fields.error, { tag: 'Asset tag', serial: 'Serial number' })}.`)
+    if (!fields.success)
+      return fail(`${describeRowProblem(fields.error, { tag: 'Asset tag', serial: 'Serial number' })}.`)
     const type = byName(types, row.type)
     if (!type || !type.isActive) return fail(`Unknown asset type "${row.type}".`)
     const rating = row.condition ? byName(ratings, row.condition) : fallbackRating
@@ -317,8 +349,15 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
     let holderId: number | null = null
     if (row.holder) {
       const q = row.holder.toLowerCase()
-      const matches = people.filter((e) => e.code.toLowerCase() === q || fullName(e.firstName, e.lastName).toLowerCase() === q)
-      if (matches.length !== 1) return fail(matches.length === 0 ? `No employee matches "${row.holder}".` : `"${row.holder}" matches more than one employee.`)
+      const matches = people.filter(
+        (e) => e.code.toLowerCase() === q || fullName(e.firstName, e.lastName).toLowerCase() === q,
+      )
+      if (matches.length !== 1)
+        return fail(
+          matches.length === 0
+            ? `No employee matches "${row.holder}".`
+            : `"${row.holder}" matches more than one employee.`,
+        )
       holderId = matches[0]!.id
     }
     try {
@@ -370,7 +409,12 @@ export function updateAsset(db: Db, actor: Actor, id: number, input: AssetUpdate
     if (changes.length === 0) return
     tx.update(assets).set(patch).where(eq(assets.id, id)).run()
     if (patch.tag) relinkAsset(tx, current.tag, patch.tag)
-    writeAudit(tx, actor, { action: 'update', entityType: 'asset', entityId: id, details: `${patch.tag ?? current.tag} · ${changes.join('; ')}` })
+    writeAudit(tx, actor, {
+      action: 'update',
+      entityType: 'asset',
+      entityId: id,
+      details: `${patch.tag ?? current.tag} · ${changes.join('; ')}`,
+    })
   })
   return getAssetRow(db, id)
 }
@@ -380,7 +424,10 @@ export function setAssetStatus(db: Db, actor: Actor, id: number, status: 'in_ser
     const current = getAssetRow(tx, id)
     if (current.status === status) return
     if (status === 'retired' && current.state === 'assigned') {
-      throw conflict('asset_assigned', `${current.tag} is assigned to ${(current.holder ?? current.program)?.name}. Return it before retiring.`)
+      throw conflict(
+        'asset_assigned',
+        `${current.tag} is assigned to ${(current.holder ?? current.program)?.name}. Return it before retiring.`,
+      )
     }
     tx.update(assets).set({ status }).where(eq(assets.id, id)).run()
     writeAudit(tx, actor, {
@@ -397,9 +444,17 @@ export function deleteAsset(db: Db, actor: Actor, id: number) {
   db.transaction((tx) => {
     const current = getAssetRow(tx, id)
     if (current.hasHistory) {
-      throw conflict('has_history', `${current.tag} has assignment history. Retire it instead; history is never deleted.`)
+      throw conflict(
+        'has_history',
+        `${current.tag} has assignment history. Retire it instead; history is never deleted.`,
+      )
     }
     tx.delete(assets).where(eq(assets.id, id)).run()
-    writeAudit(tx, actor, { action: 'delete', entityType: 'asset', entityId: id, details: `${current.tag} · ${current.type}` })
+    writeAudit(tx, actor, {
+      action: 'delete',
+      entityType: 'asset',
+      entityId: id,
+      details: `${current.tag} · ${current.type}`,
+    })
   })
 }

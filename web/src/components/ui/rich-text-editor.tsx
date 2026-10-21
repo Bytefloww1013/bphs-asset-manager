@@ -1,6 +1,22 @@
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { Bold, Heading2, Heading3, Italic, Link as LinkIcon, List, ListOrdered, Redo2, Strikethrough, TextQuote, Underline, Undo2, Unlink, X, type LucideIcon } from 'lucide-react'
+import {
+  Bold,
+  Heading2,
+  Heading3,
+  Italic,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Redo2,
+  Strikethrough,
+  TextQuote,
+  Underline,
+  Undo2,
+  Unlink,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { RICH_TEXT_LINK_SCHEMES, RICH_TEXT_MAX_CHARS, richTextHref, richTextToPlain } from '@shared/richtext.ts'
 import { cn } from '@/lib/cn.ts'
@@ -32,21 +48,85 @@ interface Tool {
 // The bar offers exactly the allow-list in shared/richtext.ts, in three groups.
 const MARKS: Tool[] = [
   { key: 'bold', label: 'Bold', shortcut: 'Ctrl+B', icon: Bold, run: (e) => e.chain().focus().toggleBold().run() },
-  { key: 'italic', label: 'Italic', shortcut: 'Ctrl+I', icon: Italic, run: (e) => e.chain().focus().toggleItalic().run() },
-  { key: 'underline', label: 'Underline', shortcut: 'Ctrl+U', icon: Underline, run: (e) => e.chain().focus().toggleUnderline().run() },
-  { key: 'strike', label: 'Strikethrough', shortcut: 'Ctrl+Shift+S', icon: Strikethrough, run: (e) => e.chain().focus().toggleStrike().run() },
+  {
+    key: 'italic',
+    label: 'Italic',
+    shortcut: 'Ctrl+I',
+    icon: Italic,
+    run: (e) => e.chain().focus().toggleItalic().run(),
+  },
+  {
+    key: 'underline',
+    label: 'Underline',
+    shortcut: 'Ctrl+U',
+    icon: Underline,
+    run: (e) => e.chain().focus().toggleUnderline().run(),
+  },
+  {
+    key: 'strike',
+    label: 'Strikethrough',
+    shortcut: 'Ctrl+Shift+S',
+    icon: Strikethrough,
+    run: (e) => e.chain().focus().toggleStrike().run(),
+  },
 ]
 const HEADINGS: Tool[] = [
-  { key: 'h2', label: 'Heading', shortcut: 'Ctrl+Alt+2', icon: Heading2, run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run() },
-  { key: 'h3', label: 'Subheading', shortcut: 'Ctrl+Alt+3', icon: Heading3, run: (e) => e.chain().focus().toggleHeading({ level: 3 }).run() },
+  {
+    key: 'h2',
+    label: 'Heading',
+    shortcut: 'Ctrl+Alt+2',
+    icon: Heading2,
+    run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
+  },
+  {
+    key: 'h3',
+    label: 'Subheading',
+    shortcut: 'Ctrl+Alt+3',
+    icon: Heading3,
+    run: (e) => e.chain().focus().toggleHeading({ level: 3 }).run(),
+  },
 ]
 const BLOCKS: Tool[] = [
-  { key: 'bullet', label: 'Bulleted list', shortcut: 'Ctrl+Shift+8', icon: List, run: (e) => e.chain().focus().toggleBulletList().run() },
-  { key: 'ordered', label: 'Numbered list', shortcut: 'Ctrl+Shift+7', icon: ListOrdered, run: (e) => e.chain().focus().toggleOrderedList().run() },
-  { key: 'quote', label: 'Quote', shortcut: 'Ctrl+Shift+B', icon: TextQuote, run: (e) => e.chain().focus().toggleBlockquote().run() },
+  {
+    key: 'bullet',
+    label: 'Bulleted list',
+    shortcut: 'Ctrl+Shift+8',
+    icon: List,
+    run: (e) => e.chain().focus().toggleBulletList().run(),
+  },
+  {
+    key: 'ordered',
+    label: 'Numbered list',
+    shortcut: 'Ctrl+Shift+7',
+    icon: ListOrdered,
+    run: (e) => e.chain().focus().toggleOrderedList().run(),
+  },
+  {
+    key: 'quote',
+    label: 'Quote',
+    shortcut: 'Ctrl+Shift+B',
+    icon: TextQuote,
+    run: (e) => e.chain().focus().toggleBlockquote().run(),
+  },
 ]
 
-function ToolButton({ label, shortcut, active, disabled, tabbable, onRun, children }: { label: string; shortcut?: string; active?: boolean; disabled?: boolean; tabbable?: boolean; onRun: () => void; children: ReactNode }) {
+function ToolButton({
+  label,
+  shortcut,
+  active,
+  disabled,
+  tabbable,
+  onRun,
+  children,
+}: {
+  label: string
+  shortcut?: string
+  active?: boolean
+  disabled?: boolean
+  tabbable?: boolean
+  onRun: () => void
+  children: ReactNode
+}) {
   return (
     <Tooltip content={shortcut ? `${label} (${shortcut})` : label}>
       <button
@@ -61,7 +141,8 @@ function ToolButton({ label, shortcut, active, disabled, tabbable, onRun, childr
         onClick={onRun}
         className={cn(
           'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-ink/[0.06] hover:text-ink disabled:cursor-not-allowed disabled:text-ink-4 disabled:hover:bg-transparent',
-          active && 'bg-accent-soft text-accent ring-1 ring-inset ring-accent-line hover:bg-accent-soft hover:text-accent',
+          active &&
+            'bg-accent-soft text-accent ring-1 ring-inset ring-accent-line hover:bg-accent-soft hover:text-accent',
         )}
       >
         {children}
@@ -196,7 +277,8 @@ function Toolbar({ editor }: { editor: Editor }) {
       tabIndex={linking ? undefined : inside ? -1 : 0}
       onFocus={(event) => {
         setInside(true)
-        if (event.target === event.currentTarget) event.currentTarget.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+        if (event.target === event.currentTarget)
+          event.currentTarget.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
       }}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setInside(false)
@@ -217,10 +299,20 @@ function Toolbar({ editor }: { editor: Editor }) {
           <Divider />
           {BLOCKS.map(tool)}
           <span className="flex-1" />
-          <ToolButton label="Undo" shortcut="Ctrl+Z" disabled={!state.canUndo} onRun={() => editor.chain().focus().undo().run()}>
+          <ToolButton
+            label="Undo"
+            shortcut="Ctrl+Z"
+            disabled={!state.canUndo}
+            onRun={() => editor.chain().focus().undo().run()}
+          >
             <Undo2 className="size-4" strokeWidth={1.75} />
           </ToolButton>
-          <ToolButton label="Redo" shortcut="Ctrl+Y" disabled={!state.canRedo} onRun={() => editor.chain().focus().redo().run()}>
+          <ToolButton
+            label="Redo"
+            shortcut="Ctrl+Y"
+            disabled={!state.canRedo}
+            onRun={() => editor.chain().focus().redo().run()}
+          >
             <Redo2 className="size-4" strokeWidth={1.75} />
           </ToolButton>
         </>
@@ -258,13 +350,26 @@ const EXTENSIONS = [
   }),
 ]
 
-export default function RichTextEditor({ label, defaultValue = '', onChange, id, 'aria-describedby': describedBy, 'aria-invalid': invalid }: RichTextEditorProps) {
+export default function RichTextEditor({
+  label,
+  defaultValue = '',
+  onChange,
+  id,
+  'aria-describedby': describedBy,
+  'aria-invalid': invalid,
+}: RichTextEditorProps) {
   const frame = useRef<HTMLDivElement>(null)
   const changed = useRef(onChange)
   changed.current = onChange
 
   // ProseMirror takes attributes as strings and `class`, not `className`; the ones not set are left out.
-  const attributes: Record<string, string> = { class: 'rich-text min-h-64', role: 'textbox', 'aria-multiline': 'true', 'aria-label': label, 'aria-keyshortcuts': 'Alt+F10' }
+  const attributes: Record<string, string> = {
+    class: 'rich-text min-h-64',
+    role: 'textbox',
+    'aria-multiline': 'true',
+    'aria-label': label,
+    'aria-keyshortcuts': 'Alt+F10',
+  }
   if (id) attributes.id = id
   if (describedBy) attributes['aria-describedby'] = describedBy
   if (invalid) attributes['aria-invalid'] = 'true'
@@ -303,7 +408,9 @@ export default function RichTextEditor({ label, defaultValue = '', onChange, id,
       {editor && <Toolbar editor={editor} />}
       <EditorContent editor={editor} className="px-3.5 py-3" />
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-b-[calc(var(--radius-control)-1px)] border-t border-line bg-canvas px-3.5 py-1.5">
-        <span className="text-xs text-ink-3">Headings, lists, quotes and links. No images; add those as attachments.</span>
+        <span className="text-xs text-ink-3">
+          Headings, lists, quotes and links. No images; add those as attachments.
+        </span>
         {editor && <Count editor={editor} />}
       </div>
     </div>

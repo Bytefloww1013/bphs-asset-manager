@@ -1,10 +1,5 @@
 import { Hono } from 'hono'
-import {
-  employeeCreateSchema,
-  employeeUpdateSchema,
-  userCreateSchema,
-  userUpdateSchema,
-} from '../../shared/schemas.ts'
+import { employeeCreateSchema, employeeUpdateSchema, userCreateSchema, userUpdateSchema } from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, requireFull, type Env } from '../http.ts'
 import {
@@ -47,8 +42,12 @@ export function userRoutes(db: Db) {
   const app = new Hono<Env>()
 
   app.get('/', (c) => c.json(listUsers(db)))
-  app.post('/', json(userCreateSchema), async (c) => c.json(await createUser(db, c.get('user'), c.req.valid('json')), 201))
-  app.patch('/:id', json(userUpdateSchema), (c) => c.json(updateUser(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))))
+  app.post('/', json(userCreateSchema), async (c) =>
+    c.json(await createUser(db, c.get('user'), c.req.valid('json')), 201),
+  )
+  app.patch('/:id', json(userUpdateSchema), (c) =>
+    c.json(updateUser(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
+  )
   app.post('/:id/reset-password', async (c) => c.json(await resetPassword(db, c.get('user'), intParam(c, 'id'))))
   app.post('/:id/clear-lock', (c) => c.json(clearLock(db, c.get('user'), intParam(c, 'id'))))
   app.post('/:id/deactivate', (c) => c.json(setActive(db, c.get('user'), intParam(c, 'id'), false)))

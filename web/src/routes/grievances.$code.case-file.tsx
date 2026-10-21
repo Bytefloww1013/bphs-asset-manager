@@ -11,7 +11,12 @@ import { Entry, Fact, FileTable, Heading, Names, Printout, Row } from '@/feature
 import { GrievanceLoadError } from '@/features/grievances/load-error.tsx'
 import { useGrievancePageTitle } from '@/features/grievances/page-title.ts'
 import { formatDateTime } from '@/lib/format.ts'
-import { grievanceAttachmentsQuery, grievanceEntriesQuery, grievanceQuery, grievanceVersionsQuery } from '@/lib/queries.ts'
+import {
+  grievanceAttachmentsQuery,
+  grievanceEntriesQuery,
+  grievanceQuery,
+  grievanceVersionsQuery,
+} from '@/lib/queries.ts'
 import { requireSession } from '@/lib/session.ts'
 
 // Outside the app shell: the page is the case file as it prints, with only a toolbar above it that the print leaves out.
@@ -78,21 +83,37 @@ function CaseFile() {
       body={{ format: 'pdf' }}
       ready={!includeVersions || versions.data !== undefined}
       back={
-        <Link to="/grievances/$code" params={{ code: grievance.code }} className="inline-flex items-center gap-1 font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/grievances/$code"
+          params={{ code: grievance.code }}
+          className="inline-flex items-center gap-1 font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {grievance.code}
         </Link>
       }
       options={
         <>
           <label className="flex items-center gap-2">
-            <Checkbox checked={includeAutomatic} onChange={(event) => setIncludeAutomatic(event.target.checked)} /> Include automatic entries
+            <Checkbox checked={includeAutomatic} onChange={(event) => setIncludeAutomatic(event.target.checked)} />{' '}
+            Include automatic entries
           </label>
           <label className="flex items-center gap-2">
-            <Checkbox checked={includeVersions} disabled={grievance.version === 1} onChange={(event) => setIncludeVersions(event.target.checked)} /> Include earlier versions
+            <Checkbox
+              checked={includeVersions}
+              disabled={grievance.version === 1}
+              onChange={(event) => setIncludeVersions(event.target.checked)}
+            />{' '}
+            Include earlier versions
           </label>
         </>
       }
-      notice={versions.isError && <p className="mx-auto max-w-[50rem] px-6 pb-3 text-bad">Could not load the earlier versions. {versions.error.message}</p>}
+      notice={
+        versions.isError && (
+          <p className="mx-auto max-w-[50rem] px-6 pb-3 text-bad">
+            Could not load the earlier versions. {versions.error.message}
+          </p>
+        )
+      }
     >
       {/* The page break is on the row: Firefox ignores one on a block inside a cell. */}
       <Row className="break-after-page">
@@ -117,7 +138,9 @@ function CaseFile() {
           <Fact label="Recorded">
             {grievance.recordedBy ?? 'A removed account'}, {formatDateTime(grievance.createdAt)}
           </Fact>
-          <Fact label="Version">{grievance.version === 1 ? '1, as recorded' : `${grievance.version}, edited since it was recorded`}</Fact>
+          <Fact label="Version">
+            {grievance.version === 1 ? '1, as recorded' : `${grievance.version}, edited since it was recorded`}
+          </Fact>
         </dl>
       </Row>
 
@@ -128,20 +151,30 @@ function CaseFile() {
 
       {shown.map((entry, i) => (
         <Row key={entry.id} className={i === 0 ? 'pt-6' : undefined}>
-          <Entry entry={entry} kindLabel={grievanceEntryKindLabel(entry.kind)} heading={i === 0 ? <Heading>Timeline</Heading> : undefined} />
+          <Entry
+            entry={entry}
+            kindLabel={grievanceEntryKindLabel(entry.kind)}
+            heading={i === 0 ? <Heading>Timeline</Heading> : undefined}
+          />
         </Row>
       ))}
 
       {files.length > 0 && (
         <Row>
-          <FileTable files={files} where={(file) => (file.entrySeq === null ? null : `with ${grievanceEntryCode(file.entrySeq)}`)} />
+          <FileTable
+            files={files}
+            where={(file) => (file.entrySeq === null ? null : `with ${grievanceEntryCode(file.entrySeq)}`)}
+          />
         </Row>
       )}
 
       {includeVersions &&
         versions.data?.map((version, i) => (
           <Row key={version.version} className={i === 0 ? 'pt-6' : undefined}>
-            <Version version={version} heading={i === 0 ? <Heading>Earlier versions, the latest first</Heading> : undefined} />
+            <Version
+              version={version}
+              heading={i === 0 ? <Heading>Earlier versions, the latest first</Heading> : undefined}
+            />
           </Row>
         ))}
     </Printout>

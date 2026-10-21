@@ -37,11 +37,16 @@ function ImportExportPage() {
   const navigate = Route.useNavigate()
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Import/Export" description="Bring employees and programs in from a spreadsheet, or take any list out as a CSV or Excel file. An import only adds records: it never changes one that exists, and never issues anything." />
+      <PageHeader
+        title="Import/Export"
+        description="Bring employees and programs in from a spreadsheet, or take any list out as a CSV or Excel file. An import only adds records: it never changes one that exists, and never issues anything."
+      />
       <FilterTabs<View>
         label="Import or export"
         value={view}
-        onChange={(next) => void navigate({ search: (old) => ({ ...old, view: next === 'export' ? 'export' : undefined }) })}
+        onChange={(next) =>
+          void navigate({ search: (old) => ({ ...old, view: next === 'export' ? 'export' : undefined }) })
+        }
         options={[
           { value: 'import', label: 'Import' },
           { value: 'export', label: 'Export' },
@@ -51,7 +56,11 @@ function ImportExportPage() {
         <ExportSection />
       ) : (
         // A different record type is a different import: nothing read or mapped for one carries over to another.
-        <ImportSection key={type} type={type} onType={(next) => void navigate({ search: (old) => ({ ...old, type: next }) })} />
+        <ImportSection
+          key={type}
+          type={type}
+          onType={(next) => void navigate({ search: (old) => ({ ...old, type: next }) })}
+        />
       )}
     </div>
   )
@@ -73,7 +82,8 @@ type Show = 'all' | 'problems'
 /** A, B, … Z, AA: the letter Excel shows above a column. */
 function columnLetter(index: number): string {
   let letters = ''
-  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26)) letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters
+  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26))
+    letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters
   return letters
 }
 
@@ -83,7 +93,11 @@ const getRowId = (row: ImportRow) => String(row.row)
 function previewColumns(importer: Importer) {
   const c = columnsFor<ImportRow>()
   return [
-    c.accessor('row', { header: 'Row', cell: (info) => <Mono className="text-ink-3">{info.getValue()}</Mono>, meta: { align: 'right', width: 'w-16' } }),
+    c.accessor('row', {
+      header: 'Row',
+      cell: (info) => <Mono className="text-ink-3">{info.getValue()}</Mono>,
+      meta: { align: 'right', width: 'w-16' },
+    }),
     // What will happen to the row comes before what is in it, so it is never the column scrolled out of sight.
     c.accessor('result', {
       header: 'Result',
@@ -91,8 +105,12 @@ function previewColumns(importer: Importer) {
         const row = info.row.original
         return (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <Badge tone={row.result === 'new' ? 'ok' : row.result === 'duplicate' ? 'neutral' : 'bad'}>{row.result === 'new' ? 'New' : row.result === 'duplicate' ? 'Duplicate' : 'Error'}</Badge>
-            {row.result !== 'new' && <span className="text-xs text-ink-3">{row.message.replace(/^(Skip|Row \d+): /, '')}</span>}
+            <Badge tone={row.result === 'new' ? 'ok' : row.result === 'duplicate' ? 'neutral' : 'bad'}>
+              {row.result === 'new' ? 'New' : row.result === 'duplicate' ? 'Duplicate' : 'Error'}
+            </Badge>
+            {row.result !== 'new' && (
+              <span className="text-xs text-ink-3">{row.message.replace(/^(Skip|Row \d+): /, '')}</span>
+            )}
           </div>
         )
       },
@@ -101,7 +119,18 @@ function previewColumns(importer: Importer) {
       c.accessor((row) => row.values[field.key] ?? '', {
         id: field.key,
         header: field.label,
-        cell: (info) => (info.getValue() ? field.key === importer.duplicateKey ? <Mono className="whitespace-nowrap">{info.getValue()}</Mono> : <span className="block max-w-64 truncate" title={info.getValue()}>{info.getValue()}</span> : blank),
+        cell: (info) =>
+          info.getValue() ? (
+            field.key === importer.duplicateKey ? (
+              <Mono className="whitespace-nowrap">{info.getValue()}</Mono>
+            ) : (
+              <span className="block max-w-64 truncate" title={info.getValue()}>
+                {info.getValue()}
+              </span>
+            )
+          ) : (
+            blank
+          ),
         meta: i < 1 ? {} : { hideBelow: i < 3 ? 'md' : 'xl' },
       }),
     ),
@@ -123,7 +152,9 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
   const [dragging, setDragging] = useState(false)
   const [show, setShow] = useState<Show>('all')
 
-  const check = useMutation({ mutationFn: (body: ImportInput) => api.post<ImportPreview>(`/import/${type}/preview`, body) })
+  const check = useMutation({
+    mutationFn: (body: ImportInput) => api.post<ImportPreview>(`/import/${type}/preview`, body),
+  })
   const run = useWrite((body: ImportInput) => api.post<ImportPreview>(`/import/${type}`, body), {
     onSuccess: (result) => {
       setDone(result)
@@ -134,8 +165,17 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
 
   const shown = done ?? preview
   const columns = useMemo(() => previewColumns(importer), [importer])
-  const rows = useMemo(() => (show === 'problems' ? (shown?.rows ?? []).filter((row) => row.result !== 'new') : (shown?.rows ?? [])), [shown, show])
-  const table = useGrid({ data: rows, columns, getRowId, pageSize: 50, resetKey: `${show}:${done ? 'done' : 'preview'}:${latest.current}` })
+  const rows = useMemo(
+    () => (show === 'problems' ? (shown?.rows ?? []).filter((row) => row.result !== 'new') : (shown?.rows ?? [])),
+    [shown, show],
+  )
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    pageSize: 50,
+    resetKey: `${show}:${done ? 'done' : 'preview'}:${latest.current}`,
+  })
 
   const unmapped = importer.fields.filter((field) => field.required && mapping[field.key] == null)
 
@@ -143,7 +183,11 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
   const payload = (from: ChosenFile, map: Mapping): ImportInput => ({
     rows: from.rows.map(({ row, cells }) => ({
       row,
-      values: Object.fromEntries(importer.fields.flatMap((field) => (map[field.key] == null ? [] : [[field.key, (cells[map[field.key]!] ?? '').trim().slice(0, IMPORT_MAX_CELL)]]))),
+      values: Object.fromEntries(
+        importer.fields.flatMap((field) =>
+          map[field.key] == null ? [] : [[field.key, (cells[map[field.key]!] ?? '').trim().slice(0, IMPORT_MAX_CELL)]],
+        ),
+      ),
     })),
   })
 
@@ -175,11 +219,16 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
       const sheet = await readTable(chosen)
       if (mine !== latest.current) return
       const headers = (sheet[0] ?? []).map((header) => header.trim())
-      const data = sheet.slice(1).flatMap((cells, i) => (cells.some((cell) => cell.trim() !== '') ? [{ row: i + 2, cells }] : []))
-      if (headers.every((header) => header === '')) throw new UnreadableFile('That file has no header row. The first row must name the columns.')
+      const data = sheet
+        .slice(1)
+        .flatMap((cells, i) => (cells.some((cell) => cell.trim() !== '') ? [{ row: i + 2, cells }] : []))
+      if (headers.every((header) => header === ''))
+        throw new UnreadableFile('That file has no header row. The first row must name the columns.')
       if (data.length === 0) throw new UnreadableFile('That file has a header row and nothing under it.')
       if (data.length > IMPORT_MAX_ROWS) {
-        throw new UnreadableFile(`That file has ${data.length.toLocaleString()} rows. One import takes at most ${IMPORT_MAX_ROWS.toLocaleString()}: split it into smaller files.`)
+        throw new UnreadableFile(
+          `That file has ${data.length.toLocaleString()} rows. One import takes at most ${IMPORT_MAX_ROWS.toLocaleString()}: split it into smaller files.`,
+        )
       }
       const next = { name: chosen.name, size: chosen.size, headers, rows: data }
       const map = autoMap(importer, headers)
@@ -188,7 +237,9 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
       recheck(next, map)
     } catch (error) {
       if (mine !== latest.current) return
-      setReadError(error instanceof UnreadableFile ? error.message : 'That file could not be read. Choose a .csv or .xlsx file.')
+      setReadError(
+        error instanceof UnreadableFile ? error.message : 'That file could not be read. Choose a .csv or .xlsx file.',
+      )
     } finally {
       // An input that still holds a file does not fire change when that file is chosen again, which is what fixing a file means.
       if (input.current) input.current.value = ''
@@ -204,7 +255,13 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
   }
 
   const template = (format: FileFormat) =>
-    void downloadTable(format, `${type}-template`, importer.fields.map((field) => field.label), [importer.fields.map((field) => field.example)], importer.label)
+    void downloadTable(
+      format,
+      `${type}-template`,
+      importer.fields.map((field) => field.label),
+      [importer.fields.map((field) => field.example)],
+      importer.label,
+    )
 
   const failed = done?.rows.filter((row) => row.result === 'error') ?? []
   const toCreate = preview?.summary.create ?? 0
@@ -259,17 +316,27 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
             className="sr-only"
             onChange={(event) => void choose(event.target.files?.[0])}
           />
-          {file ? <FileSpreadsheet className="size-6 text-accent" aria-hidden /> : <FileUp className="size-6 text-ink-3" aria-hidden />}
-          <span className="max-w-full truncate text-sm font-medium">{file ? file.name : reading ? 'Reading the file…' : 'Drop a .csv or .xlsx file here'}</span>
+          {file ? (
+            <FileSpreadsheet className="size-6 text-accent" aria-hidden />
+          ) : (
+            <FileUp className="size-6 text-ink-3" aria-hidden />
+          )}
+          <span className="max-w-full truncate text-sm font-medium">
+            {file ? file.name : reading ? 'Reading the file…' : 'Drop a .csv or .xlsx file here'}
+          </span>
           <span className="text-xs text-ink-3">
-            {file ? `${(file.size / 1024).toFixed(1)} KB, ${plural(file.rows.length, 'row')}. Choose another to replace it.` : 'or click to choose one'}
+            {file
+              ? `${(file.size / 1024).toFixed(1)} KB, ${plural(file.rows.length, 'row')}. Choose another to replace it.`
+              : 'or click to choose one'}
           </span>
         </label>
 
         <div>
           <h2 className="text-sm font-semibold">Columns</h2>
           <p className="mt-0.5 text-xs text-ink-3">
-            {file ? 'Matched from the first row of your file. Change any that are wrong.' : 'The first row of the file names its columns. They are matched to these fields for you.'}
+            {file
+              ? 'Matched from the first row of your file. Change any that are wrong.'
+              : 'The first row of the file names its columns. They are matched to these fields for you.'}
           </p>
           <ul className="mt-2 flex flex-col gap-3">
             {importer.fields.map((field) => {
@@ -277,8 +344,16 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
               return (
                 <li key={field.key}>
                   {file ? (
-                    <Field label={field.label} optional={!field.required} error={missing ? 'Required. Choose the column that holds it.' : undefined}>
-                      <Select value={mapping[field.key] ?? ''} disabled={!!done} onChange={(event) => remap(field.key, event.target.value)}>
+                    <Field
+                      label={field.label}
+                      optional={!field.required}
+                      error={missing ? 'Required. Choose the column that holds it.' : undefined}
+                    >
+                      <Select
+                        value={mapping[field.key] ?? ''}
+                        disabled={!!done}
+                        onChange={(event) => remap(field.key, event.target.value)}
+                      >
                         <option value="">Not in this file</option>
                         {file.headers.map((header, i) => (
                           <option key={i} value={i}>
@@ -302,11 +377,19 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
         </div>
 
         <p className="rounded-control bg-sunken px-3.5 py-3 text-sm leading-5 text-ink-2">
-          The file is read on this computer and only its rows are sent. A row whose {importer.fields[0]!.label} already exists is skipped, never updated, so importing the same file twice is safe. One audit entry is written for each {importer.singular} created.
+          The file is read on this computer and only its rows are sent. A row whose {importer.fields[0]!.label} already
+          exists is skipped, never updated, so importing the same file twice is safe. One audit entry is written for
+          each {importer.singular} created.
         </p>
 
         <div className="flex flex-col gap-2">
-          <Button variant="primary" size="lg" loading={run.isPending} disabledReason={blocked} onClick={() => file && run.mutate(payload(file, mapping))}>
+          <Button
+            variant="primary"
+            size="lg"
+            loading={run.isPending}
+            disabledReason={blocked}
+            onClick={() => file && run.mutate(payload(file, mapping))}
+          >
             {toCreate > 0 && !done ? `Import ${plural(toCreate, `new ${importer.singular}`)}` : 'Import'}
           </Button>
           <div className="flex flex-wrap items-center justify-center gap-x-1 text-sm text-ink-3">
@@ -335,20 +418,29 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
                     downloadCsv(
                       `${type}-failed-rows.csv`,
                       ['Row', ...importer.fields.map((field) => field.label), 'Problem'],
-                      failed.map((row) => [row.row, ...importer.fields.map((field) => row.values[field.key]), row.message.replace(/^Row \d+: /, '')]),
+                      failed.map((row) => [
+                        row.row,
+                        ...importer.fields.map((field) => row.values[field.key]),
+                        row.message.replace(/^Row \d+: /, ''),
+                      ]),
                     )
                   }
                 >
                   Failed rows (CSV)
                 </Button>
               ) : (
-                <Link to={type === 'employees' ? '/employees' : '/programs'} className={buttonStyles('secondary', 'sm')}>
+                <Link
+                  to={type === 'employees' ? '/employees' : '/programs'}
+                  className={buttonStyles('secondary', 'sm')}
+                >
                   View {importer.label.toLowerCase()}
                 </Link>
               )
             }
           >
-            {failed.length > 0 ? 'The failed rows are listed below. Download them, fix them, and import that file: nothing already imported will be touched.' : 'Every row that could be created was.'}
+            {failed.length > 0
+              ? 'The failed rows are listed below. Download them, fix them, and import that file: nothing already imported will be touched.'
+              : 'Every row that could be created was.'}
           </Alert>
         )}
         {readError && (
@@ -363,7 +455,8 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
         )}
         {file && unmapped.length > 0 && (
           <Alert tone="warn" title="Some required columns were not found">
-            Nothing in the file's first row looks like {unmapped.map((field) => field.label).join(', ')}. Choose the column for each on the left and the rows will be checked.
+            Nothing in the file's first row looks like {unmapped.map((field) => field.label).join(', ')}. Choose the
+            column for each on the left and the rows will be checked.
           </Alert>
         )}
 
@@ -372,12 +465,26 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
             <dl className="flex flex-wrap gap-x-8 gap-y-3 rounded-panel border border-line bg-surface px-5 py-4 shadow-panel">
               {[
                 { label: 'Rows read', value: shown.summary.read, tone: 'text-ink' },
-                { label: done ? 'Created' : 'New', value: done ? (done.created ?? 0) : shown.summary.create, tone: 'text-ok' },
-                { label: done ? 'Duplicates skipped' : 'Duplicates', value: shown.summary.duplicates, tone: 'text-ink-2' },
-                { label: done ? 'Failed' : 'Errors', value: shown.summary.errors, tone: shown.summary.errors ? 'text-bad' : 'text-ink-2' },
+                {
+                  label: done ? 'Created' : 'New',
+                  value: done ? (done.created ?? 0) : shown.summary.create,
+                  tone: 'text-ok',
+                },
+                {
+                  label: done ? 'Duplicates skipped' : 'Duplicates',
+                  value: shown.summary.duplicates,
+                  tone: 'text-ink-2',
+                },
+                {
+                  label: done ? 'Failed' : 'Errors',
+                  value: shown.summary.errors,
+                  tone: shown.summary.errors ? 'text-bad' : 'text-ink-2',
+                },
               ].map((stat) => (
                 <div key={stat.label} className="flex items-baseline gap-2">
-                  <dd className={cn('order-1 text-xl font-semibold tabular-nums', stat.tone)}>{stat.value.toLocaleString()}</dd>
+                  <dd className={cn('order-1 text-xl font-semibold tabular-nums', stat.tone)}>
+                    {stat.value.toLocaleString()}
+                  </dd>
                   <dt className="order-2 text-sm text-ink-3">{stat.label}</dt>
                 </div>
               ))}
@@ -397,7 +504,13 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
               table={table}
               label={done ? 'Row-by-row result' : 'Row-by-row preview'}
               noun="rows"
-              empty={<EmptyState icon={TriangleAlert} title="No problems" description="Every row in this file is new and valid." />}
+              empty={
+                <EmptyState
+                  icon={TriangleAlert}
+                  title="No problems"
+                  description="Every row in this file is new and valid."
+                />
+              }
             />
           </>
         ) : (
@@ -427,9 +540,16 @@ function ExportSection() {
     setBusy(`${key}:${format}`)
     try {
       const count = await EXPORTS[key].fetchAndSave(queryClient, format)
-      toast({ title: `${EXPORTS[key].label} exported`, description: `${plural(count, 'row')} as ${format === 'csv' ? 'CSV' : 'Excel'}.` })
+      toast({
+        title: `${EXPORTS[key].label} exported`,
+        description: `${plural(count, 'row')} as ${format === 'csv' ? 'CSV' : 'Excel'}.`,
+      })
     } catch (error) {
-      toast({ tone: 'bad', title: 'That export did not go through', description: error instanceof Error ? error.message : undefined })
+      toast({
+        tone: 'bad',
+        title: 'That export did not go through',
+        description: error instanceof Error ? error.message : undefined,
+      })
     } finally {
       setBusy(null)
     }
@@ -437,7 +557,10 @@ function ExportSection() {
 
   return (
     <Panel className="max-w-4xl">
-      <PanelHeader title="Export a list" description="Each file holds every record as it is now, with who holds what. Excel cells are written as text, never as formulas." />
+      <PanelHeader
+        title="Export a list"
+        description="Each file holds every record as it is now, with who holds what. Excel cells are written as text, never as formulas."
+      />
       <ul className="divide-y divide-line border-t border-line">
         {EXPORT_ORDER.map((key) => (
           <li key={key} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3.5">
@@ -465,7 +588,9 @@ function ExportSection() {
         <li className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3.5">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold">Audit Log</h3>
-            <p className="text-sm text-ink-3">Exported from the Audit Log itself, so the file holds exactly the entries you filtered to.</p>
+            <p className="text-sm text-ink-3">
+              Exported from the Audit Log itself, so the file holds exactly the entries you filtered to.
+            </p>
           </div>
           <Link to="/audit" className={buttonStyles('secondary', 'sm')}>
             <ScrollText className="size-4" aria-hidden />

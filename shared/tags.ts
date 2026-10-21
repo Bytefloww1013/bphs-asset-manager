@@ -32,7 +32,8 @@ export function nextTag(assets: readonly { tag: string; createdAt: string }[]): 
   }
   let best: Pattern | null = null
   for (const pattern of patterns.values()) {
-    if (!best || pattern.count > best.count || (pattern.count === best.count && pattern.newest > best.newest)) best = pattern
+    if (!best || pattern.count > best.count || (pattern.count === best.count && pattern.newest > best.newest))
+      best = pattern
   }
   return best ? `${best.prefix}${String(best.n + 1).padStart(best.width, '0')}` : FIRST_TAG
 }

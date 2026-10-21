@@ -17,7 +17,17 @@ import { lookupsQuery } from '@/lib/queries.ts'
 import { useDenied } from '@/lib/session.ts'
 
 /** The row's main action plus an overflow menu; owns the edit sheet and confirmation dialogs. */
-export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { asset: AssetRow; onDeleted?: () => void; onSaved?: (row: AssetRow) => void; hidePrimary?: boolean }) {
+export function AssetRowActions({
+  asset,
+  onDeleted,
+  onSaved,
+  hidePrimary,
+}: {
+  asset: AssetRow
+  onDeleted?: () => void
+  onSaved?: (row: AssetRow) => void
+  hidePrimary?: boolean
+}) {
   const sheets = useSheetActions()
   const navigate = useNavigate()
   const noEdit = useDenied('assets', 'edit')
@@ -27,16 +37,29 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
 
   const retire = useWrite(() => api.post(`/assets/${asset.id}/retire`), { success: `${asset.tag} retired` })
   const reinstate = useWrite(() => api.post(`/assets/${asset.id}/reinstate`), { success: `${asset.tag} reinstated` })
-  const remove = useWrite(() => api.delete(`/assets/${asset.id}`), { success: `${asset.tag} deleted`, onSuccess: () => onDeleted?.() })
+  const remove = useWrite(() => api.delete(`/assets/${asset.id}`), {
+    success: `${asset.tag} deleted`,
+    onSuccess: () => onDeleted?.(),
+  })
 
   const items: MenuItem[] = [
-    { label: 'View details', icon: Eye, onSelect: () => void navigate({ to: '/assets/$tag', params: { tag: asset.tag } }) },
+    {
+      label: 'View details',
+      icon: Eye,
+      onSelect: () => void navigate({ to: '/assets/$tag', params: { tag: asset.tag } }),
+    },
     { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
     {
       label: 'Assign to program',
       icon: Building2,
       onSelect: () => sheets.issueToProgram(asset.id),
-      disabledReason: noEdit ?? (asset.state === 'assigned' ? 'Return it first.' : asset.state === 'retired' ? 'Reinstate it first.' : undefined),
+      disabledReason:
+        noEdit ??
+        (asset.state === 'assigned'
+          ? 'Return it first.'
+          : asset.state === 'retired'
+            ? 'Reinstate it first.'
+            : undefined),
     },
     asset.state === 'retired'
       ? { label: 'Reinstate', icon: RotateCcw, onSelect: () => reinstate.mutate(undefined), disabledReason: noEdit }
@@ -44,7 +67,11 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
           label: 'Retire',
           icon: Archive,
           onSelect: () => setConfirm('retire'),
-          disabledReason: noEdit ?? (asset.state === 'assigned' ? `Assigned to ${(asset.holder ?? asset.program)?.name}. Return it first.` : undefined),
+          disabledReason:
+            noEdit ??
+            (asset.state === 'assigned'
+              ? `Assigned to ${(asset.holder ?? asset.program)?.name}. Return it first.`
+              : undefined),
         },
     {
       label: 'Delete',
@@ -52,7 +79,9 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: noFull ?? (asset.hasHistory ? 'Has assignment history. Retire it instead; history is never deleted.' : undefined),
+      disabledReason:
+        noFull ??
+        (asset.hasHistory ? 'Has assignment history. Retire it instead; history is never deleted.' : undefined),
     },
   ]
 
@@ -60,7 +89,11 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
     <div className="flex items-center justify-end gap-1.5">
       {!hidePrimary &&
         (asset.state === 'assigned' ? (
-          <Button size="sm" disabledReason={noEdit} onClick={() => asset.assignmentId && sheets.returnAsset(asset.assignmentId)}>
+          <Button
+            size="sm"
+            disabledReason={noEdit}
+            onClick={() => asset.assignmentId && sheets.returnAsset(asset.assignmentId)}
+          >
             Return
           </Button>
         ) : asset.state === 'in_storage' ? (
@@ -68,7 +101,12 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
             Issue
           </Button>
         ) : (
-          <Button size="sm" disabledReason={noEdit} onClick={() => reinstate.mutate(undefined)} loading={reinstate.isPending}>
+          <Button
+            size="sm"
+            disabledReason={noEdit}
+            onClick={() => reinstate.mutate(undefined)}
+            loading={reinstate.isPending}
+          >
             Reinstate
           </Button>
         ))}
@@ -97,11 +135,22 @@ export function AssetRowActions({ asset, onDeleted, onSaved, hidePrimary }: { as
 }
 
 /** `onSaved` gets the row as the server stored it, so a caller can follow a renamed tag. */
-export function AssetEditSheet({ asset, onSaved, onClose }: { asset: AssetRow; onSaved?: (row: AssetRow) => void; onClose: () => void }) {
+export function AssetEditSheet({
+  asset,
+  onSaved,
+  onClose,
+}: {
+  asset: AssetRow
+  onSaved?: (row: AssetRow) => void
+  onClose: () => void
+}) {
   const { data: lookups } = useQuery(lookupsQuery)
   const types = lookups?.assetTypes ?? []
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((body: { tag?: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body), { silent: true, success: (row) => `${row.tag} updated` })
+  const save = useWrite(
+    (body: { tag?: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body),
+    { silent: true, success: (row) => `${row.tag} updated` },
+  )
   // A tag that was not edited is not sent, so an asset tagged before a rule existed (BPHS/01) can still have its type and serial corrected.
   const changes = (value: { tag: string; typeId: string; serial: string }) => ({
     ...(value.tag.trim().toUpperCase() === asset.tag.toUpperCase() ? {} : { tag: value.tag }),
@@ -169,7 +218,13 @@ export function AssetEditSheet({ asset, onSaved, onClose }: { asset: AssetRow; o
         <form.Field name="tag">
           {(field) => (
             <Field label="Asset tag" error={fieldError(field, error?.fields, submitted)}>
-              <Input mono autoFocus value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+              <Input
+                mono
+                autoFocus
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
             </Field>
           )}
         </form.Field>
@@ -182,7 +237,9 @@ export function AssetEditSheet({ asset, onSaved, onClose }: { asset: AssetRow; o
                     {type.name}
                   </option>
                 ))}
-                {!types.some((type) => type.id === asset.typeId) && <option value={asset.typeId}>{asset.type} (inactive)</option>}
+                {!types.some((type) => type.id === asset.typeId) && (
+                  <option value={asset.typeId}>{asset.type} (inactive)</option>
+                )}
               </Select>
             </Field>
           )}

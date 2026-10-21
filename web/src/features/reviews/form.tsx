@@ -1,7 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useBlocker, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
-import { GRIEVANCE_TITLE_MAX, REVIEW_FINDINGS_MAX, REVIEW_SUMMARY_MAX, localToday, reviewCreateSchema, reviewUpdateSchema } from '@shared/schemas.ts'
+import {
+  GRIEVANCE_TITLE_MAX,
+  REVIEW_FINDINGS_MAX,
+  REVIEW_SUMMARY_MAX,
+  localToday,
+  reviewCreateSchema,
+  reviewUpdateSchema,
+} from '@shared/schemas.ts'
 import type { EmployeeRow, ReviewDetail } from '@shared/types.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
@@ -58,11 +65,27 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
   const formRef = useRef<HTMLFormElement>(null)
   const saved = useRef(false)
 
-  const save = useWrite((input: unknown) => (was ? api.patch<ReviewDetail>(`/reviews/${encodeURIComponent(was.code)}`, input) : api.post<ReviewDetail>('/reviews', input)), { silent: true })
+  const save = useWrite(
+    (input: unknown) =>
+      was
+        ? api.patch<ReviewDetail>(`/reviews/${encodeURIComponent(was.code)}`, input)
+        : api.post<ReviewDetail>('/reviews', input),
+    { silent: true },
+  )
   const dirty = was
-    ? title !== was.title || summary !== was.summary || reviewDate !== was.reviewDate || reviewer?.id !== was.reviewer.id || employee?.id !== was.employee.id || findings !== was.findings || body !== was.bodyHtml
+    ? title !== was.title ||
+      summary !== was.summary ||
+      reviewDate !== was.reviewDate ||
+      reviewer?.id !== was.reviewer.id ||
+      employee?.id !== was.employee.id ||
+      findings !== was.findings ||
+      body !== was.bodyHtml
     : Boolean(title.trim() || summary.trim() || findings.trim() || body || reviewer || employee)
-  const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
+  const leaving = useBlocker({
+    shouldBlockFn: () => dirty && !saved.current,
+    enableBeforeUnload: () => dirty && !saved.current,
+    withResolver: true,
+  })
   const stale = problem?.code === 'stale_version'
 
   function refuse(next: Problem) {
@@ -73,8 +96,14 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
   async function commit() {
     setProblem(null)
     const fields = { title, summary, reviewDate, reviewerId: reviewer?.id, employeeId: employee?.id, findings, body }
-    const parsed = was ? reviewUpdateSchema.safeParse({ ...fields, version: was.version }) : reviewCreateSchema.safeParse(fields)
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
+    const parsed = was
+      ? reviewUpdateSchema.safeParse({ ...fields, version: was.version })
+      : reviewCreateSchema.safeParse(fields)
+    if (!parsed.success)
+      return refuse({
+        message: 'Some of this is missing or needs changing. Nothing has been saved.',
+        fields: fieldMessages(parsed.error),
+      })
     try {
       const row = await save.mutateAsync(parsed.data)
       saved.current = true
@@ -90,7 +119,11 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
     <T,>(name: string, set: (value: T) => void) =>
     (value: T) => {
       set(value)
-      setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
+      setProblem((now) =>
+        now && name in now.fields
+          ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) }
+          : now,
+      )
     }
 
   return (
@@ -119,8 +152,17 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
           </dl>
 
           {stale ? (
-            <Alert tone="bad" title="Someone else edited this review first" action={<Button onClick={() => void refreshData(queryClient).then(onReload)}>Discard my changes and reload</Button>}>
-              {problem.message} What you have typed is still below, so you can copy what you need. Then reload the review as it now stands and make your change again.
+            <Alert
+              tone="bad"
+              title="Someone else edited this review first"
+              action={
+                <Button onClick={() => void refreshData(queryClient).then(onReload)}>
+                  Discard my changes and reload
+                </Button>
+              }
+            >
+              {problem.message} What you have typed is still below, so you can copy what you need. Then reload the
+              review as it now stands and make your change again.
             </Alert>
           ) : (
             problem && (
@@ -131,16 +173,39 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
           )}
 
           <Field label="Title" hint={count(title, GRIEVANCE_TITLE_MAX)} error={error('title')}>
-            <Input value={title} onChange={(event) => edit('title', setTitle)(event.target.value)} autoComplete="off" autoFocus />
+            <Input
+              value={title}
+              onChange={(event) => edit('title', setTitle)(event.target.value)}
+              autoComplete="off"
+              autoFocus
+            />
           </Field>
-          <Field label="Summary" hint={`One or two sentences, shown in the list. ${count(summary, REVIEW_SUMMARY_MAX)}`} error={error('summary')}>
-            <Textarea rows={2} className="min-h-0" value={summary} onChange={(event) => edit('summary', setSummary)(event.target.value)} />
+          <Field
+            label="Summary"
+            hint={`One or two sentences, shown in the list. ${count(summary, REVIEW_SUMMARY_MAX)}`}
+            error={error('summary')}
+          >
+            <Textarea
+              rows={2}
+              className="min-h-0"
+              value={summary}
+              onChange={(event) => edit('summary', setSummary)(event.target.value)}
+            />
           </Field>
           <Field label="Review date" hint="The day the review was held. Today or earlier." error={error('reviewDate')}>
-            <DateInput className="sm:max-w-56" max={localToday()} value={reviewDate} onChange={(event) => edit('reviewDate', setReviewDate)(event.target.value)} />
+            <DateInput
+              className="sm:max-w-56"
+              max={localToday()}
+              value={reviewDate}
+              onChange={(event) => edit('reviewDate', setReviewDate)(event.target.value)}
+            />
           </Field>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Reviewed by" hint="Who conducted the review. They can edit it and add updates later, even with Read Only access." error={error('reviewerId')}>
+            <Field
+              label="Reviewed by"
+              hint="Who conducted the review. They can edit it and add updates later, even with Read Only access."
+              error={error('reviewerId')}
+            >
               <Combobox
                 items={offered(was?.reviewer.id).filter((person) => person.id !== employee?.id)}
                 value={reviewer}
@@ -152,10 +217,16 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
                 emptyText="No active employee matches"
               />
             </Field>
-            <Field label="Employee reviewed" hint="The review is hidden from this employee's own account." error={error('employeeId')}>
+            <Field
+              label="Employee reviewed"
+              hint="The review is hidden from this employee's own account."
+              error={error('employeeId')}
+            >
               <Combobox
                 // You cannot review yourself here: the review would disappear from you the moment it was saved.
-                items={offered(was?.employee.id).filter((person) => person.id !== reviewer?.id && person.id !== user.employeeId)}
+                items={offered(was?.employee.id).filter(
+                  (person) => person.id !== reviewer?.id && person.id !== user.employeeId,
+                )}
                 value={employee}
                 onChange={edit('employeeId', setEmployee)}
                 getKey={employeeKey}
@@ -166,10 +237,24 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
               />
             </Field>
           </div>
-          <Field label="Findings" optional hint={`What the review found, in plain text. ${count(findings, REVIEW_FINDINGS_MAX)}`} error={error('findings')}>
-            <Textarea rows={5} value={findings} onChange={(event) => edit('findings', setFindings)(event.target.value)} />
+          <Field
+            label="Findings"
+            optional
+            hint={`What the review found, in plain text. ${count(findings, REVIEW_FINDINGS_MAX)}`}
+            error={error('findings')}
+          >
+            <Textarea
+              rows={5}
+              value={findings}
+              onChange={(event) => edit('findings', setFindings)(event.target.value)}
+            />
           </Field>
-          <Field label="Review body" optional hint="The review in full. It can also be written later, with Edit." error={error('body')}>
+          <Field
+            label="Review body"
+            optional
+            hint="The review in full. It can also be written later, with Edit."
+            error={error('body')}
+          >
             <RichTextEditor label="Review body" defaultValue={was?.bodyHtml} onChange={edit('body', setBody)} />
           </Field>
 
@@ -183,7 +268,19 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
                 Cancel
               </Link>
             )}
-            <Button variant="primary" type="submit" loading={save.isPending} disabledReason={(review ? undefined : noCreate) ?? (stale ? 'This review was edited by someone else. Reload it first.' : was && !dirty ? 'Nothing has been changed yet.' : undefined)}>
+            <Button
+              variant="primary"
+              type="submit"
+              loading={save.isPending}
+              disabledReason={
+                (review ? undefined : noCreate) ??
+                (stale
+                  ? 'This review was edited by someone else. Reload it first.'
+                  : was && !dirty
+                    ? 'Nothing has been changed yet.'
+                    : undefined)
+              }
+            >
               {was ? 'Save changes' : 'Save review'}
             </Button>
           </div>
@@ -194,7 +291,11 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
         open={leaving.status === 'blocked'}
         onOpenChange={(open) => !open && leaving.reset?.()}
         title="Leave without saving?"
-        description={was ? 'Your changes have not been saved. If you leave now, they are lost.' : 'This review has not been saved. If you leave now, what you have written is lost.'}
+        description={
+          was
+            ? 'Your changes have not been saved. If you leave now, they are lost.'
+            : 'This review has not been saved. If you leave now, what you have written is lost.'
+        }
         confirmLabel="Leave"
         tone="danger"
         onConfirm={() => leaving.proceed?.()}

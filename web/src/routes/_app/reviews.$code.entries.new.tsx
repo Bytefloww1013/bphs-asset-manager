@@ -42,9 +42,11 @@ export const Route = createFileRoute('/_app/reviews/$code/entries/new')({
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** This minute, in the shape a date-and-time input takes: local time, no zone. */
-const localNow = (now = new Date()) => `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+const localNow = (now = new Date()) =>
+  `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
 /** The instant a date-and-time input names, or nothing when it is empty or half filled in. */
-const instant = (local: string) => (local && !Number.isNaN(new Date(local).getTime()) ? new Date(local).toISOString() : undefined)
+const instant = (local: string) =>
+  local && !Number.isNaN(new Date(local).getTime()) ? new Date(local).toISOString() : undefined
 
 // As on New review, nothing typed here is kept in browser storage.
 function NewUpdatePage() {
@@ -59,7 +61,9 @@ function NewUpdatePage() {
   const original = correcting ? entries?.find((entry) => entry.seq === corrects && entry.kind !== 'system') : undefined
   // The CAP it goes under: the one Add update was pressed on, or for a correction, the one the corrected entry is under.
   const cap = caps?.find((one) => one.seq === (correcting ? original?.cap : capSeq))
-  useReviewPageTitle(`${correcting ? `Correct ${reviewEntryCode(corrects)} of` : cap ? `Update ${reviewCapCode(cap.seq)} of` : 'Add to'} ${review?.code ?? code.toUpperCase()}`)
+  useReviewPageTitle(
+    `${correcting ? `Correct ${reviewEntryCode(corrects)} of` : cap ? `Update ${reviewCapCode(cap.seq)} of` : 'Add to'} ${review?.code ?? code.toUpperCase()}`,
+  )
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -69,16 +73,25 @@ function NewUpdatePage() {
   const formRef = useRef<HTMLFormElement>(null)
   const saved = useRef(false)
 
-  const save = useWrite((input: unknown) => api.post<ReviewEntry>(`/reviews/${encodeURIComponent(code)}/entries`, input), { silent: true })
+  const save = useWrite(
+    (input: unknown) => api.post<ReviewEntry>(`/reviews/${encodeURIComponent(code)}/entries`, input),
+    { silent: true },
+  )
   const dirty = Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || entry.files.length)
-  const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
+  const leaving = useBlocker({
+    shouldBlockFn: () => dirty && !saved.current,
+    enableBeforeUnload: () => dirty && !saved.current,
+    withResolver: true,
+  })
 
   if (!review || !entries || !caps) return null
   const voided = review.status === 'voided'
   const completed = review.status === 'completed'
   const noCap = capSeq !== undefined && !cap
   const blocked = voided || completed || noCap || (correcting && !original)
-  const back = cap ? { to: '/reviews/$code/caps/$cap' as const, params: { code: review.code, cap: reviewCapCode(cap.seq) } } : { to: '/reviews/$code' as const, params: { code: review.code } }
+  const back = cap
+    ? { to: '/reviews/$code/caps/$cap' as const, params: { code: review.code, cap: reviewCapCode(cap.seq) } }
+    : { to: '/reviews/$code' as const, params: { code: review.code } }
 
   function refuse(next: { message: string; fields: Record<string, string> }) {
     setProblem(next)
@@ -88,10 +101,20 @@ function NewUpdatePage() {
   async function commit() {
     setProblem(null)
     const { files, ...text } = entry
-    const parsed = reviewEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, ...text } : { kind: 'update', occurredAt: instant(occurredAt), capSeq: cap?.seq, ...text })
+    const parsed = reviewEntryCreateSchema.safeParse(
+      correcting
+        ? { kind: 'correction', correctsSeq: corrects, ...text }
+        : { kind: 'update', occurredAt: instant(occurredAt), capSeq: cap?.seq, ...text },
+    )
     const filesWrong = filesProblem(files)
     if (!parsed.success || filesWrong)
-      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
+      return refuse({
+        message: 'Some of this is missing or needs changing. Nothing has been saved.',
+        fields: {
+          ...(parsed.success ? {} : fieldMessages(parsed.error)),
+          ...(filesWrong ? { files: filesWrong } : {}),
+        },
+      })
     try {
       const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
@@ -103,7 +126,12 @@ function NewUpdatePage() {
   }
 
   const error = (name: string) => problem?.fields[name] ?? null
-  const clear = (name: string) => setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
+  const clear = (name: string) =>
+    setProblem((now) =>
+      now && name in now.fields
+        ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) }
+        : now,
+    )
   const change = <K extends keyof EntryText>(name: K, value: EntryText[K]) => {
     setEntry((now) => ({ ...now, [name]: value }))
     clear(name)
@@ -112,12 +140,19 @@ function NewUpdatePage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/reviews/$code" params={{ code: review.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/reviews/$code"
+          params={{ code: review.code }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {review.code}
         </Link>
         <div className="mt-3">
           {correcting ? (
-            <PageHeader title="Add a correction" description={`What ${reviewEntryCode(corrects)} should have said. It is added as a new entry; ${reviewEntryCode(corrects)} itself stays exactly as it was written.`} />
+            <PageHeader
+              title="Add a correction"
+              description={`What ${reviewEntryCode(corrects)} should have said. It is added as a new entry; ${reviewEntryCode(corrects)} itself stays exactly as it was written.`}
+            />
           ) : (
             <PageHeader
               title={cap ? `Add an update to ${reviewCapCode(cap.seq)}` : 'Add an update'}
@@ -182,7 +217,9 @@ function NewUpdatePage() {
             </Alert>
           ) : correcting && !original ? (
             <Alert tone="bad" title={`${reviewEntryCode(corrects)} cannot be corrected`}>
-              {entries.some((one) => one.seq === corrects) ? 'It is an automatic entry, written by the app.' : `${review.code} has no entry with that number.`}
+              {entries.some((one) => one.seq === corrects)
+                ? 'It is an automatic entry, written by the app.'
+                : `${review.code} has no entry with that number.`}
             </Alert>
           ) : (
             <>
@@ -193,8 +230,18 @@ function NewUpdatePage() {
               )}
 
               {!correcting && (
-                <Field label="Occurred at" hint="When it happened, which may be earlier than now." error={error('occurredAt')}>
-                  <Input type="datetime-local" className="sm:max-w-64" max={localNow()} value={occurredAt} onChange={(event) => (setOccurredAt(event.target.value), clear('occurredAt'))} />
+                <Field
+                  label="Occurred at"
+                  hint="When it happened, which may be earlier than now."
+                  error={error('occurredAt')}
+                >
+                  <Input
+                    type="datetime-local"
+                    className="sm:max-w-64"
+                    max={localNow()}
+                    value={occurredAt}
+                    onChange={(event) => (setOccurredAt(event.target.value), clear('occurredAt'))}
+                  />
                 </Field>
               )}
 
@@ -202,7 +249,11 @@ function NewUpdatePage() {
                 value={entry}
                 onChange={change}
                 error={error}
-                shortDescriptionHint={correcting ? 'What was wrong and what is right, in one or two sentences.' : 'One or two sentences, shown on the history.'}
+                shortDescriptionHint={
+                  correcting
+                    ? 'What was wrong and what is right, in one or two sentences.'
+                    : 'One or two sentences, shown on the history.'
+                }
               />
             </>
           )}
@@ -212,7 +263,14 @@ function NewUpdatePage() {
               {blocked ? (cap ? 'Back to the CAP' : 'Back to the review') : 'Cancel'}
             </Link>
             {!blocked && (
-              <Button variant="primary" type="submit" loading={save.isPending} disabledReason={canManageReview(user, review.reviewer.id) ? undefined : reviewManageReason(review.reviewer.name)}>
+              <Button
+                variant="primary"
+                type="submit"
+                loading={save.isPending}
+                disabledReason={
+                  canManageReview(user, review.reviewer.id) ? undefined : reviewManageReason(review.reviewer.name)
+                }
+              >
                 {correcting ? 'Save correction' : 'Save update'}
               </Button>
             )}

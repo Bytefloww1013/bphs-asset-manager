@@ -25,7 +25,8 @@ export interface Dataset<T> extends Spec<T> {
 }
 
 function define<T>(spec: Spec<T>): Dataset<T> {
-  const save = (items: T[], format: FileFormat) => downloadTable(format, spec.filename, spec.headers, items.map(spec.row), spec.label)
+  const save = (items: T[], format: FileFormat) =>
+    downloadTable(format, spec.filename, spec.headers, items.map(spec.row), spec.label)
   return {
     ...spec,
     save,
@@ -48,8 +49,30 @@ export const EXPORTS = {
     label: 'Physical Assets',
     description: 'Every device on the register, with its current holder and latest condition.',
     filename: 'physical-assets',
-    headers: ['Asset tag', 'Type', 'Serial', 'Status', 'Assigned to', 'Employee ID', 'Department', 'Condition', 'Days out', 'Created'],
-    row: (a) => [a.tag, a.type, a.serial, stateLabel(a.state), (a.holder ?? a.program)?.name, a.holder?.code, a.holder?.department, a.condition?.rating, a.daysOut, formatDate(a.createdAt)],
+    headers: [
+      'Asset tag',
+      'Type',
+      'Serial',
+      'Status',
+      'Assigned to',
+      'Employee ID',
+      'Department',
+      'Condition',
+      'Days out',
+      'Created',
+    ],
+    row: (a) => [
+      a.tag,
+      a.type,
+      a.serial,
+      stateLabel(a.state),
+      (a.holder ?? a.program)?.name,
+      a.holder?.code,
+      a.holder?.department,
+      a.condition?.rating,
+      a.daysOut,
+      formatDate(a.createdAt),
+    ],
     load: (queryClient) => queryClient.fetchQuery({ ...assetsQuery, staleTime: 0 }),
   }),
   digitalAssets: define<DigitalAssetRow>({
@@ -57,15 +80,41 @@ export const EXPORTS = {
     description: 'Every license and account seat, and the employee it is issued to.',
     filename: 'digital-assets',
     headers: ['Asset ID', 'Type', 'License/Account', 'Assigned Employee', 'Employee ID', 'Status', 'Issue Date'],
-    row: (row) => [row.code, row.type, row.account, row.employee?.name, row.employee?.code, digitalStateLabel(row.state), row.issuedAt ? formatDate(row.issuedAt) : ''],
+    row: (row) => [
+      row.code,
+      row.type,
+      row.account,
+      row.employee?.name,
+      row.employee?.code,
+      digitalStateLabel(row.state),
+      row.issuedAt ? formatDate(row.issuedAt) : '',
+    ],
     load: (queryClient) => queryClient.fetchQuery({ ...digitalAssetsQuery, staleTime: 0 }),
   }),
   employees: define<EmployeeRow>({
     label: 'Employees',
     description: 'Everyone who can hold equipment, archived employees included, with how much each holds now.',
     filename: 'employees',
-    headers: ['Employee ID', 'First name', 'Last name', 'Department', 'Job title', 'Status', 'Physical assets held', 'Digital assets held'],
-    row: (e) => [e.code, e.firstName, e.lastName, e.department, e.jobTitle, employeeState[e.state], e.assetsHeld, e.digitalHeld],
+    headers: [
+      'Employee ID',
+      'First name',
+      'Last name',
+      'Department',
+      'Job title',
+      'Status',
+      'Physical assets held',
+      'Digital assets held',
+    ],
+    row: (e) => [
+      e.code,
+      e.firstName,
+      e.lastName,
+      e.department,
+      e.jobTitle,
+      employeeState[e.state],
+      e.assetsHeld,
+      e.digitalHeld,
+    ],
     load: (queryClient) => queryClient.fetchQuery({ ...employeesQuery, staleTime: 0 }),
   }),
   programs: define<ProgramRow>({
@@ -80,11 +129,31 @@ export const EXPORTS = {
     label: 'Active Assignments',
     description: 'Every asset that is out now, and the employee or program holding it.',
     filename: 'active-assignments',
-    headers: ['Asset tag', 'Type', 'Holder type', 'Holder', 'Holder ID', 'Department', 'Issued', 'Condition at issue', 'Days out'],
+    headers: [
+      'Asset tag',
+      'Type',
+      'Holder type',
+      'Holder',
+      'Holder ID',
+      'Department',
+      'Issued',
+      'Condition at issue',
+      'Days out',
+    ],
     row: (r) => {
       // An assignment always has one holder: an employee or a program.
       const holder = (r.employee ?? r.program)!
-      return [r.assetTag, r.assetType, r.program ? 'Program' : 'Employee', holder.name, holder.code, r.employee?.department, formatDateTime(r.issuedAt), r.issueRating, r.daysOut]
+      return [
+        r.assetTag,
+        r.assetType,
+        r.program ? 'Program' : 'Employee',
+        holder.name,
+        holder.code,
+        r.employee?.department,
+        formatDateTime(r.issuedAt),
+        r.issueRating,
+        r.daysOut,
+      ]
     },
     load: (queryClient) => queryClient.fetchQuery({ ...assignmentsQuery, staleTime: 0 }),
   }),

@@ -44,11 +44,18 @@ function MyTasksPage() {
         <FilterTabs
           label="Show"
           value={view}
-          onChange={(next) => void navigate({ search: (prev) => ({ ...prev, view: next === 'open' ? undefined : next }) })}
+          onChange={(next) =>
+            void navigate({ search: (prev) => ({ ...prev, view: next === 'open' ? undefined : next }) })
+          }
           options={(['open', 'completed'] as const).map((value) => ({ value, label: VIEW_LABEL[value] }))}
         />
         <div className="flex items-center gap-2 text-sm text-ink-2">
-          <Switch id="show-cancelled" label="Show cancelled" checked={cancelled} onChange={(next) => void navigate({ search: (prev) => ({ ...prev, cancelled: next || undefined }) })} />
+          <Switch
+            id="show-cancelled"
+            label="Show cancelled"
+            checked={cancelled}
+            onChange={(next) => void navigate({ search: (prev) => ({ ...prev, cancelled: next || undefined }) })}
+          />
           <label htmlFor="show-cancelled">Show cancelled</label>
         </div>
       </div>

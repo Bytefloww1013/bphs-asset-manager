@@ -15,7 +15,12 @@ interface Store {
 
 const STORES: Record<ImportType, Store> = {
   employees: {
-    existingKeys: (db) => db.select({ code: employees.code }).from(employees).all().map((row) => row.code),
+    existingKeys: (db) =>
+      db
+        .select({ code: employees.code })
+        .from(employees)
+        .all()
+        .map((row) => row.code),
     create(tx, actor, record) {
       const row = tx
         .insert(employees)
@@ -28,11 +33,21 @@ const STORES: Record<ImportType, Store> = {
         })
         .returning({ id: employees.id })
         .get()
-      writeAudit(tx, actor, { action: 'import', entityType: 'employee', entityId: row.id, details: `employee_id=${record.code}` })
+      writeAudit(tx, actor, {
+        action: 'import',
+        entityType: 'employee',
+        entityId: row.id,
+        details: `employee_id=${record.code}`,
+      })
     },
   },
   programs: {
-    existingKeys: (db) => db.select({ code: programs.code }).from(programs).all().map((row) => row.code),
+    existingKeys: (db) =>
+      db
+        .select({ code: programs.code })
+        .from(programs)
+        .all()
+        .map((row) => row.code),
     create(tx, actor, record) {
       const row = tx
         .insert(programs)
@@ -73,7 +88,9 @@ function analyse(db: DbLike, importer: Importer, input: ImportInput): Analysis {
       rows.push({ row, values: record, result: 'error', message: `Row ${row}: ${problem}` })
     } else if (known.has(id) || inFile.has(id)) {
       summary.duplicates += 1
-      const message = inFile.has(id) ? `Skip: ${key.label} appears earlier in this file` : `Skip: ${key.label} already exists`
+      const message = inFile.has(id)
+        ? `Skip: ${key.label} appears earlier in this file`
+        : `Skip: ${key.label} already exists`
       rows.push({ row, values: record, result: 'duplicate', message })
     } else {
       inFile.add(id)

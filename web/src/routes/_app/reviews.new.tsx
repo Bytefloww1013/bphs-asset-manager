@@ -13,7 +13,10 @@ function NewReviewPage() {
   useReviewPageTitle('New review')
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader title="New review" description="Record an administrative review. What follows from it is added afterwards, as updates." />
+      <PageHeader
+        title="New review"
+        description="Record an administrative review. What follows from it is added afterwards, as updates."
+      />
       <ReviewForm />
     </div>
   )

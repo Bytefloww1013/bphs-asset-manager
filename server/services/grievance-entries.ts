@@ -1,5 +1,10 @@
 import { and, asc, eq, sql } from 'drizzle-orm'
-import { grievanceEntryCode, grievanceStatusLabel, type GrievanceEntryKind, type GrievanceStatus } from '../../shared/constants.ts'
+import {
+  grievanceEntryCode,
+  grievanceStatusLabel,
+  type GrievanceEntryKind,
+  type GrievanceStatus,
+} from '../../shared/constants.ts'
 import type { GrievanceAttachmentWithdrawInput, GrievanceEntryCreateInput } from '../../shared/schemas.ts'
 import type { GrievanceAttachment, GrievanceEntry } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
@@ -35,14 +40,21 @@ const shape = (row: EntryRow, corrects: number | null = null, correctedBy: numbe
 })
 
 const findGrievance = (db: DbLike, code: string) => {
-  const grievance = db.get<{ id: number; code: string; status: GrievanceStatus }>(sql`select id, code, status from grievances where code = ${code} collate nocase`)
+  const grievance = db.get<{ id: number; code: string; status: GrievanceStatus }>(
+    sql`select id, code, status from grievances where code = ${code} collate nocase`,
+  )
   if (!grievance) throw notFound('Grievance')
   return grievance
 }
 
 /** Every entry of one grievance, in the order they were recorded. Putting them in the order things happened is the page's job. */
 export function listGrievanceEntries(db: DbLike, code: string): GrievanceEntry[] {
-  const rows = db.select().from(grievanceEntries).where(eq(grievanceEntries.grievanceId, findGrievance(db, code).id)).orderBy(asc(grievanceEntries.seq)).all()
+  const rows = db
+    .select()
+    .from(grievanceEntries)
+    .where(eq(grievanceEntries.grievanceId, findGrievance(db, code).id))
+    .orderBy(asc(grievanceEntries.seq))
+    .all()
   const seqOf = new Map(rows.map((row) => [row.id, row.seq]))
   return rows.map((row) =>
     shape(
@@ -70,7 +82,10 @@ interface NewEntry {
 export function appendGrievanceEntry(tx: DbLike, actor: Actor, grievanceId: number, entry: NewEntry): EntryRow {
   const at = entry.at ?? new Date()
   // Read and written in one transaction, as the Grievance ID is; the unique index on (grievance, seq) backs it up.
-  const seq = (tx.get<{ top: number | null }>(sql`select max(seq) as top from grievance_entries where grievance_id = ${grievanceId}`)?.top ?? 0) + 1
+  const seq =
+    (tx.get<{ top: number | null }>(
+      sql`select max(seq) as top from grievance_entries where grievance_id = ${grievanceId}`,
+    )?.top ?? 0) + 1
   const row = tx
     .insert(grievanceEntries)
     .values({
@@ -100,13 +115,22 @@ const SEALED: GrievanceStatus[] = ['closed', 'voided']
 const findUnsealedGrievance = (db: DbLike, code: string) => {
   const grievance = findGrievance(db, code)
   if (SEALED.includes(grievance.status)) {
-    throw conflict('grievance_sealed', `${grievance.code} is ${grievanceStatusLabel(grievance.status)}. Nothing more can be added to its timeline.`)
+    throw conflict(
+      'grievance_sealed',
+      `${grievance.code} is ${grievanceStatusLabel(grievance.status)}. Nothing more can be added to its timeline.`,
+    )
   }
   return grievance
 }
 
 /** Add an entry, and any files that came with it in the same request. */
-export function createGrievanceEntry(db: Db, actor: Actor, code: string, input: GrievanceEntryCreateInput, uploads: Upload[] = []): GrievanceEntry {
+export function createGrievanceEntry(
+  db: Db,
+  actor: Actor,
+  code: string,
+  input: GrievanceEntryCreateInput,
+  uploads: Upload[] = [],
+): GrievanceEntry {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
     const grievance = findUnsealedGrievance(tx, code)
@@ -118,9 +142,13 @@ export function createGrievanceEntry(db: Db, actor: Actor, code: string, input: 
         .from(grievanceEntries)
         .where(and(eq(grievanceEntries.grievanceId, grievance.id), eq(grievanceEntries.seq, input.correctsSeq)))
         .get()
-      if (!corrected) throw invalid(`${grievance.code} has no entry ${grievanceEntryCode(input.correctsSeq)} to correct.`, { field: 'correctsSeq' })
+      if (!corrected)
+        throw invalid(`${grievance.code} has no entry ${grievanceEntryCode(input.correctsSeq)} to correct.`, {
+          field: 'correctsSeq',
+        })
       // An automatic entry says what the app did; there is nothing in it that anyone wrote.
-      if (corrected.kind === 'system') throw invalid('An automatic entry cannot be corrected.', { field: 'correctsSeq' })
+      if (corrected.kind === 'system')
+        throw invalid('An automatic entry cannot be corrected.', { field: 'correctsSeq' })
     }
     const row = appendGrievanceEntry(tx, actor, grievance.id, {
       kind: input.kind,
@@ -165,7 +193,12 @@ const attachmentRows = (db: DbLike, grievanceId: number, id?: number) =>
     .select({ row: grievanceAttachments, seq: grievanceEntries.seq })
     .from(grievanceAttachments)
     .leftJoin(grievanceEntries, eq(grievanceEntries.id, grievanceAttachments.entryId))
-    .where(and(eq(grievanceAttachments.grievanceId, grievanceId), id === undefined ? undefined : eq(grievanceAttachments.id, id)))
+    .where(
+      and(
+        eq(grievanceAttachments.grievanceId, grievanceId),
+        id === undefined ? undefined : eq(grievanceAttachments.id, id),
+      ),
+    )
     .orderBy(asc(grievanceAttachments.id))
     .all()
 
@@ -186,10 +219,16 @@ export function downloadGrievanceAttachment(db: Db, actor: Actor, code: string, 
   return db.transaction((tx) => {
     const grievance = findGrievance(tx, code)
     const { row } = findAttachment(tx, grievance.id, id)
-    if (row.withdrawnAt) throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
+    if (row.withdrawnAt)
+      throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
     const bytes = get(tx, row.id)
     if (!bytes) throw notFound('File')
-    writeGrievanceAudit(tx, actor, { action: 'download', entityType: 'grievance_attachment', entityId: row.id, details: `${grievance.code} · ${row.filename}` })
+    writeGrievanceAudit(tx, actor, {
+      action: 'download',
+      entityType: 'grievance_attachment',
+      entityId: row.id,
+      details: `${grievance.code} · ${row.filename}`,
+    })
     return { filename: row.filename, contentType: row.contentType, bytes }
   })
 }
@@ -198,7 +237,13 @@ export function downloadGrievanceAttachment(db: Db, actor: Actor, code: string, 
  * Take back a file added by mistake. Its bytes stay in the database, but nothing in the app reads them again; its name, who
  * added it and the reason stay on the list, and an automatic entry records it on the timeline.
  */
-export function withdrawGrievanceAttachment(db: Db, actor: Actor, code: string, id: number, input: GrievanceAttachmentWithdrawInput): GrievanceAttachment {
+export function withdrawGrievanceAttachment(
+  db: Db,
+  actor: Actor,
+  code: string,
+  id: number,
+  input: GrievanceAttachmentWithdrawInput,
+): GrievanceAttachment {
   return db.transaction((tx) => {
     const grievance = findUnsealedGrievance(tx, code)
     const { row, seq } = findAttachment(tx, grievance.id, id)
@@ -210,8 +255,21 @@ export function withdrawGrievanceAttachment(db: Db, actor: Actor, code: string, 
       .where(eq(grievanceAttachments.id, row.id))
       .returning()
       .get()
-    appendGrievanceEntry(tx, actor, grievance.id, { kind: 'system', occurredAt: now, title: 'File withdrawn', shortDescription: row.filename, body: plainToRichText(input.reason), at: now })
-    writeGrievanceAudit(tx, actor, { action: 'withdraw', entityType: 'grievance_attachment', entityId: row.id, details: `${grievance.code} · ${row.filename}`, at: now })
+    appendGrievanceEntry(tx, actor, grievance.id, {
+      kind: 'system',
+      occurredAt: now,
+      title: 'File withdrawn',
+      shortDescription: row.filename,
+      body: plainToRichText(input.reason),
+      at: now,
+    })
+    writeGrievanceAudit(tx, actor, {
+      action: 'withdraw',
+      entityType: 'grievance_attachment',
+      entityId: row.id,
+      details: `${grievance.code} · ${row.filename}`,
+      at: now,
+    })
     return attachmentShape(withdrawn, seq)
   })
 }

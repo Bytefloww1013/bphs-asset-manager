@@ -5,5 +5,7 @@ export function describeRowProblem(error: ZodError, columns: Record<string, stri
   const issue = error.issues[0]!
   const key = String(issue.path[0])
   const column = columns[key] ?? key
-  return issue.code === 'too_big' ? `${column} is longer than ${issue.maximum} characters` : `${column}: ${issue.message}`
+  return issue.code === 'too_big'
+    ? `${column} is longer than ${issue.maximum} characters`
+    : `${column}: ${issue.message}`
 }

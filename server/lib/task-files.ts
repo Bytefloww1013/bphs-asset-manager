@@ -10,5 +10,9 @@ export function put(tx: DbLike, attachmentId: number, bytes: Buffer) {
 }
 
 export function get(db: DbLike, attachmentId: number): Buffer | undefined {
-  return db.select({ bytes: taskAttachmentData.bytes }).from(taskAttachmentData).where(eq(taskAttachmentData.attachmentId, attachmentId)).get()?.bytes
+  return db
+    .select({ bytes: taskAttachmentData.bytes })
+    .from(taskAttachmentData)
+    .where(eq(taskAttachmentData.attachmentId, attachmentId))
+    .get()?.bytes
 }

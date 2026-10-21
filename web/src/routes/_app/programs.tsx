@@ -19,7 +19,9 @@ import { useDenied, usePageTitle } from '@/lib/session.ts'
 type Show = 'active' | 'deactivated' | 'all'
 
 export const Route = createFileRoute('/_app/programs')({
-  validateSearch: (search: Record<string, unknown>): { show?: Show } => ({ show: search.show === 'deactivated' || search.show === 'all' ? search.show : undefined }),
+  validateSearch: (search: Record<string, unknown>): { show?: Show } => ({
+    show: search.show === 'deactivated' || search.show === 'all' ? search.show : undefined,
+  }),
   loader: ({ context }) => context.queryClient.ensureQueryData(programsQuery),
   component: ProgramsPage,
 })
@@ -34,15 +36,31 @@ const columns = [
         // On a phone the Program ID column, the status and the count have no room of their own, so they sit under the name.
         secondary={
           <span className="sm:hidden">
-            {info.row.original.code} · {info.row.original.isActive ? 'Active' : 'Deactivated'} · {info.row.original.assetsHeld} held
+            {info.row.original.code} · {info.row.original.isActive ? 'Active' : 'Deactivated'} ·{' '}
+            {info.row.original.assetsHeld} held
           </span>
         }
       />
     ),
   }),
-  c.accessor('code', { header: 'Program ID', cell: (info) => <Mono className="text-ink-2">{info.getValue()}</Mono>, meta: { hideBelow: 'sm' } }),
-  c.accessor((row) => row.address ?? '', { id: 'address', header: 'Program Address', cell: (info) => (info.getValue() ? <span className="text-ink-2">{info.getValue()}</span> : <span className="text-ink-3">—</span>), meta: { hideBelow: 'lg' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Status, physical assets held and actions</span>, cell: (info) => <ProgramRowActions program={info.row.original} />, meta: { align: 'right', width: 'sm:w-80', pinned: true } }),
+  c.accessor('code', {
+    header: 'Program ID',
+    cell: (info) => <Mono className="text-ink-2">{info.getValue()}</Mono>,
+    meta: { hideBelow: 'sm' },
+  }),
+  c.accessor((row) => row.address ?? '', {
+    id: 'address',
+    header: 'Program Address',
+    cell: (info) =>
+      info.getValue() ? <span className="text-ink-2">{info.getValue()}</span> : <span className="text-ink-3">—</span>,
+    meta: { hideBelow: 'lg' },
+  }),
+  c.display({
+    id: 'actions',
+    header: () => <span className="sr-only">Status, physical assets held and actions</span>,
+    cell: (info) => <ProgramRowActions program={info.row.original} />,
+    meta: { align: 'right', width: 'sm:w-80', pinned: true },
+  }),
 ]
 const getRowId = (row: ProgramRow) => String(row.id)
 const searchText = (row: ProgramRow) => [row.name, row.code, row.address].filter(Boolean).join(' ')
@@ -63,12 +81,27 @@ function ProgramsPage() {
   }, [flash])
 
   const active = data.filter((p) => p.isActive).length
-  const rows = useMemo(() => (show === 'all' ? data : data.filter((p) => p.isActive === (show === 'active'))), [data, show])
-  const table = useGrid({ data: rows, columns, getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'name', desc: false }] })
+  const rows = useMemo(
+    () => (show === 'all' ? data : data.filter((p) => p.isActive === (show === 'active'))),
+    [data, show],
+  )
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    searchText,
+    search,
+    resetKey: show,
+    initialSorting: [{ id: 'name', desc: false }],
+  })
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Programs" description="A program can hold equipment the same way an employee does. One that has held an asset is deactivated, never deleted." actions={<ExportButton dataset={EXPORTS.programs} items={data} />} />
+      <PageHeader
+        title="Programs"
+        description="A program can hold equipment the same way an employee does. One that has held an asset is deactivated, never deleted."
+        actions={<ExportButton dataset={EXPORTS.programs} items={data} />}
+      />
       {!readOnly && <QuickAddProgram onAdded={setFlash} />}
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
@@ -82,7 +115,13 @@ function ProgramsPage() {
               { value: 'all', label: 'All', count: data.length },
             ]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search programs" placeholder="Search name, ID, address" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-80"
+            aria-label="Search programs"
+            placeholder="Search name, ID, address"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </Toolbar>
         <DataGrid
           table={table}
@@ -92,12 +131,27 @@ function ProgramsPage() {
           rowClassName={(row) => (row.original.id === flash ? 'animate-row-flash' : undefined)}
           empty={
             show === 'active' && data.length === 0 ? (
-              <EmptyState icon={Building2} title="No programs yet" description="Add one above. Once it is there, physical assets can be assigned to it from the Issue sheet." />
+              <EmptyState
+                icon={Building2}
+                title="No programs yet"
+                description="Add one above. Once it is there, physical assets can be assigned to it from the Issue sheet."
+              />
             ) : (
-              <EmptyState icon={Building2} title={show === 'deactivated' ? 'No deactivated programs' : 'No active programs'} description="Switch the status filter to see the others." />
+              <EmptyState
+                icon={Building2}
+                title={show === 'deactivated' ? 'No deactivated programs' : 'No active programs'}
+                description="Switch the status filter to see the others."
+              />
             )
           }
-          noMatches={<EmptyState icon={Building2} title="No programs match" description="Try a different name or ID." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
+          noMatches={
+            <EmptyState
+              icon={Building2}
+              title="No programs match"
+              description="Try a different name or ID."
+              action={<Button onClick={() => setSearch('')}>Clear search</Button>}
+            />
+          }
         />
       </div>
     </div>

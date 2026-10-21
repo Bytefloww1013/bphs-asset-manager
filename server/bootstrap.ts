@@ -21,7 +21,9 @@ export const DEFAULT_RATINGS = [
 export function ensureDefaultLists(db: Db) {
   if ((db.select({ n: count() }).from(users).get()?.n ?? 0) > 0) return
   if ((db.select({ n: count() }).from(assetTypes).get()?.n ?? 0) === 0) {
-    db.insert(assetTypes).values(DEFAULT_TYPES.map((name) => ({ name }))).run()
+    db.insert(assetTypes)
+      .values(DEFAULT_TYPES.map((name) => ({ name })))
+      .run()
   }
   if ((db.select({ n: count() }).from(conditionRatings).get()?.n ?? 0) === 0) {
     db.insert(conditionRatings).values(DEFAULT_RATINGS).run()

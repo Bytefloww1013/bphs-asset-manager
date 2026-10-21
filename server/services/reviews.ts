@@ -1,8 +1,21 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm'
-import { REVIEW_STATUSES, reviewCapCode, reviewCode, reviewStatusLabel, type ReviewEntryKind, type ReviewStatus } from '../../shared/constants.ts'
+import {
+  REVIEW_STATUSES,
+  reviewCapCode,
+  reviewCode,
+  reviewStatusLabel,
+  type ReviewEntryKind,
+  type ReviewStatus,
+} from '../../shared/constants.ts'
 import { formatUsDate } from '../../shared/dates.ts'
 import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
-import type { ReviewCreateInput, ReviewListQuery, ReviewStatusChangeInput, ReviewUpdateInput, ReviewVoidInput } from '../../shared/schemas.ts'
+import type {
+  ReviewCreateInput,
+  ReviewListQuery,
+  ReviewStatusChangeInput,
+  ReviewUpdateInput,
+  ReviewVoidInput,
+} from '../../shared/schemas.ts'
 import type { ReviewDetail, ReviewList, ReviewPerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, reviewCaps, reviewEntries, reviews } from '../db/schema.ts'
@@ -25,13 +38,16 @@ export const reviewsVisibleTo = (viewer: Viewer) => sql`r.employee_id is not ${v
 /** The next Review ID for the year, as `nextGrievanceCode` gives a Grievance ID. Call inside the transaction that inserts the review. */
 export function nextReviewCode(tx: DbLike, at: Date = new Date()): { code: string; year: number; seq: number } {
   const year = at.getFullYear()
-  const seq = (tx.get<{ top: number | null }>(sql`select max(seq) as top from reviews where year = ${year}`)?.top ?? 0) + 1
+  const seq =
+    (tx.get<{ top: number | null }>(sql`select max(seq) as top from reviews where year = ${year}`)?.top ?? 0) + 1
   return { code: reviewCode(year, seq), year, seq }
 }
 
 /** An employee as a JSON column, for `toPerson`. */
 export const personJson = (alias: 'e' | 'v') =>
-  sql.raw(`json_object('id', ${alias}.id, 'code', ${alias}.code, 'first', ${alias}.first_name, 'last', ${alias}.last_name, 'archived', ${alias}.archived_at is not null)`)
+  sql.raw(
+    `json_object('id', ${alias}.id, 'code', ${alias}.code, 'first', ${alias}.first_name, 'last', ${alias}.last_name, 'archived', ${alias}.archived_at is not null)`,
+  )
 
 export const toPerson = (json: string): ReviewPerson => {
   const p = JSON.parse(json) as { id: number; code: string; first: string; last: string; archived: number }
@@ -94,18 +110,24 @@ export function getReview(db: DbLike, viewer: Viewer, key: { id: number } | { co
 export function findReviewToManage(tx: DbLike, actor: Actor, code: string): ReviewDetail {
   const review = getReview(tx, actor, { code })
   if (!canManageReview(actor, review.reviewer.id)) throw forbidden(reviewManageReason(review.reviewer.name))
-  if (review.status === 'voided') throw conflict('review_voided', `${review.code} has been voided. It is kept as a record and cannot be changed.`)
+  if (review.status === 'voided')
+    throw conflict('review_voided', `${review.code} has been voided. It is kept as a record and cannot be changed.`)
   return review
 }
 
 /** A Completed review takes nothing new until it is reopened. A voided one has already been refused by `findReviewToManage`. */
 export function requireNotSealed(review: ReviewDetail, doing: string) {
-  if (review.status === 'completed') throw conflict('review_sealed', `${review.code} is Completed. Reopen it to ${doing}.`)
+  if (review.status === 'completed')
+    throw conflict('review_sealed', `${review.code} is Completed. Reopen it to ${doing}.`)
 }
 
 /** The review's CAP numbered `seq`, for something to be filed under, or 422 against `capSeq`. */
 export function findCapBySeq(tx: DbLike, review: ReviewDetail, seq: number) {
-  const cap = tx.select({ id: reviewCaps.id, seq: reviewCaps.seq }).from(reviewCaps).where(and(eq(reviewCaps.reviewId, review.id), eq(reviewCaps.seq, seq))).get()
+  const cap = tx
+    .select({ id: reviewCaps.id, seq: reviewCaps.seq })
+    .from(reviewCaps)
+    .where(and(eq(reviewCaps.reviewId, review.id), eq(reviewCaps.seq, seq)))
+    .get()
   if (!cap) throw invalid(`${review.code} has no ${reviewCapCode(seq)}.`, { field: 'capSeq' })
   return cap
 }
@@ -127,7 +149,9 @@ export interface NewReviewEntry {
  */
 export function appendReviewEntry(tx: DbLike, actor: Actor, reviewId: number, entry: NewReviewEntry) {
   const at = entry.at ?? new Date()
-  const seq = (tx.get<{ top: number | null }>(sql`select max(seq) as top from review_entries where review_id = ${reviewId}`)?.top ?? 0) + 1
+  const seq =
+    (tx.get<{ top: number | null }>(sql`select max(seq) as top from review_entries where review_id = ${reviewId}`)
+      ?.top ?? 0) + 1
   const row = tx
     .insert(reviewEntries)
     .values({
@@ -157,7 +181,8 @@ export const REVIEW_CREATED = 'Review created'
 
 // The review would vanish from the person who just wrote it, and nobody should record a review of themselves.
 const notYourself = (actor: Actor, employeeId: number) => {
-  if (employeeId === actor.employeeId) throw invalid('You cannot name yourself as the employee reviewed.', { field: 'employeeId' })
+  if (employeeId === actor.employeeId)
+    throw invalid('You cannot name yourself as the employee reviewed.', { field: 'employeeId' })
 }
 
 /** Record a review, as Open. */
@@ -190,7 +215,14 @@ export function createReview(db: Db, actor: Actor, input: ReviewCreateInput): Re
       .returning({ id: reviews.id })
       .get()
     appendReviewEntry(tx, actor, row.id, { kind: 'system', occurredAt: now, title: REVIEW_CREATED, at: now })
-    writeReviewAudit(tx, actor, { action: 'create', entityType: 'review', entityId: row.id, reviewId: row.id, details: `${code} · ${input.title}`, at: now })
+    writeReviewAudit(tx, actor, {
+      action: 'create',
+      entityType: 'review',
+      entityId: row.id,
+      reviewId: row.id,
+      details: `${code} · ${input.title}`,
+      at: now,
+    })
     return row.id
   })
   return getReview(db, actor, { id })
@@ -206,8 +238,15 @@ export type FieldChange = [label: string, before?: string, after?: string]
 
 /** The body of an edit's history entry: each short field as old → new, then each long text as it was before. */
 export function editRecord(changes: FieldChange[], replaced: [heading: string, html: string][]): RichText {
-  const lines = changes.filter(([, before]) => before !== undefined).map(([label, before, after]) => `<li><strong>${label}:</strong> ${escape(before!)} → ${escape(after!)}</li>`)
-  return cleanRichText([lines.length ? `<ul>${lines.join('')}</ul>` : '', ...replaced.map(([heading, html]) => `<h3>${heading}</h3>${html || '<p><em>Empty</em></p>'}`)].join(''))
+  const lines = changes
+    .filter(([, before]) => before !== undefined)
+    .map(([label, before, after]) => `<li><strong>${label}:</strong> ${escape(before!)} → ${escape(after!)}</li>`)
+  return cleanRichText(
+    [
+      lines.length ? `<ul>${lines.join('')}</ul>` : '',
+      ...replaced.map(([heading, html]) => `<h3>${heading}</h3>${html || '<p><em>Empty</em></p>'}`),
+    ].join(''),
+  )
 }
 
 /**
@@ -222,14 +261,28 @@ export function updateReview(db: Db, actor: Actor, code: string, input: ReviewUp
       const last = tx
         .select({ by: reviewEntries.documentedByLabel })
         .from(reviewEntries)
-        .where(and(eq(reviewEntries.reviewId, was.id), eq(reviewEntries.kind, 'system'), sql`${reviewEntries.title} like ${`${EDITED}%`}`))
+        .where(
+          and(
+            eq(reviewEntries.reviewId, was.id),
+            eq(reviewEntries.kind, 'system'),
+            sql`${reviewEntries.title} like ${`${EDITED}%`}`,
+          ),
+        )
         .orderBy(desc(reviewEntries.seq))
         .get()
-      throw conflict('stale_version', `${was.code} was edited${last ? ` by ${last.by}` : ''} while you had it open. Nothing has been saved.`, { version: was.version })
+      throw conflict(
+        'stale_version',
+        `${was.code} was edited${last ? ` by ${last.by}` : ''} while you had it open. Nothing has been saved.`,
+        { version: was.version },
+      )
     }
 
     const nameOf = (id: number) => {
-      const row = tx.select({ firstName: employees.firstName, lastName: employees.lastName }).from(employees).where(eq(employees.id, id)).get()
+      const row = tx
+        .select({ firstName: employees.firstName, lastName: employees.lastName })
+        .from(employees)
+        .where(eq(employees.id, id))
+        .get()
       return row ? fullName(row.firstName, row.lastName) : ''
     }
     // Someone already named keeps their place after they are archived; only a person being named now must be here now.
@@ -242,9 +295,11 @@ export function updateReview(db: Db, actor: Actor, code: string, input: ReviewUp
     const changes: FieldChange[] = []
     if (input.title !== was.title) changes.push(['Title', was.title, input.title])
     if (input.summary !== was.summary) changes.push(['Summary', was.summary, input.summary])
-    if (input.reviewDate !== was.reviewDate) changes.push(['Review date', formatUsDate(was.reviewDate)!, formatUsDate(input.reviewDate)!])
+    if (input.reviewDate !== was.reviewDate)
+      changes.push(['Review date', formatUsDate(was.reviewDate)!, formatUsDate(input.reviewDate)!])
     if (input.reviewerId !== was.reviewer.id) changes.push(['Reviewed by', was.reviewer.name, nameOf(input.reviewerId)])
-    if (input.employeeId !== was.employee.id) changes.push(['Employee reviewed', was.employee.name, nameOf(input.employeeId)])
+    if (input.employeeId !== was.employee.id)
+      changes.push(['Employee reviewed', was.employee.name, nameOf(input.employeeId)])
     if (input.findings !== was.findings) changes.push(['Findings'])
     if (body.html !== was.bodyHtml) changes.push(['Review body'])
     if (changes.length === 0) throw conflict('unchanged', 'Nothing has been changed, so there is nothing to save.')
@@ -268,25 +323,54 @@ export function updateReview(db: Db, actor: Actor, code: string, input: ReviewUp
 
     const summary = `${EDITED}${changes.map(([label]) => label).join(', ')}`
     const record = editRecord(changes, [
-      ...(input.findings !== was.findings ? [['Findings before', plainToRichText(was.findings).html] as [string, string]] : []),
+      ...(input.findings !== was.findings
+        ? [['Findings before', plainToRichText(was.findings).html] as [string, string]]
+        : []),
       ...(body.html !== was.bodyHtml ? [['Review body before', was.bodyHtml] as [string, string]] : []),
     ])
     appendReviewEntry(tx, actor, was.id, { kind: 'system', occurredAt: now, title: summary, body: record, at: now })
-    writeReviewAudit(tx, actor, { action: 'update', entityType: 'review', entityId: was.id, reviewId: was.id, details: `${was.code} · ${input.title} · ${summary}`, at: now })
+    writeReviewAudit(tx, actor, {
+      action: 'update',
+      entityType: 'review',
+      entityId: was.id,
+      reviewId: was.id,
+      details: `${was.code} · ${input.title} · ${summary}`,
+      at: now,
+    })
     return getReview(tx, actor, { id: was.id })
   })
 }
 
 /** One change to a review's status, with the automatic history entry, which carries the note, and the audit entry that record it. */
-function applyStatus(tx: DbLike, actor: Actor, review: ReviewDetail, action: 'status' | 'void', status: ReviewStatus, note: string) {
+function applyStatus(
+  tx: DbLike,
+  actor: Actor,
+  review: ReviewDetail,
+  action: 'status' | 'void',
+  status: ReviewStatus,
+  note: string,
+) {
   const now = new Date()
   tx.update(reviews)
     .set({ status, completedAt: status === 'completed' ? now : null })
     .where(eq(reviews.id, review.id))
     .run()
   const summary = `Status: ${reviewStatusLabel(review.status)} → ${reviewStatusLabel(status)}`
-  appendReviewEntry(tx, actor, review.id, { kind: 'system', occurredAt: now, title: summary, body: plainToRichText(note), at: now })
-  writeReviewAudit(tx, actor, { action, entityType: 'review', entityId: review.id, reviewId: review.id, details: `${review.code} · ${review.title} · ${summary}`, at: now })
+  appendReviewEntry(tx, actor, review.id, {
+    kind: 'system',
+    occurredAt: now,
+    title: summary,
+    body: plainToRichText(note),
+    at: now,
+  })
+  writeReviewAudit(tx, actor, {
+    action,
+    entityType: 'review',
+    entityId: review.id,
+    reviewId: review.id,
+    details: `${review.code} · ${review.title} · ${summary}`,
+    at: now,
+  })
   return getReview(tx, actor, { id: review.id })
 }
 
@@ -297,10 +381,21 @@ function applyStatus(tx: DbLike, actor: Actor, review: ReviewDetail, action: 'st
 export function changeReviewStatus(db: Db, actor: Actor, code: string, input: ReviewStatusChangeInput): ReviewDetail {
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
-    if (review.status === input.status) throw conflict('status_unchanged', `${review.code} is already ${reviewStatusLabel(input.status)}.`, { field: 'status' })
+    if (review.status === input.status)
+      throw conflict('status_unchanged', `${review.code} is already ${reviewStatusLabel(input.status)}.`, {
+        field: 'status',
+      })
     if (input.status === 'completed') {
-      const open = tx.get<{ n: number }>(sql`select count(*) as n from review_caps where review_id = ${review.id} and status in ('not_started', 'in_progress')`)?.n ?? 0
-      if (open) throw conflict('caps_open', `${review.code} has ${open === 1 ? '1 CAP' : `${open} CAPs`} still to be done. Complete or cancel ${open === 1 ? 'it' : 'them'} first.`, { field: 'status' })
+      const open =
+        tx.get<{ n: number }>(
+          sql`select count(*) as n from review_caps where review_id = ${review.id} and status in ('not_started', 'in_progress')`,
+        )?.n ?? 0
+      if (open)
+        throw conflict(
+          'caps_open',
+          `${review.code} has ${open === 1 ? '1 CAP' : `${open} CAPs`} still to be done. Complete or cancel ${open === 1 ? 'it' : 'them'} first.`,
+          { field: 'status' },
+        )
     }
     return applyStatus(tx, actor, review, 'status', input.status, input.note)
   })
@@ -308,16 +403,27 @@ export function changeReviewStatus(db: Db, actor: Actor, code: string, input: Re
 
 /** Void a review entered by mistake. It stays, with its history, its CAPs and the reason, and nothing about it can change again. */
 export function voidReview(db: Db, actor: Actor, code: string, input: ReviewVoidInput): ReviewDetail {
-  return db.transaction((tx) => applyStatus(tx, actor, findReviewToManage(tx, actor, code), 'void', 'voided', input.reason))
+  return db.transaction((tx) =>
+    applyStatus(tx, actor, findReviewToManage(tx, actor, code), 'void', 'voided', input.reason),
+  )
 }
 
 /** Log a printed case file. The browser prints it, so the page reports each one here; reading a review is not logged, taking a copy is. */
 export function recordReviewExport(db: DbLike, actor: Actor, code: string) {
   const review = getReview(db, actor, { code })
-  writeReviewAudit(db, actor, { action: 'export', entityType: 'review', entityId: review.id, reviewId: review.id, details: `${review.code} · ${review.title} · PDF case file (print dialog opened)` })
+  writeReviewAudit(db, actor, {
+    action: 'export',
+    entityType: 'review',
+    entityId: review.id,
+    reviewId: review.id,
+    details: `${review.code} · ${review.title} · PDF case file (print dialog opened)`,
+  })
 }
 
-interface RawRow extends Pick<RawReview, 'id' | 'code' | 'title' | 'summary' | 'reviewDate' | 'status' | 'lastActivityAt' | 'employee' | 'reviewer'> {
+interface RawRow extends Pick<
+  RawReview,
+  'id' | 'code' | 'title' | 'summary' | 'reviewDate' | 'status' | 'lastActivityAt' | 'employee' | 'reviewer'
+> {
   capsDone: number
   capsTotal: number
   nextDue: string | null
@@ -335,8 +441,11 @@ export function listReviews(db: DbLike, viewer: Viewer, query: ReviewListQuery):
   if (query.to) where.push(sql`r.review_date <= ${query.to}`)
   for (const word of (query.q ?? '').split(/\s+/).filter(Boolean)) {
     const like = `%${word.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
-    const name = (alias: string) => sql`${sql.raw(alias)}.first_name || ' ' || ${sql.raw(alias)}.last_name like ${like} escape '\\'`
-    where.push(sql`(r.code like ${like} escape '\\' or r.title like ${like} escape '\\' or r.summary like ${like} escape '\\' or ${name('e')} or ${name('v')})`)
+    const name = (alias: string) =>
+      sql`${sql.raw(alias)}.first_name || ' ' || ${sql.raw(alias)}.last_name like ${like} escape '\\'`
+    where.push(
+      sql`(r.code like ${like} escape '\\' or r.title like ${like} escape '\\' or r.summary like ${like} escape '\\' or ${name('e')} or ${name('v')})`,
+    )
   }
   const matching = db.all<RawRow>(sql`
     select r.id as id, r.code as code, r.title as title, r.summary as summary, r.review_date as reviewDate, r.status as status,
@@ -350,7 +459,10 @@ export function listReviews(db: DbLike, viewer: Viewer, query: ReviewListQuery):
     where ${sql.join(where, sql` and `)}
     order by r.last_activity_at desc, r.id desc`)
 
-  const counts = Object.fromEntries([['all', matching.length], ...REVIEW_STATUSES.map((status) => [status, 0])]) as ReviewList['counts']
+  const counts = Object.fromEntries([
+    ['all', matching.length],
+    ...REVIEW_STATUSES.map((status) => [status, 0]),
+  ]) as ReviewList['counts']
   for (const row of matching) counts[row.status] += 1
   const shown = query.status === 'all' ? matching : matching.filter((row) => row.status === query.status)
   const peopleIn = (column: 'reviewer_id' | 'employee_id') =>

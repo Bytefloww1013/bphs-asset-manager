@@ -9,7 +9,11 @@ import { useReviewPageTitle } from '@/features/reviews/page-title.ts'
 import { employeesQuery, reviewQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/caps/new')({
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(reviewQuery(params.code)), context.queryClient.ensureQueryData(employeesQuery)]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(reviewQuery(params.code)),
+      context.queryClient.ensureQueryData(employeesQuery),
+    ]),
   errorComponent: ReviewLoadError,
   component: NewCapPage,
 })
@@ -31,11 +35,18 @@ function NewCapPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/reviews/$code" params={{ code: review.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/reviews/$code"
+          params={{ code: review.code }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {review.code}
         </Link>
         <div className="mt-3">
-          <PageHeader title="Add a CAP" description="One corrective action plan: what is to be done and who sees it through. It starts as Not started, and its progress is recorded as updates." />
+          <PageHeader
+            title="Add a CAP"
+            description="One corrective action plan: what is to be done and who sees it through. It starts as Not started, and its progress is recorded as updates."
+          />
         </div>
       </div>
       {refused ? (

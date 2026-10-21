@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ['main']
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   # No paths-ignore: a check that never starts would block a required-check PR forever.
   # Super-Linter skips the same files through FILTER_REGEX_EXCLUDE below.
 
@@ -41,6 +41,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Oxfmt; first because it is the fastest check.
+      - name: Check formatting
+        run: bun run format:check
+
       - name: Typecheck
         run: bun run typecheck
 
@@ -50,11 +54,9 @@ jobs:
       - name: Build
         run: bun run build
 
-      # Turn these on once ESLint and Prettier are set up (see below).
+      # Turn this on once a linter is set up (Oxlint, its own issue).
       # - name: Lint
       #   run: bun run lint
-      # - name: Check formatting
-      #   run: bun run format:check
 
   lint:
     name: Super-Linter
@@ -78,10 +80,10 @@ jobs:
         uses: super-linter/super-linter@2da136927bd4a73596db63044b504547c62cb854 # v9.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BRANCH: "main"
+          DEFAULT_BRANCH: 'main'
           VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'push' }}
           ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: true
-          # Only these linters run. TypeScript is left to the test job's ESLint and Prettier.
+          # Only these linters run. TypeScript is left to the test job (Oxfmt; Super-Linter doesn't bundle it).
           VALIDATE_GITLEAKS: true # leaked secrets
           VALIDATE_DOCKERFILE_HADOLINT: true # Dockerfile
           VALIDATE_BASH: true # shellcheck on scripts/ and docs/verify/

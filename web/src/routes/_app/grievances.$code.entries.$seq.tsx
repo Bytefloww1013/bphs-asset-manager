@@ -30,9 +30,23 @@ export const Route = createFileRoute('/_app/grievances/$code/entries/$seq')({
 /** The address names an entry as the pages do, E06; a bare 6 is read the same way. */
 const seqOf = (text: string) => Number(/^e?0*([1-9]\d*)$/i.exec(text.trim())?.[1] ?? Number.NaN)
 
-function EntryLink({ code, entry, className, children }: { code: string; entry: GrievanceEntry; className?: string; children?: ReactNode }) {
+function EntryLink({
+  code,
+  entry,
+  className,
+  children,
+}: {
+  code: string
+  entry: GrievanceEntry
+  className?: string
+  children?: ReactNode
+}) {
   return (
-    <Link to="/grievances/$code/entries/$seq" params={{ code, seq: grievanceEntryCode(entry.seq) }} className={className ?? 'font-medium text-accent hover:underline'}>
+    <Link
+      to="/grievances/$code/entries/$seq"
+      params={{ code, seq: grievanceEntryCode(entry.seq) }}
+      className={className ?? 'font-medium text-accent hover:underline'}
+    >
       {children ?? (
         <>
           <Mono>{grievanceEntryCode(entry.seq)}</Mono>: {entry.title}
@@ -50,11 +64,17 @@ function EntryPage() {
   const { data: attachments } = useQuery(grievanceAttachmentsQuery(code))
   const seq = seqOf(named)
   const entry = entries?.find((one) => one.seq === seq)
-  useGrievancePageTitle(`${entry ? grievanceEntryCode(entry.seq) : named.toUpperCase()} of ${grievance?.code ?? code.toUpperCase()}`)
+  useGrievancePageTitle(
+    `${entry ? grievanceEntryCode(entry.seq) : named.toUpperCase()} of ${grievance?.code ?? code.toUpperCase()}`,
+  )
   if (!grievance || !entries || !attachments) return null
 
   const back = (
-    <Link to="/grievances/$code" params={{ code: grievance.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+    <Link
+      to="/grievances/$code"
+      params={{ code: grievance.code }}
+      className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+    >
       <ChevronLeft className="size-4" aria-hidden /> {grievance.code}
     </Link>
   )
@@ -95,13 +115,26 @@ function EntryPage() {
             <div className="flex flex-wrap items-center gap-2.5">
               <EntryMarker kind={entry.kind} className="mt-0" />
               <Mono className="text-sm font-medium text-ink-2">{entryCode}</Mono>
-              <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">{grievanceEntryKindLabel(entry.kind)}</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">
+                {grievanceEntryKindLabel(entry.kind)}
+              </span>
             </div>
-            <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{entry.title}</h1>
-            {entry.shortDescription && <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{entry.shortDescription}</p>}
+            <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+              {entry.title}
+            </h1>
+            {entry.shortDescription && (
+              <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">
+                {entry.shortDescription}
+              </p>
+            )}
           </div>
           {correctable && !readOnly && (
-            <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} search={{ corrects: entry.seq }} className={buttonStyles('secondary')}>
+            <Link
+              to="/grievances/$code/entries/new"
+              params={{ code: grievance.code }}
+              search={{ corrects: entry.seq }}
+              className={buttonStyles('secondary')}
+            >
               <PencilLine className="size-4" aria-hidden /> Add correction
             </Link>
           )}
@@ -110,7 +143,14 @@ function EntryPage() {
 
       {/* The link is shown from both ends. The text of the entry below is as it was written, corrected or not. */}
       {corrections.length > 0 && (
-        <Alert tone="warn" title={corrections.length === 1 ? 'This entry has been corrected' : `This entry has been corrected ${corrections.length} times`}>
+        <Alert
+          tone="warn"
+          title={
+            corrections.length === 1
+              ? 'This entry has been corrected'
+              : `This entry has been corrected ${corrections.length} times`
+          }
+        >
           <ul className="flex flex-col gap-1">
             {corrections.map((one) => (
               <li key={one.id}>
@@ -153,14 +193,27 @@ function EntryPage() {
         {entry.bodyHtml ? (
           <RichTextView html={entry.bodyHtml} className="max-w-[75ch] px-5 py-5" />
         ) : (
-          <p className="px-5 py-5 text-sm text-ink-3">{entry.kind === 'system' ? 'This entry was written by the app. It has no details.' : 'Nothing was recorded beyond the short description.'}</p>
+          <p className="px-5 py-5 text-sm text-ink-3">
+            {entry.kind === 'system'
+              ? 'This entry was written by the app. It has no details.'
+              : 'Nothing was recorded beyond the short description.'}
+          </p>
         )}
       </Panel>
 
       {files.length > 0 && (
         <Panel>
-          <PanelHeader title="Files" description="Added with this entry. Each one downloads to be opened on your computer." className="border-b border-line" />
-          <AttachmentList section="grievances" code={grievance.code} files={files} sealed={grievance.status === 'closed' || grievance.status === 'voided'} />
+          <PanelHeader
+            title="Files"
+            description="Added with this entry. Each one downloads to be opened on your computer."
+            className="border-b border-line"
+          />
+          <AttachmentList
+            section="grievances"
+            code={grievance.code}
+            files={files}
+            sealed={grievance.status === 'closed' || grievance.status === 'voided'}
+          />
         </Panel>
       )}
 

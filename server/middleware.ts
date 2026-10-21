@@ -13,7 +13,13 @@ export const COOKIE = 'bphs_session'
  * Without `expiresAt` the cookie ends when the browser closes.
  */
 export function setSessionCookie(c: Context, token: string, expiresAt?: Date) {
-  setCookie(c, COOKIE, token, { httpOnly: true, sameSite: 'Lax', secure: config.cookieSecure, path: '/', expires: expiresAt })
+  setCookie(c, COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'Lax',
+    secure: config.cookieSecure,
+    path: '/',
+    expires: expiresAt,
+  })
 }
 
 /** Paths a user who must change their password may still reach. */

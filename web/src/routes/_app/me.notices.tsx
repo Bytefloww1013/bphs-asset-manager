@@ -30,7 +30,12 @@ function NoticesPage() {
       <div className="flex flex-col gap-6">
         <PageHeader title="Notices" />
         <Panel>
-          <EmptyState icon={Lock} title="Super Admin only" description="Notices go to every account's Inbox, so only Super Admins send them." className="py-20" />
+          <EmptyState
+            icon={Lock}
+            title="Super Admin only"
+            description="Notices go to every account's Inbox, so only Super Admins send them."
+            className="py-20"
+          />
         </Panel>
       </div>
     )
@@ -41,7 +46,11 @@ function NoticesPage() {
         title="Notices"
         description="A notice goes to the Inbox of each account it is sent to. It cannot be changed or taken back."
         actions={
-          <Button variant="primary" icon={<Megaphone className="size-4" aria-hidden />} onClick={() => setWriting(true)}>
+          <Button
+            variant="primary"
+            icon={<Megaphone className="size-4" aria-hidden />}
+            onClick={() => setWriting(true)}
+          >
             New notice
           </Button>
         }
@@ -58,7 +67,12 @@ function SentNotices() {
     <Panel>
       <PanelHeader title="Sent" description="Newest first. A notice counts as read once its recipient opens it." />
       {isError ? (
-        <EmptyState icon={Megaphone} title="Sent notices could not be loaded" description="Try again in a moment." className="border-t border-line" />
+        <EmptyState
+          icon={Megaphone}
+          title="Sent notices could not be loaded"
+          description="Try again in a moment."
+          className="border-t border-line"
+        />
       ) : !sent ? (
         <div className="flex justify-center border-t border-line py-10">
           <Spinner />
@@ -76,9 +90,12 @@ function SentNotices() {
                 </span>
               </div>
               <p className="text-xs text-ink-3">
-                {notice.sentBy} · <time dateTime={notice.createdAt}>{formatDateTime(notice.createdAt)}</time> · {notice.audience === 'all' ? 'Everyone' : 'Picked accounts'}
+                {notice.sentBy} · <time dateTime={notice.createdAt}>{formatDateTime(notice.createdAt)}</time> ·{' '}
+                {notice.audience === 'all' ? 'Everyone' : 'Picked accounts'}
               </p>
-              <p className="mt-1 max-w-[75ch] whitespace-pre-line text-sm text-ink-2 [overflow-wrap:anywhere]">{notice.body}</p>
+              <p className="mt-1 max-w-[75ch] whitespace-pre-line text-sm text-ink-2 [overflow-wrap:anywhere]">
+                {notice.body}
+              </p>
             </li>
           ))}
         </ul>
@@ -130,11 +147,22 @@ function NoticeSheet({ onClose }: { onClose: () => void }) {
 
   async function submit() {
     setProblem(null)
-    const parsed = noticeSchema.safeParse({ title, body, audience: audience === 'all' ? 'all' : { userIds: picked.map(userKey) } })
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been sent.', fields: fieldMessages(parsed.error) })
+    const parsed = noticeSchema.safeParse({
+      title,
+      body,
+      audience: audience === 'all' ? 'all' : { userIds: picked.map(userKey) },
+    })
+    if (!parsed.success)
+      return refuse({
+        message: 'Some of this is missing or needs changing. Nothing has been sent.',
+        fields: fieldMessages(parsed.error),
+      })
     try {
       const notice = await send.mutateAsync(parsed.data)
-      toast({ title: 'Notice sent', description: `To ${notice.recipients} account${notice.recipients === 1 ? '' : 's'}` })
+      toast({
+        title: 'Notice sent',
+        description: `To ${notice.recipients} account${notice.recipients === 1 ? '' : 's'}`,
+      })
       onClose()
     } catch (e) {
       refuse(splitApiError(e))
@@ -182,7 +210,11 @@ function NoticeSheet({ onClose }: { onClose: () => void }) {
             }}
           />
         </Field>
-        <Field label="Message" hint={`${body.trim().length} of ${NOTICE_BODY_MAX} characters. Line breaks are kept.`} error={error('body')}>
+        <Field
+          label="Message"
+          hint={`${body.trim().length} of ${NOTICE_BODY_MAX} characters. Line breaks are kept.`}
+          error={error('body')}
+        >
           <Textarea
             rows={8}
             value={body}
@@ -204,7 +236,11 @@ function NoticeSheet({ onClose }: { onClose: () => void }) {
           />
         </Field>
         {audience === 'picked' && (
-          <Field label="Accounts" hint="Active accounts only. You never get a copy of your own notice." error={error('audience.userIds') ?? error('audience')}>
+          <Field
+            label="Accounts"
+            hint="Active accounts only. You never get a copy of your own notice."
+            error={error('audience.userIds') ?? error('audience')}
+          >
             <MultiCombobox
               items={offered}
               value={picked}

@@ -9,7 +9,11 @@ import { refreshData } from '@/lib/queries.ts'
  */
 export function useWrite<TData, TVars>(
   mutationFn: (vars: TVars) => Promise<TData>,
-  options: { success?: string | ((data: TData, vars: TVars) => string); silent?: boolean; onSuccess?: UseMutationOptions<TData, Error, TVars>['onSuccess'] } = {},
+  options: {
+    success?: string | ((data: TData, vars: TVars) => string)
+    silent?: boolean
+    onSuccess?: UseMutationOptions<TData, Error, TVars>['onSuccess']
+  } = {},
 ) {
   const queryClient = useQueryClient()
   const toast = useToast()
@@ -17,7 +21,8 @@ export function useWrite<TData, TVars>(
     mutationFn,
     onSuccess: async (data, vars, ...rest) => {
       await refreshData(queryClient)
-      if (options.success) toast({ title: typeof options.success === 'function' ? options.success(data, vars) : options.success })
+      if (options.success)
+        toast({ title: typeof options.success === 'function' ? options.success(data, vars) : options.success })
       await options.onSuccess?.(data, vars, ...rest)
     },
     onError: (error) => {

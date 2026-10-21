@@ -17,7 +17,11 @@ const link = 'hover:text-accent hover:underline'
 function Record({ entry }: { entry: GrievanceAuditEntry }) {
   if (entry.code && entry.seq) {
     return (
-      <Link to="/grievances/$code/entries/$seq" params={{ code: entry.code, seq: grievanceEntryCode(entry.seq) }} className={link}>
+      <Link
+        to="/grievances/$code/entries/$seq"
+        params={{ code: entry.code, seq: grievanceEntryCode(entry.seq) }}
+        className={link}
+      >
         {entry.code}-{grievanceEntryCode(entry.seq)}
       </Link>
     )

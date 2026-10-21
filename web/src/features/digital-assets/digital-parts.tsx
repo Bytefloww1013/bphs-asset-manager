@@ -29,7 +29,9 @@ const stateMeta: Record<DigitalAssetState, { label: string; tone: Tone }> = {
 }
 
 export const digitalStateLabel = (state: DigitalAssetState) => stateMeta[state].label
-export const DigitalStateBadge = ({ state }: { state: DigitalAssetState }) => <Badge tone={stateMeta[state].tone}>{stateMeta[state].label}</Badge>
+export const DigitalStateBadge = ({ state }: { state: DigitalAssetState }) => (
+  <Badge tone={stateMeta[state].tone}>{stateMeta[state].label}</Badge>
+)
 
 /** What is wrong with a License/Account value, checked here so the answer is immediate. The server checks it again. */
 function accountProblem(account: string): string | null {
@@ -37,7 +39,8 @@ function accountProblem(account: string): string | null {
   return looksLikeSecret(account) ? SECRET_MESSAGE : null
 }
 
-const invalidFields = (message: string, fields: Record<string, string>) => new ApiError(422, { error: 'validation_failed', message, details: { fields } }, '')
+const invalidFields = (message: string, fields: Record<string, string>) =>
+  new ApiError(422, { error: 'validation_failed', message, details: { fields } }, '')
 
 export function QuickAddDigitalAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const toast = useToast()
@@ -49,7 +52,9 @@ export function QuickAddDigitalAsset({ onAdded }: { onAdded: (id: number) => voi
   const [account, setAccount] = useState('')
   const [employee, setEmployee] = useState<EmployeeRef | null>(null)
   const [error, setError] = useState<ApiError | null>(null)
-  const add = useWrite((body: Record<string, unknown>) => api.post<DigitalAssetRow>('/digital-assets', body), { silent: true })
+  const add = useWrite((body: Record<string, unknown>) => api.post<DigitalAssetRow>('/digital-assets', body), {
+    silent: true,
+  })
   const effectiveType = typeId || String(types[0]?.id ?? '')
 
   async function commit() {
@@ -96,7 +101,13 @@ export function QuickAddDigitalAsset({ onAdded }: { onAdded: (id: number) => voi
           </Select>
         </Field>
         <Field label="License/Account" error={error?.fields.account} className="lg:col-span-4">
-          <Input ref={accountRef} value={account} placeholder="name@bphs.example or a license reference" autoComplete="off" onChange={(event) => setAccount(event.target.value)} />
+          <Input
+            ref={accountRef}
+            value={account}
+            placeholder="name@bphs.example or a license reference"
+            autoComplete="off"
+            onChange={(event) => setAccount(event.target.value)}
+          />
         </Field>
         <Field label="Employee" optional error={error?.fields.employeeId} className="lg:col-span-3">
           <Combobox
@@ -147,9 +158,16 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
   const noFull = useDenied('assets', 'full')
   const [sheet, setSheet] = useState<'issue' | 'edit' | 'detail' | null>(null)
   const [confirm, setConfirm] = useState<'unassign' | 'deactivate' | 'delete' | null>(null)
-  const unassign = useWrite((assignmentId: number | null) => api.post(`/digital-assets/${asset.id}/unassign`, { assignmentId }), { success: `${asset.code} unassigned` })
-  const deactivate = useWrite(() => api.post(`/digital-assets/${asset.id}/deactivate`), { success: `${asset.code} marked inactive` })
-  const reactivate = useWrite(() => api.post(`/digital-assets/${asset.id}/reactivate`), { success: `${asset.code} reactivated` })
+  const unassign = useWrite(
+    (assignmentId: number | null) => api.post(`/digital-assets/${asset.id}/unassign`, { assignmentId }),
+    { success: `${asset.code} unassigned` },
+  )
+  const deactivate = useWrite(() => api.post(`/digital-assets/${asset.id}/deactivate`), {
+    success: `${asset.code} marked inactive`,
+  })
+  const reactivate = useWrite(() => api.post(`/digital-assets/${asset.id}/reactivate`), {
+    success: `${asset.code} reactivated`,
+  })
   const remove = useWrite(() => api.delete(`/digital-assets/${asset.id}`), { success: `${asset.code} deleted` })
 
   const items: MenuItem[] = [
@@ -161,7 +179,8 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
           label: 'Mark inactive',
           icon: Ban,
           onSelect: () => setConfirm('deactivate'),
-          disabledReason: noEdit ?? (asset.employee ? `Issued to ${asset.employee.name}. Unassign it first.` : undefined),
+          disabledReason:
+            noEdit ?? (asset.employee ? `Issued to ${asset.employee.name}. Unassign it first.` : undefined),
         },
     {
       label: 'Delete',
@@ -176,11 +195,23 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
       {asset.state === 'active' ? (
-        <Button size="sm" icon={<Undo2 className="size-3.5" />} disabledReason={noEdit} onClick={() => setConfirm('unassign')}>
+        <Button
+          size="sm"
+          icon={<Undo2 className="size-3.5" />}
+          disabledReason={noEdit}
+          onClick={() => setConfirm('unassign')}
+        >
           Unassign
         </Button>
       ) : (
-        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={noEdit ?? (asset.state === 'inactive' ? 'Inactive. Reactivate it before issuing.' : undefined)} onClick={() => setSheet('issue')}>
+        <Button
+          size="sm"
+          icon={<Send className="size-3.5" />}
+          disabledReason={
+            noEdit ?? (asset.state === 'inactive' ? 'Inactive. Reactivate it before issuing.' : undefined)
+          }
+          onClick={() => setSheet('issue')}
+        >
           Issue
         </Button>
       )}
@@ -234,10 +265,13 @@ function DigitalIssueSheet({ asset, onClose }: { asset: DigitalAssetRow; onClose
   const [employee, setEmployee] = useState<EmployeeRef | null>(null)
   const [date, setDate] = useState(today)
   const [error, setError] = useState<ApiError | null>(null)
-  const issue = useWrite((body: Record<string, unknown>) => api.post<DigitalAssetRow>(`/digital-assets/${asset.id}/issue`, body), {
-    silent: true,
-    success: (row) => `${row.code} issued to ${row.employee?.name ?? 'the employee'}`,
-  })
+  const issue = useWrite(
+    (body: Record<string, unknown>) => api.post<DigitalAssetRow>(`/digital-assets/${asset.id}/issue`, body),
+    {
+      silent: true,
+      success: (row) => `${row.code} issued to ${row.employee?.name ?? 'the employee'}`,
+    },
+  )
 
   async function commit() {
     setError(null)
@@ -246,7 +280,12 @@ function DigitalIssueSheet({ asset, onClose }: { asset: DigitalAssetRow; onClose
     // Today means now. Only an earlier day is sent as a date.
     const issuedAt = date === now ? undefined : endOfLocalDay(date)
     if (issuedAt === null) return setError(invalidFields('Enter a real date.', { issuedAt: 'Enter a real date.' }))
-    if (date > now) return setError(invalidFields('The issue date cannot be in the future.', { issuedAt: 'The issue date cannot be in the future.' }))
+    if (date > now)
+      return setError(
+        invalidFields('The issue date cannot be in the future.', {
+          issuedAt: 'The issue date cannot be in the future.',
+        }),
+      )
     try {
       await issue.mutateAsync({ employeeId: employee.id, issuedAt })
       onClose()
@@ -297,7 +336,11 @@ function DigitalIssueSheet({ asset, onClose }: { asset: DigitalAssetRow; onClose
             emptyText="No matching employees"
           />
         </Field>
-        <Field label="Issue date" hint="Today unless it was issued earlier. It cannot be in the future." error={error?.fields.issuedAt}>
+        <Field
+          label="Issue date"
+          hint="Today unless it was issued earlier. It cannot be in the future."
+          error={error?.fields.issuedAt}
+        >
           <DateInput className="w-44" value={date} max={today()} onChange={(event) => setDate(event.target.value)} />
         </Field>
       </form>
@@ -309,9 +352,14 @@ function DigitalAssetEditSheet({ asset, onClose }: { asset: DigitalAssetRow; onC
   const { data: lookups } = useQuery(lookupsQuery)
   // A seat keeps its type when that type is deactivated, so the one it has is always on offer.
   const active = lookups?.digitalAssetTypes ?? []
-  const types = active.some((type) => type.id === asset.typeId) ? active : [{ id: asset.typeId, name: asset.type }, ...active]
+  const types = active.some((type) => type.id === asset.typeId)
+    ? active
+    : [{ id: asset.typeId, name: asset.type }, ...active]
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((body: { typeId: number; account: string }) => api.patch<DigitalAssetRow>(`/digital-assets/${asset.id}`, body), { silent: true, success: `${asset.code} updated` })
+  const save = useWrite(
+    (body: { typeId: number; account: string }) => api.patch<DigitalAssetRow>(`/digital-assets/${asset.id}`, body),
+    { silent: true, success: `${asset.code} updated` },
+  )
   const form = useForm({
     defaultValues: { typeId: String(asset.typeId), account: asset.account },
     validators: {
@@ -369,7 +417,11 @@ function DigitalAssetEditSheet({ asset, onClose }: { asset: DigitalAssetRow; onC
         <form.Field name="typeId">
           {(field) => (
             <Field label="Type" error={fieldError(field, error?.fields, submitted)}>
-              <Select value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur}>
+              <Select
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              >
                 {types.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -382,7 +434,12 @@ function DigitalAssetEditSheet({ asset, onClose }: { asset: DigitalAssetRow; onC
         <form.Field name="account">
           {(field) => (
             <Field label="License/Account" hint={ACCOUNT_HINT} error={fieldError(field, error?.fields, submitted)}>
-              <Input value={field.state.value} autoComplete="off" onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+              <Input
+                value={field.state.value}
+                autoComplete="off"
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
             </Field>
           )}
         </form.Field>
@@ -421,7 +478,8 @@ function DigitalAssetDetailSheet({ asset, onClose }: { asset: DigitalAssetRow; o
             <dd className="mt-1 text-sm font-medium text-ink">
               {current.employee ? (
                 <>
-                  {current.employee.name} <span className="font-normal text-ink-3">· since {formatDate(current.issuedAt)}</span>
+                  {current.employee.name}{' '}
+                  <span className="font-normal text-ink-3">· since {formatDate(current.issuedAt)}</span>
                 </>
               ) : (
                 <span className="font-normal text-ink-3">Nobody</span>
@@ -432,10 +490,14 @@ function DigitalAssetDetailSheet({ asset, onClose }: { asset: DigitalAssetRow; o
         <section className="flex flex-col gap-3">
           <div>
             <h3 className="text-md font-semibold">Assignment history</h3>
-            <p className="text-sm text-ink-3">{isPending ? 'Loading…' : `${plural(history.length, 'assignment')}. Nothing here is ever overwritten.`}</p>
+            <p className="text-sm text-ink-3">
+              {isPending ? 'Loading…' : `${plural(history.length, 'assignment')}. Nothing here is ever overwritten.`}
+            </p>
           </div>
           {!isPending && history.length === 0 ? (
-            <p className="rounded-control border border-line bg-sunken px-4 py-3 text-sm text-ink-3">Never issued. Once it is, each assignment is recorded here.</p>
+            <p className="rounded-control border border-line bg-sunken px-4 py-3 text-sm text-ink-3">
+              Never issued. Once it is, each assignment is recorded here.
+            </p>
           ) : (
             <div className="overflow-x-auto rounded-control border border-line">
               <table className="w-full text-left text-sm">
@@ -453,12 +515,20 @@ function DigitalAssetDetailSheet({ asset, onClose }: { asset: DigitalAssetRow; o
                     <tr key={row.id} className="border-t border-line align-top">
                       <td className="px-3 py-2">
                         <div className="font-medium">{row.employee.name}</div>
-                        <div className="text-xs text-ink-3">{[row.employee.code, row.employee.department].filter(Boolean).join(' · ')}</div>
+                        <div className="text-xs text-ink-3">
+                          {[row.employee.code, row.employee.department].filter(Boolean).join(' · ')}
+                        </div>
                       </td>
                       <td className="whitespace-nowrap px-3 py-2">
                         <Mono className="text-ink-2">{formatDate(row.issuedAt)}</Mono>
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2">{row.returnedAt ? <Mono className="text-ink-2">{formatDateTime(row.returnedAt)}</Mono> : <Badge tone="accent">Still issued</Badge>}</td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        {row.returnedAt ? (
+                          <Mono className="text-ink-2">{formatDateTime(row.returnedAt)}</Mono>
+                        ) : (
+                          <Badge tone="accent">Still issued</Badge>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-xs leading-5 text-ink-2">
                         <div className="break-all">Issued by {row.issuedBy}</div>
                         {row.returnedBy && <div className="break-all">Unassigned by {row.returnedBy}</div>}

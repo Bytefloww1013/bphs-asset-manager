@@ -20,7 +20,9 @@ export function importRoutes(db: Db) {
   const app = new Hono<Env>()
 
   app.post('/:type/preview', json(importSchema), (c) => c.json(previewImport(db, importerOf(c), c.req.valid('json'))))
-  app.post('/:type', json(importSchema), (c) => c.json(runImport(db, c.get('user'), importerOf(c), c.req.valid('json'))))
+  app.post('/:type', json(importSchema), (c) =>
+    c.json(runImport(db, c.get('user'), importerOf(c), c.req.valid('json'))),
+  )
 
   return app
 }

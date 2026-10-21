@@ -91,7 +91,10 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
     <Dialog.Root open>
       <Dialog.Portal>
         {/* A click on the backdrop must not take focus out of the password field: there is nowhere else for it to be. */}
-        <Dialog.Overlay className="fixed inset-0 z-[70] animate-fade-in bg-ink/35" onMouseDown={(event) => event.preventDefault()} />
+        <Dialog.Overlay
+          className="fixed inset-0 z-[70] animate-fade-in bg-ink/35"
+          onMouseDown={(event) => event.preventDefault()}
+        />
         <Dialog.Content
           role="alertdialog"
           // The page behind cannot do anything until someone is signed in, so there is nothing to dismiss this to.
@@ -110,13 +113,21 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
           className="fixed left-1/2 top-1/2 z-[70] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 animate-pop-in rounded-panel border border-line bg-surface p-6 shadow-pop outline-none"
         >
           <Wordmark className="mb-4" />
-          <Dialog.Title className="text-lg font-semibold tracking-[-0.01em] text-ink">Your session has ended</Dialog.Title>
+          <Dialog.Title className="text-lg font-semibold tracking-[-0.01em] text-ink">
+            Your session has ended
+          </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-5 text-ink-2">
             Sign in again to carry on. This page stays as you left it, including anything you had typed.
           </Dialog.Description>
           {error && (
-            <Alert tone={locked ? 'warn' : 'bad'} className="mt-4" title={locked ? 'Account locked' : 'Could not sign in'}>
-              {locked ? `Too many incorrect attempts. Try again after ${formatTime(error.details?.lockedUntil)}, or ask a Super Admin to clear the lock.` : error.message}
+            <Alert
+              tone={locked ? 'warn' : 'bad'}
+              className="mt-4"
+              title={locked ? 'Account locked' : 'Could not sign in'}
+            >
+              {locked
+                ? `Too many incorrect attempts. Try again after ${formatTime(error.details?.lockedUntil)}, or ask a Super Admin to clear the lock.`
+                : error.message}
             </Alert>
           )}
           <form
@@ -129,7 +140,13 @@ function SignInAgainDialog({ user }: { user: SessionUser }) {
             }}
           >
             <Field label="Email">
-              <Input type="email" readOnly autoComplete="username" value={user.email} className="bg-sunken text-ink-2" />
+              <Input
+                type="email"
+                readOnly
+                autoComplete="username"
+                value={user.email}
+                className="bg-sunken text-ink-2"
+              />
             </Field>
             <Field label="Password" error={missing ? 'Enter your password' : null}>
               <PasswordInput

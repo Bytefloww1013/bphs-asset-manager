@@ -45,7 +45,15 @@ function findUser(db: DbLike, email: string | undefined) {
 
 function audit(db: DbLike, userId: number, details: string) {
   db.insert(auditLog)
-    .values({ occurredAt: new Date(), userId: null, actor: 'server-cli', action: 'update', entityType: 'user', entityId: userId, details })
+    .values({
+      occurredAt: new Date(),
+      userId: null,
+      actor: 'server-cli',
+      action: 'update',
+      entityType: 'user',
+      entityId: userId,
+      details,
+    })
     .run()
 }
 
@@ -53,8 +61,16 @@ if (command === 'list') {
   const now = new Date()
   const rows = db.select().from(users).orderBy(users.email).all()
   for (const u of rows) {
-    const state = !u.isActive ? 'deactivated' : u.lockedUntil && u.lockedUntil > now ? `locked until ${u.lockedUntil.toISOString()}` : 'active'
-    console.log([u.email.padEnd(32), describeAccess(u).padEnd(15), state, u.mustChangePassword ? '(must change password)' : ''].join('  ').trimEnd())
+    const state = !u.isActive
+      ? 'deactivated'
+      : u.lockedUntil && u.lockedUntil > now
+        ? `locked until ${u.lockedUntil.toISOString()}`
+        : 'active'
+    console.log(
+      [u.email.padEnd(32), describeAccess(u).padEnd(15), state, u.mustChangePassword ? '(must change password)' : '']
+        .join('  ')
+        .trimEnd(),
+    )
   }
 } else if (command === 'unlock') {
   const user = findUser(db, emailArg)
@@ -69,14 +85,18 @@ if (command === 'list') {
   const oneTimePassword = generateOneTimePassword()
   const passwordHash = await hashPassword(oneTimePassword)
   db.transaction((tx) => {
-    tx.update(users).set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id)).run()
+    tx.update(users)
+      .set({ passwordHash, mustChangePassword: true, failedLogins: 0, lockedUntil: null })
+      .where(eq(users.id, user.id))
+      .run()
     deleteUserSessions(tx, user.id)
     audit(tx, user.id, `${user.email} · password reset via server CLI · must change on next login`)
     tellPasswordReset(tx, null, user.id, CLI)
   })
   console.log(`Password reset for ${user.email}.`)
   console.log(`  one-time password: ${oneTimePassword}   (they must change it at the next sign-in)`)
-  if (!user.isActive) console.log('  Note: this account is deactivated; a Super Admin must reactivate it on the Users screen.')
+  if (!user.isActive)
+    console.log('  Note: this account is deactivated; a Super Admin must reactivate it on the Users screen.')
 } else {
   fail(USAGE)
 }

@@ -44,7 +44,11 @@ function MyTaskPage() {
           <TaskStatusBadge status={task.status} />
         </div>
         {/* Marking it complete takes its form away; focus comes here, by the new status, rather than falling to the page. */}
-        <h1 id="my-task-title" tabIndex={-1} className="mt-1.5 text-2xl font-semibold tracking-[-0.015em] text-ink outline-none [overflow-wrap:anywhere]">
+        <h1
+          id="my-task-title"
+          tabIndex={-1}
+          className="mt-1.5 text-2xl font-semibold tracking-[-0.015em] text-ink outline-none [overflow-wrap:anywhere]"
+        >
           {task.title}
         </h1>
       </div>
@@ -72,7 +76,9 @@ function MyTaskPage() {
         {task.completedAt && (
           <dl className="grid divide-line border-t border-line max-sm:divide-y sm:grid-cols-3 sm:divide-x">
             <Fact label="Completed">{formatDateTime(task.completedAt)}</Fact>
-            <Fact label="Approved">{task.approvedAt ? formatDateTime(task.approvedAt) : task.requiresApproval ? 'Not yet' : 'Not needed'}</Fact>
+            <Fact label="Approved">
+              {task.approvedAt ? formatDateTime(task.approvedAt) : task.requiresApproval ? 'Not yet' : 'Not needed'}
+            </Fact>
             <Fact label="Your note">{task.completionNote}</Fact>
           </dl>
         )}
@@ -102,14 +108,17 @@ function CompleteForm({ task }: { task: TaskDetail }) {
   // A file kept from before a send back counts towards a required one.
   const hasFile = task.attachments.some((file) => file.side === 'assignee' && !file.withdrawnAt)
   const needsFile = task.requiresFile && !hasFile && !files.length
-  const complete = useWrite(() => api.post<TaskDetail>(`/me/tasks/${task.id}/complete`, withFiles({ note: note.trim() || undefined }, files)), {
-    success: (now) => (now.status === 'awaiting_approval' ? 'Sent for approval' : 'Task completed'),
-    onSuccess: () => {
-      setNote('')
-      setFiles([])
-      requestAnimationFrame(() => document.getElementById('my-task-title')?.focus())
+  const complete = useWrite(
+    () => api.post<TaskDetail>(`/me/tasks/${task.id}/complete`, withFiles({ note: note.trim() || undefined }, files)),
+    {
+      success: (now) => (now.status === 'awaiting_approval' ? 'Sent for approval' : 'Task completed'),
+      onSuccess: () => {
+        setNote('')
+        setFiles([])
+        requestAnimationFrame(() => document.getElementById('my-task-title')?.focus())
+      },
     },
-  })
+  )
   return (
     <Panel>
       <form
@@ -122,7 +131,11 @@ function CompleteForm({ task }: { task: TaskDetail }) {
         <Field
           label="Completion note"
           optional
-          hint={task.requiresApproval ? 'This task needs approval, so it waits for the assigner once you mark it complete.' : `${note.trim().length} of ${TASK_NOTE_MAX} characters`}
+          hint={
+            task.requiresApproval
+              ? 'This task needs approval, so it waits for the assigner once you mark it complete.'
+              : `${note.trim().length} of ${TASK_NOTE_MAX} characters`
+          }
           error={tooLong ? `A note can be at most ${TASK_NOTE_MAX} characters.` : null}
         >
           <Textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} />

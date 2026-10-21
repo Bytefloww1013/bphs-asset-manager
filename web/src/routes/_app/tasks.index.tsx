@@ -64,17 +64,35 @@ const person = (ref: AccountRef) => (
   </span>
 )
 const columns = [
-  c.accessor((row) => row.assignee.name, { id: 'assignee', header: 'Assignee', cell: (info) => person(info.row.original.assignee) }),
-  c.accessor((row) => row.assigner.name, { id: 'assigner', header: 'Assigner', cell: (info) => person(info.row.original.assigner), meta: { hideBelow: 'lg' } }),
+  c.accessor((row) => row.assignee.name, {
+    id: 'assignee',
+    header: 'Assignee',
+    cell: (info) => person(info.row.original.assignee),
+  }),
+  c.accessor((row) => row.assigner.name, {
+    id: 'assigner',
+    header: 'Assigner',
+    cell: (info) => person(info.row.original.assigner),
+    meta: { hideBelow: 'lg' },
+  }),
   c.accessor('title', {
     header: 'Title',
     cell: (info) => (
-      <Link to="/tasks/$id" params={{ id: String(info.row.original.id) }} className="block min-w-40 max-w-80 truncate font-medium hover:underline" title={info.getValue()}>
+      <Link
+        to="/tasks/$id"
+        params={{ id: String(info.row.original.id) }}
+        className="block min-w-40 max-w-80 truncate font-medium hover:underline"
+        title={info.getValue()}
+      >
         {info.getValue()}
       </Link>
     ),
   }),
-  c.accessor('status', { header: 'Status', cell: (info) => <TaskStatusBadge status={info.getValue()} />, enableSorting: false }),
+  c.accessor('status', {
+    header: 'Status',
+    cell: (info) => <TaskStatusBadge status={info.getValue()} />,
+    enableSorting: false,
+  }),
   c.accessor('sendAt', { header: 'Assigned', cell: (info) => dateTime(info.getValue()), meta: { hideBelow: 'xl' } }),
   c.accessor('dueAt', { header: 'Due', cell: (info) => dateTime(info.getValue()), meta: { hideBelow: 'sm' } }),
 ]
@@ -91,25 +109,50 @@ function TasksPage() {
   const narrowed = Boolean(search.assignee || search.assigner)
   // The people filters apply first, so each tab's count is what that tab would show.
   const byPerson = useMemo(
-    () => data.filter((row) => (!search.assignee || row.assignee.id === search.assignee) && (!search.assigner || row.assigner.id === search.assigner)),
+    () =>
+      data.filter(
+        (row) =>
+          (!search.assignee || row.assignee.id === search.assignee) &&
+          (!search.assigner || row.assigner.id === search.assigner),
+      ),
     [data, search.assignee, search.assigner],
   )
-  const counts = useMemo(() => Object.fromEntries(TABS.map((value) => [value, byPerson.filter((row) => value === 'all' || row.status === value).length])) as Record<Tab, number>, [byPerson])
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(
+        TABS.map((value) => [value, byPerson.filter((row) => value === 'all' || row.status === value).length]),
+      ) as Record<Tab, number>,
+    [byPerson],
+  )
   const rows = useMemo(() => byPerson.filter((row) => tab === 'all' || row.status === tab), [byPerson, tab])
   const filters = useMemo(() => ({ assignee: people(data, 'assignee'), assigner: people(data, 'assigner') }), [data])
-  const table = useGrid({ data: rows, columns, getRowId, initialSorting: [{ id: 'dueAt', desc: false }], resetKey: JSON.stringify(search) })
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    initialSorting: [{ id: 'dueAt', desc: false }],
+    resetKey: JSON.stringify(search),
+  })
   const action = canAssign ? assignTask : assignDenied
   const clear = () => void navigate({ search: (prev) => ({ status: prev.status }) })
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="All tasks" description="Every task assigned to an employee, from scheduled to completed or cancelled." actions={action} />
+      <PageHeader
+        title="All tasks"
+        description="Every task assigned to an employee, from scheduled to completed or cancelled."
+        actions={action}
+      />
       <div className="flex flex-col gap-3">
         <FilterTabs
           label="Filter by status"
           value={tab}
           onChange={(next) => setFilter({ status: next === 'all' ? undefined : next })}
-          options={TABS.map((value) => ({ value, label: tabLabel(value), count: isPending ? undefined : counts[value] }))}
+          options={TABS.map((value) => ({
+            value,
+            label: tabLabel(value),
+            count: isPending ? undefined : counts[value],
+          }))}
         />
         <Toolbar>
           {(
@@ -118,7 +161,13 @@ function TasksPage() {
               ['assigner', 'Assigner', 'Any assigner'],
             ] as const
           ).map(([key, label, any]) => (
-            <Select key={key} aria-label={label} className="w-48" value={search[key] ?? ''} onChange={(event) => setFilter({ [key]: isId(event.target.value) })}>
+            <Select
+              key={key}
+              aria-label={label}
+              className="w-48"
+              value={search[key] ?? ''}
+              onChange={(event) => setFilter({ [key]: isId(event.target.value) })}
+            >
               <option value="">{any}</option>
               {filters[key].map((ref) => (
                 <option key={ref.id} value={ref.id}>
@@ -161,9 +210,18 @@ function TasksPage() {
                 }
               />
             ) : data.length && tab !== 'all' ? (
-              <EmptyState icon={ListTodo} title={`No ${tabLabel(tab).toLowerCase()} tasks`} description="Tasks in other statuses are under their own tabs, and all of them are under All." />
+              <EmptyState
+                icon={ListTodo}
+                title={`No ${tabLabel(tab).toLowerCase()} tasks`}
+                description="Tasks in other statuses are under their own tabs, and all of them are under All."
+              />
             ) : (
-              <EmptyState icon={ListTodo} title="No tasks yet" description="Tasks assigned to employees are listed on this page." action={action} />
+              <EmptyState
+                icon={ListTodo}
+                title="No tasks yet"
+                description="Tasks assigned to employees are listed on this page."
+                action={action}
+              />
             )
           }
         />

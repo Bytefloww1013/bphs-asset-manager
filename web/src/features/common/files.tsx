@@ -1,6 +1,14 @@
 import { FileText, Loader2, Paperclip, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, grievanceEntryCode, reviewCapCode, reviewEntryCode } from '@shared/constants.ts'
+import {
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_TYPES,
+  ATTACHMENTS_PER_REQUEST,
+  fileExtension,
+  grievanceEntryCode,
+  reviewCapCode,
+  reviewEntryCode,
+} from '@shared/constants.ts'
 import { GRIEVANCE_NOTE_MAX } from '@shared/schemas.ts'
 import type { GrievanceAttachment } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
@@ -13,7 +21,9 @@ import { ApiError, api } from '@/lib/api.ts'
 import { formatDateTime, plural } from '@/lib/format.ts'
 import { useDenied } from '@/lib/session.ts'
 
-const ACCEPT = Object.keys(ATTACHMENT_TYPES).map((extension) => `.${extension}`).join(',')
+const ACCEPT = Object.keys(ATTACHMENT_TYPES)
+  .map((extension) => `.${extension}`)
+  .join(',')
 const MB = 1024 * 1024
 
 /**
@@ -30,13 +40,15 @@ const recordPath = (section: RecordSection, code: string) => `/${section}/${enco
 export const FILE_RULES = `PDF, PNG, JPEG, DOCX, XLSX, TXT or EML, up to ${ATTACHMENT_MAX_BYTES / MB} MB each and ${ATTACHMENTS_PER_REQUEST} at a time.`
 export const FILES_HINT = `${FILE_RULES} Once saved, a file cannot be changed or removed.`
 
-export const fileSize = (bytes: number) => (bytes < MB ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / MB).toFixed(1)} MB`)
+export const fileSize = (bytes: number) =>
+  bytes < MB ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / MB).toFixed(1)} MB`
 
 /** Why these files cannot be sent, or null. The server checks them again, content and all. */
 export function filesProblem(files: File[]): string | null {
   if (files.length > ATTACHMENTS_PER_REQUEST) return `Attach at most ${ATTACHMENTS_PER_REQUEST} files at a time.`
   for (const file of files) {
-    if (!Object.hasOwn(ATTACHMENT_TYPES, fileExtension(file.name))) return `${file.name} is not a type that can be attached: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML.`
+    if (!Object.hasOwn(ATTACHMENT_TYPES, fileExtension(file.name)))
+      return `${file.name} is not a type that can be attached: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML.`
     if (file.size > ATTACHMENT_MAX_BYTES) return `${file.name} is larger than ${ATTACHMENT_MAX_BYTES / MB} MB.`
     if (file.size === 0) return `${file.name} is empty.`
   }
@@ -88,7 +100,12 @@ export function FilePicker({ value, onChange, disabled, ...rest }: FilePickerPro
             <li key={`${file.name}-${i}`} className="flex items-center gap-2 text-sm">
               <span className="min-w-0 flex-1 truncate">{file.name}</span>
               <span className="shrink-0 text-xs text-ink-3">{fileSize(file.size)}</span>
-              <IconButton size="sm" label={`Remove ${file.name}`} disabled={disabled} onClick={() => onChange(value.filter((_, j) => j !== i))}>
+              <IconButton
+                size="sm"
+                label={`Remove ${file.name}`}
+                disabled={disabled}
+                onClick={() => onChange(value.filter((_, j) => j !== i))}
+              >
                 <X className="size-4" aria-hidden />
               </IconButton>
             </li>
@@ -105,11 +122,24 @@ type Attachment = GrievanceAttachment & { cap?: number | null }
 /** Adds files to a record, or to one of a review's CAPs, on their own: the server records them as an entry of their own. */
 export function AttachFiles({ section, code, cap }: { section: RecordSection; code: string; cap?: number }) {
   const toast = useToast()
-  const attach = useWrite((files: File[]) => api.post<Attachment[]>(`${recordPath(section, code)}/attachments`, withFiles(cap === undefined ? {} : { capSeq: cap }, files)), {
-    success: (saved) => `${plural(saved.length, 'file')} attached`,
-  })
+  const attach = useWrite(
+    (files: File[]) =>
+      api.post<Attachment[]>(
+        `${recordPath(section, code)}/attachments`,
+        withFiles(cap === undefined ? {} : { capSeq: cap }, files),
+      ),
+    {
+      success: (saved) => `${plural(saved.length, 'file')} attached`,
+    },
+  )
   return (
-    <label className={buttonStyles('secondary', 'md', 'cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-accent')}>
+    <label
+      className={buttonStyles(
+        'secondary',
+        'md',
+        'cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-accent',
+      )}
+    >
       <input
         type="file"
         multiple
@@ -125,7 +155,11 @@ export function AttachFiles({ section, code, cap }: { section: RecordSection; co
           else attach.mutate(files)
         }}
       />
-      {attach.isPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Paperclip className="size-4" aria-hidden />}
+      {attach.isPending ? (
+        <Loader2 className="size-4 animate-spin" aria-hidden />
+      ) : (
+        <Paperclip className="size-4" aria-hidden />
+      )}
       Attach files
     </label>
   )
@@ -138,7 +172,14 @@ export function FileRow({
   details,
   action,
 }: {
-  file: { filename: string; size: number; uploadedBy: string; uploadedAt: string; withdrawnAt: string | null; withdrawnReason: string | null }
+  file: {
+    filename: string
+    size: number
+    uploadedBy: string
+    uploadedAt: string
+    withdrawnAt: string | null
+    withdrawnReason: string | null
+  }
   href: string
   details?: ReactNode
   action?: ReactNode
@@ -176,7 +217,17 @@ export function FileRow({
  * A record's files, or one entry's. Each downloads as a file to save; the page never shows one. A withdrawn file stays on the
  * list, with the reason, but no longer downloads.
  */
-export function AttachmentList({ section, code, files, sealed }: { section: RecordSection; code: string; files: Attachment[]; sealed: boolean }) {
+export function AttachmentList({
+  section,
+  code,
+  files,
+  sealed,
+}: {
+  section: RecordSection
+  code: string
+  files: Attachment[]
+  sealed: boolean
+}) {
   const noWithdraw = useDenied(section, 'full')
   const [withdrawing, setWithdrawing] = useState<Attachment | null>(null)
   return (
@@ -195,7 +246,12 @@ export function AttachmentList({ section, code, files, sealed }: { section: Reco
             }
             action={
               !sealed && (
-                <Button size="sm" variant="danger-ghost" disabledReason={noWithdraw} onClick={() => setWithdrawing(file)}>
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  disabledReason={noWithdraw}
+                  onClick={() => setWithdrawing(file)}
+                >
                   Withdraw
                 </Button>
               )
@@ -203,19 +259,35 @@ export function AttachmentList({ section, code, files, sealed }: { section: Reco
           />
         ))}
       </ul>
-      {withdrawing && <WithdrawSheet section={section} code={code} file={withdrawing} onClose={() => setWithdrawing(null)} />}
+      {withdrawing && (
+        <WithdrawSheet section={section} code={code} file={withdrawing} onClose={() => setWithdrawing(null)} />
+      )}
     </>
   )
 }
 
-function WithdrawSheet({ section, code, file, onClose }: { section: RecordSection; code: string; file: Attachment; onClose: () => void }) {
+function WithdrawSheet({
+  section,
+  code,
+  file,
+  onClose,
+}: {
+  section: RecordSection
+  code: string
+  file: Attachment
+  onClose: () => void
+}) {
   const [reason, setReason] = useState('')
   const [missing, setMissing] = useState<string>()
   const [error, setError] = useState<ApiError | null>(null)
-  const withdraw = useWrite((body: { reason: string }) => api.post<Attachment>(`${recordPath(section, code)}/attachments/${file.id}/withdraw`, body), {
-    silent: true,
-    success: (withdrawn) => `${withdrawn.filename} withdrawn`,
-  })
+  const withdraw = useWrite(
+    (body: { reason: string }) =>
+      api.post<Attachment>(`${recordPath(section, code)}/attachments/${file.id}/withdraw`, body),
+    {
+      silent: true,
+      success: (withdrawn) => `${withdrawn.filename} withdrawn`,
+    },
+  )
 
   async function commit() {
     setMissing(reason.trim() ? undefined : 'Say why it is being withdrawn')
@@ -260,10 +332,16 @@ function WithdrawSheet({ section, code, file, onClose }: { section: RecordSectio
           </Alert>
         )}
         <Alert tone="warn" title="This cannot be undone">
-          A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the {RECORDS[section].noun}. Use it for a file added by mistake.
+          A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the{' '}
+          {RECORDS[section].noun}. Use it for a file added by mistake.
         </Alert>
         <Field label="Reason" hint={`Shown on the ${RECORDS[section].log}.`} error={missing ?? error?.fields.reason}>
-          <Textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />
+          <Textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={GRIEVANCE_NOTE_MAX}
+            rows={4}
+          />
         </Field>
       </form>
     </Sheet>

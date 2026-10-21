@@ -44,7 +44,8 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_AUTH_BODY_BYTES = 16 * 1024
 // The routes that take a grievance's, a review's or a task's files, as multipart: ten files at their limit, and room for the form beside them.
 const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
-const UPLOAD_PATH = /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|reviews\/[^/]+\/(entries|attachments|caps(\/[^/]+\/status)?)|tasks(\/[^/]+)?|me\/tasks\/[^/]+\/complete)$/
+const UPLOAD_PATH =
+  /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|reviews\/[^/]+\/(entries|attachments|caps(\/[^/]+\/status)?)|tasks(\/[^/]+)?|me\/tasks\/[^/]+\/complete)$/
 
 /**
  * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
@@ -61,7 +62,9 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
   // Each importer checks Edit in the section it writes to.
   if (/^\/api\/import(\/|$)/.test(path)) return null
   if (/^\/api\/grievances(\/|$)/.test(path)) {
-    const ownerMayDo = (method === 'PATCH' && /^\/api\/grievances\/[^/]+$/.test(path)) || (method === 'POST' && /^\/api\/grievances\/[^/]+\/(status|owner|exports)$/.test(path))
+    const ownerMayDo =
+      (method === 'PATCH' && /^\/api\/grievances\/[^/]+$/.test(path)) ||
+      (method === 'POST' && /^\/api\/grievances\/[^/]+\/(status|owner|exports)$/.test(path))
     return ownerMayDo ? { section: 'grievances', level: 'read' } : at('grievances')
   }
   if (/^\/api\/maintenance(\/|$)/.test(path)) return at('maintenance')
@@ -69,7 +72,8 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
     // The service decides: the reviewer's account may change its own reviews, and any reader may report an export.
     const reviewerMayDo =
       (method === 'PATCH' && /^\/api\/reviews\/[^/]+(\/caps\/[^/]+)?$/.test(path)) ||
-      (method === 'POST' && /^\/api\/reviews\/[^/]+\/(status|entries|caps|caps\/[^/]+\/status|attachments|exports)$/.test(path))
+      (method === 'POST' &&
+        /^\/api\/reviews\/[^/]+\/(status|entries|caps|caps\/[^/]+\/status|attachments|exports)$/.test(path))
     return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
   }
   // Read lets a request in: the service decides who may assign, edit, cancel and approve.
@@ -78,7 +82,10 @@ function accessNeeded(method: string, path: string): { section: Section; level: 
 }
 
 const limitBody = (maxSize: number) =>
-  bodyLimit({ maxSize, onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413) })
+  bodyLimit({
+    maxSize,
+    onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413),
+  })
 
 export function createApp(db: Db, options: AppOptions = {}) {
   const app = new Hono<Env>()
@@ -132,7 +139,8 @@ export function createApp(db: Db, options: AppOptions = {}) {
   api.use('*', authenticate(db))
   api.use('*', async (c, next) => {
     const needed = accessNeeded(c.req.method, c.req.path)
-    if (needed && !canAt(c.get('user'), needed.section, needed.level)) throw forbidden(needsAccess(needed.section, needed.level))
+    if (needed && !canAt(c.get('user'), needed.section, needed.level))
+      throw forbidden(needsAccess(needed.section, needed.level))
     await next()
   })
   api.use('*', (c, next) => (isUpload(c) ? uploadLimit(c, next) : next()))

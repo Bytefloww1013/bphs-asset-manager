@@ -26,8 +26,17 @@ const getSearch = (person: EmployeeRow) => person.code
  * Picks several employees, by name or Employee ID. Only active employees are offered. Someone already chosen stays as a chip after
  * they are archived, so an old record still shows who was named.
  */
-export function PeoplePicker({ employees, value, onChange, exclude, placeholder = 'Search by name or Employee ID', ...rest }: PeoplePickerProps) {
-  const offered = employees.filter((person) => person.state === 'active' && !exclude?.some((other) => other.id === person.id))
+export function PeoplePicker({
+  employees,
+  value,
+  onChange,
+  exclude,
+  placeholder = 'Search by name or Employee ID',
+  ...rest
+}: PeoplePickerProps) {
+  const offered = employees.filter(
+    (person) => person.state === 'active' && !exclude?.some((other) => other.id === person.id),
+  )
   return (
     <MultiCombobox
       items={offered}

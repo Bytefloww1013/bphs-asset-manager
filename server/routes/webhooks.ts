@@ -6,7 +6,8 @@ import { createMaintenanceRequest, type NewMaintenanceRequest } from '../service
 
 const digest = (value: string) => createHash('sha256').update(value).digest()
 // Digests are the same length whatever was sent, so the comparison takes the same time and never throws.
-const secretMatches = (sent: string | undefined, secret: string) => sent !== undefined && timingSafeEqual(digest(sent), digest(secret))
+const secretMatches = (sent: string | undefined, secret: string) =>
+  sent !== undefined && timingSafeEqual(digest(sent), digest(secret))
 
 // Far above anything the form produces. Longer text is cut, not refused: Zoho does not retry, so a refused entry is lost.
 const LIMITS = {
@@ -58,7 +59,10 @@ export function webhookRoutes(db: Db, secret: string | undefined) {
     const entry = readZohoEntry(body)
     if (!entry) {
       // The keys show a field mapped wrong in Zoho; the values are someone's request, and stay out of the log.
-      const keys = body && typeof body === 'object' && !Array.isArray(body) ? Object.keys(body).slice(0, 30).join(', ') || '(none)' : '(not a JSON object)'
+      const keys =
+        body && typeof body === 'object' && !Array.isArray(body)
+          ? Object.keys(body).slice(0, 30).join(', ') || '(none)'
+          : '(not a JSON object)'
       console.warn(`Maintenance webhook: refused an entry with no description. Keys received: ${keys}`)
       return c.json({ error: 'invalid_entry', message: 'The entry has no description.' }, 400)
     }

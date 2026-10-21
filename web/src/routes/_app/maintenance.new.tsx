@@ -21,7 +21,16 @@ interface Problem {
   fields: Record<string, string>
 }
 
-const blank = { firstName: '', lastName: '', email: '', program: '', location: '', description: '', urgent: 'No', noticedDate: '' }
+const blank = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  program: '',
+  location: '',
+  description: '',
+  urgent: 'No',
+  noticedDate: '',
+}
 
 /** For a request that came another way, by phone or in person, or one Zoho never delivered. */
 function NewRequestPage() {
@@ -40,7 +49,11 @@ function NewRequestPage() {
 
   const set = (name: keyof typeof blank) => (event: { target: { value: string } }) => {
     setValues((now) => ({ ...now, [name]: event.target.value }))
-    setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
+    setProblem((now) =>
+      now && name in now.fields
+        ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) }
+        : now,
+    )
   }
   const error = (name: string) => problem?.fields[name] ?? null
 
@@ -52,7 +65,11 @@ function NewRequestPage() {
   async function commit() {
     setProblem(null)
     const parsed = maintenanceCreateSchema.safeParse({ ...values, noticedDate: values.noticedDate || undefined })
-    if (!parsed.success) return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: fieldMessages(parsed.error) })
+    if (!parsed.success)
+      return refuse({
+        message: 'Some of this is missing or needs changing. Nothing has been saved.',
+        fields: fieldMessages(parsed.error),
+      })
     try {
       const request = await save.mutateAsync(parsed.data)
       toast({ title: `${request.code} entered`, description: request.location })
@@ -64,7 +81,10 @@ function NewRequestPage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader title="New request" description="Enter a request that did not come through the Zoho form. It starts as Not Started." />
+      <PageHeader
+        title="New request"
+        description="Enter a request that did not come through the Zoho form. It starts as Not Started."
+      />
       <Panel className="p-5 sm:p-6">
         <form
           ref={formRef}

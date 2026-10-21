@@ -32,7 +32,8 @@ function PasswordChangePage() {
   const forced = user.mustChangePassword
 
   const change = useMutation({
-    mutationFn: (value: { currentPassword: string; newPassword: string }) => api.post<{ user: SessionUser }>('/auth/password-change', value),
+    mutationFn: (value: { currentPassword: string; newPassword: string }) =>
+      api.post<{ user: SessionUser }>('/auth/password-change', value),
     onSuccess: async ({ user: next }) => {
       queryClient.setQueryData(meQuery.queryKey, next)
       await refreshData(queryClient)
@@ -43,13 +44,17 @@ function PasswordChangePage() {
   const form = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirm: '' },
     validators: {
-      onSubmit: passwordChangeSchema.extend({ confirm: z.string().min(1, 'Enter the new password again') }).refine((v) => v.newPassword === v.confirm, {
-        message: 'The two passwords do not match.',
-        path: ['confirm'],
-      }),
+      onSubmit: passwordChangeSchema
+        .extend({ confirm: z.string().min(1, 'Enter the new password again') })
+        .refine((v) => v.newPassword === v.confirm, {
+          message: 'The two passwords do not match.',
+          path: ['confirm'],
+        }),
     },
     onSubmit: async ({ value }) => {
-      await change.mutateAsync({ currentPassword: value.currentPassword, newPassword: value.newPassword }).catch(() => undefined)
+      await change
+        .mutateAsync({ currentPassword: value.currentPassword, newPassword: value.newPassword })
+        .catch(() => undefined)
     },
   })
 
@@ -68,7 +73,10 @@ function PasswordChangePage() {
               <KeyRound className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
               <div>
                 <p className="text-sm font-semibold text-ink">Set a new password before continuing</p>
-                <p className="mt-0.5 text-sm text-ink-2">Every page sends you back here until this is done. The one-time password you were given works only once.</p>
+                <p className="mt-0.5 text-sm text-ink-2">
+                  Every page sends you back here until this is done. The one-time password you were given works only
+                  once.
+                </p>
               </div>
             </div>
           )}
@@ -92,9 +100,19 @@ function PasswordChangePage() {
                 {(field) => (
                   <Field
                     label={forced ? 'One-time or current password' : 'Current password'}
-                    error={(serverField === 'currentPassword' ? serverError?.message : null) ?? fieldError(field, undefined, form.state.submissionAttempts > 0)}
+                    error={
+                      (serverField === 'currentPassword' ? serverError?.message : null) ??
+                      fieldError(field, undefined, form.state.submissionAttempts > 0)
+                    }
                   >
-                    <Input type="password" autoComplete="current-password" autoFocus value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      autoFocus
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
                   </Field>
                 )}
               </form.Field>
@@ -103,14 +121,30 @@ function PasswordChangePage() {
                   <div className="flex flex-col gap-2.5">
                     <Field
                       label="New password"
-                      error={(serverField === 'newPassword' ? serverError?.message : null) ?? fieldError(field, undefined, form.state.submissionAttempts > 0)}
+                      error={
+                        (serverField === 'newPassword' ? serverError?.message : null) ??
+                        fieldError(field, undefined, form.state.submissionAttempts > 0)
+                      }
                     >
-                      <Input type="password" autoComplete="new-password" value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
                     </Field>
                     <ul className="grid gap-1 rounded-control bg-sunken px-3.5 py-3" aria-label="Password requirements">
                       {checkPassword(field.state.value).map((rule) => (
-                        <li key={rule.id} className={cn('flex items-center gap-2 text-sm', rule.ok ? 'text-ok' : 'text-ink-3')}>
-                          {rule.ok ? <Check className="size-3.5" aria-hidden strokeWidth={2.5} /> : <X className="size-3.5" aria-hidden />}
+                        <li
+                          key={rule.id}
+                          className={cn('flex items-center gap-2 text-sm', rule.ok ? 'text-ok' : 'text-ink-3')}
+                        >
+                          {rule.ok ? (
+                            <Check className="size-3.5" aria-hidden strokeWidth={2.5} />
+                          ) : (
+                            <X className="size-3.5" aria-hidden />
+                          )}
                           {rule.label}
                           <span className="sr-only">{rule.ok ? 'met' : 'not met'}</span>
                         </li>
@@ -121,8 +155,17 @@ function PasswordChangePage() {
               </form.Field>
               <form.Field name="confirm">
                 {(field) => (
-                  <Field label="Confirm new password" error={fieldError(field, undefined, form.state.submissionAttempts > 0)}>
-                    <Input type="password" autoComplete="new-password" value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+                  <Field
+                    label="Confirm new password"
+                    error={fieldError(field, undefined, form.state.submissionAttempts > 0)}
+                  >
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
                   </Field>
                 )}
               </form.Field>
