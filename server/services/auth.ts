@@ -55,7 +55,9 @@ function sessionExpiry(now: Date, remember: boolean) {
 export function createSession(db: DbLike, userId: number, remember: boolean, now = new Date()) {
   const token = randomBytes(32).toString('base64url')
   const expiresAt = sessionExpiry(now, remember)
-  db.insert(sessions).values({ id: sha256(token), userId, lastSeenAt: now, expiresAt, remember }).run()
+  db.insert(sessions)
+    .values({ id: sha256(token), userId, lastSeenAt: now, expiresAt, remember })
+    .run()
   return { token, expiresAt }
 }
 
@@ -64,7 +66,12 @@ export function createSession(db: DbLike, userId: number, remember: boolean, now
  * `extendedTo` is the new expiry when this lookup moved a remembered session, which the cookie in the browser has to follow.
  * Any other session's cookie ends with the browser, so it has no expiry to move.
  */
-export function findSession(db: DbLike, token: string, now = new Date(), touch = true): { user: AuthUser; extendedTo: Date | null } | null {
+export function findSession(
+  db: DbLike,
+  token: string,
+  now = new Date(),
+  touch = true,
+): { user: AuthUser; extendedTo: Date | null } | null {
   const id = sha256(token)
   const row = db
     .select({ session: sessions, user: users })
@@ -83,7 +90,9 @@ export function findSession(db: DbLike, token: string, now = new Date(), touch =
 }
 
 export function deleteSession(db: DbLike, token: string) {
-  db.delete(sessions).where(eq(sessions.id, sha256(token))).run()
+  db.delete(sessions)
+    .where(eq(sessions.id, sha256(token)))
+    .run()
 }
 
 export function deleteUserSessions(db: DbLike, userId: number, exceptToken?: string) {
@@ -164,7 +173,13 @@ export async function login(db: Db, email: string, password: string, remember = 
   const user = toAuthUser(db, { ...current, failedLogins: 0, lockedUntil: null })
   const session = db.transaction((tx) => {
     tx.update(users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: now }).where(eq(users.id, row.id)).run()
-    writeAudit(tx, user, { action: 'sign_in', entityType: 'user', entityId: row.id, details: `${row.email} · signed in`, at: now })
+    writeAudit(tx, user, {
+      action: 'sign_in',
+      entityType: 'user',
+      entityId: row.id,
+      details: `${row.email} · signed in`,
+      at: now,
+    })
     return createSession(tx, row.id, remember, now)
   })
   return { user, ...session }
@@ -195,9 +210,18 @@ export async function changePassword(
       .where(and(eq(users.id, user.id), eq(users.passwordHash, row.passwordHash)))
       .run()
     if (changes === 0) {
-      throw new HttpError(409, 'password_changed', 'Your password was changed or reset while this was being saved. Sign in again.')
+      throw new HttpError(
+        409,
+        'password_changed',
+        'Your password was changed or reset while this was being saved. Sign in again.',
+      )
     }
     deleteUserSessions(tx, user.id, keepToken)
-    writeAudit(tx, user, { action: 'update', entityType: 'user', entityId: user.id, details: `${row.email} · password changed` })
+    writeAudit(tx, user, {
+      action: 'update',
+      entityType: 'user',
+      entityId: user.id,
+      details: `${row.email} · password changed`,
+    })
   })
 }

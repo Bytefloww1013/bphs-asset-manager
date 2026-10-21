@@ -72,11 +72,17 @@ function GrievancePage() {
           <GrievanceStatusBadge status={grievance.status} />
           <span className="text-sm text-ink-3">{grievance.category.name}</span>
         </div>
-        <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{grievance.title}</h1>
+        <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+          {grievance.title}
+        </h1>
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{grievance.shortDescription}</p>
         <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
           <GrievanceActions grievance={grievance} />
-          <Link to="/grievances/$code/case-file" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
+          <Link
+            to="/grievances/$code/case-file"
+            params={{ code: grievance.code }}
+            className={buttonStyles('secondary')}
+          >
             <FileText className="size-4" aria-hidden /> Case file
           </Link>
         </div>
@@ -95,7 +101,11 @@ function GrievancePage() {
           </Fact>
           <Fact label="Owner">
             <People people={[grievance.owner]} />
-            {!grievance.ownerHasAccount && <div className="mt-1 text-xs font-normal text-ink-3">No account here, so only someone with Edit access to Grievances can change this grievance.</div>}
+            {!grievance.ownerHasAccount && (
+              <div className="mt-1 text-xs font-normal text-ink-3">
+                No account here, so only someone with Edit access to Grievances can change this grievance.
+              </div>
+            )}
           </Fact>
           <Fact label="Employees involved">
             <People people={grievance.employees} />
@@ -113,10 +123,18 @@ function GrievancePage() {
       <Panel>
         <PanelHeader
           title="Grievance"
-          description={grievance.version === 1 ? 'As it was recorded.' : `Version ${grievance.version}. It has been edited since it was recorded.`}
+          description={
+            grievance.version === 1
+              ? 'As it was recorded.'
+              : `Version ${grievance.version}. It has been edited since it was recorded.`
+          }
           actions={
             grievance.version === 1 ? null : (
-              <Link to="/grievances/$code/versions" params={{ code: grievance.code }} className={buttonStyles('secondary')}>
+              <Link
+                to="/grievances/$code/versions"
+                params={{ code: grievance.code }}
+                className={buttonStyles('secondary')}
+              >
                 Earlier versions
               </Link>
             )
@@ -128,7 +146,11 @@ function GrievancePage() {
 
       {files.length > 0 && (
         <Panel>
-          <PanelHeader title="Files" description="Each one downloads to be opened on your computer. Downloads are logged." className="border-b border-line" />
+          <PanelHeader
+            title="Files"
+            description="Each one downloads to be opened on your computer. Downloads are logged."
+            className="border-b border-line"
+          />
           <AttachmentList section="grievances" code={grievance.code} files={files} sealed={sealed} />
         </Panel>
       )}
@@ -146,7 +168,11 @@ function GrievancePage() {
               sealed || readOnly ? null : (
                 <>
                   <AttachFiles section="grievances" code={grievance.code} />
-                  <Link to="/grievances/$code/entries/new" params={{ code: grievance.code }} className={buttonStyles('primary')}>
+                  <Link
+                    to="/grievances/$code/entries/new"
+                    params={{ code: grievance.code }}
+                    className={buttonStyles('primary')}
+                  >
                     <Plus className="size-4" aria-hidden /> Add action or event
                   </Link>
                 </>
@@ -164,7 +190,11 @@ function GrievancePage() {
             entryCode={grievanceEntryCode}
             orderKey="grievance-timeline-order"
             link={(entry, children) => (
-              <Link to="/grievances/$code/entries/$seq" params={{ code: grievance.code, seq: grievanceEntryCode(entry.seq) }} className="hover:text-accent hover:underline">
+              <Link
+                to="/grievances/$code/entries/$seq"
+                params={{ code: grievance.code, seq: grievanceEntryCode(entry.seq) }}
+                className="hover:text-accent hover:underline"
+              >
                 {children}
               </Link>
             )}

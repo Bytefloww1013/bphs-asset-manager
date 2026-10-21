@@ -19,7 +19,8 @@ import { useDenied } from '@/lib/session.ts'
 const TABS = ['open', 'finished', 'rejected', 'all'] as const
 type Tab = (typeof TABS)[number]
 const TAB_LABEL: Record<Tab, string> = { open: 'Open', finished: 'Finished', rejected: 'Rejected', all: 'All' }
-const inTab = (tab: Tab, status: MaintenanceStatus) => tab === 'all' || (tab === 'open' ? MAINTENANCE_OPEN.includes(status) : status === tab)
+const inTab = (tab: Tab, status: MaintenanceStatus) =>
+  tab === 'all' || (tab === 'open' ? MAINTENANCE_OPEN.includes(status) : status === tab)
 
 export const Route = createFileRoute('/_app/maintenance/')({
   // The Open tab is where the page starts, so it is the one tab the address does not name.
@@ -38,7 +39,8 @@ const newRequest = (
 
 const c = columnsFor<MaintenanceRow>()
 const getRowId = (row: MaintenanceRow) => String(row.id)
-const searchText = (row: MaintenanceRow) => [row.code, row.requestedBy, row.email, row.program, row.location, row.description].join(' ')
+const searchText = (row: MaintenanceRow) =>
+  [row.code, row.requestedBy, row.email, row.program, row.location, row.description].join(' ')
 
 /** A cell's text cut to one line, with what goes with it on a smaller second line, as the grievance list shows a title and its category. */
 const TwoLines = ({ text, under, width }: { text: string; under?: string; width: string }) => (
@@ -60,7 +62,11 @@ const columns = [
     // Urgent shows under the ID rather than in a column of its own, so the list fits beside the sidebar.
     cell: (info) => (
       <div className="flex flex-col items-start gap-1">
-        <Link to="/maintenance/$id" params={{ id: String(info.row.original.id) }} className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline">
+        <Link
+          to="/maintenance/$id"
+          params={{ id: String(info.row.original.id) }}
+          className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline"
+        >
           {info.getValue()}
         </Link>
         <UrgentBadge urgent={info.row.original.urgent} />
@@ -76,10 +82,22 @@ const columns = [
     ),
     meta: { hideBelow: 'xl' },
   }),
-  c.accessor('requestedBy', { header: 'Requested by', cell: (info) => <TwoLines text={info.getValue()} under={info.row.original.program} width="max-w-40" />, meta: { hideBelow: 'xl' } }),
-  c.accessor('location', { header: 'Location', cell: (info) => <TwoLines text={info.getValue()} under={info.row.original.description} width="min-w-40 max-w-64" /> }),
+  c.accessor('requestedBy', {
+    header: 'Requested by',
+    cell: (info) => <TwoLines text={info.getValue()} under={info.row.original.program} width="max-w-40" />,
+    meta: { hideBelow: 'xl' },
+  }),
+  c.accessor('location', {
+    header: 'Location',
+    cell: (info) => <TwoLines text={info.getValue()} under={info.row.original.description} width="min-w-40 max-w-64" />,
+  }),
   c.accessor('status', { header: 'Status', cell: (info) => <MaintenanceStatusBadge status={info.getValue()} /> }),
-  c.accessor((row) => row.assignee?.name ?? '', { id: 'assignee', header: 'Dispatched to', cell: (info) => <TwoLines text={info.getValue()} width="max-w-40" />, meta: { hideBelow: 'lg' } }),
+  c.accessor((row) => row.assignee?.name ?? '', {
+    id: 'assignee',
+    header: 'Dispatched to',
+    cell: (info) => <TwoLines text={info.getValue()} width="max-w-40" />,
+    meta: { hideBelow: 'lg' },
+  }),
 ]
 
 function MaintenancePage() {
@@ -90,22 +108,43 @@ function MaintenancePage() {
   const [search, setSearch] = useState('')
   const { data = [], isPending } = useQuery(maintenanceQuery)
 
-  const counts = useMemo(() => Object.fromEntries(TABS.map((value) => [value, data.filter((row) => inTab(value, row.status)).length])) as Record<Tab, number>, [data])
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(TABS.map((value) => [value, data.filter((row) => inTab(value, row.status)).length])) as Record<
+        Tab,
+        number
+      >,
+    [data],
+  )
   const rows = useMemo(() => data.filter((row) => inTab(tab, row.status)), [data, tab])
   const table = useGrid({ data: rows, columns, getRowId, searchText, search, resetKey: tab })
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Requests" description="Maintenance work order requests, from the Zoho form or entered here." actions={readOnly ? undefined : newRequest} />
+      <PageHeader
+        title="Requests"
+        description="Maintenance work order requests, from the Zoho form or entered here."
+        actions={readOnly ? undefined : newRequest}
+      />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
             label="Filter by status"
             value={tab}
             onChange={(next) => void navigate({ search: { status: next === 'open' ? undefined : next } })}
-            options={TABS.map((value) => ({ value, label: TAB_LABEL[value], count: isPending ? undefined : counts[value] }))}
+            options={TABS.map((value) => ({
+              value,
+              label: TAB_LABEL[value],
+              count: isPending ? undefined : counts[value],
+            }))}
           />
-          <SearchInput className="w-full sm:w-72" aria-label="Search requests" placeholder="Search ID, name, location or text" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-72"
+            aria-label="Search requests"
+            placeholder="Search ID, name, location or text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </Toolbar>
         <DataGrid
           table={table}
@@ -134,9 +173,18 @@ function MaintenancePage() {
           }
           empty={
             counts.all && tab !== 'all' ? (
-              <EmptyState icon={Wrench} title={`No ${TAB_LABEL[tab].toLowerCase()} requests`} description="Requests in other statuses are under their own tabs, and all of them are under All." />
+              <EmptyState
+                icon={Wrench}
+                title={`No ${TAB_LABEL[tab].toLowerCase()} requests`}
+                description="Requests in other statuses are under their own tabs, and all of them are under All."
+              />
             ) : (
-              <EmptyState icon={Wrench} title="No requests yet" description="Requests sent from the Zoho form, or entered here, are listed on this page." action={readOnly ? undefined : newRequest} />
+              <EmptyState
+                icon={Wrench}
+                title="No requests yet"
+                description="Requests sent from the Zoho form, or entered here, are listed on this page."
+                action={readOnly ? undefined : newRequest}
+              />
             )
           }
         />

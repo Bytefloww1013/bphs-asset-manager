@@ -1,4 +1,24 @@
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, NotificationKind, ReviewAuditAction, ReviewCapStatus, ReviewEntryKind, ReviewStatus, TaskAssignerReminders, TaskEventKind, TaskFileSide, TaskStatus, TaskWeekday } from './constants.ts'
+import type {
+  AssetStatus,
+  AuditAction,
+  ConditionKind,
+  DigitalAssetStatus,
+  GrievanceAuditAction,
+  GrievanceEntryKind,
+  GrievancePersonRole,
+  GrievanceStatus,
+  MaintenanceStatus,
+  NotificationKind,
+  ReviewAuditAction,
+  ReviewCapStatus,
+  ReviewEntryKind,
+  ReviewStatus,
+  TaskAssignerReminders,
+  TaskEventKind,
+  TaskFileSide,
+  TaskStatus,
+  TaskWeekday,
+} from './constants.ts'
 import type { Grantee } from './permissions.ts'
 
 // ---- Auth ---------------------------------------------------------------
@@ -433,7 +453,10 @@ export interface ReviewCap {
 }
 
 /** A CAP as the Action items list shows it, with the review it is on. */
-export interface ReviewActionItem extends Pick<ReviewCap, 'id' | 'seq' | 'title' | 'shortDescription' | 'responsible' | 'dueDate' | 'status' | 'completedAt'> {
+export interface ReviewActionItem extends Pick<
+  ReviewCap,
+  'id' | 'seq' | 'title' | 'shortDescription' | 'responsible' | 'dueDate' | 'status' | 'completedAt'
+> {
   review: { code: string; title: string }
 }
 
@@ -537,7 +560,14 @@ export interface DashboardData {
   totals: { total: number; assigned: number; inStorage: number; retired: number }
   byType: { typeId: number; type: string; total: number; free: number }[]
   overdueCount: number
-  longestOut: { assignmentId: number; assetTag: string; assetType: string; employee: EmployeeRef | null; program: ProgramRef | null; daysOut: number }[]
+  longestOut: {
+    assignmentId: number
+    assetTag: string
+    assetType: string
+    employee: EmployeeRef | null
+    program: ProgramRef | null
+    daysOut: number
+  }[]
   topHolders: { employee: EmployeeRef; count: number }[]
   poorCondition: { assetId: number; assetTag: string; assetType: string; rating: string; holder: string | null }[]
   recent: AuditEntry[]

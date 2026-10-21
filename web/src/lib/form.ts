@@ -3,7 +3,11 @@ import type { ZodError } from 'zod'
 import { ApiError } from './api.ts'
 
 /** First validation message for a field, shown once the user has touched it or tried to submit. */
-export function fieldError(field: AnyFieldApi, serverFields?: Record<string, string>, submitted = false): string | null {
+export function fieldError(
+  field: AnyFieldApi,
+  serverFields?: Record<string, string>,
+  submitted = false,
+): string | null {
   const server = serverFields?.[field.name]
   if (server) return server
   if (!field.state.meta.isTouched && !submitted) return null

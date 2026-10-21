@@ -33,4 +33,3 @@ export function authRoutes(db: Db) {
 
   return app
 }
-

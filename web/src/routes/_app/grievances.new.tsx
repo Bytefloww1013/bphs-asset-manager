@@ -18,7 +18,10 @@ function NewGrievancePage() {
   useGrievancePageTitle('New grievance')
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader title="New grievance" description="Record a grievance as it was made. What was done about it is added afterwards, as actions and events." />
+      <PageHeader
+        title="New grievance"
+        description="Record a grievance as it was made. What was done about it is added afterwards, as actions and events."
+      />
       <GrievanceForm />
     </div>
   )

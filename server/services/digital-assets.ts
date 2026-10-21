@@ -1,5 +1,10 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
-import type { DigitalAssetCreateInput, DigitalAssetUpdateInput, DigitalIssueInput, DigitalUnassignInput } from '../../shared/schemas.ts'
+import type {
+  DigitalAssetCreateInput,
+  DigitalAssetUpdateInput,
+  DigitalIssueInput,
+  DigitalUnassignInput,
+} from '../../shared/schemas.ts'
 import type { DigitalAssetDetail, DigitalAssetRow, DigitalHistoryRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { digitalAssetTypes, digitalAssets, digitalAssignments } from '../db/schema.ts'
@@ -40,7 +45,9 @@ function toRow(row: RawDigitalAsset): DigitalAssetRow {
     status: row.status,
     // Inactive can only be set while nothing is issued, so the two never disagree.
     state: issued ? 'active' : row.status === 'inactive' ? 'inactive' : 'not_issued',
-    employee: issued ? { id: row.eId!, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept } : null,
+    employee: issued
+      ? { id: row.eId!, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept }
+      : null,
     assignmentId: row.assignmentId,
     issuedAt: row.issuedAt === null ? null : new Date(row.issuedAt).toISOString(),
     createdAt: new Date(row.createdAt).toISOString(),
@@ -95,16 +102,14 @@ export function getDigitalAssetDetail(db: DbLike, id: number): DigitalAssetDetai
       left join users ur on ur.id = a.returned_by_id
       where a.digital_asset_id = ${id}
       order by a.issued_at desc, a.id desc`)
-    .map(
-      (row): DigitalHistoryRow => ({
-        id: row.id,
-        employee: { id: row.eId, code: row.eCode, name: fullName(row.eFirst, row.eLast), department: row.eDept },
-        issuedAt: new Date(row.issuedAt).toISOString(),
-        returnedAt: row.returnedAt === null ? null : new Date(row.returnedAt).toISOString(),
-        issuedBy: row.issuedBy,
-        returnedBy: row.returnedBy,
-      }),
-    )
+    .map((row): DigitalHistoryRow => ({
+      id: row.id,
+      employee: { id: row.eId, code: row.eCode, name: fullName(row.eFirst, row.eLast), department: row.eDept },
+      issuedAt: new Date(row.issuedAt).toISOString(),
+      returnedAt: row.returnedAt === null ? null : new Date(row.returnedAt).toISOString(),
+      issuedBy: row.issuedBy,
+      returnedBy: row.returnedBy,
+    }))
   return { asset, history }
 }
 
@@ -118,11 +123,16 @@ function requireActiveType(db: DbLike, typeId: number) {
 function issueInTx(tx: DbLike, actor: Actor, assetId: number, input: DigitalIssueInput, now: Date) {
   const asset = getDigitalAsset(tx, assetId)
   if (asset.employee) {
-    throw conflict('asset_already_assigned', `${asset.code} is already issued to ${asset.employee.name}. Unassign it first.`, {
-      assignmentId: asset.assignmentId,
-    })
+    throw conflict(
+      'asset_already_assigned',
+      `${asset.code} is already issued to ${asset.employee.name}. Unassign it first.`,
+      {
+        assignmentId: asset.assignmentId,
+      },
+    )
   }
-  if (asset.status === 'inactive') throw conflict('asset_inactive', `${asset.code} is inactive. Reactivate it before issuing.`)
+  if (asset.status === 'inactive')
+    throw conflict('asset_inactive', `${asset.code} is inactive. Reactivate it before issuing.`)
 
   const employee = requireEmployee(tx, input.employeeId)
   if (employee.archivedAt) {
@@ -180,7 +190,13 @@ export function createDigitalAsset(db: Db, actor: Actor, input: DigitalAssetCrea
     const code = codeFor(row.id)
     tx.update(digitalAssets).set({ code }).where(eq(digitalAssets.id, row.id)).run()
     const now = new Date()
-    writeAudit(tx, actor, { action: 'create', entityType: 'digitalasset', entityId: row.id, details: `${code} · ${type.name} · ${input.account}`, at: now })
+    writeAudit(tx, actor, {
+      action: 'create',
+      entityType: 'digitalasset',
+      entityId: row.id,
+      details: `${code} · ${type.name} · ${input.account}`,
+      at: now,
+    })
     if (input.employeeId) issueInTx(tx, actor, row.id, { employeeId: input.employeeId }, now)
     return row.id
   })
@@ -203,13 +219,23 @@ export function updateDigitalAsset(db: Db, actor: Actor, id: number, input: Digi
     }
     if (changes.length === 0) return
     tx.update(digitalAssets).set(patch).where(eq(digitalAssets.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'digitalasset', entityId: id, details: `${current.code} · ${changes.join('; ')}` })
+    writeAudit(tx, actor, {
+      action: 'update',
+      entityType: 'digitalasset',
+      entityId: id,
+      details: `${current.code} · ${changes.join('; ')}`,
+    })
   })
   return getDigitalAsset(db, id)
 }
 
 /** Inactive is set by hand and only on a seat nobody holds; it keeps the seat from being issued until it is reactivated. */
-export function setDigitalAssetStatus(db: Db, actor: Actor, id: number, status: 'in_service' | 'inactive'): DigitalAssetRow {
+export function setDigitalAssetStatus(
+  db: Db,
+  actor: Actor,
+  id: number,
+  status: 'in_service' | 'inactive',
+): DigitalAssetRow {
   db.transaction((tx) => {
     const current = getDigitalAsset(tx, id)
     if (current.status === status) return
@@ -240,7 +266,10 @@ export function unassignDigitalAsset(db: Db, actor: Actor, id: number, input: Di
     }
     // The seat was unassigned and issued again since the person asking last looked: what they confirmed is not what is there.
     if (current.assignmentId !== input.assignmentId) {
-      throw conflict('assignment_changed', `${current.code} is now issued to ${current.employee.name}. Nothing was unassigned.`)
+      throw conflict(
+        'assignment_changed',
+        `${current.code} is now issued to ${current.employee.name}. Nothing was unassigned.`,
+      )
     }
     const now = new Date()
     tx.update(digitalAssignments)
@@ -263,9 +292,17 @@ export function deleteDigitalAsset(db: Db, actor: Actor, id: number) {
   db.transaction((tx) => {
     const current = getDigitalAsset(tx, id)
     if (current.hasHistory) {
-      throw conflict('has_history', `${current.code} has assignment history. Mark it inactive instead; history is never deleted.`)
+      throw conflict(
+        'has_history',
+        `${current.code} has assignment history. Mark it inactive instead; history is never deleted.`,
+      )
     }
     tx.delete(digitalAssets).where(eq(digitalAssets.id, id)).run()
-    writeAudit(tx, actor, { action: 'delete', entityType: 'digitalasset', entityId: id, details: `${current.code} · ${current.type} · ${current.account}` })
+    writeAudit(tx, actor, {
+      action: 'delete',
+      entityType: 'digitalasset',
+      entityId: id,
+      details: `${current.code} · ${current.type} · ${current.account}`,
+    })
   })
 }

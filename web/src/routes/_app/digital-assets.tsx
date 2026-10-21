@@ -10,7 +10,13 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { PersonCell, Stacked } from '@/features/common/status.tsx'
-import { DigitalAssetIdCell, DigitalAssetRowActions, DigitalStateBadge, QuickAddDigitalAsset, digitalStateLabel } from '@/features/digital-assets/digital-parts.tsx'
+import {
+  DigitalAssetIdCell,
+  DigitalAssetRowActions,
+  DigitalStateBadge,
+  QuickAddDigitalAsset,
+  digitalStateLabel,
+} from '@/features/digital-assets/digital-parts.tsx'
 import { ExportButton } from '@/features/common/export-button.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { formatDate } from '@/lib/format.ts'
@@ -21,8 +27,14 @@ type Show = 'all' | DigitalAssetState
 const STATES: DigitalAssetState[] = ['active', 'not_issued', 'inactive']
 
 export const Route = createFileRoute('/_app/digital-assets')({
-  validateSearch: (search: Record<string, unknown>): { show?: DigitalAssetState } => ({ show: STATES.find((state) => state === search.show) }),
-  loader: ({ context }) => Promise.all([context.queryClient.ensureQueryData(digitalAssetsQuery), context.queryClient.ensureQueryData(lookupsQuery)]),
+  validateSearch: (search: Record<string, unknown>): { show?: DigitalAssetState } => ({
+    show: STATES.find((state) => state === search.show),
+  }),
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(digitalAssetsQuery),
+      context.queryClient.ensureQueryData(lookupsQuery),
+    ]),
   component: DigitalAssetsPage,
 })
 
@@ -30,17 +42,65 @@ const c = columnsFor<DigitalAssetRow>()
 const columns = [
   c.accessor('code', {
     header: 'Asset ID',
-    cell: (info) => <Stacked primary={<DigitalAssetIdCell asset={info.row.original} />} secondary={<span className="md:hidden">{info.row.original.type}</span>} />,
+    cell: (info) => (
+      <Stacked
+        primary={<DigitalAssetIdCell asset={info.row.original} />}
+        secondary={<span className="md:hidden">{info.row.original.type}</span>}
+      />
+    ),
   }),
   c.accessor('type', { header: 'Type', meta: { hideBelow: 'md' } }),
-  c.accessor('account', { header: 'License/Account', cell: (info) => <span className="block max-w-72 truncate" title={info.getValue()}>{info.getValue()}</span>, meta: { hideBelow: 'lg' } }),
-  c.accessor((row) => row.employee?.name ?? '', { id: 'employee', header: 'Assigned Employee', cell: (info) => <PersonCell person={info.row.original.employee} />, meta: { hideBelow: 'sm' } }),
-  c.accessor((row) => digitalStateLabel(row.state), { id: 'state', header: 'Status', cell: (info) => <DigitalStateBadge state={info.row.original.state} /> }),
-  c.accessor((row) => row.issuedAt ?? '', { id: 'issuedAt', header: 'Issue Date', cell: (info) => (info.row.original.issuedAt ? <Mono className="text-ink-2">{formatDate(info.row.original.issuedAt)}</Mono> : <span className="text-ink-3">—</span>), meta: { hideBelow: 'xl' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <DigitalAssetRowActions asset={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } }),
+  c.accessor('account', {
+    header: 'License/Account',
+    cell: (info) => (
+      <span className="block max-w-72 truncate" title={info.getValue()}>
+        {info.getValue()}
+      </span>
+    ),
+    meta: { hideBelow: 'lg' },
+  }),
+  c.accessor((row) => row.employee?.name ?? '', {
+    id: 'employee',
+    header: 'Assigned Employee',
+    cell: (info) => <PersonCell person={info.row.original.employee} />,
+    meta: { hideBelow: 'sm' },
+  }),
+  c.accessor((row) => digitalStateLabel(row.state), {
+    id: 'state',
+    header: 'Status',
+    cell: (info) => <DigitalStateBadge state={info.row.original.state} />,
+  }),
+  c.accessor((row) => row.issuedAt ?? '', {
+    id: 'issuedAt',
+    header: 'Issue Date',
+    cell: (info) =>
+      info.row.original.issuedAt ? (
+        <Mono className="text-ink-2">{formatDate(info.row.original.issuedAt)}</Mono>
+      ) : (
+        <span className="text-ink-3">—</span>
+      ),
+    meta: { hideBelow: 'xl' },
+  }),
+  c.display({
+    id: 'actions',
+    header: () => <span className="sr-only">Actions</span>,
+    cell: (info) => <DigitalAssetRowActions asset={info.row.original} />,
+    meta: { align: 'right', width: 'md:w-48', pinned: true },
+  }),
 ]
 const getRowId = (row: DigitalAssetRow) => String(row.id)
-const searchText = (row: DigitalAssetRow) => [row.code, row.type, row.account, row.employee?.name, row.employee?.code, row.employee?.department, digitalStateLabel(row.state)].filter(Boolean).join(' ')
+const searchText = (row: DigitalAssetRow) =>
+  [
+    row.code,
+    row.type,
+    row.account,
+    row.employee?.name,
+    row.employee?.code,
+    row.employee?.department,
+    digitalStateLabel(row.state),
+  ]
+    .filter(Boolean)
+    .join(' ')
 
 function DigitalAssetsPage() {
   usePageTitle('Digital Assets')
@@ -59,16 +119,22 @@ function DigitalAssetsPage() {
 
   const count = (state: DigitalAssetState) => data.filter((row) => row.state === state).length
   const rows = useMemo(() => (show === 'all' ? data : data.filter((row) => row.state === show)), [data, show])
-  const table = useGrid({ data: rows, columns, getRowId, searchText, search, resetKey: show, initialSorting: [{ id: 'code', desc: false }] })
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    searchText,
+    search,
+    resetKey: show,
+    initialSorting: [{ id: 'code', desc: false }],
+  })
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Digital Assets"
         description="Licenses and accounts, one seat per row, and who each is issued to. A seat is Active while someone holds it."
-        actions={
-          <ExportButton dataset={EXPORTS.digitalAssets} items={data} />
-        }
+        actions={<ExportButton dataset={EXPORTS.digitalAssets} items={data} />}
       />
       {!readOnly && <QuickAddDigitalAsset onAdded={setFlash} />}
       <div className="flex flex-col gap-3">
@@ -84,7 +150,13 @@ function DigitalAssetsPage() {
               { value: 'inactive', label: 'Inactive', count: count('inactive') },
             ]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search digital assets" placeholder="Search ID, type, account, employee" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-80"
+            aria-label="Search digital assets"
+            placeholder="Search ID, type, account, employee"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </Toolbar>
         <DataGrid
           table={table}
@@ -96,10 +168,21 @@ function DigitalAssetsPage() {
             <EmptyState
               icon={AppWindow}
               title={show === 'all' ? 'No digital assets yet' : `Nothing is ${digitalStateLabel(show)}`}
-              description={show === 'all' ? 'Add a license or account above. Each seat gets its own Asset ID.' : 'Choose All to see every digital asset.'}
+              description={
+                show === 'all'
+                  ? 'Add a license or account above. Each seat gets its own Asset ID.'
+                  : 'Choose All to see every digital asset.'
+              }
             />
           }
-          noMatches={<EmptyState icon={AppWindow} title="No digital assets match" description="Try a different ID, type, account or name." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
+          noMatches={
+            <EmptyState
+              icon={AppWindow}
+              title="No digital assets match"
+              description="Try a different ID, type, account or name."
+              action={<Button onClick={() => setSearch('')}>Clear search</Button>}
+            />
+          }
         />
       </div>
     </div>

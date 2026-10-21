@@ -31,7 +31,9 @@ function NoticePage() {
         </Link>
         {notice.data && (
           <>
-            <h1 className="mt-3 text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{notice.data.title}</h1>
+            <h1 className="mt-3 text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+              {notice.data.title}
+            </h1>
             <p className="mt-1 text-sm text-ink-3">
               Notice from {notice.data.sentBy} ·{' '}
               <time dateTime={notice.data.createdAt}>{formatDateTime(notice.data.createdAt)}</time>
@@ -43,8 +45,16 @@ function NoticePage() {
         <Panel>
           <EmptyState
             icon={Megaphone}
-            title={notice.error instanceof ApiError && notice.error.status === 404 ? 'This notice is not in your Inbox' : 'The notice could not be loaded'}
-            description={notice.error instanceof ApiError && notice.error.status === 404 ? 'It was not sent to you, or it is over a year old.' : 'Try again in a moment.'}
+            title={
+              notice.error instanceof ApiError && notice.error.status === 404
+                ? 'This notice is not in your Inbox'
+                : 'The notice could not be loaded'
+            }
+            description={
+              notice.error instanceof ApiError && notice.error.status === 404
+                ? 'It was not sent to you, or it is over a year old.'
+                : 'Try again in a moment.'
+            }
             action={
               <Link to="/me/inbox" className={buttonStyles('primary')}>
                 Back to Inbox

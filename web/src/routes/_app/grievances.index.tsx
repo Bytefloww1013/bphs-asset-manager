@@ -31,7 +31,8 @@ interface GrievanceSearch {
   q?: string
 }
 
-const isDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
+const isDate = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
 const isId = (value: unknown) => (Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : undefined)
 
 export const Route = createFileRoute('/_app/grievances/')({
@@ -74,7 +75,8 @@ function GrievancesPage() {
   const readOnly = useDenied('grievances', 'edit')
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const setFilter = (patch: GrievanceSearch, replace = false) => void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
+  const setFilter = (patch: GrievanceSearch, replace = false) =>
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
   // The box holds what is being typed and follows the address only when something else changes it (the Back button).
   const [q, setQ] = useState(search.q ?? '')
   const typing = useRef(false)
@@ -112,7 +114,12 @@ function GrievancesPage() {
         cell: ({ row }) => {
           const open = opened.has(row.original.id)
           return (
-            <IconButton label={`${open ? 'Hide' : 'Show'} the start of ${row.original.code}`} size="sm" aria-expanded={open} onClick={() => toggle(row.original.id)}>
+            <IconButton
+              label={`${open ? 'Hide' : 'Show'} the start of ${row.original.code}`}
+              size="sm"
+              aria-expanded={open}
+              onClick={() => toggle(row.original.id)}
+            >
               {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
             </IconButton>
           )
@@ -122,7 +129,11 @@ function GrievancesPage() {
       c.accessor('code', {
         header: 'Grievance ID',
         cell: (info) => (
-          <Link to="/grievances/$code" params={{ code: info.getValue() }} className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline">
+          <Link
+            to="/grievances/$code"
+            params={{ code: info.getValue() }}
+            className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline"
+          >
             {info.getValue()}
           </Link>
         ),
@@ -131,7 +142,12 @@ function GrievancesPage() {
         header: 'Title',
         cell: (info) => (
           <div className="min-w-40 max-w-56 leading-5">
-            <Link to="/grievances/$code" params={{ code: info.row.original.code }} className="block truncate font-medium hover:underline" title={info.getValue()}>
+            <Link
+              to="/grievances/$code"
+              params={{ code: info.row.original.code }}
+              className="block truncate font-medium hover:underline"
+              title={info.getValue()}
+            >
               {info.getValue()}
             </Link>
             <div className="truncate text-xs text-ink-3">{info.row.original.category.name}</div>
@@ -148,11 +164,36 @@ function GrievancesPage() {
         enableSorting: false,
         meta: { hideBelow: 'xl' },
       }),
-      c.accessor('dateMade', { header: 'Date made', cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>, meta: { hideBelow: 'sm' } }),
-      c.accessor((row) => row.employees.map((person) => person.name).join(', '), { id: 'employees', header: 'Employees involved', cell: (info) => <People people={info.row.original.employees} />, enableSorting: false, meta: { hideBelow: 'lg' } }),
-      c.accessor((row) => row.management.map((person) => person.name).join(', '), { id: 'management', header: 'Management involved', cell: (info) => <People people={info.row.original.management} />, enableSorting: false, meta: { hideBelow: 'lg' } }),
-      c.accessor((row) => row.owner.name, { id: 'owner', header: 'Owner', cell: (info) => <People people={[info.row.original.owner]} />, meta: { hideBelow: 'md' } }),
-      c.accessor('status', { header: 'Status', cell: (info) => <GrievanceStatusBadge status={info.getValue()} />, enableSorting: false }),
+      c.accessor('dateMade', {
+        header: 'Date made',
+        cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>,
+        meta: { hideBelow: 'sm' },
+      }),
+      c.accessor((row) => row.employees.map((person) => person.name).join(', '), {
+        id: 'employees',
+        header: 'Employees involved',
+        cell: (info) => <People people={info.row.original.employees} />,
+        enableSorting: false,
+        meta: { hideBelow: 'lg' },
+      }),
+      c.accessor((row) => row.management.map((person) => person.name).join(', '), {
+        id: 'management',
+        header: 'Management involved',
+        cell: (info) => <People people={info.row.original.management} />,
+        enableSorting: false,
+        meta: { hideBelow: 'lg' },
+      }),
+      c.accessor((row) => row.owner.name, {
+        id: 'owner',
+        header: 'Owner',
+        cell: (info) => <People people={[info.row.original.owner]} />,
+        meta: { hideBelow: 'md' },
+      }),
+      c.accessor('status', {
+        header: 'Status',
+        cell: (info) => <GrievanceStatusBadge status={info.getValue()} />,
+        enableSorting: false,
+      }),
       c.accessor('lastActivityAt', {
         header: 'Last activity',
         cell: (info) => (
@@ -175,19 +216,39 @@ function GrievancesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Grievances" description="Employee grievances and what was done about each one. Confidential." actions={readOnly ? undefined : newGrievance} />
+      <PageHeader
+        title="Grievances"
+        description="Employee grievances and what was done about each one. Confidential."
+        actions={readOnly ? undefined : newGrievance}
+      />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
             label="Filter by status"
             value={tab}
             onChange={(next) => setFilter({ status: next === 'open' ? undefined : next })}
-            options={TABS.map((value) => ({ value, label: value === 'all' ? 'All' : grievanceStatusLabel(value), count: counts?.[value] }))}
+            options={TABS.map((value) => ({
+              value,
+              label: value === 'all' ? 'All' : grievanceStatusLabel(value),
+              count: counts?.[value],
+            }))}
           />
-          <SearchInput className="w-full sm:w-72" aria-label="Search grievances" placeholder="Search ID, title, text or a name" maxLength={MAX_SEARCH} value={q} onChange={(event) => setQ(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-72"
+            aria-label="Search grievances"
+            placeholder="Search ID, title, text or a name"
+            maxLength={MAX_SEARCH}
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+          />
         </Toolbar>
         <Toolbar>
-          <Select aria-label="Owner" className="w-48" value={search.owner ?? ''} onChange={(event) => setFilter({ owner: isId(event.target.value) })}>
+          <Select
+            aria-label="Owner"
+            className="w-48"
+            value={search.owner ?? ''}
+            onChange={(event) => setFilter({ owner: isId(event.target.value) })}
+          >
             <option value="">Any owner</option>
             {data?.owners.map((owner) => (
               <option key={owner.id} value={owner.id}>
@@ -196,7 +257,12 @@ function GrievancesPage() {
               </option>
             ))}
           </Select>
-          <Select aria-label="Category" className="w-48" value={search.category ?? ''} onChange={(event) => setFilter({ category: isId(event.target.value) })}>
+          <Select
+            aria-label="Category"
+            className="w-48"
+            value={search.category ?? ''}
+            onChange={(event) => setFilter({ category: isId(event.target.value) })}
+          >
             <option value="">Any category</option>
             {categories
               .filter((category) => category.isActive || category.id === search.category || category.grievanceCount > 0)
@@ -208,11 +274,21 @@ function GrievancesPage() {
           </Select>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             Made from
-            <DateInput className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
+            <DateInput
+              className="w-40"
+              value={search.from ?? ''}
+              max={search.to}
+              onChange={(event) => setFilter({ from: event.target.value || undefined })}
+            />
           </label>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             to
-            <DateInput className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
+            <DateInput
+              className="w-40"
+              value={search.to ?? ''}
+              min={search.from}
+              onChange={(event) => setFilter({ to: event.target.value || undefined })}
+            />
           </label>
           {narrowed && (
             <Button variant="ghost" onClick={clear}>
@@ -228,7 +304,9 @@ function GrievancesPage() {
             loading={isPending}
             detail={(row) =>
               opened.has(row.original.id) ? (
-                <p className="max-w-3xl whitespace-pre-line pl-10 text-sm leading-6 text-ink-2">{row.original.preview}</p>
+                <p className="max-w-3xl whitespace-pre-line pl-10 text-sm leading-6 text-ink-2">
+                  {row.original.preview}
+                </p>
               ) : null
             }
             empty={
@@ -236,7 +314,11 @@ function GrievancesPage() {
                 <EmptyState
                   icon={SearchX}
                   title="No grievances match"
-                  description={counts?.all ? `Nothing under ${tab === 'all' ? 'All' : grievanceStatusLabel(tab)} matches, but ${counts.all} elsewhere ${counts.all === 1 ? 'does' : 'do'}. Try the All tab, or clear the filters.` : 'Widen the dates or clear the filters.'}
+                  description={
+                    counts?.all
+                      ? `Nothing under ${tab === 'all' ? 'All' : grievanceStatusLabel(tab)} matches, but ${counts.all} elsewhere ${counts.all === 1 ? 'does' : 'do'}. Try the All tab, or clear the filters.`
+                      : 'Widen the dates or clear the filters.'
+                  }
                   action={
                     <Button variant="secondary" onClick={clear}>
                       Clear filters
@@ -244,9 +326,18 @@ function GrievancesPage() {
                   }
                 />
               ) : counts?.all && tab !== 'all' ? (
-                <EmptyState icon={Scale} title={`No ${grievanceStatusLabel(tab).toLowerCase()} grievances`} description="Grievances in other statuses are under their own tabs, and all of them are under All." />
+                <EmptyState
+                  icon={Scale}
+                  title={`No ${grievanceStatusLabel(tab).toLowerCase()} grievances`}
+                  description="Grievances in other statuses are under their own tabs, and all of them are under All."
+                />
               ) : (
-                <EmptyState icon={Scale} title="No grievances yet" description="Grievances recorded here will be listed on this page." action={readOnly ? undefined : newGrievance} />
+                <EmptyState
+                  icon={Scale}
+                  title="No grievances yet"
+                  description="Grievances recorded here will be listed on this page."
+                  action={readOnly ? undefined : newGrievance}
+                />
               )
             }
           />

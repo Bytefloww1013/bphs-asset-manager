@@ -58,7 +58,20 @@ interface OptionListProps<T> {
 }
 
 /** The list both pickers open. It renders in a portal so it is never clipped by a scrolling panel. */
-function OptionList<T>({ listId, matches, total, active, onActive, onPick, isField, text, getKey, getLabel, renderItem, emptyText }: OptionListProps<T>) {
+function OptionList<T>({
+  listId,
+  matches,
+  total,
+  active,
+  onActive,
+  onPick,
+  isField,
+  text,
+  getKey,
+  getLabel,
+  renderItem,
+  emptyText,
+}: OptionListProps<T>) {
   const [list, setList] = useState<HTMLUListElement | null>(null)
   const pointerMoved = useRef(false)
   const pointerAt = useRef('')
@@ -103,14 +116,20 @@ function OptionList<T>({ listId, matches, total, active, onActive, onPick, isFie
               }}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => onPick(item)}
-              className={cn('cursor-pointer rounded-[6px] px-2.5 py-1.5 text-sm text-ink', index === active && 'bg-accent-soft')}
+              className={cn(
+                'cursor-pointer rounded-[6px] px-2.5 py-1.5 text-sm text-ink',
+                index === active && 'bg-accent-soft',
+              )}
             >
               {renderItem ? renderItem(item) : getLabel(item)}
             </li>
           ))}
         </ul>
         {total > matches.length && (
-          <p onMouseDown={(event) => event.preventDefault()} className="shrink-0 border-t border-line px-3 py-1.5 text-xs text-ink-3">
+          <p
+            onMouseDown={(event) => event.preventDefault()}
+            className="shrink-0 border-t border-line px-3 py-1.5 text-xs text-ink-3"
+          >
             Showing the first {matches.length} of {total.toLocaleString()}. Type to narrow the list.
           </p>
         )}
@@ -378,7 +397,10 @@ export function MultiCombobox<T>({
           }}
         >
           {value.map((item, index) => (
-            <span key={getKey(item)} className="flex h-7 max-w-full items-center rounded-[6px] border border-line bg-sunken pl-2 text-sm text-ink">
+            <span
+              key={getKey(item)}
+              className="flex h-7 max-w-full items-center rounded-[6px] border border-line bg-sunken pl-2 text-sm text-ink"
+            >
               <span className="truncate">{getLabel(item)}</span>
               {disabled ? (
                 <span className="w-2" />
@@ -396,12 +418,29 @@ export function MultiCombobox<T>({
                     inputRef.current?.focus()
                   }}
                   onKeyDown={(event) => {
-                    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') {
+                    if (
+                      event.key === 'ArrowLeft' ||
+                      event.key === 'ArrowRight' ||
+                      event.key === 'Home' ||
+                      event.key === 'End'
+                    ) {
                       event.preventDefault()
-                      const to = event.key === 'ArrowLeft' ? index - 1 : event.key === 'ArrowRight' ? index + 1 : event.key === 'Home' ? 0 : value.length
+                      const to =
+                        event.key === 'ArrowLeft'
+                          ? index - 1
+                          : event.key === 'ArrowRight'
+                            ? index + 1
+                            : event.key === 'Home'
+                              ? 0
+                              : value.length
                       if (to >= value.length) inputRef.current?.focus()
                       else if (to >= 0) focusChip(to)
-                    } else if (event.key === 'Backspace' || event.key === 'Delete' || event.key === 'Enter' || event.key === ' ') {
+                    } else if (
+                      event.key === 'Backspace' ||
+                      event.key === 'Delete' ||
+                      event.key === 'Enter' ||
+                      event.key === ' '
+                    ) {
                       event.preventDefault()
                       // Focus stays where the chip was: on the one that takes its place, or in the text when it was the last.
                       if (index < value.length - 1) focusNext.current = index

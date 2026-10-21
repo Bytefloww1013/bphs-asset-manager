@@ -14,7 +14,8 @@ const variants: Record<ButtonVariant, string> = {
     'bg-accent text-on-accent shadow-primary hover:bg-accent-hover disabled:bg-line disabled:text-ink-3 disabled:shadow-none aria-disabled:bg-line aria-disabled:text-ink-3 aria-disabled:shadow-none',
   secondary:
     'border border-line-strong bg-surface text-ink shadow-panel hover:bg-sunken disabled:text-ink-3 disabled:hover:bg-surface aria-disabled:text-ink-3 aria-disabled:hover:bg-surface',
-  ghost: 'text-ink-2 hover:bg-sunken hover:text-ink disabled:text-ink-3 aria-disabled:text-ink-3 aria-disabled:hover:bg-transparent',
+  ghost:
+    'text-ink-2 hover:bg-sunken hover:text-ink disabled:text-ink-3 aria-disabled:text-ink-3 aria-disabled:hover:bg-transparent',
   danger:
     'bg-bad text-on-accent shadow-[inset_0_1px_0_oklch(1_0_0/0.12)] hover:brightness-90 disabled:bg-line disabled:text-ink-3 aria-disabled:bg-line aria-disabled:text-ink-3',
   'danger-ghost':
@@ -28,7 +29,8 @@ const sizes: Record<ButtonSize, string> = {
 }
 
 /** Class names for a link that should look like a button, such as a download or a router Link. Do not put a Button inside a link: that is two interactive elements, and two tab stops, for one action. */
-export const buttonStyles = (variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', className?: string) => cn(base, variants[variant], sizes[size], className)
+export const buttonStyles = (variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', className?: string) =>
+  cn(base, variants[variant], sizes[size], className)
 
 export interface ButtonProps extends ComponentProps<'button'> {
   variant?: ButtonVariant
@@ -79,7 +81,15 @@ export interface IconButtonProps extends Omit<ButtonProps, 'children' | 'icon' |
 }
 
 /** Square icon-only button. `label` becomes both the accessible name and the tooltip. */
-export function IconButton({ label, size = 'md', variant = 'ghost', className, children, disabledReason, ...rest }: IconButtonProps) {
+export function IconButton({
+  label,
+  size = 'md',
+  variant = 'ghost',
+  className,
+  children,
+  disabledReason,
+  ...rest
+}: IconButtonProps) {
   const button = (
     <Button
       variant={variant}

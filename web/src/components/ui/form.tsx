@@ -1,5 +1,15 @@
 import { Check, ChevronDown, Eye, EyeOff, Search } from 'lucide-react'
-import { cloneElement, isValidElement, useEffect, useId, useRef, useState, type ComponentProps, type ReactElement, type ReactNode } from 'react'
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { cn } from '@/lib/cn.ts'
 import type { Tone } from './badge.tsx'
 import { IconButton } from './button.tsx'
@@ -9,7 +19,9 @@ const control =
   'w-full rounded-control border border-line-strong bg-surface text-ink shadow-[inset_0_1px_1px_oklch(0.2_0.02_262/0.04)] transition-[border-color,box-shadow] duration-150 hover:border-ink-4 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/20 aria-[invalid=true]:border-bad aria-[invalid=true]:focus-visible:ring-bad/20 disabled:cursor-not-allowed disabled:bg-sunken disabled:text-ink-3 disabled:hover:border-line-strong'
 
 export function Input({ className, mono, ...rest }: ComponentProps<'input'> & { mono?: boolean }) {
-  return <input className={cn(control, 'h-9 px-3 text-sm', mono && 'font-mono text-[0.8125rem]', className)} {...rest} />
+  return (
+    <input className={cn(control, 'h-9 px-3 text-sm', mono && 'font-mono text-[0.8125rem]', className)} {...rest} />
+  )
 }
 
 /**
@@ -17,7 +29,10 @@ export function Input({ className, mono, ...rest }: ComponentProps<'input'> & { 
  * script sets its value or value attribute, so a controlled input would wipe the date being typed. Only a value that changes from
  * outside is written, and the attribute only once.
  */
-export function DateInput({ value, ...rest }: Omit<ComponentProps<'input'>, 'type' | 'value' | 'defaultValue'> & { value: string }) {
+export function DateInput({
+  value,
+  ...rest
+}: Omit<ComponentProps<'input'>, 'type' | 'value' | 'defaultValue'> & { value: string }) {
   const ref = useRef<HTMLInputElement>(null)
   const [initial] = useState(value)
   useEffect(() => {
@@ -32,7 +47,12 @@ export function PasswordInput(props: Omit<ComponentProps<'input'>, 'type' | 'cla
   return (
     <div className="relative">
       <Input {...props} type={reveal ? 'text' : 'password'} className="pr-10" />
-      <IconButton label={reveal ? 'Hide password' : 'Show password'} size="sm" className="absolute right-0.5 top-0.5" onClick={() => setReveal((on) => !on)}>
+      <IconButton
+        label={reveal ? 'Hide password' : 'Show password'}
+        size="sm"
+        className="absolute right-0.5 top-0.5"
+        onClick={() => setReveal((on) => !on)}
+      >
         {reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </IconButton>
     </div>
@@ -43,7 +63,11 @@ export function SearchInput({ className, ...rest }: Omit<ComponentProps<'input'>
   return (
     <div className={cn('relative', className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
-      <input type="search" className={cn(control, 'h-9 pl-9 pr-3 text-sm [&::-webkit-search-cancel-button]:cursor-pointer')} {...rest} />
+      <input
+        type="search"
+        className={cn(control, 'h-9 pl-9 pr-3 text-sm [&::-webkit-search-cancel-button]:cursor-pointer')}
+        {...rest}
+      />
     </div>
   )
 }
@@ -58,7 +82,10 @@ export function Select({ className, children, ...rest }: ComponentProps<'select'
       <select className={cn(control, 'h-9 appearance-none py-0 pl-3 pr-9 text-sm', className)} {...rest}>
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
+      <ChevronDown
+        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-3"
+        aria-hidden
+      />
     </div>
   )
 }
@@ -76,7 +103,13 @@ export function Switch({
   disabled,
   disabledReason,
   ...rest
-}: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean; disabledReason?: string } & Pick<ComponentProps<'button'>, 'id' | 'aria-describedby' | 'aria-invalid'>) {
+}: {
+  checked: boolean
+  onChange: (next: boolean) => void
+  label: string
+  disabled?: boolean
+  disabledReason?: string
+} & Pick<ComponentProps<'button'>, 'id' | 'aria-describedby' | 'aria-invalid'>) {
   const control = (
     <button
       {...rest}
@@ -154,7 +187,8 @@ const segmentTone: Record<Tone, string> = {
   bad: 'border-bad-line bg-bad-soft text-bad',
 }
 
-const isSubmitButton = (element: Element): element is HTMLButtonElement => element instanceof HTMLButtonElement && element.type === 'submit'
+const isSubmitButton = (element: Element): element is HTMLButtonElement =>
+  element instanceof HTMLButtonElement && element.type === 'submit'
 
 /** A radio group drawn as a row of chips. Selection shows a check, so it never relies on colour alone. */
 export function Segmented<T extends string | number>({
@@ -214,7 +248,9 @@ export function Segmented<T extends string | number>({
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex h-9 items-center gap-1.5 rounded-control border px-3 text-sm font-medium transition-colors duration-150',
-              selected ? segmentTone[option.tone ?? 'accent'] : 'border-line-strong bg-surface text-ink-2 hover:bg-sunken hover:text-ink',
+              selected
+                ? segmentTone[option.tone ?? 'accent']
+                : 'border-line-strong bg-surface text-ink-2 hover:bg-sunken hover:text-ink',
             )}
           >
             {selected && <Check className="size-3.5" aria-hidden strokeWidth={2.5} />}
@@ -254,7 +290,11 @@ export function FilterTabs<T extends string>({
             )}
           >
             {option.label}
-            {option.count !== undefined && <span className={cn('tabular-nums text-xs', selected ? 'text-ink-2' : 'text-ink-3')}>{option.count.toLocaleString()}</span>}
+            {option.count !== undefined && (
+              <span className={cn('tabular-nums text-xs', selected ? 'text-ink-2' : 'text-ink-3')}>
+                {option.count.toLocaleString()}
+              </span>
+            )}
           </button>
         )
       })}

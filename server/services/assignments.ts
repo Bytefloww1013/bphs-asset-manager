@@ -8,7 +8,15 @@ import { writeAudit, type Actor } from '../lib/audit.ts'
 import { HttpError, conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { daysBetween } from '../lib/time.ts'
 import { accountOf, notify, sectionTeam } from './notifications.ts'
-import { employeeRef, fullName, assessorFor, programRef, requireActiveRating, requireEmployee, requireProgram } from './refs.ts'
+import {
+  employeeRef,
+  fullName,
+  assessorFor,
+  programRef,
+  requireActiveRating,
+  requireEmployee,
+  requireProgram,
+} from './refs.ts'
 
 interface OpenRow {
   id: number
@@ -50,7 +58,10 @@ function toRow(row: OpenRow, now: Date): AssignmentRow {
     assetId: row.assetId,
     assetTag: row.assetTag,
     assetType: row.assetType,
-    employee: row.eId === null ? null : { id: row.eId, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept },
+    employee:
+      row.eId === null
+        ? null
+        : { id: row.eId, code: row.eCode!, name: fullName(row.eFirst!, row.eLast!), department: row.eDept },
     program: row.pId === null ? null : { id: row.pId, code: row.pCode!, name: row.pName! },
     issuedAt: issuedAt.toISOString(),
     issueRating: row.issueRating,
@@ -117,7 +128,13 @@ export function issueInTx(tx: DbLike, actor: Actor, input: IssueInput, now = new
 
   const assignment = tx
     .insert(assignments)
-    .values({ assetId: asset.id, employeeId: employee?.id ?? null, programId: program?.id ?? null, issuedAt: now, issuedById: actor.id })
+    .values({
+      assetId: asset.id,
+      employeeId: employee?.id ?? null,
+      programId: program?.id ?? null,
+      issuedAt: now,
+      issuedById: actor.id,
+    })
     .returning({ id: assignments.id })
     .get()
   tx.insert(conditions)
@@ -213,8 +230,16 @@ export function returnInTx(tx: DbLike, actor: Actor, assignmentId: number, input
     details: `${asset.tag} ← ${holderCode(employee, program)} · ${rating.name}`,
     at: now,
   })
-  const poor: PoorReturn | null = rating.score < RATING_ATTENTION_BELOW ? { assignmentId: assignment.id, assetId: asset.id, tag: asset.tag, rating: rating.name } : null
-  return { assetTag: asset.tag, employee: employee ? employeeRef(employee) : null, program: program ? programRef(program) : null, poor }
+  const poor: PoorReturn | null =
+    rating.score < RATING_ATTENTION_BELOW
+      ? { assignmentId: assignment.id, assetId: asset.id, tag: asset.tag, rating: rating.name }
+      : null
+  return {
+    assetTag: asset.tag,
+    employee: employee ? employeeRef(employee) : null,
+    program: program ? programRef(program) : null,
+    poor,
+  }
 }
 
 interface PoorReturn {
@@ -247,7 +272,10 @@ function notifyPoorReturns(db: DbLike, actor: Actor, returns: PoorReturn[]) {
       kind: 'asset_returned_poor',
       sourceKey: `return-bulk:${first.assignmentId}`,
       title: `${returns.length} assets came back in poor condition`,
-      body: [...returns.slice(0, POOR_TAGS_LISTED).map((item) => `${item.tag} (${item.rating})`), ...(returns.length > POOR_TAGS_LISTED ? [`and ${returns.length - POOR_TAGS_LISTED} more`] : [])].join(', '),
+      body: [
+        ...returns.slice(0, POOR_TAGS_LISTED).map((item) => `${item.tag} (${item.rating})`),
+        ...(returns.length > POOR_TAGS_LISTED ? [`and ${returns.length - POOR_TAGS_LISTED} more`] : []),
+      ].join(', '),
       link: '/',
     })
   }

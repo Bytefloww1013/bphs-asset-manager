@@ -1,7 +1,21 @@
 import { eq, inArray, sql, type SQL } from 'drizzle-orm'
-import { GRIEVANCE_PREVIEW_LENGTH, GRIEVANCE_STATUSES, grievanceCode, grievanceStatusLabel, type GrievancePersonRole, type GrievanceStatus } from '../../shared/constants.ts'
+import {
+  GRIEVANCE_PREVIEW_LENGTH,
+  GRIEVANCE_STATUSES,
+  grievanceCode,
+  grievanceStatusLabel,
+  type GrievancePersonRole,
+  type GrievanceStatus,
+} from '../../shared/constants.ts'
 import { canManageGrievance, grievanceManageReason } from '../../shared/permissions.ts'
-import type { GrievanceCreateInput, GrievanceExportInput, GrievanceListQuery, GrievanceOwnerChangeInput, GrievanceStatusChangeInput, GrievanceVoidInput } from '../../shared/schemas.ts'
+import type {
+  GrievanceCreateInput,
+  GrievanceExportInput,
+  GrievanceListQuery,
+  GrievanceOwnerChangeInput,
+  GrievanceStatusChangeInput,
+  GrievanceVoidInput,
+} from '../../shared/schemas.ts'
 import type { GrievanceDetail, GrievanceList, GrievancePerson } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, grievanceCategories, grievancePeople, grievances } from '../db/schema.ts'
@@ -21,7 +35,8 @@ import { fullName } from './refs.ts'
  */
 export function nextGrievanceCode(tx: DbLike, at: Date = new Date()): { code: string; year: number; seq: number } {
   const year = at.getFullYear()
-  const seq = (tx.get<{ top: number | null }>(sql`select max(seq) as top from grievances where year = ${year}`)?.top ?? 0) + 1
+  const seq =
+    (tx.get<{ top: number | null }>(sql`select max(seq) as top from grievances where year = ${year}`)?.top ?? 0) + 1
   return { code: grievanceCode(year, seq), year, seq }
 }
 
@@ -43,14 +58,22 @@ const person = (row: Pick<RawPerson, 'id' | 'code' | 'firstName' | 'lastName' | 
 })
 
 /** Everyone named on these grievances, by grievance and then by role, in name order. */
-export function peopleOf(db: DbLike, grievanceIds: number[]): Map<number, Record<GrievancePersonRole, GrievancePerson[]>> {
-  const byGrievance = new Map<number, Record<GrievancePersonRole, GrievancePerson[]>>(grievanceIds.map((id) => [id, { employee: [], management: [] }]))
+export function peopleOf(
+  db: DbLike,
+  grievanceIds: number[],
+): Map<number, Record<GrievancePersonRole, GrievancePerson[]>> {
+  const byGrievance = new Map<number, Record<GrievancePersonRole, GrievancePerson[]>>(
+    grievanceIds.map((id) => [id, { employee: [], management: [] }]),
+  )
   if (grievanceIds.length === 0) return byGrievance
   const rows = db.all<RawPerson>(sql`
     select p.grievance_id as grievanceId, p.role as role, e.id as id, e.code as code, e.first_name as firstName, e.last_name as lastName,
            e.archived_at as archivedAt
     from grievance_people p join employees e on e.id = p.employee_id
-    where p.grievance_id in (${sql.join(grievanceIds.map((id) => sql`${id}`), sql`, `)})
+    where p.grievance_id in (${sql.join(
+      grievanceIds.map((id) => sql`${id}`),
+      sql`, `,
+    )})
     order by e.last_name collate nocase, e.first_name collate nocase`)
   for (const row of rows) byGrievance.get(row.grievanceId)?.[row.role].push(person(row))
   return byGrievance
@@ -106,7 +129,13 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
     dateMade: row.dateMade,
     status: row.status,
     category: { id: row.categoryId, name: row.categoryName },
-    owner: person({ id: row.ownerId, code: row.ownerCode, firstName: row.ownerFirstName, lastName: row.ownerLastName, archivedAt: row.ownerArchivedAt }),
+    owner: person({
+      id: row.ownerId,
+      code: row.ownerCode,
+      firstName: row.ownerFirstName,
+      lastName: row.ownerLastName,
+      archivedAt: row.ownerArchivedAt,
+    }),
     ownerHasAccount: Boolean(row.ownerHasAccount),
     employees: named.employee,
     management: named.management,
@@ -117,7 +146,9 @@ export function getGrievance(db: DbLike, key: { id: number } | { code: string })
   }
 }
 
-type RawRow = Omit<RawGrievance, 'bodyHtml' | 'version' | 'createdAt' | 'recordedBy' | 'ownerHasAccount'> & { bodyStart: string }
+type RawRow = Omit<RawGrievance, 'bodyHtml' | 'version' | 'createdAt' | 'recordedBy' | 'ownerHasAccount'> & {
+  bodyStart: string
+}
 
 /**
  * The grievances that match, most recent activity first. Each word of the search must be found somewhere: in the ID, the title,
@@ -131,7 +162,8 @@ export function listGrievances(db: DbLike, query: GrievanceListQuery): Grievance
   if (query.to) where.push(sql`g.date_made <= ${query.to}`)
   for (const word of (query.q ?? '').split(/\s+/).filter(Boolean)) {
     const like = `%${word.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
-    const name = (alias: string) => sql`${sql.raw(alias)}.first_name || ' ' || ${sql.raw(alias)}.last_name like ${like} escape '\\'`
+    const name = (alias: string) =>
+      sql`${sql.raw(alias)}.first_name || ' ' || ${sql.raw(alias)}.last_name like ${like} escape '\\'`
     where.push(sql`(g.code like ${like} escape '\\' or g.title like ${like} escape '\\' or g.short_description like ${like} escape '\\'
       or g.body_text like ${like} escape '\\' or ${name('o')}
       or exists (select 1 from grievance_people p join employees e on e.id = p.employee_id where p.grievance_id = g.id and ${name('e')}))`)
@@ -148,10 +180,16 @@ export function listGrievances(db: DbLike, query: GrievanceListQuery): Grievance
     ${where.length ? sql`where ${sql.join(where, sql` and `)}` : sql``}
     order by g.last_activity_at desc, g.id desc`)
 
-  const counts = Object.fromEntries([['all', matching.length], ...GRIEVANCE_STATUSES.map((status) => [status, 0])]) as GrievanceList['counts']
+  const counts = Object.fromEntries([
+    ['all', matching.length],
+    ...GRIEVANCE_STATUSES.map((status) => [status, 0]),
+  ]) as GrievanceList['counts']
   for (const row of matching) counts[row.status] += 1
   const shown = query.status === 'all' ? matching : matching.filter((row) => row.status === query.status)
-  const named = peopleOf(db, shown.map((row) => row.id))
+  const named = peopleOf(
+    db,
+    shown.map((row) => row.id),
+  )
   const owners = db.all<Pick<RawPerson, 'id' | 'code' | 'firstName' | 'lastName' | 'archivedAt'>>(sql`
     select e.id as id, e.code as code, e.first_name as firstName, e.last_name as lastName, e.archived_at as archivedAt
     from employees e where e.id in (select owner_id from grievances)
@@ -164,11 +202,20 @@ export function listGrievances(db: DbLike, query: GrievanceListQuery): Grievance
       code: row.code,
       title: row.title,
       shortDescription: row.shortDescription,
-      preview: row.bodyStart.length > GRIEVANCE_PREVIEW_LENGTH ? `${row.bodyStart.slice(0, GRIEVANCE_PREVIEW_LENGTH).trimEnd()}…` : row.bodyStart,
+      preview:
+        row.bodyStart.length > GRIEVANCE_PREVIEW_LENGTH
+          ? `${row.bodyStart.slice(0, GRIEVANCE_PREVIEW_LENGTH).trimEnd()}…`
+          : row.bodyStart,
       dateMade: row.dateMade,
       status: row.status,
       category: { id: row.categoryId, name: row.categoryName },
-      owner: person({ id: row.ownerId, code: row.ownerCode, firstName: row.ownerFirstName, lastName: row.ownerLastName, archivedAt: row.ownerArchivedAt }),
+      owner: person({
+        id: row.ownerId,
+        code: row.ownerCode,
+        firstName: row.ownerFirstName,
+        lastName: row.ownerLastName,
+        archivedAt: row.ownerArchivedAt,
+      }),
       employees: named.get(row.id)!.employee,
       management: named.get(row.id)!.management,
       lastActivityAt: new Date(row.lastActivityAt).toISOString(),
@@ -178,18 +225,31 @@ export function listGrievances(db: DbLike, query: GrievanceListQuery): Grievance
 
 /** Refuses anyone who is not in the directory or has been archived: a new grievance names people who are here now. */
 export function requireActiveEmployees(db: DbLike, ids: number[], field: string) {
-  const found = db.select({ id: employees.id, archivedAt: employees.archivedAt }).from(employees).where(inArray(employees.id, ids)).all()
+  const found = db
+    .select({ id: employees.id, archivedAt: employees.archivedAt })
+    .from(employees)
+    .where(inArray(employees.id, ids))
+    .all()
   if (found.length !== ids.length) throw invalid('Someone chosen is no longer in the employee directory.', { field })
-  if (found.some((row) => row.archivedAt)) throw invalid('Someone chosen has been archived. Choose active employees only.', { field })
+  if (found.some((row) => row.archivedAt))
+    throw invalid('Someone chosen has been archived. Choose active employees only.', { field })
 }
 
 /** Record a grievance, and any files that came with it in the same request. */
-export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInput, uploads: Upload[] = []): GrievanceDetail {
+export function createGrievance(
+  db: Db,
+  actor: Actor,
+  input: GrievanceCreateInput,
+  uploads: Upload[] = [],
+): GrievanceDetail {
   const body = requireRichText(input.body, 'body')
   const id = db.transaction((tx) => {
     const category = tx.select().from(grievanceCategories).where(eq(grievanceCategories.id, input.categoryId)).get()
     if (!category) throw invalid('Choose a category.', { field: 'categoryId' })
-    if (!category.isActive) throw conflict('category_inactive', `The "${category.name}" category is no longer in use.`, { field: 'categoryId' })
+    if (!category.isActive)
+      throw conflict('category_inactive', `The "${category.name}" category is no longer in use.`, {
+        field: 'categoryId',
+      })
     requireActiveEmployees(tx, [input.ownerId], 'ownerId')
     requireActiveEmployees(tx, input.employeeIds, 'employeeIds')
     requireActiveEmployees(tx, input.managementIds, 'managementIds')
@@ -222,7 +282,13 @@ export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInpu
       ])
       .run()
     appendGrievanceEntry(tx, actor, row.id, { kind: 'system', occurredAt: now, title: GRIEVANCE_RECORDED, at: now })
-    writeGrievanceAudit(tx, actor, { action: 'create', entityType: 'grievance', entityId: row.id, details: `${code} · ${input.title}`, at: now })
+    writeGrievanceAudit(tx, actor, {
+      action: 'create',
+      entityType: 'grievance',
+      entityId: row.id,
+      details: `${code} · ${input.title}`,
+      at: now,
+    })
     saveAttachments(tx, actor, { id: row.id, code }, null, uploads, now)
     return row.id
   })
@@ -235,7 +301,9 @@ export function createGrievance(db: Db, actor: Actor, input: GrievanceCreateInpu
  */
 export function listGrievanceAccountHolders(db: DbLike): number[] {
   return db
-    .all<{ id: number }>(sql`select a.employee_id as id from users a where a.employee_id is not null and a.is_active = 1 and ${READS_GRIEVANCES} order by a.employee_id`)
+    .all<{ id: number }>(
+      sql`select a.employee_id as id from users a where a.employee_id is not null and a.is_active = 1 and ${READS_GRIEVANCES} order by a.employee_id`,
+    )
     .map((row) => row.id)
 }
 
@@ -246,7 +314,11 @@ export function listGrievanceAccountHolders(db: DbLike): number[] {
 export function findToManage(tx: DbLike, actor: Actor, code: string): GrievanceDetail {
   const grievance = getGrievance(tx, { code })
   if (!canManageGrievance(actor, grievance.owner.id)) throw forbidden(grievanceManageReason(grievance.owner.name))
-  if (grievance.status === 'voided') throw conflict('grievance_voided', `${grievance.code} has been voided. It is kept as a record and cannot be changed.`)
+  if (grievance.status === 'voided')
+    throw conflict(
+      'grievance_voided',
+      `${grievance.code} has been voided. It is kept as a record and cannot be changed.`,
+    )
   return grievance
 }
 
@@ -262,32 +334,69 @@ interface Change {
 function applyChange(tx: DbLike, actor: Actor, grievance: GrievanceDetail, change: Change) {
   const now = new Date()
   tx.update(grievances).set(change.set).where(eq(grievances.id, grievance.id)).run()
-  appendGrievanceEntry(tx, actor, grievance.id, { kind: 'system', occurredAt: now, title: change.summary, body: plainToRichText(change.note), at: now })
+  appendGrievanceEntry(tx, actor, grievance.id, {
+    kind: 'system',
+    occurredAt: now,
+    title: change.summary,
+    body: plainToRichText(change.note),
+    at: now,
+  })
   // The note stays on the timeline. This log names the grievance and what changed, never what was written about it.
-  writeGrievanceAudit(tx, actor, { action: change.action, entityType: 'grievance', entityId: grievance.id, details: `${grievance.code} · ${grievance.title} · ${change.summary}`, at: now })
+  writeGrievanceAudit(tx, actor, {
+    action: change.action,
+    entityType: 'grievance',
+    entityId: grievance.id,
+    details: `${grievance.code} · ${grievance.title} · ${change.summary}`,
+    at: now,
+  })
 }
 
-const statusChange = (from: GrievanceStatus, to: GrievanceStatus) => `Status: ${grievanceStatusLabel(from)} → ${grievanceStatusLabel(to)}`
+const statusChange = (from: GrievanceStatus, to: GrievanceStatus) =>
+  `Status: ${grievanceStatusLabel(from)} → ${grievanceStatusLabel(to)}`
 
 /** Move a grievance between Open, In progress, Resolved and Closed, in any direction: reopening is a change like any other. */
-export function changeGrievanceStatus(db: Db, actor: Actor, code: string, input: GrievanceStatusChangeInput): GrievanceDetail {
+export function changeGrievanceStatus(
+  db: Db,
+  actor: Actor,
+  code: string,
+  input: GrievanceStatusChangeInput,
+): GrievanceDetail {
   const id = db.transaction((tx) => {
     const grievance = findToManage(tx, actor, code)
-    if (grievance.status === input.status) throw conflict('status_unchanged', `${grievance.code} is already ${grievanceStatusLabel(input.status)}.`, { field: 'status' })
-    applyChange(tx, actor, grievance, { action: 'status', summary: statusChange(grievance.status, input.status), note: input.note, set: { status: input.status } })
+    if (grievance.status === input.status)
+      throw conflict('status_unchanged', `${grievance.code} is already ${grievanceStatusLabel(input.status)}.`, {
+        field: 'status',
+      })
+    applyChange(tx, actor, grievance, {
+      action: 'status',
+      summary: statusChange(grievance.status, input.status),
+      note: input.note,
+      set: { status: input.status },
+    })
     return grievance.id
   })
   return getGrievance(db, { id })
 }
 
 /** Hand a grievance to another owner. Whoever owned it can no longer change it, unless they are a Super Admin. */
-export function changeGrievanceOwner(db: Db, actor: Actor, code: string, input: GrievanceOwnerChangeInput): GrievanceDetail {
+export function changeGrievanceOwner(
+  db: Db,
+  actor: Actor,
+  code: string,
+  input: GrievanceOwnerChangeInput,
+): GrievanceDetail {
   const id = db.transaction((tx) => {
     const grievance = findToManage(tx, actor, code)
-    if (grievance.status === 'closed') throw conflict('grievance_sealed', `${grievance.code} is Closed. Reopen it before changing its owner.`)
-    if (grievance.owner.id === input.ownerId) throw invalid(`${grievance.owner.name} already owns ${grievance.code}.`, { field: 'ownerId' })
+    if (grievance.status === 'closed')
+      throw conflict('grievance_sealed', `${grievance.code} is Closed. Reopen it before changing its owner.`)
+    if (grievance.owner.id === input.ownerId)
+      throw invalid(`${grievance.owner.name} already owns ${grievance.code}.`, { field: 'ownerId' })
     requireActiveEmployees(tx, [input.ownerId], 'ownerId')
-    const next = tx.select({ firstName: employees.firstName, lastName: employees.lastName }).from(employees).where(eq(employees.id, input.ownerId)).get()!
+    const next = tx
+      .select({ firstName: employees.firstName, lastName: employees.lastName })
+      .from(employees)
+      .where(eq(employees.id, input.ownerId))
+      .get()!
     applyChange(tx, actor, grievance, {
       action: 'owner',
       summary: `Owner: ${grievance.owner.name} → ${fullName(next.firstName, next.lastName)}`,
@@ -303,18 +412,33 @@ export function changeGrievanceOwner(db: Db, actor: Actor, code: string, input: 
 export function voidGrievance(db: Db, actor: Actor, code: string, input: GrievanceVoidInput): GrievanceDetail {
   const id = db.transaction((tx) => {
     const grievance = findToManage(tx, actor, code)
-    applyChange(tx, actor, grievance, { action: 'void', summary: statusChange(grievance.status, 'voided'), note: input.reason, set: { status: 'voided' } })
+    applyChange(tx, actor, grievance, {
+      action: 'void',
+      summary: statusChange(grievance.status, 'voided'),
+      note: input.reason,
+      set: { status: 'voided' },
+    })
     return grievance.id
   })
   return getGrievance(db, { id })
 }
 
 // A cancelled print dialog cannot be detected, so the entry says only that the dialog opened.
-const EXPORT_NAMES: Record<GrievanceExportInput['format'], string> = { pdf: 'PDF case file (print dialog opened)', xlsx: 'Excel workbook' }
+const EXPORT_NAMES: Record<GrievanceExportInput['format'], string> = {
+  pdf: 'PDF case file (print dialog opened)',
+  xlsx: 'Excel workbook',
+}
 
 /** Log an export. The browser makes the file, so it reports each one here; viewing a grievance is not logged, taking a copy is. */
 export function recordGrievanceExport(db: DbLike, actor: Actor, code: string, input: GrievanceExportInput) {
-  const grievance = db.get<{ id: number; code: string; title: string }>(sql`select id, code, title from grievances where code = ${code} collate nocase`)
+  const grievance = db.get<{ id: number; code: string; title: string }>(
+    sql`select id, code, title from grievances where code = ${code} collate nocase`,
+  )
   if (!grievance) throw notFound('Grievance')
-  writeGrievanceAudit(db, actor, { action: 'export', entityType: 'grievance', entityId: grievance.id, details: `${grievance.code} · ${grievance.title} · ${EXPORT_NAMES[input.format]}` })
+  writeGrievanceAudit(db, actor, {
+    action: 'export',
+    entityType: 'grievance',
+    entityId: grievance.id,
+    details: `${grievance.code} · ${grievance.title} · ${EXPORT_NAMES[input.format]}`,
+  })
 }

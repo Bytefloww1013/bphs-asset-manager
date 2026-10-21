@@ -36,11 +36,18 @@ const path = (review: ReviewDetail, task: Task) => `/reviews/${encodeURIComponen
 const about = (review: ReviewDetail) => `${review.code} · ${review.title}`
 
 function StatusSheet({ review, onClose }: { review: ReviewDetail; onClose: () => void }) {
-  const options = REVIEW_OPEN_STATUSES.filter((status) => status !== review.status).map((value) => ({ value, label: reviewStatusLabel(value) }))
+  const options = REVIEW_OPEN_STATUSES.filter((status) => status !== review.status).map((value) => ({
+    value,
+    label: reviewStatusLabel(value),
+  }))
   const [status, setStatus] = useState<(typeof options)[number]['value'] | null>(null)
   const [note, setNote] = useState('')
   const [missing, setMissing] = useState<string>()
-  const change = useChange<ReviewDetail>(path(review, 'status'), (next) => `${next.code} is now ${reviewStatusLabel(next.status)}`, onClose)
+  const change = useChange<ReviewDetail>(
+    path(review, 'status'),
+    (next) => `${next.code} is now ${reviewStatusLabel(next.status)}`,
+    onClose,
+  )
 
   function commit() {
     setMissing(status ? undefined : 'Choose a status')
@@ -48,12 +55,26 @@ function StatusSheet({ review, onClose }: { review: ReviewDetail; onClose: () =>
   }
 
   return (
-    <ChangeSheet title="Change status" description={about(review)} submit="Change status" change={change} onSubmit={commit} onClose={onClose}>
-      <Field label="New status" hint={`It is ${reviewStatusLabel(review.status)} now.`} error={missing ?? change.field('status')}>
+    <ChangeSheet
+      title="Change status"
+      description={about(review)}
+      submit="Change status"
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
+      <Field
+        label="New status"
+        hint={`It is ${reviewStatusLabel(review.status)} now.`}
+        error={missing ?? change.field('status')}
+      >
         <Segmented value={status} onChange={setStatus} options={options} />
       </Field>
       {status === 'completed' && (
-        <Alert>Completing the review is its sign-off, once every CAP is Completed or Cancelled. It then takes no new CAPs, updates or files until it is reopened.</Alert>
+        <Alert>
+          Completing the review is its sign-off, once every CAP is Completed or Cancelled. It then takes no new CAPs,
+          updates or files until it is reopened.
+        </Alert>
       )}
       <Field label="Note" optional hint="Shown on the history with the change." error={change.field('note')}>
         <Note value={note} onChange={setNote} />
@@ -73,10 +94,19 @@ function VoidSheet({ review, onClose }: { review: ReviewDetail; onClose: () => v
   }
 
   return (
-    <ChangeSheet title="Void this review" description={about(review)} submit="Void review" danger change={change} onSubmit={commit} onClose={onClose}>
+    <ChangeSheet
+      title="Void this review"
+      description={about(review)}
+      submit="Void review"
+      danger
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
       <Alert tone="warn" title="This cannot be undone">
-        A voided review is kept as a record, with its history, its CAPs and this reason, but nothing about it can be changed again and its CAPs leave the action items. Use
-        it for a review entered by mistake; one that is done is completed instead.
+        A voided review is kept as a record, with its history, its CAPs and this reason, but nothing about it can be
+        changed again and its CAPs leave the action items. Use it for a review entered by mistake; one that is done is
+        completed instead.
       </Alert>
       <Field label="Reason" hint="Shown on the history." error={missing ?? change.field('reason')}>
         <Note value={reason} onChange={setReason} />

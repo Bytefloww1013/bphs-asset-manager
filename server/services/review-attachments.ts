@@ -37,7 +37,14 @@ const onCap = (cap: Cap, title: string) => (cap ? `${reviewCapCode(cap.seq)}: ${
  * Write checked files onto a review, or one of its CAPs, inside the transaction of whatever they came with. One automatic entry
  * records them, filed where they are, and the files hang off it; each file has its own Review Audit Log entry.
  */
-export function saveReviewAttachments(tx: DbLike, actor: Actor, review: { id: number; code: string }, cap: Cap, uploads: Upload[], at: Date): ReviewAttachment[] {
+export function saveReviewAttachments(
+  tx: DbLike,
+  actor: Actor,
+  review: { id: number; code: string },
+  cap: Cap,
+  uploads: Upload[],
+  at: Date,
+): ReviewAttachment[] {
   if (!uploads.length) return []
   const entry = appendReviewEntry(tx, actor, review.id, {
     kind: 'system',
@@ -50,17 +57,39 @@ export function saveReviewAttachments(tx: DbLike, actor: Actor, review: { id: nu
   return uploads.map(({ bytes, ...upload }) => {
     const row = tx
       .insert(reviewAttachments)
-      .values({ reviewId: review.id, capId: cap?.id, entryId: entry.id, ...upload, size: bytes.length, uploadedByUserId: actor.id, uploadedByLabel: actor.name, uploadedAt: at })
+      .values({
+        reviewId: review.id,
+        capId: cap?.id,
+        entryId: entry.id,
+        ...upload,
+        size: bytes.length,
+        uploadedByUserId: actor.id,
+        uploadedByLabel: actor.name,
+        uploadedAt: at,
+      })
       .returning()
       .get()
     put(tx, row.id, bytes)
-    writeReviewAudit(tx, actor, { action: 'attach', entityType: 'attachment', entityId: row.id, reviewId: review.id, details: `${where(review, cap)} · ${row.filename}`, at })
+    writeReviewAudit(tx, actor, {
+      action: 'attach',
+      entityType: 'attachment',
+      entityId: row.id,
+      reviewId: review.id,
+      details: `${where(review, cap)} · ${row.filename}`,
+      at,
+    })
     return shape(row, entry.seq, cap?.seq ?? null)
   })
 }
 
 /** Add files to a review, or to one of its CAPs, on their own, from its page. */
-export function addReviewAttachments(db: Db, actor: Actor, code: string, input: ReviewAttachmentsInput, uploads: Upload[]): ReviewAttachment[] {
+export function addReviewAttachments(
+  db: Db,
+  actor: Actor,
+  code: string,
+  input: ReviewAttachmentsInput,
+  uploads: Upload[],
+): ReviewAttachment[] {
   if (!uploads.length) throw invalid('Choose a file to attach.', { field: 'files' })
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
@@ -81,8 +110,14 @@ const attachmentRows = (db: DbLike, reviewId: number, id?: number) =>
     .all()
 
 /** Every file on one review the viewer may see, its CAPs' too, withdrawn ones as well, in the order they were added. */
-export function listReviewAttachments(db: DbLike, viewer: { employeeId: number | null }, code: string): ReviewAttachment[] {
-  return attachmentRows(db, getReview(db, viewer, { code }).id).map(({ row, entrySeq, cap }) => shape(row, entrySeq, cap))
+export function listReviewAttachments(
+  db: DbLike,
+  viewer: { employeeId: number | null },
+  code: string,
+): ReviewAttachment[] {
+  return attachmentRows(db, getReview(db, viewer, { code }).id).map(({ row, entrySeq, cap }) =>
+    shape(row, entrySeq, cap),
+  )
 }
 
 /** One of a review's files, or 404: an ID from another review is not found here. */
@@ -97,11 +132,18 @@ export function downloadReviewAttachment(db: Db, actor: Actor, code: string, id:
   return db.transaction((tx) => {
     const review = getReview(tx, actor, { code })
     const { row, cap } = findAttachment(tx, review.id, id)
-    if (row.withdrawnAt) throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
+    if (row.withdrawnAt)
+      throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
     const bytes = get(tx, row.id)
     if (!bytes) throw notFound('File')
     const capRef = cap === null ? null : { id: row.capId!, seq: cap }
-    writeReviewAudit(tx, actor, { action: 'download', entityType: 'attachment', entityId: row.id, reviewId: review.id, details: `${where(review, capRef)} · ${row.filename}` })
+    writeReviewAudit(tx, actor, {
+      action: 'download',
+      entityType: 'attachment',
+      entityId: row.id,
+      reviewId: review.id,
+      details: `${where(review, capRef)} · ${row.filename}`,
+    })
     return { filename: row.filename, contentType: row.contentType, bytes }
   })
 }
@@ -110,14 +152,25 @@ export function downloadReviewAttachment(db: Db, actor: Actor, code: string, id:
  * Take back a file added by mistake. Its bytes stay in the database, but nothing in the app reads them again; its name, who added
  * it and the reason stay on the list, and an automatic entry, filed where the file is, records it on the history.
  */
-export function withdrawReviewAttachment(db: Db, actor: Actor, code: string, id: number, input: ReviewAttachmentWithdrawInput): ReviewAttachment {
+export function withdrawReviewAttachment(
+  db: Db,
+  actor: Actor,
+  code: string,
+  id: number,
+  input: ReviewAttachmentWithdrawInput,
+): ReviewAttachment {
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
     requireNotSealed(review, 'withdraw a file')
     const { row, entrySeq, cap } = findAttachment(tx, review.id, id)
     if (row.withdrawnAt) throw conflict('attachment_withdrawn', `${row.filename} has already been withdrawn.`)
     const now = new Date()
-    const withdrawn = tx.update(reviewAttachments).set({ withdrawnAt: now, withdrawnReason: input.reason }).where(eq(reviewAttachments.id, row.id)).returning().get()
+    const withdrawn = tx
+      .update(reviewAttachments)
+      .set({ withdrawnAt: now, withdrawnReason: input.reason })
+      .where(eq(reviewAttachments.id, row.id))
+      .returning()
+      .get()
     const capRef = cap === null ? null : { id: row.capId!, seq: cap }
     appendReviewEntry(tx, actor, review.id, {
       kind: 'system',
@@ -128,7 +181,14 @@ export function withdrawReviewAttachment(db: Db, actor: Actor, code: string, id:
       body: plainToRichText(input.reason),
       at: now,
     })
-    writeReviewAudit(tx, actor, { action: 'withdraw', entityType: 'attachment', entityId: row.id, reviewId: review.id, details: `${where(review, capRef)} · ${row.filename}`, at: now })
+    writeReviewAudit(tx, actor, {
+      action: 'withdraw',
+      entityType: 'attachment',
+      entityId: row.id,
+      reviewId: review.id,
+      details: `${where(review, capRef)} · ${row.filename}`,
+      at: now,
+    })
     return shape(withdrawn, entrySeq, cap)
   })
 }

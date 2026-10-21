@@ -37,6 +37,8 @@ describe('looksLikeSecret', () => {
 
   // The refusals are checked through the API in api.test.ts.
   it('trims the License/Account field', () => {
-    expect(digitalAssetCreateSchema.safeParse({ typeId: 1, account: ' j.doe@bphs.org ' }).data?.account).toBe('j.doe@bphs.org')
+    expect(digitalAssetCreateSchema.safeParse({ typeId: 1, account: ' j.doe@bphs.org ' }).data?.account).toBe(
+      'j.doe@bphs.org',
+    )
   })
 })

@@ -23,7 +23,9 @@ interface Body {
 
 const EMPTY: Body = { name: '', code: '', address: '' }
 
-export const ProgramStatus = ({ program }: { program: ProgramRow }) => <Badge tone={program.isActive ? 'ok' : 'neutral'}>{program.isActive ? 'Active' : 'Deactivated'}</Badge>
+export const ProgramStatus = ({ program }: { program: ProgramRow }) => (
+  <Badge tone={program.isActive ? 'ok' : 'neutral'}>{program.isActive ? 'Active' : 'Deactivated'}</Badge>
+)
 
 export function QuickAddProgram({ onAdded }: { onAdded: (id: number) => void }) {
   const toast = useToast()
@@ -31,13 +33,24 @@ export function QuickAddProgram({ onAdded }: { onAdded: (id: number) => void }) 
   const [value, setValue] = useState<Body>(EMPTY)
   const [error, setError] = useState<ApiError | null>(null)
   const add = useWrite((body: Body) => api.post<ProgramRow>('/programs', body), { silent: true })
-  const set = (key: keyof Body) => (event: React.ChangeEvent<HTMLInputElement>) => setValue((v) => ({ ...v, [key]: event.target.value }))
+  const set = (key: keyof Body) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    setValue((v) => ({ ...v, [key]: event.target.value }))
 
   async function commit() {
     setError(null)
     const missing = (['name', 'code'] as const).find((key) => !value[key].trim())
     if (missing) {
-      setError(new ApiError(422, { error: 'validation_failed', message: 'Program name and Program ID are required.', details: { fields: { [missing]: 'Required' } } }, ''))
+      setError(
+        new ApiError(
+          422,
+          {
+            error: 'validation_failed',
+            message: 'Program name and Program ID are required.',
+            details: { fields: { [missing]: 'Required' } },
+          },
+          '',
+        ),
+      )
       return
     }
     try {
@@ -96,8 +109,12 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
   const noFull = useDenied('assets', 'full')
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null)
-  const deactivate = useWrite(() => api.post(`/programs/${program.id}/deactivate`), { success: `${program.name} deactivated` })
-  const reactivate = useWrite(() => api.post(`/programs/${program.id}/reactivate`), { success: `${program.name} reactivated` })
+  const deactivate = useWrite(() => api.post(`/programs/${program.id}/deactivate`), {
+    success: `${program.name} deactivated`,
+  })
+  const reactivate = useWrite(() => api.post(`/programs/${program.id}/reactivate`), {
+    success: `${program.name} reactivated`,
+  })
   const remove = useWrite(() => api.delete(`/programs/${program.id}`), { success: `${program.name} deleted` })
 
   const items: MenuItem[] = [
@@ -107,9 +124,16 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
           label: 'Deactivate',
           icon: Archive,
           onSelect: () => setConfirm('deactivate'),
-          disabledReason: noEdit ?? (program.assetsHeld > 0 ? `Holds ${plural(program.assetsHeld, 'asset')}. Return them first.` : undefined),
+          disabledReason:
+            noEdit ??
+            (program.assetsHeld > 0 ? `Holds ${plural(program.assetsHeld, 'asset')}. Return them first.` : undefined),
         }
-      : { label: 'Reactivate', icon: ArchiveRestore, onSelect: () => reactivate.mutate(undefined), disabledReason: noEdit },
+      : {
+          label: 'Reactivate',
+          icon: ArchiveRestore,
+          onSelect: () => reactivate.mutate(undefined),
+          disabledReason: noEdit,
+        },
     {
       label: 'Delete',
       icon: Trash2,
@@ -123,10 +147,17 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
       <span className="mr-1.5 hidden items-center gap-2.5 whitespace-nowrap sm:flex">
-        <span className={program.assetsHeld ? 'text-sm tabular-nums text-ink-2' : 'text-sm tabular-nums text-ink-3'}>{program.assetsHeld} held</span>
+        <span className={program.assetsHeld ? 'text-sm tabular-nums text-ink-2' : 'text-sm tabular-nums text-ink-3'}>
+          {program.assetsHeld} held
+        </span>
         <ProgramStatus program={program} />
       </span>
-      <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={noEdit ?? (program.isActive ? undefined : 'A deactivated program cannot be assigned assets.')} onClick={() => sheets.issueToProgram(undefined, program.id)}>
+      <Button
+        size="sm"
+        icon={<Send className="size-3.5" />}
+        disabledReason={noEdit ?? (program.isActive ? undefined : 'A deactivated program cannot be assigned assets.')}
+        onClick={() => sheets.issueToProgram(undefined, program.id)}
+      >
         Assign to
       </Button>
       <Menu label={`More actions for ${program.name}`} items={items} />
@@ -154,7 +185,10 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
 
 export function ProgramEditSheet({ program, onClose }: { program: ProgramRow; onClose: () => void }) {
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((body: Body) => api.patch<ProgramRow>(`/programs/${program.id}`, body), { silent: true, success: `${program.name} updated` })
+  const save = useWrite((body: Body) => api.patch<ProgramRow>(`/programs/${program.id}`, body), {
+    silent: true,
+    success: `${program.name} updated`,
+  })
   const form = useForm({
     defaultValues: { name: program.name, code: program.code, address: program.address ?? '' } as Body,
     validators: {
@@ -176,11 +210,21 @@ export function ProgramEditSheet({ program, onClose }: { program: ProgramRow; on
     },
   })
   const submitted = form.state.submissionAttempts > 0
-  const text = (name: keyof Body, label: string, opts: { optional?: boolean; mono?: boolean; autoFocus?: boolean } = {}) => (
+  const text = (
+    name: keyof Body,
+    label: string,
+    opts: { optional?: boolean; mono?: boolean; autoFocus?: boolean } = {},
+  ) => (
     <form.Field name={name}>
       {(field) => (
         <Field label={label} optional={opts.optional} error={fieldError(field, error?.fields, submitted)}>
-          <Input mono={opts.mono} autoFocus={opts.autoFocus} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+          <Input
+            mono={opts.mono}
+            autoFocus={opts.autoFocus}
+            value={field.state.value}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={field.handleBlur}
+          />
         </Field>
       )}
     </form.Field>

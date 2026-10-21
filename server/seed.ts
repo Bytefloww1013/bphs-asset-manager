@@ -114,19 +114,81 @@ const byCode = (code: string) => people.find((p) => p.code === code)!
 
 const [priya, marcus, dana, , , rosa] = db
   .insert(users)
-  .values(([
-    { name: 'Priya Raghunathan', email: 'p.raghunathan@bphs.local', superAdmin: true, employeeId: byCode('E-1042').id, lastLoginAt: daysAgo(0) },
-    { name: 'Marcus Oyelaran', email: 'm.oyelaran@bphs.local', access: { assets: 'edit', grievances: 'edit', reviews: 'edit', employees: 'edit', tasks: 'edit' }, employeeId: byCode('E-0988').id, lastLoginAt: daysAgo(0) },
-    { name: 'Dana Whitfield', email: 'd.whitfield@bphs.local', access: { grievances: 'edit', employees: 'edit', tasks: 'assign' }, employeeId: byCode('E-1130').id, mustChangePassword: true },
-    { name: 'Ops Account', email: 'ops@bphs.local', access: { assets: 'edit', employees: 'edit' }, employeeId: byCode('E-0761').id, failedLogins: 5, lockedUntil: new Date(now + 11 * 60_000), lastLoginAt: daysAgo(1) },
-    { name: 'Neil Abernathy', email: 'n.abernathy@bphs.local', access: { assets: 'edit', grievances: 'edit', employees: 'edit' }, employeeId: byCode('E-0442').id, isActive: false, lastLoginAt: daysAgo(150) },
-    { name: 'Rosa Delgado', email: 'r.delgado@bphs.local', access: { assets: 'read', grievances: 'read', maintenance: 'read', reviews: 'read', employees: 'read', tasks: 'read' }, employeeId: byCode('E-1102').id, lastLoginAt: daysAgo(3) },
-  ] satisfies Partial<typeof users.$inferInsert>[]).map((u) => ({ passwordHash, mustChangePassword: false, ...u }) as typeof users.$inferInsert))
+  .values(
+    (
+      [
+        {
+          name: 'Priya Raghunathan',
+          email: 'p.raghunathan@bphs.local',
+          superAdmin: true,
+          employeeId: byCode('E-1042').id,
+          lastLoginAt: daysAgo(0),
+        },
+        {
+          name: 'Marcus Oyelaran',
+          email: 'm.oyelaran@bphs.local',
+          access: { assets: 'edit', grievances: 'edit', reviews: 'edit', employees: 'edit', tasks: 'edit' },
+          employeeId: byCode('E-0988').id,
+          lastLoginAt: daysAgo(0),
+        },
+        {
+          name: 'Dana Whitfield',
+          email: 'd.whitfield@bphs.local',
+          access: { grievances: 'edit', employees: 'edit', tasks: 'assign' },
+          employeeId: byCode('E-1130').id,
+          mustChangePassword: true,
+        },
+        {
+          name: 'Ops Account',
+          email: 'ops@bphs.local',
+          access: { assets: 'edit', employees: 'edit' },
+          employeeId: byCode('E-0761').id,
+          failedLogins: 5,
+          lockedUntil: new Date(now + 11 * 60_000),
+          lastLoginAt: daysAgo(1),
+        },
+        {
+          name: 'Neil Abernathy',
+          email: 'n.abernathy@bphs.local',
+          access: { assets: 'edit', grievances: 'edit', employees: 'edit' },
+          employeeId: byCode('E-0442').id,
+          isActive: false,
+          lastLoginAt: daysAgo(150),
+        },
+        {
+          name: 'Rosa Delgado',
+          email: 'r.delgado@bphs.local',
+          access: {
+            assets: 'read',
+            grievances: 'read',
+            maintenance: 'read',
+            reviews: 'read',
+            employees: 'read',
+            tasks: 'read',
+          },
+          employeeId: byCode('E-1102').id,
+          lastLoginAt: daysAgo(3),
+        },
+      ] satisfies Partial<typeof users.$inferInsert>[]
+    ).map((u) => ({ passwordHash, mustChangePassword: false, ...u }) as typeof users.$inferInsert),
+  )
   .returning()
   .all()
 
-const types = Object.fromEntries(db.select().from(assetTypes).all().map((t) => [t.name, t.id])) as Record<string, number>
-const ratings = Object.fromEntries(db.select().from(conditionRatings).all().map((r) => [r.name, r.id])) as Record<string, number>
+const types = Object.fromEntries(
+  db
+    .select()
+    .from(assetTypes)
+    .all()
+    .map((t) => [t.name, t.id]),
+) as Record<string, number>
+const ratings = Object.fromEntries(
+  db
+    .select()
+    .from(conditionRatings)
+    .all()
+    .map((r) => [r.name, r.id]),
+) as Record<string, number>
 
 const FLEET: [string, number, string, string][] = [
   // type, count, serial prefix, tag prefix start
@@ -151,19 +213,39 @@ const PROGRAMS: [string, string, string | null, boolean][] = [
 
 /** Digital asset type, how many seats, and what a seat's License/Account looks like. */
 const SEATS: [string, number, (n: number, holder?: { firstName: string; lastName: string }) => string][] = [
-  ['Microsoft 365', 12, (n, h) => (h ? `${h.firstName[0]}.${h.lastName}@bphs.example`.toLowerCase() : `spare${n}@bphs.example`)],
+  [
+    'Microsoft 365',
+    12,
+    (n, h) => (h ? `${h.firstName[0]}.${h.lastName}@bphs.example`.toLowerCase() : `spare${n}@bphs.example`),
+  ],
   ['Adobe Acrobat Pro', 5, (n) => `Team licence, seat ${n}`],
-  ['Client records system', 8, (n, h) => (h ? `${h.firstName[0]}${h.lastName}`.toLowerCase().replace(/[^a-z]/g, '') : `unassigned-${n}`)],
+  [
+    'Client records system',
+    8,
+    (n, h) => (h ? `${h.firstName[0]}${h.lastName}`.toLowerCase().replace(/[^a-z]/g, '') : `unassigned-${n}`),
+  ],
   ['Zoom', 4, (n) => `Licensed host ${n}`],
   ['Accounting software', 3, (n) => `Named user ${n}`],
 ]
-const audit = (d: DbLike, at: Date, who: (typeof actors)[number], action: 'create' | 'issue' | 'return' | 'update', entityType: string, entityId: number, details: string) =>
-  d.insert(auditLog).values({ occurredAt: at, userId: who.id, actor: who.email, action, entityType, entityId, details }).run()
+const audit = (
+  d: DbLike,
+  at: Date,
+  who: (typeof actors)[number],
+  action: 'create' | 'issue' | 'return' | 'update',
+  entityType: string,
+  entityId: number,
+  details: string,
+) =>
+  d
+    .insert(auditLog)
+    .values({ occurredAt: at, userId: who.id, actor: who.email, action, entityType, entityId, details })
+    .run()
 
 /** Physical assets left in service with nobody holding them, and when each last came back. */
 const shelf: { id: number; tag: string; since: number }[] = []
 
-const serial = (prefix: string) => `${prefix}${int(1000, 9999)}${String.fromCharCode(65 + int(0, 25))}${String.fromCharCode(65 + int(0, 25))}${int(10, 99)}`
+const serial = (prefix: string) =>
+  `${prefix}${int(1000, 9999)}${String.fromCharCode(65 + int(0, 25))}${String.fromCharCode(65 + int(0, 25))}${int(10, 99)}`
 
 let tagNumber = 0
 db.transaction((tx) => {
@@ -173,19 +255,70 @@ db.transaction((tx) => {
       const tag = `BPHS-${String(tagNumber).padStart(4, '0')}`
       const createdAt = daysAgo(int(120, 880))
       const who = pick(actors)
-      const asset = tx.insert(assets).values({ tag, typeId: types[typeName]!, serial: serial(prefix), createdAt }).returning().get()
+      const asset = tx
+        .insert(assets)
+        .values({ tag, typeId: types[typeName]!, serial: serial(prefix), createdAt })
+        .returning()
+        .get()
       audit(tx, createdAt, who, 'create', 'asset', asset.id, `${tag} · ${typeName}`)
-      tx.insert(conditions).values({ assetId: asset.id, kind: 'intake', ratingId: ratings.New!, assessedById: priya!.employeeId, recordedById: who.id, recordedAt: createdAt }).run()
+      tx.insert(conditions)
+        .values({
+          assetId: asset.id,
+          kind: 'intake',
+          ratingId: ratings.New!,
+          assessedById: priya!.employeeId,
+          recordedById: who.id,
+          recordedAt: createdAt,
+        })
+        .run()
 
       let cursor = createdAt.getTime()
-      const cycle = (holder: (typeof people)[number], issuedAt: Date, returnedAt: Date | null, issueRating: string, returnRating?: string) => {
+      const cycle = (
+        holder: (typeof people)[number],
+        issuedAt: Date,
+        returnedAt: Date | null,
+        issueRating: string,
+        returnRating?: string,
+      ) => {
         const issuer = pick(actors)
-        const a = tx.insert(assignments).values({ assetId: asset.id, employeeId: holder.id, issuedAt, returnedAt, issuedById: issuer.id, returnedById: returnedAt ? pick(actors).id : null }).returning().get()
-        tx.insert(conditions).values({ assetId: asset.id, assignmentId: a.id, kind: 'issue', ratingId: ratings[issueRating]!, assessedById: priya!.employeeId, recordedById: issuer.id, recordedAt: issuedAt }).run()
+        const a = tx
+          .insert(assignments)
+          .values({
+            assetId: asset.id,
+            employeeId: holder.id,
+            issuedAt,
+            returnedAt,
+            issuedById: issuer.id,
+            returnedById: returnedAt ? pick(actors).id : null,
+          })
+          .returning()
+          .get()
+        tx.insert(conditions)
+          .values({
+            assetId: asset.id,
+            assignmentId: a.id,
+            kind: 'issue',
+            ratingId: ratings[issueRating]!,
+            assessedById: priya!.employeeId,
+            recordedById: issuer.id,
+            recordedAt: issuedAt,
+          })
+          .run()
         audit(tx, issuedAt, issuer, 'issue', 'assignment', a.id, `${tag} → ${holder.code} · ${issueRating}`)
         if (returnedAt && returnRating) {
           const closer = pick(actors)
-          tx.insert(conditions).values({ assetId: asset.id, assignmentId: a.id, kind: 'return', ratingId: ratings[returnRating]!, assessedById: marcus!.employeeId, notes: returnRating === 'Poor' || returnRating === 'Damaged' ? 'Heavy wear; keys and casing worn.' : null, recordedById: closer.id, recordedAt: returnedAt }).run()
+          tx.insert(conditions)
+            .values({
+              assetId: asset.id,
+              assignmentId: a.id,
+              kind: 'return',
+              ratingId: ratings[returnRating]!,
+              assessedById: marcus!.employeeId,
+              notes: returnRating === 'Poor' || returnRating === 'Damaged' ? 'Heavy wear; keys and casing worn.' : null,
+              recordedById: closer.id,
+              recordedAt: returnedAt,
+            })
+            .run()
           audit(tx, returnedAt, closer, 'return', 'assignment', a.id, `${tag} ← ${holder.code} · ${returnRating}`)
         }
       }
@@ -208,7 +341,15 @@ db.transaction((tx) => {
         const returned = new Date(Math.min(issued.getTime() + 90 * DAY, now - 2 * DAY))
         cycle(pick(people), issued, returned, 'Good', 'Damaged')
         tx.update(assets).set({ status: 'retired' }).where(eq(assets.id, asset.id)).run()
-        audit(tx, new Date(returned.getTime() + DAY), priya!, 'update', 'asset', asset.id, `${tag} · status: in_service → retired`)
+        audit(
+          tx,
+          new Date(returned.getTime() + DAY),
+          priya!,
+          'update',
+          'asset',
+          asset.id,
+          `${tag} · status: in_service → retired`,
+        )
       } else if (roll < 0.66) {
         const longest = rand() < 0.14
         const out = longest ? int(380, 800) : int(8, 360)
@@ -232,13 +373,49 @@ db.transaction((tx) => {
   })
   const open = sites.filter((p) => p.isActive)
   const closed = sites.find((p) => !p.isActive)!
-  const hold = (item: (typeof shelf)[number], program: (typeof sites)[number], issuedAt: Date, returnedAt: Date | null) => {
+  const hold = (
+    item: (typeof shelf)[number],
+    program: (typeof sites)[number],
+    issuedAt: Date,
+    returnedAt: Date | null,
+  ) => {
     const issuer = pick(actors)
-    const a = tx.insert(assignments).values({ assetId: item.id, programId: program.id, issuedAt, returnedAt, issuedById: issuer.id, returnedById: returnedAt ? issuer.id : null }).returning().get()
-    tx.insert(conditions).values({ assetId: item.id, assignmentId: a.id, kind: 'issue', ratingId: ratings.Good!, assessedById: priya!.employeeId, recordedById: issuer.id, recordedAt: issuedAt }).run()
+    const a = tx
+      .insert(assignments)
+      .values({
+        assetId: item.id,
+        programId: program.id,
+        issuedAt,
+        returnedAt,
+        issuedById: issuer.id,
+        returnedById: returnedAt ? issuer.id : null,
+      })
+      .returning()
+      .get()
+    tx.insert(conditions)
+      .values({
+        assetId: item.id,
+        assignmentId: a.id,
+        kind: 'issue',
+        ratingId: ratings.Good!,
+        assessedById: priya!.employeeId,
+        recordedById: issuer.id,
+        recordedAt: issuedAt,
+      })
+      .run()
     audit(tx, issuedAt, issuer, 'issue', 'assignment', a.id, `${item.tag} → program ${program.code} · Good`)
     if (!returnedAt) return
-    tx.insert(conditions).values({ assetId: item.id, assignmentId: a.id, kind: 'return', ratingId: ratings.Fair!, assessedById: marcus!.employeeId, recordedById: issuer.id, recordedAt: returnedAt }).run()
+    tx.insert(conditions)
+      .values({
+        assetId: item.id,
+        assignmentId: a.id,
+        kind: 'return',
+        ratingId: ratings.Fair!,
+        assessedById: marcus!.employeeId,
+        recordedById: issuer.id,
+        recordedAt: returnedAt,
+      })
+      .run()
     audit(tx, returnedAt, issuer, 'return', 'assignment', a.id, `${item.tag} ← program ${program.code} · Fair`)
   }
   // The closed program held one device and gave it back, which is why it was deactivated and not deleted.
@@ -247,9 +424,18 @@ db.transaction((tx) => {
     const issued = new Date(first.since + (now - first.since) / 3)
     const returned = new Date(first.since + ((now - first.since) * 2) / 3)
     hold(first, closed, issued, returned)
-    audit(tx, new Date(returned.getTime() + 3_600_000), priya!, 'update', 'program', closed.id, `program_id=${closed.code} · deactivated`)
+    audit(
+      tx,
+      new Date(returned.getTime() + 3_600_000),
+      priya!,
+      'update',
+      'program',
+      closed.id,
+      `program_id=${closed.code} · deactivated`,
+    )
   }
-  for (const item of shelf.splice(0, 12)) hold(item, pick(open), new Date(item.since + (now - item.since) * (0.2 + rand() * 0.7)), null)
+  for (const item of shelf.splice(0, 12))
+    hold(item, pick(open), new Date(item.since + (now - item.since) * (0.2 + rand() * 0.7)), null)
 
   // Digital assets: one row per seat, most of them with someone.
   let holderIndex = 0
@@ -262,7 +448,17 @@ db.transaction((tx) => {
       const who = pick(actors)
       const roll = rand()
       const holder = roll < 0.72 ? active[holderIndex++ % active.length]! : undefined
-      const seat = tx.insert(digitalAssets).values({ code: `pending-${typeName}-${n}`, typeId: type.id, account: account(n, holder), status: roll > 0.93 ? 'inactive' : 'in_service', createdAt: addedAt }).returning().get()
+      const seat = tx
+        .insert(digitalAssets)
+        .values({
+          code: `pending-${typeName}-${n}`,
+          typeId: type.id,
+          account: account(n, holder),
+          status: roll > 0.93 ? 'inactive' : 'in_service',
+          createdAt: addedAt,
+        })
+        .returning()
+        .get()
       const code = `DA-${String(seat.id).padStart(5, '0')}`
       tx.update(digitalAssets).set({ code }).where(eq(digitalAssets.id, seat.id)).run()
       audit(tx, addedAt, who, 'create', 'digitalasset', seat.id, `${code} · ${typeName} · ${seat.account}`)
@@ -273,15 +469,35 @@ db.transaction((tx) => {
         const earlier = pick(people)
         const issuedAt = new Date(from + int(1, 20) * DAY)
         const returnedAt = new Date(issuedAt.getTime() + int(20, 90) * DAY)
-        tx.insert(digitalAssignments).values({ digitalAssetId: seat.id, employeeId: earlier.id, issuedAt, returnedAt, issuedById: who.id, returnedById: who.id }).run()
+        tx.insert(digitalAssignments)
+          .values({
+            digitalAssetId: seat.id,
+            employeeId: earlier.id,
+            issuedAt,
+            returnedAt,
+            issuedById: who.id,
+            returnedById: who.id,
+          })
+          .run()
         audit(tx, issuedAt, who, 'issue', 'digitalasset', seat.id, `${code} → ${earlier.code} · ${typeName}`)
         audit(tx, returnedAt, who, 'return', 'digitalasset', seat.id, `${code} ← ${earlier.code} · ${typeName}`)
         from = returnedAt.getTime()
       }
-      if (seat.status === 'inactive') audit(tx, new Date(from + (now - from) / 2), who, 'update', 'digitalasset', seat.id, `${code} · marked inactive`)
+      if (seat.status === 'inactive')
+        audit(
+          tx,
+          new Date(from + (now - from) / 2),
+          who,
+          'update',
+          'digitalasset',
+          seat.id,
+          `${code} · marked inactive`,
+        )
       if (!holder) continue
       const issuedAt = new Date(from + (now - from) * (0.1 + rand() * 0.8))
-      tx.insert(digitalAssignments).values({ digitalAssetId: seat.id, employeeId: holder.id, issuedAt, issuedById: who.id }).run()
+      tx.insert(digitalAssignments)
+        .values({ digitalAssetId: seat.id, employeeId: holder.id, issuedAt, issuedById: who.id })
+        .run()
       audit(tx, issuedAt, who, 'issue', 'digitalasset', seat.id, `${code} → ${holder.code} · ${typeName}`)
     }
   }
@@ -295,18 +511,57 @@ const taskCount = seedTasks(db, now, { priya: priya!, marcus: marcus!, dana: dan
 for (const user of [priya!, marcus!, rosa!]) {
   const at = (days: number) => new Date(now - days * DAY)
   db.insert(notifications)
-    .values([
-      { kind: 'asset_returned_poor', sourceKey: 'asset:5', title: 'BPHS-0005 came back in poor condition', link: '/assets/BPHS-0005', createdAt: at(12), readAt: at(11), archivedAt: at(11) },
-      { kind: 'account_access_changed', sourceKey: `user:${user.id}`, title: 'Your access was changed', body: 'See your Profile for what you can do now.', link: '/me/profile', createdAt: at(6), readAt: at(5) },
-      { kind: 'asset_overdue', sourceKey: 'assignment:12', title: 'BPHS-0012 is overdue', link: '/assets/BPHS-0012', createdAt: at(2) },
-      { kind: 'asset_issued', sourceKey: 'asset:7', title: 'BPHS-0007 was issued to you', link: '/assets/BPHS-0007', createdAt: at(1) },
-      { kind: 'asset_issued', sourceKey: 'asset:3', title: 'BPHS-0003 was issued to you', body: 'Laptop, issued by Marcus Oyelaran.', link: '/assets/BPHS-0003', createdAt: at(0.02) },
-    ].map((row) => ({ userId: user.id, ...row })))
+    .values(
+      [
+        {
+          kind: 'asset_returned_poor',
+          sourceKey: 'asset:5',
+          title: 'BPHS-0005 came back in poor condition',
+          link: '/assets/BPHS-0005',
+          createdAt: at(12),
+          readAt: at(11),
+          archivedAt: at(11),
+        },
+        {
+          kind: 'account_access_changed',
+          sourceKey: `user:${user.id}`,
+          title: 'Your access was changed',
+          body: 'See your Profile for what you can do now.',
+          link: '/me/profile',
+          createdAt: at(6),
+          readAt: at(5),
+        },
+        {
+          kind: 'asset_overdue',
+          sourceKey: 'assignment:12',
+          title: 'BPHS-0012 is overdue',
+          link: '/assets/BPHS-0012',
+          createdAt: at(2),
+        },
+        {
+          kind: 'asset_issued',
+          sourceKey: 'asset:7',
+          title: 'BPHS-0007 was issued to you',
+          link: '/assets/BPHS-0007',
+          createdAt: at(1),
+        },
+        {
+          kind: 'asset_issued',
+          sourceKey: 'asset:3',
+          title: 'BPHS-0003 was issued to you',
+          body: 'Laptop, issued by Marcus Oyelaran.',
+          link: '/assets/BPHS-0003',
+          createdAt: at(0.02),
+        },
+      ].map((row) => ({ userId: user.id, ...row })),
+    )
     .run()
 }
 
 console.log(
   `Seeded ${people.length} employees, ${programCount} programs, ${tagNumber} physical assets, ${seatCount} digital assets, ${grievanceCount} grievances, ${reviewCount} reviews, ${taskCount} tasks and 6 users into ${file}`,
 )
-console.log(`Sign in as p.raghunathan@bphs.local (Super Admin), m.oyelaran@bphs.local (Edit) or r.delgado@bphs.local (Read Only), password: ${PASSWORD}`)
+console.log(
+  `Sign in as p.raghunathan@bphs.local (Super Admin), m.oyelaran@bphs.local (Edit) or r.delgado@bphs.local (Read Only), password: ${PASSWORD}`,
+)
 sqlite.close()

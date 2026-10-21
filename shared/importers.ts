@@ -41,11 +41,35 @@ export const IMPORTERS = {
     duplicateKey: 'code',
     schema: employeeCreateSchema,
     fields: [
-      { key: 'code', label: 'Employee ID', required: true, aliases: ['employee_id', 'employee number', 'employee no', 'emp id', 'staff id', 'id'], example: 'E-2051' },
-      { key: 'firstName', label: 'First name', required: true, aliases: ['first_name', 'given name', 'forename', 'first'], example: 'Dana' },
-      { key: 'lastName', label: 'Last name', required: true, aliases: ['last_name', 'surname', 'family name', 'last'], example: 'Whitfield' },
+      {
+        key: 'code',
+        label: 'Employee ID',
+        required: true,
+        aliases: ['employee_id', 'employee number', 'employee no', 'emp id', 'staff id', 'id'],
+        example: 'E-2051',
+      },
+      {
+        key: 'firstName',
+        label: 'First name',
+        required: true,
+        aliases: ['first_name', 'given name', 'forename', 'first'],
+        example: 'Dana',
+      },
+      {
+        key: 'lastName',
+        label: 'Last name',
+        required: true,
+        aliases: ['last_name', 'surname', 'family name', 'last'],
+        example: 'Whitfield',
+      },
       { key: 'department', label: 'Department', required: false, aliases: ['dept', 'team'], example: 'Finance' },
-      { key: 'jobTitle', label: 'Job title', required: false, aliases: ['job_title', 'title', 'position', 'role'], example: 'Accounts Clerk' },
+      {
+        key: 'jobTitle',
+        label: 'Job title',
+        required: false,
+        aliases: ['job_title', 'title', 'position', 'role'],
+        example: 'Accounts Clerk',
+      },
     ],
   },
   programs: {
@@ -56,9 +80,27 @@ export const IMPORTERS = {
     duplicateKey: 'code',
     schema: programCreateSchema,
     fields: [
-      { key: 'code', label: 'Program ID', required: true, aliases: ['program_id', 'program code', 'program number', 'code', 'id'], example: 'PRG-014' },
-      { key: 'name', label: 'Program name', required: true, aliases: ['program_name', 'program', 'name'], example: 'Riverside Day Program' },
-      { key: 'address', label: 'Program address', required: false, aliases: ['program_address', 'address', 'location', 'site'], example: '12 Mill Road' },
+      {
+        key: 'code',
+        label: 'Program ID',
+        required: true,
+        aliases: ['program_id', 'program code', 'program number', 'code', 'id'],
+        example: 'PRG-014',
+      },
+      {
+        key: 'name',
+        label: 'Program name',
+        required: true,
+        aliases: ['program_name', 'program', 'name'],
+        example: 'Riverside Day Program',
+      },
+      {
+        key: 'address',
+        label: 'Program address',
+        required: false,
+        aliases: ['program_address', 'address', 'location', 'site'],
+        example: '12 Mill Road',
+      },
     ],
   },
 } as const satisfies Record<string, Importer>
@@ -66,7 +108,8 @@ export const IMPORTERS = {
 export type ImportType = keyof typeof IMPORTERS
 export const IMPORT_TYPES = Object.keys(IMPORTERS) as ImportType[]
 
-export const importerFor = (type: string): Importer | null => (Object.hasOwn(IMPORTERS, type) ? IMPORTERS[type as ImportType] : null)
+export const importerFor = (type: string): Importer | null =>
+  Object.hasOwn(IMPORTERS, type) ? IMPORTERS[type as ImportType] : null
 
 // "Employee ID", "employee_id" and "EmployeeId" are one header.
 const normalise = (header: string) => header.toLowerCase().replace(/[^a-z0-9]+/g, '')

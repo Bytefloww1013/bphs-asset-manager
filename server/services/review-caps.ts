@@ -1,7 +1,12 @@
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { reviewCapCode, reviewCapSeq, reviewCapStatusLabel, type ReviewCapStatus } from '../../shared/constants.ts'
 import { formatUsDate } from '../../shared/dates.ts'
-import type { ReviewActionItemsExportInput, ReviewCapCreateInput, ReviewCapStatusInput, ReviewCapUpdateInput } from '../../shared/schemas.ts'
+import type {
+  ReviewActionItemsExportInput,
+  ReviewCapCreateInput,
+  ReviewCapStatusInput,
+  ReviewCapUpdateInput,
+} from '../../shared/schemas.ts'
 import type { ReviewActionItem, ReviewCap, ReviewDetail } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
 import { employees, reviewCaps, reviewEntries } from '../db/schema.ts'
@@ -13,7 +18,18 @@ import type { Upload } from '../lib/uploads.ts'
 import { requireActiveEmployees } from './grievances.ts'
 import { fullName } from './refs.ts'
 import { saveReviewAttachments } from './review-attachments.ts'
-import { appendReviewEntry, editRecord, findReviewToManage, getReview, iso, personJson, requireNotSealed, reviewsVisibleTo, toPerson, type FieldChange } from './reviews.ts'
+import {
+  appendReviewEntry,
+  editRecord,
+  findReviewToManage,
+  getReview,
+  iso,
+  personJson,
+  requireNotSealed,
+  reviewsVisibleTo,
+  toPerson,
+  type FieldChange,
+} from './reviews.ts'
 
 // A CAP is never deleted, so its number is never given to another. Every change to one is on its review's history.
 
@@ -80,19 +96,31 @@ export function getReviewCap(db: DbLike, viewer: Viewer, code: string, param: st
 }
 
 const nameOf = (db: DbLike, id: number) => {
-  const row = db.select({ firstName: employees.firstName, lastName: employees.lastName }).from(employees).where(eq(employees.id, id)).get()
+  const row = db
+    .select({ firstName: employees.firstName, lastName: employees.lastName })
+    .from(employees)
+    .where(eq(employees.id, id))
+    .get()
   return row ? fullName(row.firstName, row.lastName) : ''
 }
 
 /** Add a CAP to a review, as Not started, with any files that came with it. */
-export function createReviewCap(db: Db, actor: Actor, code: string, input: ReviewCapCreateInput, uploads: Upload[] = []): ReviewCap {
+export function createReviewCap(
+  db: Db,
+  actor: Actor,
+  code: string,
+  input: ReviewCapCreateInput,
+  uploads: Upload[] = [],
+): ReviewCap {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
     requireNotSealed(review, 'add a CAP')
     requireActiveEmployees(tx, [input.responsibleId], 'responsibleId')
     const now = new Date()
-    const seq = (tx.get<{ top: number | null }>(sql`select max(seq) as top from review_caps where review_id = ${review.id}`)?.top ?? 0) + 1
+    const seq =
+      (tx.get<{ top: number | null }>(sql`select max(seq) as top from review_caps where review_id = ${review.id}`)
+        ?.top ?? 0) + 1
     const row = tx
       .insert(reviewCaps)
       .values({
@@ -119,7 +147,14 @@ export function createReviewCap(db: Db, actor: Actor, code: string, input: Revie
       title: `${label} added: ${input.title}. Responsible: ${nameOf(tx, input.responsibleId)}.${due}`,
       at: now,
     })
-    writeReviewAudit(tx, actor, { action: 'create', entityType: 'cap', entityId: row.id, reviewId: review.id, details: `${review.code} ${label} · ${input.title}`, at: now })
+    writeReviewAudit(tx, actor, {
+      action: 'create',
+      entityType: 'cap',
+      entityId: row.id,
+      reviewId: review.id,
+      details: `${review.code} ${label} · ${input.title}`,
+      at: now,
+    })
     saveReviewAttachments(tx, actor, review, { id: row.id, seq }, uploads, now)
     return oneCap(tx, review, String(seq))
   })
@@ -137,24 +172,37 @@ function findCapToManage(tx: DbLike, actor: Actor, code: string, param: string, 
       .where(and(eq(reviewEntries.capId, cap.id), eq(reviewEntries.kind, 'system')))
       .orderBy(desc(reviewEntries.seq))
       .get()
-    throw conflict('stale_version', `${reviewCapCode(cap.seq)} was changed${last ? ` by ${last.by}` : ''} while you had it open. Nothing has been saved.`, { version: cap.version })
+    throw conflict(
+      'stale_version',
+      `${reviewCapCode(cap.seq)} was changed${last ? ` by ${last.by}` : ''} while you had it open. Nothing has been saved.`,
+      { version: cap.version },
+    )
   }
   return { review, cap, label: reviewCapCode(cap.seq) }
 }
 
 /** Change what a CAP says, who is responsible for it, or when it is due. Its history entry keeps what each field said before. */
-export function updateReviewCap(db: Db, actor: Actor, code: string, param: string, input: ReviewCapUpdateInput): ReviewCap {
+export function updateReviewCap(
+  db: Db,
+  actor: Actor,
+  code: string,
+  param: string,
+  input: ReviewCapUpdateInput,
+): ReviewCap {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
     const { review, cap, label } = findCapToManage(tx, actor, code, param, input.version)
-    if (cap.status === 'completed' || cap.status === 'cancelled') throw conflict('cap_closed', `${label} is ${reviewCapStatusLabel(cap.status)}. Reopen it before editing it.`)
+    if (cap.status === 'completed' || cap.status === 'cancelled')
+      throw conflict('cap_closed', `${label} is ${reviewCapStatusLabel(cap.status)}. Reopen it before editing it.`)
     if (input.responsibleId !== cap.responsible.id) requireActiveEmployees(tx, [input.responsibleId], 'responsibleId')
 
     const due = (date: string | null) => (date ? formatUsDate(date)! : 'None')
     const changes: FieldChange[] = []
     if (input.title !== cap.title) changes.push(['Title', cap.title, input.title])
-    if (input.shortDescription !== cap.shortDescription) changes.push(['Short description', cap.shortDescription, input.shortDescription])
-    if (input.responsibleId !== cap.responsible.id) changes.push(['Responsible', cap.responsible.name, nameOf(tx, input.responsibleId)])
+    if (input.shortDescription !== cap.shortDescription)
+      changes.push(['Short description', cap.shortDescription, input.shortDescription])
+    if (input.responsibleId !== cap.responsible.id)
+      changes.push(['Responsible', cap.responsible.name, nameOf(tx, input.responsibleId)])
     if (input.dueDate !== cap.dueDate) changes.push(['Due date', due(cap.dueDate), due(input.dueDate)])
     if (body.html !== cap.bodyHtml) changes.push(['Details'])
     if (changes.length === 0) throw conflict('unchanged', 'Nothing has been changed, so there is nothing to save.')
@@ -175,8 +223,22 @@ export function updateReviewCap(db: Db, actor: Actor, code: string, param: strin
       .run()
     const summary = `${label} edited: ${changes.map(([field]) => field).join(', ')}`
     const record = editRecord(changes, body.html !== cap.bodyHtml ? [['Details before', cap.bodyHtml]] : [])
-    appendReviewEntry(tx, actor, review.id, { kind: 'system', capId: cap.id, occurredAt: now, title: summary, body: record, at: now })
-    writeReviewAudit(tx, actor, { action: 'update', entityType: 'cap', entityId: cap.id, reviewId: review.id, details: `${review.code} ${label} · ${input.title} · ${summary}`, at: now })
+    appendReviewEntry(tx, actor, review.id, {
+      kind: 'system',
+      capId: cap.id,
+      occurredAt: now,
+      title: summary,
+      body: record,
+      at: now,
+    })
+    writeReviewAudit(tx, actor, {
+      action: 'update',
+      entityType: 'cap',
+      entityId: cap.id,
+      reviewId: review.id,
+      details: `${review.code} ${label} · ${input.title} · ${summary}`,
+      at: now,
+    })
     return oneCap(tx, review, String(cap.seq))
   })
 }
@@ -186,10 +248,20 @@ export function updateReviewCap(db: Db, actor: Actor, code: string, param: strin
  * whom; any other status clears the stamp, and the history keeps the earlier completion. A note goes on the history entry, and
  * any files, evidence of the work as a rule, are saved with the change or not at all.
  */
-export function changeReviewCapStatus(db: Db, actor: Actor, code: string, param: string, input: ReviewCapStatusInput, uploads: Upload[] = []): ReviewCap {
+export function changeReviewCapStatus(
+  db: Db,
+  actor: Actor,
+  code: string,
+  param: string,
+  input: ReviewCapStatusInput,
+  uploads: Upload[] = [],
+): ReviewCap {
   return db.transaction((tx) => {
     const { review, cap, label } = findCapToManage(tx, actor, code, param, input.version)
-    if (cap.status === input.status) throw conflict('status_unchanged', `${label} is already ${reviewCapStatusLabel(input.status)}.`, { field: 'status' })
+    if (cap.status === input.status)
+      throw conflict('status_unchanged', `${label} is already ${reviewCapStatusLabel(input.status)}.`, {
+        field: 'status',
+      })
     const now = new Date()
     const completed = input.status === 'completed'
     tx.update(reviewCaps)
@@ -204,14 +276,31 @@ export function changeReviewCapStatus(db: Db, actor: Actor, code: string, param:
       .where(and(eq(reviewCaps.id, cap.id), eq(reviewCaps.version, cap.version)))
       .run()
     const summary = `${label}: ${reviewCapStatusLabel(cap.status)} → ${reviewCapStatusLabel(input.status)}`
-    appendReviewEntry(tx, actor, review.id, { kind: 'system', capId: cap.id, occurredAt: now, title: summary, body: plainToRichText(input.note), at: now })
-    writeReviewAudit(tx, actor, { action: 'status', entityType: 'cap', entityId: cap.id, reviewId: review.id, details: `${review.code} ${label} · ${cap.title} · ${summary}`, at: now })
+    appendReviewEntry(tx, actor, review.id, {
+      kind: 'system',
+      capId: cap.id,
+      occurredAt: now,
+      title: summary,
+      body: plainToRichText(input.note),
+      at: now,
+    })
+    writeReviewAudit(tx, actor, {
+      action: 'status',
+      entityType: 'cap',
+      entityId: cap.id,
+      reviewId: review.id,
+      details: `${review.code} ${label} · ${cap.title} · ${summary}`,
+      at: now,
+    })
     saveReviewAttachments(tx, actor, review, cap, uploads, now)
     return oneCap(tx, review, String(cap.seq))
   })
 }
 
-interface RawItem extends Pick<RawCap, 'id' | 'seq' | 'title' | 'shortDescription' | 'responsible' | 'dueDate' | 'status' | 'completedAt'> {
+interface RawItem extends Pick<
+  RawCap,
+  'id' | 'seq' | 'title' | 'shortDescription' | 'responsible' | 'dueDate' | 'status' | 'completedAt'
+> {
   reviewCode: string
   reviewTitle: string
 }
@@ -241,5 +330,11 @@ export function listReviewActionItems(db: DbLike, viewer: Viewer): ReviewActionI
 /** Log a copy of the Action items list. The browser makes the file, so the page reports each one here. */
 export function recordActionItemsExport(db: DbLike, actor: Actor, input: ReviewActionItemsExportInput) {
   const rows = `${input.rows} ${input.rows === 1 ? 'row' : 'rows'}`
-  writeReviewAudit(db, actor, { action: 'export', entityType: 'cap', entityId: null, reviewId: null, details: `Action items · ${rows} · ${input.format === 'csv' ? 'CSV' : 'Excel workbook'}` })
+  writeReviewAudit(db, actor, {
+    action: 'export',
+    entityType: 'cap',
+    entityId: null,
+    reviewId: null,
+    details: `Action items · ${rows} · ${input.format === 'csv' ? 'CSV' : 'Excel workbook'}`,
+  })
 }

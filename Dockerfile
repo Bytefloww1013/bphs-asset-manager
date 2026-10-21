@@ -9,8 +9,7 @@ FROM oven/bun:${BUN_VERSION} AS bun
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
-# better-sqlite3 ships prebuilt binaries; these are the fallback if one is not available.
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+# No compiler toolchain: "trustedDependencies" stops Bun compiling better-sqlite3, which ships prebuilt binaries.
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
@@ -30,9 +29,10 @@ COPY --from=build /app/dist/web ./dist/web
 COPY --from=build /app/server ./server
 COPY --from=build /app/shared ./shared
 RUN mkdir -p /data && chown -R node:node /data
-USER node
+# The image's `node` user, by number so the host can resolve it.
+USER 1000:1000
 VOLUME ["/data"]
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 CMD ["node", "server/index.ts"]

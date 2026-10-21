@@ -30,10 +30,24 @@ export function EntryFields({ value, onChange, error, shortDescriptionHint, file
   return (
     <>
       <Field label="Title" hint={count(value.title, GRIEVANCE_TITLE_MAX)} error={error('title')}>
-        <Input value={value.title} onChange={(event) => onChange('title', event.target.value)} autoComplete="off" autoFocus />
+        <Input
+          value={value.title}
+          onChange={(event) => onChange('title', event.target.value)}
+          autoComplete="off"
+          autoFocus
+        />
       </Field>
-      <Field label="Short description" hint={`${shortDescriptionHint} ${count(value.shortDescription, GRIEVANCE_SHORT_DESCRIPTION_MAX)}`} error={error('shortDescription')}>
-        <Textarea rows={2} className="min-h-0" value={value.shortDescription} onChange={(event) => onChange('shortDescription', event.target.value)} />
+      <Field
+        label="Short description"
+        hint={`${shortDescriptionHint} ${count(value.shortDescription, GRIEVANCE_SHORT_DESCRIPTION_MAX)}`}
+        error={error('shortDescription')}
+      >
+        <Textarea
+          rows={2}
+          className="min-h-0"
+          value={value.shortDescription}
+          onChange={(event) => onChange('shortDescription', event.target.value)}
+        />
       </Field>
       <Field label="Details" hint="Optional. Anything the short description does not cover." error={error('body')}>
         <RichTextEditor label="Details" defaultValue={value.body} onChange={(body) => onChange('body', body)} />

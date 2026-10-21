@@ -11,11 +11,13 @@ import { assertNotLastActive } from './lists.ts'
 // Its changes go to the Grievance Audit Log.
 
 export function listGrievanceCategories(db: DbLike, id?: number): GrievanceCategoryRow[] {
-  return db.all<GrievanceCategoryRow>(sql`
+  return db
+    .all<GrievanceCategoryRow>(sql`
     select c.id as id, c.name as name, c.is_active as isActive, count(g.id) as grievanceCount
     from grievance_categories c left join grievances g on g.category_id = c.id
     ${id ? sql`where c.id = ${id}` : sql``}
-    group by c.id order by c.is_active desc, c.name collate nocase`).map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
+    group by c.id order by c.is_active desc, c.name collate nocase`)
+    .map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
 }
 
 function categoryRow(db: DbLike, id: number): GrievanceCategoryRow {
@@ -25,8 +27,13 @@ function categoryRow(db: DbLike, id: number): GrievanceCategoryRow {
 }
 
 function assertCategoryNameFree(db: DbLike, name: string, exceptId?: number) {
-  const dup = db.select({ id: grievanceCategories.id }).from(grievanceCategories).where(sql`${grievanceCategories.name} = ${name} collate nocase`).get()
-  if (dup && dup.id !== exceptId) throw conflict('duplicate_name', `A category named "${name}" already exists.`, { field: 'name' })
+  const dup = db
+    .select({ id: grievanceCategories.id })
+    .from(grievanceCategories)
+    .where(sql`${grievanceCategories.name} = ${name} collate nocase`)
+    .get()
+  if (dup && dup.id !== exceptId)
+    throw conflict('duplicate_name', `A category named "${name}" already exists.`, { field: 'name' })
 }
 
 export function createGrievanceCategory(db: Db, actor: Actor, name: string): GrievanceCategoryRow {
@@ -39,7 +46,12 @@ export function createGrievanceCategory(db: Db, actor: Actor, name: string): Gri
   return categoryRow(db, id)
 }
 
-export function updateGrievanceCategory(db: Db, actor: Actor, id: number, input: { name?: string; isActive?: boolean }): GrievanceCategoryRow {
+export function updateGrievanceCategory(
+  db: Db,
+  actor: Actor,
+  id: number,
+  input: { name?: string; isActive?: boolean },
+): GrievanceCategoryRow {
   db.transaction((tx) => {
     const current = tx.select().from(grievanceCategories).where(eq(grievanceCategories.id, id)).get()
     if (!current) throw notFound('Category')
@@ -57,7 +69,12 @@ export function updateGrievanceCategory(db: Db, actor: Actor, id: number, input:
     }
     if (changes.length === 0) return
     tx.update(grievanceCategories).set(patch).where(eq(grievanceCategories.id, id)).run()
-    writeGrievanceAudit(tx, actor, { action: 'update', entityType: 'category', entityId: id, details: `${patch.name ?? current.name} · ${changes.join('; ')}` })
+    writeGrievanceAudit(tx, actor, {
+      action: 'update',
+      entityType: 'category',
+      entityId: id,
+      details: `${patch.name ?? current.name} · ${changes.join('; ')}`,
+    })
   })
   return categoryRow(db, id)
 }
@@ -70,6 +87,11 @@ export function deleteGrievanceCategory(db: Db, actor: Actor, id: number) {
     }
     assertNotLastActive(tx, grievanceCategories, row, 'category')
     tx.delete(grievanceCategories).where(eq(grievanceCategories.id, id)).run()
-    writeGrievanceAudit(tx, actor, { action: 'delete', entityType: 'category', entityId: id, details: `unused category "${row.name}"` })
+    writeGrievanceAudit(tx, actor, {
+      action: 'delete',
+      entityType: 'category',
+      entityId: id,
+      details: `unused category "${row.name}"`,
+    })
   })
 }

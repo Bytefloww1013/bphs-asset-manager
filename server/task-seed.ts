@@ -26,7 +26,11 @@ interface DemoTask {
 }
 
 /** Rosa gets several, one of them Outstanding, as the browser smoke test signs in as her. */
-export function seedTasks(db: Db, now: number, { priya, marcus, dana, rosa }: { priya: Actor; marcus: Actor; dana: Actor; rosa: Actor }): number {
+export function seedTasks(
+  db: Db,
+  now: number,
+  { priya, marcus, dana, rosa }: { priya: Actor; marcus: Actor; dana: Actor; rosa: Actor },
+): number {
   const at = (days: number, hour = 10) => {
     const date = new Date(now - days * DAY)
     date.setHours(hour, 0, 0, 0)
@@ -34,21 +38,101 @@ export function seedTasks(db: Db, now: number, { priya, marcus, dana, rosa }: { 
   }
   const demo: DemoTask[] = [
     // Scheduled
-    { title: 'Review the Q4 budget variance report', body: 'Flag any line more than 10% over budget before the finance committee meets.', from: priya, to: marcus, assigned: 1, sent: -3, due: -10 },
+    {
+      title: 'Review the Q4 budget variance report',
+      body: 'Flag any line more than 10% over budget before the finance committee meets.',
+      from: priya,
+      to: marcus,
+      assigned: 1,
+      sent: -3,
+      due: -10,
+    },
     // Outstanding
-    { title: 'Update the intake packet with the new consent form', body: 'Swap in the revised consent form and recycle the old printed copies.', from: dana, to: rosa, assigned: 2, sent: 2, due: -5 },
-    { title: 'Complete the annual HIPAA privacy training', body: 'The course is in the learning portal. Upload your certificate when you finish.', from: priya, to: rosa, assigned: 6, sent: 6, due: -14, approval: true },
+    {
+      title: 'Update the intake packet with the new consent form',
+      body: 'Swap in the revised consent form and recycle the old printed copies.',
+      from: dana,
+      to: rosa,
+      assigned: 2,
+      sent: 2,
+      due: -5,
+    },
+    {
+      title: 'Complete the annual HIPAA privacy training',
+      body: 'The course is in the learning portal. Upload your certificate when you finish.',
+      from: priya,
+      to: rosa,
+      assigned: 6,
+      sent: 6,
+      due: -14,
+      approval: true,
+    },
     // Past-Due
-    { title: 'Submit October mileage reimbursement', body: 'Use the mileage form and attach your trip log.', from: marcus, to: rosa, assigned: 12, sent: 12, due: 2 },
-    { title: 'Renew the fire extinguisher inspection', body: 'Book the vendor for Harbour House and Maple Court; tags expire this month.', from: priya, to: dana, assigned: 20, sent: 20, due: 4 },
+    {
+      title: 'Submit October mileage reimbursement',
+      body: 'Use the mileage form and attach your trip log.',
+      from: marcus,
+      to: rosa,
+      assigned: 12,
+      sent: 12,
+      due: 2,
+    },
+    {
+      title: 'Renew the fire extinguisher inspection',
+      body: 'Book the vendor for Harbour House and Maple Court; tags expire this month.',
+      from: priya,
+      to: dana,
+      assigned: 20,
+      sent: 20,
+      due: 4,
+    },
     // Awaiting approval
-    { title: 'Reconcile the petty cash log for Maple Court', body: 'Match receipts to the log and note any shortfall.', from: dana, to: marcus, assigned: 9, sent: 9, due: -2, approval: true, completed: { days: 1, note: 'Balanced to the dollar; receipts are in the binder.' } },
+    {
+      title: 'Reconcile the petty cash log for Maple Court',
+      body: 'Match receipts to the log and note any shortfall.',
+      from: dana,
+      to: marcus,
+      assigned: 9,
+      sent: 9,
+      due: -2,
+      approval: true,
+      completed: { days: 1, note: 'Balanced to the dollar; receipts are in the binder.' },
+    },
     // Completed, without approval
-    { title: 'Return the visitor sign-in binder to the front desk', body: 'It was borrowed for the audit walk-through.', from: marcus, to: rosa, assigned: 15, sent: 15, due: 8, completed: { days: 10 } },
+    {
+      title: 'Return the visitor sign-in binder to the front desk',
+      body: 'It was borrowed for the audit walk-through.',
+      from: marcus,
+      to: rosa,
+      assigned: 15,
+      sent: 15,
+      due: 8,
+      completed: { days: 10 },
+    },
     // Completed and approved
-    { title: 'Compare quotes for the new copier lease', body: 'Get at least three quotes and summarise the monthly cost of each.', from: priya, to: marcus, assigned: 25, sent: 25, due: 12, approval: true, completed: { days: 14, note: 'Three quotes attached to the shared drive.' }, approved: 13 },
+    {
+      title: 'Compare quotes for the new copier lease',
+      body: 'Get at least three quotes and summarise the monthly cost of each.',
+      from: priya,
+      to: marcus,
+      assigned: 25,
+      sent: 25,
+      due: 12,
+      approval: true,
+      completed: { days: 14, note: 'Three quotes attached to the shared drive.' },
+      approved: 13,
+    },
     // Cancelled
-    { title: 'Order replacement badge lanyards', body: 'Fifty, in the agency blue.', from: dana, to: rosa, assigned: 7, sent: 7, due: -3, cancelled: 3 },
+    {
+      title: 'Order replacement badge lanyards',
+      body: 'Fifty, in the agency blue.',
+      from: dana,
+      to: rosa,
+      assigned: 7,
+      sent: 7,
+      due: -3,
+      cancelled: 3,
+    },
   ]
 
   return db.transaction((tx) => {
@@ -85,8 +169,24 @@ export function seedTasks(db: Db, now: number, { priya, marcus, dana, rosa }: { 
         })
         .returning()
         .get()
-      const event = (kind: TaskEventKind, actor: Actor, createdAt: Date, extra: { note?: string; details?: string } = {}) =>
-        tx.insert(taskEvents).values({ taskId: task.id, kind, note: extra.note ?? null, details: extra.details ?? '', actorUserId: actor.id, actorLabel: actor.name, createdAt }).run()
+      const event = (
+        kind: TaskEventKind,
+        actor: Actor,
+        createdAt: Date,
+        extra: { note?: string; details?: string } = {},
+      ) =>
+        tx
+          .insert(taskEvents)
+          .values({
+            taskId: task.id,
+            kind,
+            note: extra.note ?? null,
+            details: extra.details ?? '',
+            actorUserId: actor.id,
+            actorLabel: actor.name,
+            createdAt,
+          })
+          .run()
       event('assigned', t.from, task.createdAt, { details: task.arrivedAt ? '' : 'Scheduled' })
       if (task.completedAt) event('completed', t.to, task.completedAt, { note: t.completed?.note })
       if (task.approvedAt) event('approved', t.from, task.approvedAt)

@@ -34,13 +34,24 @@ export function QuickAddEmployee({ onAdded }: { onAdded: (id: number) => void })
   const [value, setValue] = useState<Body>({ code: '', firstName: '', lastName: '', department: '', jobTitle: '' })
   const [error, setError] = useState<ApiError | null>(null)
   const add = useWrite((body: Body) => api.post<EmployeeRow>('/employees', body), { silent: true })
-  const set = (key: keyof Body) => (event: React.ChangeEvent<HTMLInputElement>) => setValue((v) => ({ ...v, [key]: event.target.value }))
+  const set = (key: keyof Body) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    setValue((v) => ({ ...v, [key]: event.target.value }))
 
   async function commit() {
     setError(null)
     const missing = (['code', 'firstName', 'lastName'] as const).find((key) => !value[key].trim())
     if (missing) {
-      setError(new ApiError(422, { error: 'validation_failed', message: 'Employee ID, first name and last name are required.', details: { fields: { [missing]: 'Required' } } }, ''))
+      setError(
+        new ApiError(
+          422,
+          {
+            error: 'validation_failed',
+            message: 'Employee ID, first name and last name are required.',
+            details: { fields: { [missing]: 'Required' } },
+          },
+          '',
+        ),
+      )
       return
     }
     try {
@@ -54,7 +65,8 @@ export function QuickAddEmployee({ onAdded }: { onAdded: (id: number) => void })
     }
   }
 
-  const fieldMessage = (key: keyof Body) => error?.fields[key] ?? (key === 'code' && error?.code === 'duplicate_employee' ? error.message : null)
+  const fieldMessage = (key: keyof Body) =>
+    error?.fields[key] ?? (key === 'code' && error?.code === 'duplicate_employee' ? error.message : null)
 
   return (
     <Panel className="p-5">
@@ -110,8 +122,12 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   const [editing, setEditing] = useState(false)
   const [holdings, setHoldings] = useState(false)
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null)
-  const archive = useWrite(() => api.post(`/employees/${employee.id}/archive`), { success: `${employee.name} archived` })
-  const restore = useWrite(() => api.post(`/employees/${employee.id}/restore`), { success: `${employee.name} restored` })
+  const archive = useWrite(() => api.post(`/employees/${employee.id}/archive`), {
+    success: `${employee.name} archived`,
+  })
+  const restore = useWrite(() => api.post(`/employees/${employee.id}/restore`), {
+    success: `${employee.name} restored`,
+  })
   const remove = useWrite(() => api.delete(`/employees/${employee.id}`), { success: `${employee.name} deleted` })
   const openReviews = employee.openReviewsReviewing + employee.openCapsResponsible
 
@@ -149,7 +165,14 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
       {assets && (
-        <Button size="sm" icon={<Send className="size-3.5" />} disabledReason={noIssue ?? (employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined)} onClick={() => sheets.issue(undefined, employee.id)}>
+        <Button
+          size="sm"
+          icon={<Send className="size-3.5" />}
+          disabledReason={
+            noIssue ?? (employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined)
+          }
+          onClick={() => sheets.issue(undefined, employee.id)}
+        >
           Issue to
         </Button>
       )}
@@ -179,9 +202,18 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
 
 export function EmployeeEditSheet({ employee, onClose }: { employee: EmployeeRow; onClose: () => void }) {
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((body: Body) => api.patch<EmployeeRow>(`/employees/${employee.id}`, body), { silent: true, success: `${employee.name} updated` })
+  const save = useWrite((body: Body) => api.patch<EmployeeRow>(`/employees/${employee.id}`, body), {
+    silent: true,
+    success: `${employee.name} updated`,
+  })
   const form = useForm({
-    defaultValues: { code: employee.code, firstName: employee.firstName, lastName: employee.lastName, department: employee.department ?? '', jobTitle: employee.jobTitle ?? '' } as Body,
+    defaultValues: {
+      code: employee.code,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      department: employee.department ?? '',
+      jobTitle: employee.jobTitle ?? '',
+    } as Body,
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}
@@ -205,8 +237,20 @@ export function EmployeeEditSheet({ employee, onClose }: { employee: EmployeeRow
   const text = (name: keyof Body, label: string, opts: { optional?: boolean; mono?: boolean } = {}) => (
     <form.Field name={name}>
       {(field) => (
-        <Field label={label} optional={opts.optional} error={(name === 'code' && error?.code === 'duplicate_employee' ? error.message : null) ?? fieldError(field, undefined, submitted)}>
-          <Input mono={opts.mono} value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+        <Field
+          label={label}
+          optional={opts.optional}
+          error={
+            (name === 'code' && error?.code === 'duplicate_employee' ? error.message : null) ??
+            fieldError(field, undefined, submitted)
+          }
+        >
+          <Input
+            mono={opts.mono}
+            value={field.state.value}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={field.handleBlur}
+          />
         </Field>
       )}
     </form.Field>
@@ -258,7 +302,6 @@ export function EmployeeEditSheet({ employee, onClose }: { employee: EmployeeRow
   )
 }
 
-
 /** Everything an employee has out, physical and digital, so offboarding shows all there is to reclaim. */
 function EmployeeHoldingsSheet({ employee, onClose }: { employee: EmployeeRow; onClose: () => void }) {
   const { data: assets, isPending: assetsPending } = useQuery(assetsQuery)
@@ -302,7 +345,10 @@ function EmployeeHoldingsSheet({ employee, onClose }: { employee: EmployeeRow; o
           ) : (
             <ul className="mt-2 divide-y divide-line rounded-control border border-line">
               {digital.map((seat) => (
-                <li key={seat.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 text-sm">
+                <li
+                  key={seat.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2 text-sm"
+                >
                   <Mono className="font-medium">{seat.code}</Mono>
                   <span className="min-w-0">
                     <span className="block truncate">{seat.type}</span>

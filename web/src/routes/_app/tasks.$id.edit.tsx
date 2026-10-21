@@ -29,11 +29,18 @@ function EditTaskPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/tasks/$id" params={{ id: String(task.id) }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/tasks/$id"
+          params={{ id: String(task.id) }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {task.title}
         </Link>
         <div className="mt-3">
-          <PageHeader title="Edit task" description="Its history records which fields changed. Once it has been sent, the assignee is told." />
+          <PageHeader
+            title="Edit task"
+            description="Its history records which fields changed. Once it has been sent, the assignee is told."
+          />
         </div>
       </div>
       {refused ? (

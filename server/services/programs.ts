@@ -18,7 +18,8 @@ interface RawProgram {
 }
 
 /** Deleting is only for a program entered by mistake: one that has ever held an asset keeps its place in the history. */
-const deleteBlocked = (row: RawProgram) => (row.total > 0 ? 'Has assignment history. Deactivate instead; history is never deleted.' : null)
+const deleteBlocked = (row: RawProgram) =>
+  row.total > 0 ? 'Has assignment history. Deactivate instead; history is never deleted.' : null
 
 function toRow(row: RawProgram): ProgramRow {
   return {
@@ -55,7 +56,11 @@ function getProgram(db: DbLike, id: number): ProgramRow {
 }
 
 function assertCodeFree(db: DbLike, code: string, exceptId?: number) {
-  const dup = db.select({ id: programs.id }).from(programs).where(sql`${programs.code} = ${code} collate nocase`).get()
+  const dup = db
+    .select({ id: programs.id })
+    .from(programs)
+    .where(sql`${programs.code} = ${code} collate nocase`)
+    .get()
   if (dup && dup.id !== exceptId) {
     throw conflict('duplicate_program', `Program ID ${code} already exists.`, { field: 'code' })
   }
@@ -69,7 +74,12 @@ export function createProgram(db: Db, actor: Actor, input: ProgramCreateInput): 
       .values({ code: input.code, name: input.name, address: input.address ?? null })
       .returning({ id: programs.id })
       .get()
-    writeAudit(tx, actor, { action: 'create', entityType: 'program', entityId: row.id, details: `program_id=${input.code} · ${input.name}` })
+    writeAudit(tx, actor, {
+      action: 'create',
+      entityType: 'program',
+      entityId: row.id,
+      details: `program_id=${input.code} · ${input.name}`,
+    })
     return row.id
   })
   return getProgram(db, id)
@@ -96,7 +106,12 @@ export function updateProgram(db: Db, actor: Actor, id: number, input: ProgramUp
     track('address', 'address')
     if (changes.length === 0) return
     tx.update(programs).set(patch).where(eq(programs.id, id)).run()
-    writeAudit(tx, actor, { action: 'update', entityType: 'program', entityId: id, details: `program_id=${patch.code ?? current.code} · ${changes.join('; ')}` })
+    writeAudit(tx, actor, {
+      action: 'update',
+      entityType: 'program',
+      entityId: id,
+      details: `program_id=${patch.code ?? current.code} · ${changes.join('; ')}`,
+    })
   })
   return getProgram(db, id)
 }
@@ -106,7 +121,10 @@ export function setProgramActive(db: Db, actor: Actor, id: number, active: boole
     const current = getProgram(tx, id)
     if (current.isActive === active) return
     if (!active && current.assetsHeld > 0) {
-      throw conflict('holds_assets', `${current.name} still holds ${current.assetsHeld} asset(s). Return them before deactivating.`)
+      throw conflict(
+        'holds_assets',
+        `${current.name} still holds ${current.assetsHeld} asset(s). Return them before deactivating.`,
+      )
     }
     tx.update(programs).set({ isActive: active }).where(eq(programs.id, id)).run()
     writeAudit(tx, actor, {
@@ -126,6 +144,11 @@ export function deleteProgram(db: Db, actor: Actor, id: number) {
     const blocked = deleteBlocked(raw)
     if (blocked) throw conflict('has_history', `${raw.name} cannot be deleted. ${blocked}`)
     tx.delete(programs).where(eq(programs.id, id)).run()
-    writeAudit(tx, actor, { action: 'delete', entityType: 'program', entityId: id, details: `program_id=${raw.code} · ${raw.name}` })
+    writeAudit(tx, actor, {
+      action: 'delete',
+      entityType: 'program',
+      entityId: id,
+      details: `program_id=${raw.code} · ${raw.name}`,
+    })
   })
 }

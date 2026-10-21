@@ -7,14 +7,23 @@ import { setup } from './helpers.ts'
 type T = Awaited<ReturnType<typeof setup>>
 
 const noticesOf = (t: T, userId: number) =>
-  t.db.select().from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.kind, 'notice'))).all()
+  t.db
+    .select()
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), eq(notifications.kind, 'notice')))
+    .all()
 
 const NOTICE = { title: 'Office closed Friday', body: 'The office is closed on Friday.\nIT is on call.' }
 
 describe('canSendNotices', () => {
   it('is Super Admins only: Full access everywhere is not enough', () => {
     expect(canSendNotices({ access: {}, superAdmin: true })).toBe(true)
-    expect(canSendNotices({ access: { assets: 'full', grievances: 'full', maintenance: 'full', reviews: 'full', employees: 'full' }, superAdmin: false })).toBe(false)
+    expect(
+      canSendNotices({
+        access: { assets: 'full', grievances: 'full', maintenance: 'full', reviews: 'full', employees: 'full' },
+        superAdmin: false,
+      }),
+    ).toBe(false)
     expect(canSendNotices(null)).toBe(false)
   })
 })
@@ -31,14 +40,31 @@ describe('the notices API', () => {
   it('sends to every active account but the sender, and writes an audit line', async () => {
     const t = await setup()
     const gone = t.addUser('gone@bphs.local', { isActive: false })
-    const res = await t.call('POST', '/api/notices', { cookie: await t.asSuper(), body: { ...NOTICE, audience: 'all' } })
+    const res = await t.call('POST', '/api/notices', {
+      cookie: await t.asSuper(),
+      body: { ...NOTICE, audience: 'all' },
+    })
     expect(res.status).toBe(201)
-    expect(res.data).toMatchObject({ title: NOTICE.title, body: NOTICE.body, audience: 'all', sentBy: 'Priya Raghunathan', recipients: 1, read: 0 })
-    expect(noticesOf(t, t.adminUser.id)).toMatchObject([{ title: NOTICE.title, sourceKey: `notice:${res.data.id}`, link: `/me/inbox/${res.data.id}` }])
+    expect(res.data).toMatchObject({
+      title: NOTICE.title,
+      body: NOTICE.body,
+      audience: 'all',
+      sentBy: 'Priya Raghunathan',
+      recipients: 1,
+      read: 0,
+    })
+    expect(noticesOf(t, t.adminUser.id)).toMatchObject([
+      { title: NOTICE.title, sourceKey: `notice:${res.data.id}`, link: `/me/inbox/${res.data.id}` },
+    ])
     expect(noticesOf(t, t.superUser.id)).toEqual([])
     expect(noticesOf(t, gone.id)).toEqual([])
     expect(t.db.select().from(auditLog).where(eq(auditLog.entityType, 'notice')).all()).toMatchObject([
-      { action: 'create', entityId: res.data.id, actor: 'p.raghunathan@bphs.local', details: `notice #${res.data.id} · to everyone · 1 recipient` },
+      {
+        action: 'create',
+        entityId: res.data.id,
+        actor: 'p.raghunathan@bphs.local',
+        details: `notice #${res.data.id} · to everyone · 1 recipient`,
+      },
     ])
   })
 
@@ -46,7 +72,10 @@ describe('the notices API', () => {
     const t = await setup()
     const picked = t.addUser('picked@bphs.local')
     const gone = t.addUser('gone@bphs.local', { isActive: false })
-    const res = await t.call('POST', '/api/notices', { cookie: await t.asSuper(), body: { ...NOTICE, audience: { userIds: [picked.id, gone.id] } } })
+    const res = await t.call('POST', '/api/notices', {
+      cookie: await t.asSuper(),
+      body: { ...NOTICE, audience: { userIds: [picked.id, gone.id] } },
+    })
     expect(res.data).toMatchObject({ audience: 'picked', recipients: 1 })
     expect(noticesOf(t, picked.id)).toHaveLength(1)
     expect(noticesOf(t, t.adminUser.id)).toEqual([])
@@ -61,8 +90,13 @@ describe('the notices API', () => {
       const res = await t.call('POST', '/api/notices', { cookie, body: { ...NOTICE, audience: { userIds } } })
       expect(res.status).toBe(422)
     }
-    expect((await t.call('POST', '/api/notices', { cookie, body: { ...NOTICE, audience: { userIds: [] } } })).status).toBe(422)
-    expect((await t.call('POST', '/api/notices', { cookie, body: { ...NOTICE, body: 'x'.repeat(2001), audience: 'all' } })).status).toBe(422)
+    expect(
+      (await t.call('POST', '/api/notices', { cookie, body: { ...NOTICE, audience: { userIds: [] } } })).status,
+    ).toBe(422)
+    expect(
+      (await t.call('POST', '/api/notices', { cookie, body: { ...NOTICE, body: 'x'.repeat(2001), audience: 'all' } }))
+        .status,
+    ).toBe(422)
     expect(t.db.select().from(notices).all()).toEqual([])
     expect(t.db.select().from(auditLog).where(eq(auditLog.entityType, 'notice')).all()).toEqual([])
   })
@@ -71,13 +105,29 @@ describe('the notices API', () => {
     const t = await setup()
     t.addUser('other@bphs.local')
     const superCookie = await t.asSuper()
-    const sent = (await t.call('POST', '/api/notices', { cookie: superCookie, body: { ...NOTICE, audience: { userIds: [t.adminUser.id] } } })).data
+    const sent = (
+      await t.call('POST', '/api/notices', {
+        cookie: superCookie,
+        body: { ...NOTICE, audience: { userIds: [t.adminUser.id] } },
+      })
+    ).data
     const read = await t.call('GET', `/api/me/notices/${sent.id}`, { cookie: await t.asAdmin() })
-    expect(read.data).toEqual({ id: sent.id, title: NOTICE.title, body: NOTICE.body, sentBy: 'Priya Raghunathan', createdAt: sent.createdAt })
+    expect(read.data).toEqual({
+      id: sent.id,
+      title: NOTICE.title,
+      body: NOTICE.body,
+      sentBy: 'Priya Raghunathan',
+      createdAt: sent.createdAt,
+    })
     expect(noticesOf(t, t.adminUser.id)[0]!.readAt).not.toBeNull()
-    expect((await t.call('GET', '/api/notices', { cookie: superCookie })).data).toMatchObject([{ id: sent.id, recipients: 1, read: 1 }])
+    expect((await t.call('GET', '/api/notices', { cookie: superCookie })).data).toMatchObject([
+      { id: sent.id, recipients: 1, read: 1 },
+    ])
     // Neither someone it was not sent to, nor its sender, has it in their Inbox.
-    expect((await t.call('GET', `/api/me/notices/${sent.id}`, { cookie: (await t.signIn('other@bphs.local')).cookie })).status).toBe(404)
+    expect(
+      (await t.call('GET', `/api/me/notices/${sent.id}`, { cookie: (await t.signIn('other@bphs.local')).cookie }))
+        .status,
+    ).toBe(404)
     expect((await t.call('GET', `/api/me/notices/${sent.id}`, { cookie: superCookie })).status).toBe(404)
   })
 })

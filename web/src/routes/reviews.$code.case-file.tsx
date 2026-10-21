@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
-import { reviewCapCode, reviewCapStatusLabel, reviewEntryCode, reviewEntryKindLabel, reviewStatusLabel } from '@shared/constants.ts'
+import {
+  reviewCapCode,
+  reviewCapStatusLabel,
+  reviewEntryCode,
+  reviewEntryKindLabel,
+  reviewStatusLabel,
+} from '@shared/constants.ts'
 import type { ReviewAttachment, ReviewCap } from '@shared/types.ts'
 import { Mono } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
@@ -34,7 +40,8 @@ function Cap({ cap, files, first }: { cap: ReviewCap; files: ReviewAttachment[];
     <div className="break-inside-avoid pt-5">
       {first && <Heading>Corrective action plans</Heading>}
       <div className="text-xs text-ink-3">
-        <Mono>{reviewCapCode(cap.seq)}</Mono> · <span className="uppercase tracking-wide">{reviewCapStatusLabel(cap.status)}</span>
+        <Mono>{reviewCapCode(cap.seq)}</Mono> ·{' '}
+        <span className="uppercase tracking-wide">{reviewCapStatusLabel(cap.status)}</span>
       </div>
       <h3 className="font-semibold [overflow-wrap:anywhere]">{cap.title}</h3>
       <dl className="mt-1 grid grid-cols-3 gap-x-4 gap-y-1 text-xs">
@@ -80,7 +87,11 @@ function CaseFile() {
       code={review.code}
       exportPath={`/reviews/${encodeURIComponent(code)}/exports`}
       back={
-        <Link to="/reviews/$code" params={{ code: review.code }} className="inline-flex items-center gap-1 font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/reviews/$code"
+          params={{ code: review.code }}
+          className="inline-flex items-center gap-1 font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {review.code}
         </Link>
       }
@@ -105,8 +116,14 @@ function CaseFile() {
             {review.recordedBy ?? 'A removed account'}, {formatDateTime(review.createdAt)}
           </Fact>
           {review.completedAt && <Fact label="Completed">{formatDateTime(review.completedAt)}</Fact>}
-          <Fact label="CAPs">{caps.length ? `${counted.filter((cap) => cap.status === 'completed').length} of ${counted.length} done` : 'None'}</Fact>
-          <Fact label="Version">{review.version === 1 ? '1, as recorded' : `${review.version}, edited since it was recorded`}</Fact>
+          <Fact label="CAPs">
+            {caps.length
+              ? `${counted.filter((cap) => cap.status === 'completed').length} of ${counted.length} done`
+              : 'None'}
+          </Fact>
+          <Fact label="Version">
+            {review.version === 1 ? '1, as recorded' : `${review.version}, edited since it was recorded`}
+          </Fact>
         </dl>
       </Row>
 
@@ -143,7 +160,14 @@ function CaseFile() {
 
       {files.length > 0 && (
         <Row>
-          <FileTable files={files} where={(file) => [file.cap !== null && reviewCapCode(file.cap), `with ${reviewEntryCode(file.entrySeq)}`].filter(Boolean).join(', ')} />
+          <FileTable
+            files={files}
+            where={(file) =>
+              [file.cap !== null && reviewCapCode(file.cap), `with ${reviewEntryCode(file.entrySeq)}`]
+                .filter(Boolean)
+                .join(', ')
+            }
+          />
         </Row>
       )}
     </Printout>

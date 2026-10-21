@@ -32,7 +32,8 @@ interface LogEntry<A extends string> {
   details: string
 }
 
-const isDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
+const isDate = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
 
 /** The route's `validateSearch`, for a log that records `actions`. */
 export const auditSearch =
@@ -46,7 +47,13 @@ export const auditSearch =
   })
 
 /** The columns of a log: when, who, the action as `badge` draws it, the record as `record` names it, and the details. */
-export function auditColumns<E extends LogEntry<string>>({ badge, record }: { badge: (entry: E) => ReactNode; record: (entry: E) => ReactNode }): ColumnDef<GridFeatures, E, any>[] {
+export function auditColumns<E extends LogEntry<string>>({
+  badge,
+  record,
+}: {
+  badge: (entry: E) => ReactNode
+  record: (entry: E) => ReactNode
+}): ColumnDef<GridFeatures, E, any>[] {
   const c = columnsFor<E>()
   return [
     c.accessor((row) => row.occurredAt, {
@@ -63,17 +70,45 @@ export function auditColumns<E extends LogEntry<string>>({ badge, record }: { ba
               <span className="font-medium text-ink-2 sm:hidden">{entry.actor} · </span>
               <Mono className="text-xs">{record(entry)}</Mono>
             </div>
-            {entry.details && <div className="text-xs text-ink-2 [overflow-wrap:anywhere] lg:hidden">{entry.details}</div>}
+            {entry.details && (
+              <div className="text-xs text-ink-2 [overflow-wrap:anywhere] lg:hidden">{entry.details}</div>
+            )}
           </div>
         )
       },
       enableSorting: false,
     }),
-    c.accessor((row) => row.actor, { id: 'actor', header: 'User', cell: (info) => <span className="font-medium">{info.getValue()}</span>, enableSorting: false, meta: { hideBelow: 'sm', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
-    c.display({ id: 'action', header: 'Action', cell: (info) => badge(info.row.original), meta: { cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
-    c.display({ id: 'entity', header: 'Record', cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{record(info.row.original)}</Mono>, meta: { hideBelow: 'md', cellClassName: 'max-lg:align-top max-lg:pt-2.5' } }),
+    c.accessor((row) => row.actor, {
+      id: 'actor',
+      header: 'User',
+      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+      enableSorting: false,
+      meta: { hideBelow: 'sm', cellClassName: 'max-lg:align-top max-lg:pt-2.5' },
+    }),
+    c.display({
+      id: 'action',
+      header: 'Action',
+      cell: (info) => badge(info.row.original),
+      meta: { cellClassName: 'max-lg:align-top max-lg:pt-2.5' },
+    }),
+    c.display({
+      id: 'entity',
+      header: 'Record',
+      cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{record(info.row.original)}</Mono>,
+      meta: { hideBelow: 'md', cellClassName: 'max-lg:align-top max-lg:pt-2.5' },
+    }),
     // Wrapped, not cut short: an entry names the record and each old and new value, and the log is where that is read.
-    c.accessor((row) => row.details, { id: 'details', header: 'Details', cell: (info) => <span className="block max-w-[44rem] leading-5 text-ink-2 [overflow-wrap:anywhere]">{info.getValue() || '—'}</span>, enableSorting: false, meta: { hideBelow: 'lg' } }),
+    c.accessor((row) => row.details, {
+      id: 'details',
+      header: 'Details',
+      cell: (info) => (
+        <span className="block max-w-[44rem] leading-5 text-ink-2 [overflow-wrap:anywhere]">
+          {info.getValue() || '—'}
+        </span>
+      ),
+      enableSorting: false,
+      meta: { hideBelow: 'lg' },
+    }),
   ]
 }
 
@@ -97,7 +132,9 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
   actions: readonly A[]
   actionLabel: (action: A) => string
   columns: ColumnDef<GridFeatures, E, any>[]
-  query: (params: AuditParams) => UseQueryOptions<{ total: number; entries: E[] }, Error, { total: number; entries: E[] }, any>
+  query: (
+    params: AuditParams,
+  ) => UseQueryOptions<{ total: number; entries: E[] }, Error, { total: number; entries: E[] }, any>
   csvUrl: (params: Omit<AuditParams, 'limit' | 'offset'>) => string
   search: AuditSearch<A>
   /** Moves to another search, as the route's `navigate({ search })` does. */
@@ -105,7 +142,8 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
 }) {
   // A new filter starts on the first page. The search lives in the URL with the other filters so that it does too, in the
   // same step; the box holds what is being typed, and follows the URL only when something else changes it (the Back button).
-  const setFilter = (patch: AuditSearch<A>, replace = false) => onSearch((prev) => ({ ...prev, ...patch, page: undefined }), replace)
+  const setFilter = (patch: AuditSearch<A>, replace = false) =>
+    onSearch((prev) => ({ ...prev, ...patch, page: undefined }), replace)
   const [q, setQ] = useState(search.q ?? '')
   const typing = useRef(false)
   useEffect(() => {
@@ -152,18 +190,38 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
             label="Filter by action"
             value={search.action ?? 'all'}
             onChange={(next) => setFilter({ action: next === 'all' ? undefined : (next as A) })}
-            options={[{ value: 'all', label: 'All' }, ...actions.map((action) => ({ value: action, label: actionLabel(action) }))]}
+            options={[
+              { value: 'all', label: 'All' },
+              ...actions.map((action) => ({ value: action, label: actionLabel(action) })),
+            ]}
           />
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2 text-sm text-ink-3">
               From
-              <DateInput className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
+              <DateInput
+                className="w-40"
+                value={search.from ?? ''}
+                max={search.to}
+                onChange={(event) => setFilter({ from: event.target.value || undefined })}
+              />
             </label>
             <label className="flex items-center gap-2 text-sm text-ink-3">
               To
-              <DateInput className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
+              <DateInput
+                className="w-40"
+                value={search.to ?? ''}
+                min={search.from}
+                onChange={(event) => setFilter({ to: event.target.value || undefined })}
+              />
             </label>
-            <SearchInput className="w-full sm:w-64" aria-label={`Search the ${title.toLowerCase()}`} placeholder="Search details or user" maxLength={MAX_SEARCH} value={q} onChange={(event) => setQ(event.target.value)} />
+            <SearchInput
+              className="w-full sm:w-64"
+              aria-label={`Search the ${title.toLowerCase()}`}
+              placeholder="Search details or user"
+              maxLength={MAX_SEARCH}
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+            />
           </div>
         </Toolbar>
         <div className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
@@ -172,21 +230,40 @@ export function AuditLog<A extends string, E extends LogEntry<A>>({
             label={title}
             noun="entries"
             loading={isPending || pastTheEnd}
-            empty={<EmptyState icon={ScrollText} title="No entries match" description="Widen the date range or clear the filters." />}
+            empty={
+              <EmptyState
+                icon={ScrollText}
+                title="No entries match"
+                description="Widen the date range or clear the filters."
+              />
+            }
             footer={
               total > 0 && !pastTheEnd ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-canvas/60 px-4 py-2.5 text-sm text-ink-3">
                   <p className="tabular-nums" aria-live="polite">
-                    {((page - 1) * PAGE + 1).toLocaleString()}–{Math.min(page * PAGE, total).toLocaleString()} of {total.toLocaleString()} entries
+                    {((page - 1) * PAGE + 1).toLocaleString()}–{Math.min(page * PAGE, total).toLocaleString()} of{' '}
+                    {total.toLocaleString()} entries
                   </p>
                   <div className="flex items-center gap-1">
                     <span className="mr-2 tabular-nums">
                       Page {page} of {pages.toLocaleString()}
                     </span>
-                    <IconButton label="Previous page" size="sm" variant="secondary" disabled={page <= 1} onClick={() => onSearch((prev) => ({ ...prev, page: page - 1 || undefined }))}>
+                    <IconButton
+                      label="Previous page"
+                      size="sm"
+                      variant="secondary"
+                      disabled={page <= 1}
+                      onClick={() => onSearch((prev) => ({ ...prev, page: page - 1 || undefined }))}
+                    >
                       <ChevronLeft className="size-4" />
                     </IconButton>
-                    <IconButton label="Next page" size="sm" variant="secondary" disabled={page >= pages} onClick={() => onSearch((prev) => ({ ...prev, page: page + 1 }))}>
+                    <IconButton
+                      label="Next page"
+                      size="sm"
+                      variant="secondary"
+                      disabled={page >= pages}
+                      onClick={() => onSearch((prev) => ({ ...prev, page: page + 1 }))}
+                    >
                       <ChevronRight className="size-4" />
                     </IconButton>
                   </div>

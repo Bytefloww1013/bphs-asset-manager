@@ -16,7 +16,10 @@ describe('nextTag', () => {
   })
 
   it('follows the prefix most tags share, not the largest number of any prefix', () => {
-    const register = [...Array.from({ length: 116 }, (_, i) => at(`BPHS-${String(i + 1).padStart(4, '0')}`)), at('OTHER-USER-4499', 20)]
+    const register = [
+      ...Array.from({ length: 116 }, (_, i) => at(`BPHS-${String(i + 1).padStart(4, '0')}`)),
+      at('OTHER-USER-4499', 20),
+    ]
     expect(nextTag(register)).toBe('BPHS-0117')
   })
 

@@ -80,5 +80,11 @@ export function ChangeSheet({
 }
 
 export const Note = ({ value, onChange, ...rest }: { value: string; onChange: (next: string) => void }) => (
-  <Textarea {...rest} value={value} onChange={(event) => onChange(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />
+  <Textarea
+    {...rest}
+    value={value}
+    onChange={(event) => onChange(event.target.value)}
+    maxLength={GRIEVANCE_NOTE_MAX}
+    rows={4}
+  />
 )

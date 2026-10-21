@@ -13,7 +13,10 @@ import { useUser } from '@/lib/session.ts'
 
 export const TASK_FILES_HINT = `${FILE_RULES} A file added by mistake can be withdrawn, with a reason.`
 
-const SIDE_LABEL: Record<TaskAttachment['side'], string> = { assigner: 'With the task', assignee: 'With the completion' }
+const SIDE_LABEL: Record<TaskAttachment['side'], string> = {
+  assigner: 'With the task',
+  assignee: 'With the completion',
+}
 
 /**
  * A task's files, for Employee Tasks (`base` `/tasks`) or My Space (`/me/tasks`). Each downloads as a file to save. A withdrawn
@@ -35,14 +38,25 @@ export function TaskFiles({ task, base }: { task: TaskDetail; base: '/tasks' | '
             href={`/api${base}/${task.id}/attachments/${file.id}`}
             details={<> · {SIDE_LABEL[file.side]}</>}
             action={
-              <Button size="sm" variant="danger-ghost" disabledReason={taskFileWithdrawProblem(user, ownership, file) ?? undefined} onClick={() => setWithdrawing(file)}>
+              <Button
+                size="sm"
+                variant="danger-ghost"
+                disabledReason={taskFileWithdrawProblem(user, ownership, file) ?? undefined}
+                onClick={() => setWithdrawing(file)}
+              >
                 Withdraw
               </Button>
             }
           />
         ))}
       </ul>
-      {withdrawing && <WithdrawSheet path={`${base}/${task.id}/attachments/${withdrawing.id}/withdraw`} file={withdrawing} onClose={() => setWithdrawing(null)} />}
+      {withdrawing && (
+        <WithdrawSheet
+          path={`${base}/${task.id}/attachments/${withdrawing.id}/withdraw`}
+          file={withdrawing}
+          onClose={() => setWithdrawing(null)}
+        />
+      )}
     </Panel>
   )
 }
@@ -58,12 +72,26 @@ function WithdrawSheet({ path, file, onClose }: { path: string; file: TaskAttach
   }
 
   return (
-    <ChangeSheet title="Withdraw this file" description={file.filename} submit="Withdraw file" danger change={change} onSubmit={commit} onClose={onClose}>
+    <ChangeSheet
+      title="Withdraw this file"
+      description={file.filename}
+      submit="Withdraw file"
+      danger
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
       <Alert tone="warn" title="This cannot be undone">
-        A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the task. Use it for a file added by mistake.
+        A withdrawn file can no longer be downloaded. Its name, who added it and this reason stay on the task. Use it
+        for a file added by mistake.
       </Alert>
       <Field label="Reason" hint="Shown in the task's history." error={missing ?? change.field('reason')}>
-        <Textarea rows={4} maxLength={TASK_NOTE_MAX} value={reason} onChange={(event) => setReason(event.target.value)} />
+        <Textarea
+          rows={4}
+          maxLength={TASK_NOTE_MAX}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
       </Field>
     </ChangeSheet>
   )

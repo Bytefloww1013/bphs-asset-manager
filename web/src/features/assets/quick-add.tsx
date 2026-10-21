@@ -22,7 +22,13 @@ function parsePaste(text: string) {
     .map((line) => line.split('\t').map((cell) => cell.trim()))
     .filter((cells) => cells.some(Boolean))
   if (rows[0] && /^(asset\s*)?tag$/i.test(rows[0][0] ?? '')) rows.shift()
-  return rows.map(([tag = '', type = '', serial = '', condition = '', holder = '']) => ({ tag, type, serial, condition, holder }))
+  return rows.map(([tag = '', type = '', serial = '', condition = '', holder = '']) => ({
+    tag,
+    type,
+    serial,
+    condition,
+    holder,
+  }))
 }
 
 /** What the server (or this form) refused: a sentence for the alert, and a message per field. */
@@ -67,10 +73,14 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const effectiveRating = ratingId || String(goodId ?? '')
 
   const elsewhere = Object.entries(problem?.fields ?? {}).filter(([name]) => !SHOWN_UNDER_FIELDS.includes(name))
-  const alert = problem && (Object.keys(problem.fields).length === 0 ? problem.message : elsewhere.map(([, message]) => message).join(' '))
+  const alert =
+    problem &&
+    (Object.keys(problem.fields).length === 0 ? problem.message : elsewhere.map(([, message]) => message).join(' '))
 
   const add = useWrite((body: Record<string, unknown>) => api.post<AssetRow>('/assets', body), { silent: true })
-  const bulk = useWrite((rows: ReturnType<typeof parsePaste>) => api.post<AssetBulkResult>('/assets/bulk', { rows }), { silent: true })
+  const bulk = useWrite((rows: ReturnType<typeof parsePaste>) => api.post<AssetBulkResult>('/assets/bulk', { rows }), {
+    silent: true,
+  })
 
   function refuse(e: unknown, fallback: string) {
     const refused = e instanceof ApiError ? { message: e.message, fields: e.fields } : { message: fallback, fields: {} }
@@ -96,7 +106,10 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
         programId: to === 'program' ? (program?.id ?? null) : null,
         assessedById: user.employeeId,
       })
-      toast({ title: `${row.tag} added`, description: row.holder || row.program ? `Issued to ${(row.holder ?? row.program)?.name}` : 'In storage' })
+      toast({
+        title: `${row.tag} added`,
+        description: row.holder || row.program ? `Issued to ${(row.holder ?? row.program)?.name}` : 'In storage',
+      })
       onAdded(row.id)
       setTag('')
       setSerial('')
@@ -128,7 +141,11 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       setPasted(null)
       tagRef.current?.focus()
       setSkipped(result.errors)
-      toast({ tone: result.created ? 'ok' : 'warn', title: result.created ? `Added ${plural(result.created, 'asset')}` : 'Nothing was added', description: result.errors.length ? `${plural(result.errors.length, 'row')} skipped` : undefined })
+      toast({
+        tone: result.created ? 'ok' : 'warn',
+        title: result.created ? `Added ${plural(result.created, 'asset')}` : 'Nothing was added',
+        description: result.errors.length ? `${plural(result.errors.length, 'row')} skipped` : undefined,
+      })
     } catch (e) {
       refuse(e, 'Could not add those rows.')
     }
@@ -139,7 +156,8 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-md font-semibold">Quick add</h2>
         <p className="text-sm text-ink-3">
-          Enter adds the physical asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial, condition, holder); you see them before they are added.
+          Enter adds the physical asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial,
+          condition, holder); you see them before they are added.
         </p>
       </div>
       <form
@@ -229,13 +247,20 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       {pasted && (
         <section aria-label="Pasted rows" className="mt-4 rounded-control border border-line bg-sunken p-4">
           <h3 className="text-sm font-semibold text-ink">Add {plural(pasted.length, 'pasted row')}?</h3>
-          <p className="mt-1 text-sm text-ink-3">Nothing has been added yet. A blank condition means {defaultRating(ratings)?.name ?? 'the default'}; a blank holder means storage.</p>
+          <p className="mt-1 text-sm text-ink-3">
+            Nothing has been added yet. A blank condition means {defaultRating(ratings)?.name ?? 'the default'}; a blank
+            holder means storage.
+          </p>
           <div className="mt-3 max-h-56 overflow-auto rounded-control border border-line bg-surface">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-ink-3">
                 <tr>
                   {['Asset tag', 'Type', 'Serial number', 'Condition', 'Issue to'].map((heading) => (
-                    <th key={heading} scope="col" className="sticky top-0 whitespace-nowrap bg-surface px-3 py-2 font-medium">
+                    <th
+                      key={heading}
+                      scope="col"
+                      className="sticky top-0 whitespace-nowrap bg-surface px-3 py-2 font-medium"
+                    >
                       {heading}
                     </th>
                   ))}

@@ -16,7 +16,12 @@ import { appendReviewEntry, findCapBySeq, findReviewToManage, getReview, require
 
 type EntryRow = typeof reviewEntries.$inferSelect
 
-const shape = (row: EntryRow, cap: number | null, corrects: number | null = null, correctedBy: number[] = []): ReviewEntry => ({
+const shape = (
+  row: EntryRow,
+  cap: number | null,
+  corrects: number | null = null,
+  correctedBy: number[] = [],
+): ReviewEntry => ({
   id: row.id,
   seq: row.seq,
   kind: row.kind,
@@ -34,9 +39,21 @@ const shape = (row: EntryRow, cap: number | null, corrects: number | null = null
 /** Every entry of one review the viewer may see, in the order they were recorded. */
 export function listReviewEntries(db: DbLike, viewer: { employeeId: number | null }, code: string): ReviewEntry[] {
   const review = getReview(db, viewer, { code })
-  const rows = db.select().from(reviewEntries).where(eq(reviewEntries.reviewId, review.id)).orderBy(asc(reviewEntries.seq)).all()
+  const rows = db
+    .select()
+    .from(reviewEntries)
+    .where(eq(reviewEntries.reviewId, review.id))
+    .orderBy(asc(reviewEntries.seq))
+    .all()
   const seqOf = new Map(rows.map((row) => [row.id, row.seq]))
-  const capSeqOf = new Map(db.select({ id: reviewCaps.id, seq: reviewCaps.seq }).from(reviewCaps).where(eq(reviewCaps.reviewId, review.id)).all().map((cap) => [cap.id, cap.seq]))
+  const capSeqOf = new Map(
+    db
+      .select({ id: reviewCaps.id, seq: reviewCaps.seq })
+      .from(reviewCaps)
+      .where(eq(reviewCaps.reviewId, review.id))
+      .all()
+      .map((cap) => [cap.id, cap.seq]),
+  )
   return rows.map((row) =>
     shape(
       row,
@@ -51,7 +68,13 @@ export function listReviewEntries(db: DbLike, viewer: { employeeId: number | nul
  * Add an update to a review's history, or to one of its CAPs, or a correction of an earlier entry, filed where that entry is.
  * Any files that came with it are filed in the same place.
  */
-export function createReviewEntry(db: Db, actor: Actor, code: string, input: ReviewEntryCreateInput, uploads: Upload[] = []): ReviewEntry {
+export function createReviewEntry(
+  db: Db,
+  actor: Actor,
+  code: string,
+  input: ReviewEntryCreateInput,
+  uploads: Upload[] = [],
+): ReviewEntry {
   const body = requireRichText(input.body, 'body', { optional: true })
   return db.transaction((tx) => {
     const review = findReviewToManage(tx, actor, code)
@@ -68,10 +91,19 @@ export function createReviewEntry(db: Db, actor: Actor, code: string, input: Rev
         .from(reviewEntries)
         .where(and(eq(reviewEntries.reviewId, review.id), eq(reviewEntries.seq, input.correctsSeq)))
         .get()
-      if (!corrected) throw invalid(`${review.code} has no entry ${reviewEntryCode(input.correctsSeq)} to correct.`, { field: 'correctsSeq' })
+      if (!corrected)
+        throw invalid(`${review.code} has no entry ${reviewEntryCode(input.correctsSeq)} to correct.`, {
+          field: 'correctsSeq',
+        })
       // An automatic entry says what the app did; there is nothing in it that anyone wrote.
-      if (corrected.kind === 'system') throw invalid('An automatic entry cannot be corrected.', { field: 'correctsSeq' })
-      if (corrected.capId !== null) cap = tx.select({ id: reviewCaps.id, seq: reviewCaps.seq }).from(reviewCaps).where(eq(reviewCaps.id, corrected.capId)).get()
+      if (corrected.kind === 'system')
+        throw invalid('An automatic entry cannot be corrected.', { field: 'correctsSeq' })
+      if (corrected.capId !== null)
+        cap = tx
+          .select({ id: reviewCaps.id, seq: reviewCaps.seq })
+          .from(reviewCaps)
+          .where(eq(reviewCaps.id, corrected.capId))
+          .get()
     }
     const row = appendReviewEntry(tx, actor, review.id, {
       kind: input.kind,

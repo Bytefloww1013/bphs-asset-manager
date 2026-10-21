@@ -12,7 +12,11 @@ import { employeesQuery, reviewQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/edit')({
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(reviewQuery(params.code)), context.queryClient.ensureQueryData(employeesQuery)]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(reviewQuery(params.code)),
+      context.queryClient.ensureQueryData(employeesQuery),
+    ]),
   errorComponent: ReviewLoadError,
   component: EditReviewPage,
 })
@@ -36,11 +40,18 @@ function EditReviewPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/reviews/$code" params={{ code: review.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/reviews/$code"
+          params={{ code: review.code }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {review.code}
         </Link>
         <div className="mt-3">
-          <PageHeader title="Edit review" description="Change the review's details. Its history records each field that changed, with what it said before." />
+          <PageHeader
+            title="Edit review"
+            description="Change the review's details. Its history records each field that changed, with what it said before."
+          />
         </div>
       </div>
       {refused ? (

@@ -13,13 +13,22 @@ describe('CSV output', () => {
   })
 
   it('stops a cell from being read as a formula by a spreadsheet', () => {
-    for (const start of ['=', '+', '-', '@', '\t', '\r']) expect(csvCell(`${start}cmd`).replace(/^"/, '').startsWith("'"), JSON.stringify(start)).toBe(true)
+    for (const start of ['=', '+', '-', '@', '\t', '\r'])
+      expect(csvCell(`${start}cmd`).replace(/^"/, '').startsWith("'"), JSON.stringify(start)).toBe(true)
     expect(csvCell('=HYPERLINK("http://x","y")')).toBe(`"'=HYPERLINK(""http://x"",""y"")"`)
     expect(csvCell(-5)).toBe("'-5")
   })
 
   it('builds a file with CRLF line ends, and the mark for Excel is one U+FEFF', () => {
-    expect(toCsv(['a', 'b'], [[1, 'x,y'], [null, '']])).toBe('a,b\r\n1,"x,y"\r\n,\r\n')
+    expect(
+      toCsv(
+        ['a', 'b'],
+        [
+          [1, 'x,y'],
+          [null, ''],
+        ],
+      ),
+    ).toBe('a,b\r\n1,"x,y"\r\n,\r\n')
     expect(CSV_BOM).toHaveLength(1)
     expect(CSV_BOM.charCodeAt(0)).toBe(0xfeff)
   })

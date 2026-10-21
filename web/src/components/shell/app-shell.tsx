@@ -42,7 +42,16 @@ import { notificationCountQuery } from '@/lib/queries.ts'
 import { NotificationBell, UnreadBadge } from '@/features/notifications/parts.tsx'
 import { initials } from '@/lib/format.ts'
 import { useUser } from '@/lib/session.ts'
-import { WORKSPACE_HOME, WORKSPACE_LABEL, lastWorkspace, rememberWorkspace, useArea, useWorkspace, type Area, type Workspace } from '@/lib/workspace.ts'
+import {
+  WORKSPACE_HOME,
+  WORKSPACE_LABEL,
+  lastWorkspace,
+  rememberWorkspace,
+  useArea,
+  useWorkspace,
+  type Area,
+  type Workspace,
+} from '@/lib/workspace.ts'
 import { IconButton } from '../ui/button.tsx'
 import { Badge } from '../ui/badge.tsx'
 import { LogoMark, Wordmark } from '../ui/logo.tsx'
@@ -50,7 +59,33 @@ import { APP_NAME } from '@/lib/brand.ts'
 
 interface NavEntry {
   /** Left out only for an entry that is disabled. */
-  to?: '/me/inbox' | '/me/tasks' | '/me/profile' | '/me/notices' | '/'| '/assignments' | '/available' | '/assets' | '/digital-assets' | '/employees' | '/programs' | '/lists' | '/import-export' | '/audit' | '/users' | '/grievances' | '/grievances/employees' | '/grievances/categories' | '/grievances/audit' | '/maintenance' | '/reviews' | '/reviews/actions' | '/reviews/employees' | '/reviews/audit' | '/tasks' | '/tasks/new'
+  to?:
+    | '/me/inbox'
+    | '/me/tasks'
+    | '/me/profile'
+    | '/me/notices'
+    | '/'
+    | '/assignments'
+    | '/available'
+    | '/assets'
+    | '/digital-assets'
+    | '/employees'
+    | '/programs'
+    | '/lists'
+    | '/import-export'
+    | '/audit'
+    | '/users'
+    | '/grievances'
+    | '/grievances/employees'
+    | '/grievances/categories'
+    | '/grievances/audit'
+    | '/maintenance'
+    | '/reviews'
+    | '/reviews/actions'
+    | '/reviews/employees'
+    | '/reviews/audit'
+    | '/tasks'
+    | '/tasks/new'
   label: string
   icon: LucideIcon
   locked?: boolean
@@ -80,7 +115,8 @@ function useNav(area: Area): { heading: string; items: NavEntry[] }[] {
       },
     ]
   }
-  if (area === 'maintenance') return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
+  if (area === 'maintenance')
+    return [{ heading: 'Records', items: [{ to: '/maintenance', label: 'Requests', icon: Wrench }] }]
   if (area === 'tasks') {
     return [
       {
@@ -166,7 +202,11 @@ function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div>
       {both && (
-        <nav aria-label="Workspace" className="grid gap-0.5 rounded-control bg-line/70 p-0.5" style={{ gridTemplateColumns: `repeat(${across ? usable.length : 1}, minmax(0, 1fr))` }}>
+        <nav
+          aria-label="Workspace"
+          className="grid gap-0.5 rounded-control bg-line/70 p-0.5"
+          style={{ gridTemplateColumns: `repeat(${across ? usable.length : 1}, minmax(0, 1fr))` }}
+        >
           {usable.map((workspace) => (
             <Link
               key={workspace}
@@ -215,7 +255,12 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const groups = useNav(useArea())
   const pathname = useLocation({ select: (location) => location.pathname })
   // An entry gives way to one beneath it: on /grievances/categories, Categories is the current page and Grievances is not.
-  const yields = (to: string) => groups.some((group) => group.items.some((other) => other.to && other.to !== to && other.to.startsWith(`${to}/`) && pathname.startsWith(other.to)))
+  const yields = (to: string) =>
+    groups.some((group) =>
+      group.items.some(
+        (other) => other.to && other.to !== to && other.to.startsWith(`${to}/`) && pathname.startsWith(other.to),
+      ),
+    )
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
       {groups.map((group) => (
@@ -232,7 +277,11 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                     className="group flex h-9 items-center gap-2.5 rounded-control px-2.5 text-sm font-medium text-ink-2 transition-colors duration-150 hover:bg-surface/70 hover:text-ink data-[status=active]:bg-surface data-[status=active]:text-ink data-[status=active]:shadow-panel data-[status=active]:ring-1 data-[status=active]:ring-line"
                     activeProps={{ 'aria-current': 'page' }}
                   >
-                    <item.icon className="size-[1.125rem] shrink-0 text-ink-3 group-data-[status=active]:text-workspace" aria-hidden strokeWidth={1.75} />
+                    <item.icon
+                      className="size-[1.125rem] shrink-0 text-ink-3 group-data-[status=active]:text-workspace"
+                      aria-hidden
+                      strokeWidth={1.75}
+                    />
                     <span className="flex-1">{item.label}</span>
                     <UnreadBadge count={item.count} />
                     {item.locked && (
@@ -244,7 +293,11 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   </Link>
                 ) : (
                   // Not a link and not a tab stop. role and aria-disabled let a screen reader announce it as an unavailable link, with the reason.
-                  <span role="link" aria-disabled="true" className="flex cursor-not-allowed items-center gap-2.5 rounded-control px-2.5 py-1 text-sm font-medium text-ink-3">
+                  <span
+                    role="link"
+                    aria-disabled="true"
+                    className="flex cursor-not-allowed items-center gap-2.5 rounded-control px-2.5 py-1 text-sm font-medium text-ink-3"
+                  >
                     <item.icon className="size-[1.125rem] shrink-0 opacity-60" aria-hidden strokeWidth={1.75} />
                     {/* The reason sits under the name: beside it, "Personal Dashboard" does not fit the rail. */}
                     <span className="flex flex-col">
@@ -280,7 +333,9 @@ function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
           type="button"
           className="flex w-full items-center gap-3 rounded-control p-2 text-left transition-colors hover:bg-surface/70 data-[state=open]:bg-surface"
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent ring-1 ring-accent-line">{initials(user.name)}</span>
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent ring-1 ring-accent-line">
+            {initials(user.name)}
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-ink">{user.name}</span>
             <span className="block truncate text-xs text-ink-3">{describeAccess(user)}</span>
@@ -300,7 +355,11 @@ function UserMenu({ onNavigate }: { onNavigate?: () => void }) {
             <p className="truncate text-sm font-medium text-ink">{user.name}</p>
             <p className="truncate font-mono text-xs text-ink-3">{user.email}</p>
             <div className="mt-2">
-              {user.superAdmin ? <Badge tone="accent">Super Admin</Badge> : <p className="text-xs text-ink-2">{describeAccess(user)}</p>}
+              {user.superAdmin ? (
+                <Badge tone="accent">Super Admin</Badge>
+              ) : (
+                <p className="text-xs text-ink-2">{describeAccess(user)}</p>
+              )}
             </div>
           </div>
           <DropdownMenu.Separator className="-mx-1.5 my-1.5 h-px bg-line" />
@@ -347,7 +406,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
   }, [])
   return (
     <div data-workspace={area} className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[90] focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[90] focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop"
+      >
         Skip to content
       </a>
 
@@ -380,7 +442,10 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
       <Dialog.Root open={drawer} onOpenChange={setDrawer}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 animate-fade-in bg-ink/35 lg:hidden" />
-          <Dialog.Content data-workspace={area} className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] animate-fade-in flex-col bg-sidebar shadow-pop outline-none lg:hidden">
+          <Dialog.Content
+            data-workspace={area}
+            className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] animate-fade-in flex-col bg-sidebar shadow-pop outline-none lg:hidden"
+          >
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
             <Dialog.Description className="sr-only">Move between sections of the app</Dialog.Description>
             <div className="flex items-center justify-between px-4 pb-3 pt-4">
@@ -391,7 +456,13 @@ export function AppShell({ children }: { children?: React.ReactNode }) {
                 </IconButton>
               </Dialog.Close>
             </div>
-            <div className="px-3 pb-4">{area === 'me' ? <BackLink onNavigate={() => setDrawer(false)} /> : <WorkspaceSwitcher onNavigate={() => setDrawer(false)} />}</div>
+            <div className="px-3 pb-4">
+              {area === 'me' ? (
+                <BackLink onNavigate={() => setDrawer(false)} />
+              ) : (
+                <WorkspaceSwitcher onNavigate={() => setDrawer(false)} />
+              )}
+            </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
               <NavList onNavigate={() => setDrawer(false)} />
             </div>

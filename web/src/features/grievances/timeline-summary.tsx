@@ -18,7 +18,8 @@ export function TimelineSummary({ grievance, entries }: { grievance: GrievanceDe
       <>
         {entries.length}
         <span className="block text-xs font-normal text-ink-3">
-          {plural(count('action'), 'action')}, {plural(count('event'), 'event')}, {plural(count('correction'), 'correction')}, {count('system')} automatic
+          {plural(count('action'), 'action')}, {plural(count('event'), 'event')},{' '}
+          {plural(count('correction'), 'correction')}, {count('system')} automatic
         </span>
       </>,
     ],

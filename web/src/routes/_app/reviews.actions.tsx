@@ -21,7 +21,8 @@ import { downloadTable } from '@/lib/spreadsheet.ts'
 const TABS = ['open', 'completed', 'cancelled', 'all'] as const
 type Tab = (typeof TABS)[number]
 const TAB_LABEL: Record<Tab, string> = { open: 'Open', completed: 'Completed', cancelled: 'Cancelled', all: 'All' }
-const inTab = (tab: Tab, status: ReviewCapStatus) => tab === 'all' || (tab === 'open' ? status === 'not_started' || status === 'in_progress' : status === tab)
+const inTab = (tab: Tab, status: ReviewCapStatus) =>
+  tab === 'all' || (tab === 'open' ? status === 'not_started' || status === 'in_progress' : status === tab)
 
 export const Route = createFileRoute('/_app/reviews/actions')({
   // As on Requests, the Open tab is where the page starts, so it is the one tab the address does not name.
@@ -35,7 +36,8 @@ const name = (person: ReviewPerson) => `${person.name}${person.archived ? ' (arc
 const capOf = (row: ReviewActionItem) => `${row.review.code} ${reviewCapCode(row.seq)}`
 const c = columnsFor<ReviewActionItem>()
 const getRowId = (row: ReviewActionItem) => String(row.id)
-const searchText = (row: ReviewActionItem) => [capOf(row), row.title, row.shortDescription, row.review.title, row.responsible.name].join(' ')
+const searchText = (row: ReviewActionItem) =>
+  [capOf(row), row.title, row.shortDescription, row.review.title, row.responsible.name].join(' ')
 
 const columns = [
   c.accessor(capOf, {
@@ -75,10 +77,28 @@ const columns = [
     ),
     meta: { hideBelow: 'xl' },
   }),
-  c.accessor((row) => row.responsible.name, { id: 'responsible', header: 'Responsible', cell: (info) => <span className="whitespace-nowrap text-ink-2">{name(info.row.original.responsible)}</span>, meta: { hideBelow: 'md' } }),
+  c.accessor((row) => row.responsible.name, {
+    id: 'responsible',
+    header: 'Responsible',
+    cell: (info) => <span className="whitespace-nowrap text-ink-2">{name(info.row.original.responsible)}</span>,
+    meta: { hideBelow: 'md' },
+  }),
   // Nothing is marked overdue: the date is shown as it was set.
-  c.accessor('dueDate', { header: 'Due', cell: (info) => (info.getValue() ? <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-4">None</span>), meta: { hideBelow: 'sm' } }),
-  c.accessor('status', { header: 'Status', cell: (info) => <ReviewCapStatusBadge status={info.getValue()} />, enableSorting: false }),
+  c.accessor('dueDate', {
+    header: 'Due',
+    cell: (info) =>
+      info.getValue() ? (
+        <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>
+      ) : (
+        <span className="text-ink-4">None</span>
+      ),
+    meta: { hideBelow: 'sm' },
+  }),
+  c.accessor('status', {
+    header: 'Status',
+    cell: (info) => <ReviewCapStatusBadge status={info.getValue()} />,
+    enableSorting: false,
+  }),
   c.accessor('completedAt', {
     header: 'Completed',
     cell: (info) =>
@@ -93,8 +113,28 @@ const columns = [
   }),
 ]
 
-const HEADER = ['Review ID', 'CAP', 'Title', 'Short description', 'Review', 'Responsible', 'Due date', 'Status', 'Completed']
-const sheetRow = (row: ReviewActionItem) => [row.review.code, reviewCapCode(row.seq), row.title, row.shortDescription, row.review.title, name(row.responsible), row.dueDate, reviewCapStatusLabel(row.status), row.completedAt && formatDate(row.completedAt)]
+const HEADER = [
+  'Review ID',
+  'CAP',
+  'Title',
+  'Short description',
+  'Review',
+  'Responsible',
+  'Due date',
+  'Status',
+  'Completed',
+]
+const sheetRow = (row: ReviewActionItem) => [
+  row.review.code,
+  reviewCapCode(row.seq),
+  row.title,
+  row.shortDescription,
+  row.review.title,
+  name(row.responsible),
+  row.dueDate,
+  reviewCapStatusLabel(row.status),
+  row.completedAt && formatDate(row.completedAt),
+]
 
 /** Every CAP on every review the account may see, apart from voided reviews, across reviews. */
 function ActionItemsPage() {
@@ -109,15 +149,40 @@ function ActionItemsPage() {
   const [saving, setSaving] = useState<FileFormat | null>(null)
   const { data = [], isPending } = useQuery(reviewActionItemsQuery)
 
-  const people = useMemo(() => [...new Map(data.map((row) => [row.responsible.id, row.responsible])).values()].sort((a, b) => a.name.localeCompare(b.name)), [data])
+  const people = useMemo(
+    () =>
+      [...new Map(data.map((row) => [row.responsible.id, row.responsible])).values()].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    [data],
+  )
   // Due dates are calendar dates, so they compare as text. A CAP with no due date drops out once either end is set.
   const narrowed = useMemo(
-    () => data.filter((row) => (responsible === null || row.responsible.id === responsible) && (!from || (row.dueDate !== null && row.dueDate >= from)) && (!to || (row.dueDate !== null && row.dueDate <= to))),
+    () =>
+      data.filter(
+        (row) =>
+          (responsible === null || row.responsible.id === responsible) &&
+          (!from || (row.dueDate !== null && row.dueDate >= from)) &&
+          (!to || (row.dueDate !== null && row.dueDate <= to)),
+      ),
     [data, responsible, from, to],
   )
-  const counts = useMemo(() => Object.fromEntries(TABS.map((value) => [value, narrowed.filter((row) => inTab(value, row.status)).length])) as Record<Tab, number>, [narrowed])
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(
+        TABS.map((value) => [value, narrowed.filter((row) => inTab(value, row.status)).length]),
+      ) as Record<Tab, number>,
+    [narrowed],
+  )
   const rows = useMemo(() => narrowed.filter((row) => inTab(tab, row.status)), [narrowed, tab])
-  const table = useGrid({ data: rows, columns, getRowId, searchText, search, resetKey: `${tab} ${responsible} ${from} ${to}` })
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    searchText,
+    search,
+    resetKey: `${tab} ${responsible} ${from} ${to}`,
+  })
   const filtered = Boolean(search || responsible !== null || from || to)
 
   const clear = () => {
@@ -149,7 +214,13 @@ function ActionItemsPage() {
         actions={
           <>
             {(['csv', 'xlsx'] as const).map((format) => (
-              <Button key={format} icon={<Download className="size-4" />} disabled={!table.getPrePaginatedRowModel().rows.length} loading={saving === format} onClick={() => void save(format)}>
+              <Button
+                key={format}
+                icon={<Download className="size-4" />}
+                disabled={!table.getPrePaginatedRowModel().rows.length}
+                loading={saving === format}
+                onClick={() => void save(format)}
+              >
                 {format === 'csv' ? 'Export CSV' : 'Export Excel'}
               </Button>
             ))}
@@ -162,12 +233,27 @@ function ActionItemsPage() {
             label="Filter by status"
             value={tab}
             onChange={(next) => void navigate({ search: { status: next === 'open' ? undefined : next } })}
-            options={TABS.map((value) => ({ value, label: TAB_LABEL[value], count: isPending ? undefined : counts[value] }))}
+            options={TABS.map((value) => ({
+              value,
+              label: TAB_LABEL[value],
+              count: isPending ? undefined : counts[value],
+            }))}
           />
-          <SearchInput className="w-full sm:w-72" aria-label="Search action items" placeholder="Search ID, title or a name" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-72"
+            aria-label="Search action items"
+            placeholder="Search ID, title or a name"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </Toolbar>
         <Toolbar>
-          <Select aria-label="Responsible" className="w-48" value={responsible ?? ''} onChange={(event) => setResponsible(event.target.value ? Number(event.target.value) : null)}>
+          <Select
+            aria-label="Responsible"
+            className="w-48"
+            value={responsible ?? ''}
+            onChange={(event) => setResponsible(event.target.value ? Number(event.target.value) : null)}
+          >
             <option value="">Anyone responsible</option>
             {people.map((person) => (
               <option key={person.id} value={person.id}>
@@ -177,11 +263,21 @@ function ActionItemsPage() {
           </Select>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             Due from
-            <DateInput className="w-40" value={from} max={to || undefined} onChange={(event) => setFrom(event.target.value)} />
+            <DateInput
+              className="w-40"
+              value={from}
+              max={to || undefined}
+              onChange={(event) => setFrom(event.target.value)}
+            />
           </label>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             to
-            <DateInput className="w-40" value={to} min={from || undefined} onChange={(event) => setTo(event.target.value)} />
+            <DateInput
+              className="w-40"
+              value={to}
+              min={from || undefined}
+              onChange={(event) => setTo(event.target.value)}
+            />
           </label>
           {filtered && (
             <Button variant="ghost" onClick={clear}>
@@ -219,9 +315,17 @@ function ActionItemsPage() {
                 }
               />
             ) : data.length && tab !== 'all' ? (
-              <EmptyState icon={ListChecks} title={`No ${TAB_LABEL[tab].toLowerCase()} action items`} description="CAPs in other statuses are under their own tabs, and all of them are under All." />
+              <EmptyState
+                icon={ListChecks}
+                title={`No ${TAB_LABEL[tab].toLowerCase()} action items`}
+                description="CAPs in other statuses are under their own tabs, and all of them are under All."
+              />
             ) : (
-              <EmptyState icon={ListChecks} title="No action items yet" description="Corrective action plans added to reviews are listed on this page." />
+              <EmptyState
+                icon={ListChecks}
+                title="No action items yet"
+                description="Corrective action plans added to reviews are listed on this page."
+              />
             )
           }
         />
