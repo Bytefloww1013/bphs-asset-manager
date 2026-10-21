@@ -9,7 +9,11 @@ export function GrievanceLoadError({ error }: { error: unknown }) {
   return (
     <EmptyState
       icon={Scale}
-      title={error instanceof ApiError && error.status === 404 ? 'No grievance with that ID' : 'Could not load this grievance'}
+      title={
+        error instanceof ApiError && error.status === 404
+          ? 'No grievance with that ID'
+          : 'Could not load this grievance'
+      }
       description={error instanceof Error ? error.message : undefined}
       action={
         <Link to="/grievances" className={buttonStyles('primary')}>

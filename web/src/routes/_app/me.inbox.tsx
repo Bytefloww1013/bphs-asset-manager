@@ -15,12 +15,19 @@ import { notificationsQuery } from '@/lib/queries.ts'
 import { usePageTitle } from '@/lib/session.ts'
 
 const VIEW_LABEL: Record<NotificationView, string> = { unread: 'Unread', all: 'All', archived: 'Archived' }
-const EMPTY: Record<NotificationView, string> = { unread: 'Nothing unread', all: 'No notifications', archived: 'Nothing archived' }
+const EMPTY: Record<NotificationView, string> = {
+  unread: 'Nothing unread',
+  all: 'No notifications',
+  archived: 'Nothing archived',
+}
 
 export const Route = createFileRoute('/_app/me/inbox')({
   // All is where the page starts, so it is the one view the address does not name.
   validateSearch: (search: Record<string, unknown>): { view?: NotificationView } => ({
-    view: NOTIFICATION_VIEWS.includes(search.view as NotificationView) && search.view !== 'all' ? (search.view as NotificationView) : undefined,
+    view:
+      NOTIFICATION_VIEWS.includes(search.view as NotificationView) && search.view !== 'all'
+        ? (search.view as NotificationView)
+        : undefined,
   }),
   component: InboxPage,
 })
@@ -83,9 +90,13 @@ function InboxPage() {
 
 function InboxRow({ row }: { row: NotificationRow }) {
   const openRow = useOpenNotification()
-  const act = useWrite((action: 'read' | 'unread' | 'archive' | 'unarchive') => api.post(`/me/notifications/${row.id}/${action}`))
+  const act = useWrite((action: 'read' | 'unread' | 'archive' | 'unarchive') =>
+    api.post(`/me/notifications/${row.id}/${action}`),
+  )
   const items: MenuItem[] = [
-    row.readAt ? { label: 'Mark unread', icon: Mail, onSelect: () => act.mutate('unread') } : { label: 'Mark read', icon: MailOpen, onSelect: () => act.mutate('read') },
+    row.readAt
+      ? { label: 'Mark unread', icon: Mail, onSelect: () => act.mutate('unread') }
+      : { label: 'Mark read', icon: MailOpen, onSelect: () => act.mutate('read') },
     row.archivedAt
       ? { label: 'Unarchive', icon: ArchiveRestore, onSelect: () => act.mutate('unarchive') }
       : { label: 'Archive', icon: Archive, onSelect: () => act.mutate('archive') },

@@ -1,5 +1,12 @@
 import { Hono } from 'hono'
-import { assetBulkSchema, assetCreateSchema, assetUpdateSchema, issueSchema, returnBulkSchema, returnSchema } from '../../shared/schemas.ts'
+import {
+  assetBulkSchema,
+  assetCreateSchema,
+  assetUpdateSchema,
+  issueSchema,
+  returnBulkSchema,
+  returnSchema,
+} from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, requireFull, type Env } from '../http.ts'
 import {

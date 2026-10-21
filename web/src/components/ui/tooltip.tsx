@@ -7,7 +7,15 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => (
   </RTooltip.Provider>
 )
 
-export function Tooltip({ content, children, side = 'top' }: { content: ReactNode; children: ReactElement; side?: 'top' | 'bottom' | 'left' | 'right' }) {
+export function Tooltip({
+  content,
+  children,
+  side = 'top',
+}: {
+  content: ReactNode
+  children: ReactElement
+  side?: 'top' | 'bottom' | 'left' | 'right'
+}) {
   return (
     <RTooltip.Root>
       <RTooltip.Trigger asChild>{children}</RTooltip.Trigger>

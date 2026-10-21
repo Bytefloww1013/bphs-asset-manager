@@ -2,7 +2,15 @@ import { ArrowBigUp, CornerDownLeft } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/cn.ts'
 
-export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+}) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
@@ -18,7 +26,17 @@ export function Panel({ className, ...rest }: ComponentProps<'section'>) {
   return <section className={cn('rounded-panel border border-line bg-surface shadow-panel', className)} {...rest} />
 }
 
-export function PanelHeader({ title, description, actions, className }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; className?: string }) {
+export function PanelHeader({
+  title,
+  description,
+  actions,
+  className,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+  className?: string
+}) {
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 pb-3 pt-4', className)}>
       <div className="min-w-0">
@@ -37,7 +55,12 @@ export function Toolbar({ className, ...rest }: ComponentProps<'div'>) {
 
 export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <kbd className={cn('inline-flex min-w-5 items-center justify-center rounded-[5px] border border-line-strong bg-surface px-1.5 font-mono text-xs leading-5 text-ink-2 shadow-[0_1px_0_var(--color-line-strong)]', className)}>
+    <kbd
+      className={cn(
+        'inline-flex min-w-5 items-center justify-center rounded-[5px] border border-line-strong bg-surface px-1.5 font-mono text-xs leading-5 text-ink-2 shadow-[0_1px_0_var(--color-line-strong)]',
+        className,
+      )}
+    >
       {children}
     </kbd>
   )
@@ -62,7 +85,9 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
   return (
     <div className="min-w-0 px-5 py-4">
       <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-ink [overflow-wrap:anywhere]">{children || children === 0 ? children : <span className="font-normal text-ink-3">—</span>}</dd>
+      <dd className="mt-1 text-sm font-medium text-ink [overflow-wrap:anywhere]">
+        {children || children === 0 ? children : <span className="font-normal text-ink-3">—</span>}
+      </dd>
     </div>
   )
 }

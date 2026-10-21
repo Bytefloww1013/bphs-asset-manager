@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, ATTACHMENTS_PER_REQUEST, fileExtension, type AttachmentExtension } from '../../shared/constants.ts'
+import {
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENT_TYPES,
+  ATTACHMENTS_PER_REQUEST,
+  fileExtension,
+  type AttachmentExtension,
+} from '../../shared/constants.ts'
 import { invalid } from './errors.ts'
 
 /** A file from a request that has passed every check, ready to be written. */
@@ -18,7 +24,8 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff])
 const ZIP = Buffer.from([0x50, 0x4b, 0x03, 0x04])
 const starts = (bytes: Buffer, head: Buffer) => bytes.subarray(0, head.length).equals(head)
 // shortcut: an Office file is a zip that names [Content_Types].xml and its own folder somewhere, without reading the zip's directory; parse it if a lookalike ever matters.
-const office = (folder: string) => (bytes: Buffer) => starts(bytes, ZIP) && bytes.includes('[Content_Types].xml') && bytes.includes(folder)
+const office = (folder: string) => (bytes: Buffer) =>
+  starts(bytes, ZIP) && bytes.includes('[Content_Types].xml') && bytes.includes(folder)
 const text = (bytes: Buffer) => !bytes.includes(0)
 
 /** Whether a file's content is what its extension says. */
@@ -47,7 +54,8 @@ function cleanName(raw: string) {
  * content bears out, never the one the browser sent.
  */
 export async function readUploads(files: File[]): Promise<Upload[]> {
-  if (files.length > ATTACHMENTS_PER_REQUEST) throw invalid(`Attach at most ${ATTACHMENTS_PER_REQUEST} files at a time.`, { field: 'files' })
+  if (files.length > ATTACHMENTS_PER_REQUEST)
+    throw invalid(`Attach at most ${ATTACHMENTS_PER_REQUEST} files at a time.`, { field: 'files' })
   const uploads: Upload[] = []
   for (const file of files) {
     const filename = cleanName(file.name)
@@ -55,10 +63,17 @@ export async function readUploads(files: File[]): Promise<Upload[]> {
     if (file.size > ATTACHMENT_MAX_BYTES) throw refuse(`is larger than ${ATTACHMENT_MAX_BYTES / 1024 / 1024} MB.`)
     if (file.size === 0) throw refuse('is empty.')
     const extension = fileExtension(filename)
-    if (!Object.hasOwn(ATTACHMENT_TYPES, extension)) throw refuse('is not a type that can be attached: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML.')
+    if (!Object.hasOwn(ATTACHMENT_TYPES, extension))
+      throw refuse('is not a type that can be attached: PDF, PNG, JPEG, DOCX, XLSX, TXT or EML.')
     const bytes = Buffer.from(await file.arrayBuffer())
-    if (!LOOKS_LIKE[extension as AttachmentExtension](bytes)) throw refuse(`is not the ${extension.toUpperCase()} file its name says it is.`)
-    uploads.push({ filename, contentType: ATTACHMENT_TYPES[extension as AttachmentExtension], bytes, sha256: createHash('sha256').update(bytes).digest('hex') })
+    if (!LOOKS_LIKE[extension as AttachmentExtension](bytes))
+      throw refuse(`is not the ${extension.toUpperCase()} file its name says it is.`)
+    uploads.push({
+      filename,
+      contentType: ATTACHMENT_TYPES[extension as AttachmentExtension],
+      bytes,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    })
   }
   return uploads
 }

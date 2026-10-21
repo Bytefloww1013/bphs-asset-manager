@@ -6,9 +6,16 @@ import { migratedBefore, setup } from './helpers.ts'
 
 type T = Awaited<ReturnType<typeof setup>>
 
-const ISSUED: NewNotification = { recipients: [], kind: 'asset_issued', sourceKey: 'asset:1', title: 'BP-0001 was issued to you', link: '/assets/BP-0001' }
+const ISSUED: NewNotification = {
+  recipients: [],
+  kind: 'asset_issued',
+  sourceKey: 'asset:1',
+  title: 'BP-0001 was issued to you',
+  link: '/assets/BP-0001',
+}
 
-const rowsOf = (t: T, userId: number) => t.db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(notifications.id).all()
+const rowsOf = (t: T, userId: number) =>
+  t.db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(notifications.id).all()
 const send = (t: T, recipients: number[], extra: Partial<NewNotification> = {}, actor: { id: number } | null = null) =>
   notify(t.db, actor, { ...ISSUED, recipients, ...extra })
 
@@ -16,14 +23,22 @@ describe('the notifications migrations', () => {
   it('apply on top of a database that already has notifications, and keep its rows', () => {
     const { sqlite, rest } = migratedBefore('0018_')
     sqlite.exec(`insert into users (id, name, email, password_hash) values (1, 'S', 's@x.example', 'x')`)
-    sqlite.exec(`insert into notifications (user_id, kind, source_key, title, link, created_at) values (1, 'asset_issued', 'asset:1', 'T', '/', 0)`)
+    sqlite.exec(
+      `insert into notifications (user_id, kind, source_key, title, link, created_at) values (1, 'asset_issued', 'asset:1', 'T', '/', 0)`,
+    )
     rest()
 
     expect(sqlite.prepare(`select title from notifications`).all()).toEqual([{ title: 'T' }])
     expect(sqlite.prepare(`select name from pragma_table_info('notifications') where name = 'muted'`).all()).toEqual([])
     expect(sqlite.prepare(`select name from sqlite_master where name = 'notification_mutes'`).all()).toEqual([])
-    expect(sqlite.prepare(`select name from sqlite_master where name = 'ix_notifications_source'`).all()).toEqual([{ name: 'ix_notifications_source' }])
-    expect(() => sqlite.exec(`insert into notices (title, body, audience, created_by_user_id, created_at) values ('T', 'B', 'some', 1, 0)`)).toThrow(/CHECK/)
+    expect(sqlite.prepare(`select name from sqlite_master where name = 'ix_notifications_source'`).all()).toEqual([
+      { name: 'ix_notifications_source' },
+    ])
+    expect(() =>
+      sqlite.exec(
+        `insert into notices (title, body, audience, created_by_user_id, created_at) values ('T', 'B', 'some', 1, 0)`,
+      ),
+    ).toThrow(/CHECK/)
     sqlite.close()
   })
 })
@@ -71,7 +86,13 @@ describe('notify()', () => {
 
   it('refuses a link that is not an in-app path', async () => {
     const t = await setup()
-    for (const link of ['https://evil.example/', '//evil.example', '/\\evil.example', 'assets/1', 'javascript:alert(1)']) {
+    for (const link of [
+      'https://evil.example/',
+      '//evil.example',
+      '/\\evil.example',
+      'assets/1',
+      'javascript:alert(1)',
+    ]) {
       expect(() => send(t, [t.adminUser.id], { link })).toThrow(/in-app path/)
     }
     expect(rowsOf(t, t.adminUser.id)).toEqual([])
@@ -85,7 +106,10 @@ describe('the Inbox API', () => {
     send(t, [t.adminUser.id], { title: 'Theirs' })
     const theirs = rowsOf(t, t.adminUser.id)[0]!.id
     const cookie = await t.asSuper()
-    expect((await t.call('GET', '/api/me/notifications', { cookie })).data).toMatchObject({ items: [{ title: 'Mine' }], nextCursor: null })
+    expect((await t.call('GET', '/api/me/notifications', { cookie })).data).toMatchObject({
+      items: [{ title: 'Mine' }],
+      nextCursor: null,
+    })
     for (const action of ['read', 'unread', 'archive', 'unarchive']) {
       expect((await t.call('POST', `/api/me/notifications/${theirs}/${action}`, { cookie })).status).toBe(404)
     }
@@ -131,14 +155,19 @@ describe('the Inbox API', () => {
     expect(await count()).toBe(1)
     // Another account's count and rows are its own.
     expect(rowsOf(t, t.adminUser.id)).toMatchObject([{ readAt: null }])
-    expect((await t.call('GET', '/api/me/notifications/count', { cookie: await t.asAdmin() })).data).toEqual({ unread: 1 })
+    expect((await t.call('GET', '/api/me/notifications/count', { cookie: await t.asAdmin() })).data).toEqual({
+      unread: 1,
+    })
   })
 
   it('does not count the bell’s poll as activity, so an idle session still expires', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
     const lastSeen = () => t.db.select().from(sessions).get()!.lastSeenAt.getTime()
-    t.db.update(sessions).set({ lastSeenAt: new Date(Date.now() - 10 * 60_000) }).run()
+    t.db
+      .update(sessions)
+      .set({ lastSeenAt: new Date(Date.now() - 10 * 60_000) })
+      .run()
     const before = lastSeen()
     expect((await t.call('GET', '/api/me/notifications/count', { cookie })).status).toBe(200)
     expect(lastSeen()).toBe(before)
@@ -174,7 +203,10 @@ describe('retention', () => {
     const now = new Date('2026-10-19T12:00:00Z')
     const yearAgo = new Date('2025-10-19T12:00:00Z')
     const at = (createdAt: Date, title: string, readAt: Date | null = null) =>
-      t.db.insert(notifications).values({ ...ISSUED, userId: t.adminUser.id, title, createdAt, readAt }).run()
+      t.db
+        .insert(notifications)
+        .values({ ...ISSUED, userId: t.adminUser.id, title, createdAt, readAt })
+        .run()
     at(yearAgo, 'exactly a year')
     at(new Date(yearAgo.getTime() - 1), 'a year and a moment, unread')
     at(new Date(yearAgo.getTime() - 1), 'a year and a moment, read', now)
@@ -188,10 +220,19 @@ describe('retention', () => {
     const t = await setup()
     const now = new Date('2026-10-19T12:00:00Z')
     const notice = (title: string, createdAt: Date) =>
-      t.db.insert(notices).values({ title, body: 'B', audience: 'all', createdByUserId: t.superUser.id, createdAt }).run()
+      t.db
+        .insert(notices)
+        .values({ title, body: 'B', audience: 'all', createdByUserId: t.superUser.id, createdAt })
+        .run()
     notice('old', new Date('2025-10-01T12:00:00Z'))
     notice('new', now)
     purgeNotifications(t.db, now)
-    expect(t.db.select().from(notices).all().map((row) => row.title)).toEqual(['new'])
+    expect(
+      t.db
+        .select()
+        .from(notices)
+        .all()
+        .map((row) => row.title),
+    ).toEqual(['new'])
   })
 })

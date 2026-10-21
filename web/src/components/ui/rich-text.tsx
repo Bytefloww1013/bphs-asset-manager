@@ -8,7 +8,11 @@ const Editor = lazy(() => import('./rich-text-editor.tsx'))
 /** The rich-text field: a fixed bar with every allowed format above the text. Works as the child of a `Field`. */
 export function RichTextEditor(props: RichTextEditorProps) {
   return (
-    <Suspense fallback={<div aria-busy className="h-80 animate-pulse-soft rounded-control border border-line-strong bg-sunken" />}>
+    <Suspense
+      fallback={
+        <div aria-busy className="h-80 animate-pulse-soft rounded-control border border-line-strong bg-sunken" />
+      }
+    >
       <Editor {...props} />
     </Suspense>
   )

@@ -29,7 +29,8 @@ function cellText(value: unknown): string {
   if (value instanceof Date) {
     // Excel keeps a date as a day count with no time zone; the reader hands it back as that day in UTC.
     const day = `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())}`
-    const time = value.getUTCHours() || value.getUTCMinutes() ? ` ${pad(value.getUTCHours())}:${pad(value.getUTCMinutes())}` : ''
+    const time =
+      value.getUTCHours() || value.getUTCMinutes() ? ` ${pad(value.getUTCHours())}:${pad(value.getUTCMinutes())}` : ''
     return day + time
   }
   if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
@@ -41,9 +42,13 @@ function cellText(value: unknown): string {
  * person goes on to import are sent anywhere.
  */
 export async function readTable(file: File): Promise<string[][]> {
-  if (file.size > MAX_FILE_BYTES) throw new UnreadableFile('That file is larger than 5 MB. Split it into smaller files.')
+  if (file.size > MAX_FILE_BYTES)
+    throw new UnreadableFile('That file is larger than 5 MB. Split it into smaller files.')
   const name = file.name.toLowerCase()
-  if (name.endsWith('.xls')) throw new UnreadableFile('The old .xls format cannot be read. Save the workbook as .xlsx or .csv and choose it again.')
+  if (name.endsWith('.xls'))
+    throw new UnreadableFile(
+      'The old .xls format cannot be read. Save the workbook as .xlsx or .csv and choose it again.',
+    )
   if (!name.endsWith('.xlsx')) return parseCsv(await file.text())
   // Loaded only when a workbook is chosen, so no other page carries the reader.
   const { readSheet } = await import('read-excel-file/browser')
@@ -51,7 +56,9 @@ export async function readTable(file: File): Promise<string[][]> {
     const rows = await readSheet(file)
     return rows.map((row) => row.map(cellText))
   } catch {
-    throw new UnreadableFile('That file could not be read as an Excel workbook. Open it in Excel, save it again as .xlsx or .csv, and choose it again.')
+    throw new UnreadableFile(
+      'That file could not be read as an Excel workbook. Open it in Excel, save it again as .xlsx or .csv, and choose it again.',
+    )
   }
 }
 
@@ -84,7 +91,13 @@ export async function downloadWorkbook(filename: string, sheets: Sheet[]) {
       data: [
         header.map((value) => ({ value, type: String, fontWeight: 'bold' as const })),
         ...rows.map((row) =>
-          row.map((value) => (value == null || value === '' ? null : typeof value === 'number' ? { value, type: Number } : { value: fit(String(value)), type: String })),
+          row.map((value) =>
+            value == null || value === ''
+              ? null
+              : typeof value === 'number'
+                ? { value, type: Number }
+                : { value: fit(String(value)), type: String },
+          ),
         ),
       ],
       columns: header.map((title, i) => {
@@ -97,6 +110,14 @@ export async function downloadWorkbook(filename: string, sheets: Sheet[]) {
   save(new Blob([blob], { type: XLSX_TYPE }), filename)
 }
 
-export function downloadTable(format: FileFormat, name: string, header: string[], rows: SheetCell[][], sheet = 'Sheet1') {
-  return format === 'csv' ? Promise.resolve(downloadCsv(`${name}.csv`, header, rows)) : downloadWorkbook(`${name}.xlsx`, [{ name: sheet, header, rows }])
+export function downloadTable(
+  format: FileFormat,
+  name: string,
+  header: string[],
+  rows: SheetCell[][],
+  sheet = 'Sheet1',
+) {
+  return format === 'csv'
+    ? Promise.resolve(downloadCsv(`${name}.csv`, header, rows))
+    : downloadWorkbook(`${name}.xlsx`, [{ name: sheet, header, rows }])
 }

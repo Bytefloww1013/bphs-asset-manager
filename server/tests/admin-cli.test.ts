@@ -56,7 +56,9 @@ describe('server/admin.ts (break-glass recovery)', () => {
     const entries = db.select().from(auditLog).all()
     expect(entries).toHaveLength(1)
     expect(entries[0]).toMatchObject({ actor: 'server-cli', entityType: 'user', entityId: row?.id, userId: null })
-    expect(db.select().from(notifications).all()).toMatchObject([{ userId: row?.id, kind: 'account_unlocked', body: expect.stringContaining('command line') }])
+    expect(db.select().from(notifications).all()).toMatchObject([
+      { userId: row?.id, kind: 'account_unlocked', body: expect.stringContaining('command line') },
+    ])
 
     expect(t.run('unlock', 'admin@bphs.local').status).toBe(0)
     expect(db.select().from(notifications).all()).toHaveLength(1)
@@ -77,13 +79,21 @@ describe('server/admin.ts (break-glass recovery)', () => {
     expect(session.user.mustChangePassword).toBe(true)
     const row = db.select().from(users).where(eq(users.email, 'admin@bphs.local')).get()
     expect(row?.failedLogins).toBe(0)
-    expect(db.select().from(auditLog).all().map((e) => e.details)).toEqual([
-      expect.stringContaining('password reset via server CLI'),
-      'admin@bphs.local · signed in',
-    ])
+    expect(
+      db
+        .select()
+        .from(auditLog)
+        .all()
+        .map((e) => e.details),
+    ).toEqual([expect.stringContaining('password reset via server CLI'), 'admin@bphs.local · signed in'])
     // The CLI is the actor, so the account itself is told.
     expect(db.select().from(notifications).all()).toMatchObject([
-      { userId: row?.id, kind: 'account_password_reset', title: 'Your password was reset', body: expect.stringContaining('command line') },
+      {
+        userId: row?.id,
+        kind: 'account_password_reset',
+        title: 'Your password was reset',
+        body: expect.stringContaining('command line'),
+      },
     ])
     sqlite.close()
   })

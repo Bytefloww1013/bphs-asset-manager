@@ -18,11 +18,25 @@ const COLUMNS = sql`l.id as id, l.occurred_at as occurredAt, ${ACTOR} as actor, 
 /** The Grievance Audit Log, newest first. Read-only: nothing here or in any route changes it. */
 export function listGrievanceAudit(db: DbLike, query: GrievanceAuditQuery): GrievanceAuditPage {
   const where = auditWhere(query)
-  const total = db.get<{ n: number }>(sql`select count(*) as n from grievance_audit_log l left join users u on u.id = l.user_id where ${where}`)?.n ?? 0
-  const entries = db.all<Raw>(sql`select ${COLUMNS} ${FROM} where ${where} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`).map(toEntry)
+  const total =
+    db.get<{ n: number }>(
+      sql`select count(*) as n from grievance_audit_log l left join users u on u.id = l.user_id where ${where}`,
+    )?.n ?? 0
+  const entries = db
+    .all<Raw>(
+      sql`select ${COLUMNS} ${FROM} where ${where} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`,
+    )
+    .map(toEntry)
   return { total, entries }
 }
 
-export function listGrievanceAuditForExport(db: DbLike, query: Omit<GrievanceAuditQuery, 'limit' | 'offset'>): GrievanceAuditEntry[] {
-  return db.all<Raw>(sql`select ${COLUMNS} ${FROM} where ${auditWhere(query)} order by l.occurred_at desc, l.id desc limit 50000`).map(toEntry)
+export function listGrievanceAuditForExport(
+  db: DbLike,
+  query: Omit<GrievanceAuditQuery, 'limit' | 'offset'>,
+): GrievanceAuditEntry[] {
+  return db
+    .all<Raw>(
+      sql`select ${COLUMNS} ${FROM} where ${auditWhere(query)} order by l.occurred_at desc, l.id desc limit 50000`,
+    )
+    .map(toEntry)
 }

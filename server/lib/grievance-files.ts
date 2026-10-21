@@ -11,5 +11,9 @@ export function put(tx: DbLike, attachmentId: number, bytes: Buffer) {
 }
 
 export function get(db: DbLike, attachmentId: number): Buffer | undefined {
-  return db.select({ bytes: grievanceAttachmentData.bytes }).from(grievanceAttachmentData).where(eq(grievanceAttachmentData.attachmentId, attachmentId)).get()?.bytes
+  return db
+    .select({ bytes: grievanceAttachmentData.bytes })
+    .from(grievanceAttachmentData)
+    .where(eq(grievanceAttachmentData.attachmentId, attachmentId))
+    .get()?.bytes
 }

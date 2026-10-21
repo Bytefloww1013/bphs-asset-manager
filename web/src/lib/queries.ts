@@ -254,18 +254,20 @@ const auditRange = ({ from, to }: Pick<AuditParams, 'from' | 'to'>) => ({
 })
 
 /** A page of an audit log: the Audit Log at `audit`, the Grievance Audit Log at `grievances/audit`, the Review Audit Log at `reviews/audit`. */
-const logQuery = <T,>(log: string, params: AuditParams) =>
+const logQuery = <T>(log: string, params: AuditParams) =>
   queryOptions({
     queryKey: [log, params],
     queryFn: () => api.get<T>(`/${log}${qs({ ...params, ...auditRange(params) })}`),
     placeholderData: (previous) => previous,
   })
-const logCsvUrl = (log: string, params: Omit<AuditParams, 'limit' | 'offset'>) => `/api/${log}.csv${qs({ ...params, ...auditRange(params) })}`
+const logCsvUrl = (log: string, params: Omit<AuditParams, 'limit' | 'offset'>) =>
+  `/api/${log}.csv${qs({ ...params, ...auditRange(params) })}`
 
 export const auditQuery = (params: AuditParams) => logQuery<AuditPage>('audit', params)
 export const auditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('audit', params)
 export const grievanceAuditQuery = (params: AuditParams) => logQuery<GrievanceAuditPage>('grievances/audit', params)
-export const grievanceAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('grievances/audit', params)
+export const grievanceAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) =>
+  logCsvUrl('grievances/audit', params)
 export const reviewAuditQuery = (params: AuditParams) => logQuery<ReviewAuditPage>('reviews/audit', params)
 export const reviewAuditCsvUrl = (params: Omit<AuditParams, 'limit' | 'offset'>) => logCsvUrl('reviews/audit', params)
 
@@ -295,7 +297,8 @@ export const notificationsQuery = (view: NotificationView) =>
   })
 
 /** A notice as its recipient reads it. Fetching it marks it read. */
-export const noticeQuery = (id: number) => queryOptions({ queryKey: ['notice', id], queryFn: () => api.get<NoticeText>(`/me/notices/${id}`) })
+export const noticeQuery = (id: number) =>
+  queryOptions({ queryKey: ['notice', id], queryFn: () => api.get<NoticeText>(`/me/notices/${id}`) })
 
 /** Sent notices with their read counts: Super Admins only. */
 export const noticesQuery = queryOptions({ queryKey: ['notices'], queryFn: () => api.get<NoticeRow[]>('/notices') })

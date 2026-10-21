@@ -88,7 +88,8 @@ export function useGrid<TData extends RowData>({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
 
-  const toPage = (pageIndex: number) => setPagination((old) => (old.pageIndex === pageIndex ? old : { ...old, pageIndex }))
+  const toPage = (pageIndex: number) =>
+    setPagination((old) => (old.pageIndex === pageIndex ? old : { ...old, pageIndex }))
 
   // `data` is a new array after every edit and every refetch, so the table must not go back to the first page whenever
   // it changes. Only what the viewer chose does: a new search, filter or sort starts again at the first page.

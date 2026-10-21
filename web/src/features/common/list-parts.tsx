@@ -18,10 +18,21 @@ export type ListKind = 'asset-types' | 'digital-asset-types' | 'condition-rating
 /** Grievance categories belong to Grievances; the other lists to Assets. */
 const sectionOf = (kind: ListKind): Section => (kind === 'grievances/categories' ? 'grievances' : 'assets')
 
-const itemNoun = (kind: ListKind) => (kind === 'condition-ratings' ? 'rating' : kind === 'grievances/categories' ? 'category' : 'type')
+const itemNoun = (kind: ListKind) =>
+  kind === 'condition-ratings' ? 'rating' : kind === 'grievances/categories' ? 'category' : 'type'
 
 /** Click the pencil to rename in place; Enter saves, Esc cancels. */
-export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: number; name: string; tone?: ReturnType<typeof ratingTone> }) {
+export function EditableName({
+  kind,
+  id,
+  name,
+  tone,
+}: {
+  kind: ListKind
+  id: number
+  name: string
+  tone?: ReturnType<typeof ratingTone>
+}) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(name)
   const [error, setError] = useState<string | null>(null)
@@ -44,18 +55,20 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
     return (
       <div className="group flex items-center gap-2">
         {tone ? <Badge tone={tone}>{name}</Badge> : <span className="font-medium">{name}</span>}
-        {!readOnly && <IconButton
-          label={`Rename ${name}`}
-          size="sm"
-          className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
-          onClick={() => {
-            setDraft(name)
-            setEditing(true)
-            setTimeout(() => ref.current?.select(), 0)
-          }}
-        >
-          <Pencil className="size-3.5" />
-        </IconButton>}
+        {!readOnly && (
+          <IconButton
+            label={`Rename ${name}`}
+            size="sm"
+            className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+            onClick={() => {
+              setDraft(name)
+              setEditing(true)
+              setTimeout(() => ref.current?.select(), 0)
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </IconButton>
+        )}
       </div>
     )
   }
@@ -75,7 +88,13 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
             if (event.key === 'Escape') setEditing(false)
           }}
         />
-        <IconButton label="Save name" size="sm" variant="secondary" onClick={() => void commit()} loading={save.isPending}>
+        <IconButton
+          label="Save name"
+          size="sm"
+          variant="secondary"
+          onClick={() => void commit()}
+          loading={save.isPending}
+        >
           <Check className="size-4" />
         </IconButton>
         <IconButton label="Cancel rename" size="sm" onClick={() => setEditing(false)}>
@@ -90,7 +109,10 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
 export function AddRow({ kind, placeholder, noun }: { kind: ListKind; placeholder: string; noun: string }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const add = useWrite((value: string) => api.post(`/${kind}`, { name: value }), { silent: true, success: `${noun} added` })
+  const add = useWrite((value: string) => api.post(`/${kind}`, { name: value }), {
+    silent: true,
+    success: `${noun} added`,
+  })
   if (useDenied(sectionOf(kind), 'edit')) return null
   return (
     <form
@@ -109,12 +131,22 @@ export function AddRow({ kind, placeholder, noun }: { kind: ListKind; placeholde
       }}
     >
       <div className="flex gap-2">
-        <Input aria-label={placeholder} aria-invalid={error ? true : undefined} placeholder={placeholder} value={name} onChange={(event) => setName(event.target.value)} />
+        <Input
+          aria-label={placeholder}
+          aria-invalid={error ? true : undefined}
+          placeholder={placeholder}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
         <Button type="submit" variant="primary" icon={<Plus className="size-4" />} loading={add.isPending}>
           Add
         </Button>
       </div>
-      {error && <p role="alert" className="mt-1.5 text-xs font-medium text-bad">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-1.5 text-xs font-medium text-bad">
+          {error}
+        </p>
+      )}
     </form>
   )
 }
@@ -122,25 +154,76 @@ export function AddRow({ kind, placeholder, noun }: { kind: ListKind; placeholde
 /** Why the last active item of a list can be neither switched off nor deleted. The server refuses it with the same rule. */
 const onlyActiveReason = (kind: ListKind) => `The only active ${itemNoun(kind)}. Activate or add another first.`
 /** True for the one row that is active when no other row is. */
-export const isOnlyActive = <T extends { isActive: boolean }>(info: { row: { original: T }; table: { getCoreRowModel: () => { rows: { original: T }[] } } }) =>
+export const isOnlyActive = <T extends { isActive: boolean }>(info: {
+  row: { original: T }
+  table: { getCoreRowModel: () => { rows: { original: T }[] } }
+}) =>
   info.row.original.isActive && info.table.getCoreRowModel().rows.filter((row) => row.original.isActive).length === 1
 
-export function DeleteButton({ kind, id, name, inUse, inUseReason, onlyActive }: { kind: ListKind; id: number; name: string; inUse: boolean; inUseReason: string; onlyActive: boolean }) {
+export function DeleteButton({
+  kind,
+  id,
+  name,
+  inUse,
+  inUseReason,
+  onlyActive,
+}: {
+  kind: ListKind
+  id: number
+  name: string
+  inUse: boolean
+  inUseReason: string
+  onlyActive: boolean
+}) {
   const noFull = useDenied(sectionOf(kind), 'full')
   const [open, setOpen] = useState(false)
   const remove = useWrite(() => api.delete(`/${kind}/${id}`), { success: `${name} deleted` })
   return (
     <>
-      <IconButton label={`Delete ${name}`} size="sm" variant="danger-ghost" disabledReason={noFull ?? (inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined)} onClick={() => setOpen(true)}>
+      <IconButton
+        label={`Delete ${name}`}
+        size="sm"
+        variant="danger-ghost"
+        disabledReason={noFull ?? (inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined)}
+        onClick={() => setOpen(true)}
+      >
         <Trash2 className="size-4" />
       </IconButton>
-      <ConfirmDialog open={open} onOpenChange={setOpen} title={`Delete "${name}"?`} description={`Nothing references it, so no history is lost. This is written to the ${kind === 'grievances/categories' ? 'Grievance Audit Log' : 'audit log'}.`} confirmLabel="Delete" tone="danger" onConfirm={() => remove.mutateAsync(undefined)} />
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Delete "${name}"?`}
+        description={`Nothing references it, so no history is lost. This is written to the ${kind === 'grievances/categories' ? 'Grievance Audit Log' : 'audit log'}.`}
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={() => remove.mutateAsync(undefined)}
+      />
     </>
   )
 }
 
-export function ActiveSwitch({ kind, id, name, active, onlyActive }: { kind: ListKind; id: number; name: string; active: boolean; onlyActive: boolean }) {
+export function ActiveSwitch({
+  kind,
+  id,
+  name,
+  active,
+  onlyActive,
+}: {
+  kind: ListKind
+  id: number
+  name: string
+  active: boolean
+  onlyActive: boolean
+}) {
   const toggle = useWrite((isActive: boolean) => api.patch(`/${kind}/${id}`, { isActive }))
   const noEdit = useDenied(sectionOf(kind), 'edit')
-  return <Switch label={`${name} is ${active ? 'active' : 'inactive'}`} checked={active} disabled={toggle.isPending} disabledReason={noEdit ?? (onlyActive ? onlyActiveReason(kind) : undefined)} onChange={(next) => toggle.mutate(next)} />
+  return (
+    <Switch
+      label={`${name} is ${active ? 'active' : 'inactive'}`}
+      checked={active}
+      disabled={toggle.isPending}
+      disabledReason={noEdit ?? (onlyActive ? onlyActiveReason(kind) : undefined)}
+      onChange={(next) => toggle.mutate(next)}
+    />
+  )
 }

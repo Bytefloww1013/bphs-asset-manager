@@ -23,7 +23,8 @@ import { useUser } from '@/lib/session.ts'
 export function ReturnSheet() {
   const search = useSearch({ from: '/_app' })
   const navigate = useNavigate()
-  const close = () => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, return: undefined }) })
+  const close = () =>
+    void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, return: undefined }) })
   if (search.return === undefined) return null
   return <ReturnForm key={search.return} assignmentId={search.return} onClose={close} />
 }
@@ -34,12 +35,24 @@ type Values = { ratingId: number | null; assessor: EmployeeRef | null; notes: st
  * What to say when the assignment turned out to be closed already. Only sometimes is that a colleague a moment ago: it can be the
  * same person in another tab, or a sheet that was left open since yesterday, so the words follow who closed it and when.
  */
-function alreadyReturned(assignmentId: number, details: { returnedBy?: string | null; returnedByYou?: boolean; returnedAt?: string } = {}) {
+function alreadyReturned(
+  assignmentId: number,
+  details: { returnedBy?: string | null; returnedByYou?: boolean; returnedAt?: string } = {},
+) {
   const justNow = !!details.returnedAt && Date.now() - new Date(details.returnedAt).getTime() < 2 * 60_000
-  const title = details.returnedByYou ? 'You have already returned this asset' : justNow ? 'This asset was just returned by someone else' : 'This asset has already been returned'
+  const title = details.returnedByYou
+    ? 'You have already returned this asset'
+    : justNow
+      ? 'This asset was just returned by someone else'
+      : 'This asset has already been returned'
   const who = details.returnedByYou ? 'You' : (details.returnedBy ?? 'Someone')
-  const when = details.returnedAt ? ` at ${formatDateTime(details.returnedAt)}, ${formatRelative(details.returnedAt)}` : ''
-  return { title, body: `${who} closed assignment #${assignmentId}${when}. Nothing was recorded this time. Reload to see the current list.` }
+  const when = details.returnedAt
+    ? ` at ${formatDateTime(details.returnedAt)}, ${formatRelative(details.returnedAt)}`
+    : ''
+  return {
+    title,
+    body: `${who} closed assignment #${assignmentId}${when}. Nothing was recorded this time. Reload to see the current list.`,
+  }
 }
 
 function Facts({ items }: { items: { label: string; value: React.ReactNode }[] }) {
@@ -68,7 +81,11 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
   const [serverError, setServerError] = useState<ApiError | null>(null)
 
   const issueRating = ratings.find((rating) => rating.name === assignment?.issueRating) ?? null
-  const give = useWrite((value: { conditionRatingId: number; assessedById: number | null; notes: string }) => api.post(`/assignments/${assignmentId}/return`, value), { silent: true })
+  const give = useWrite(
+    (value: { conditionRatingId: number; assessedById: number | null; notes: string }) =>
+      api.post(`/assignments/${assignmentId}/return`, value),
+    { silent: true },
+  )
 
   const form = useForm({
     defaultValues: {
@@ -83,8 +100,15 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
       setConflict(null)
       setServerError(null)
       try {
-        await give.mutateAsync({ conditionRatingId: value.ratingId!, assessedById: value.assessor?.id ?? null, notes: value.notes })
-        toast({ title: `${assignment?.assetTag ?? 'Asset'} returned`, description: assignment ? `From ${(assignment.employee ?? assignment.program)?.name}` : undefined })
+        await give.mutateAsync({
+          conditionRatingId: value.ratingId!,
+          assessedById: value.assessor?.id ?? null,
+          notes: value.notes,
+        })
+        toast({
+          title: `${assignment?.assetTag ?? 'Asset'} returned`,
+          description: assignment ? `From ${(assignment.employee ?? assignment.program)?.name}` : undefined,
+        })
         onClose()
       } catch (error) {
         if (error instanceof ApiError && error.code === 'already_returned') setConflict(error)
@@ -115,7 +139,13 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
               Cancel
             </Button>
           )}
-          <Button variant="primary" type="submit" form="return-form" loading={submitting} disabled={Boolean(conflict) || gone || !assignment}>
+          <Button
+            variant="primary"
+            type="submit"
+            form="return-form"
+            loading={submitting}
+            disabled={Boolean(conflict) || gone || !assignment}
+          >
             Return{' '}
             <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none">
               <EnterKey />
@@ -127,7 +157,13 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
   )
 
   return (
-    <Sheet open onOpenChange={(next) => !next && onClose()} title="Return a physical asset" description="Closes the assignment and keeps it as history." footer={footer}>
+    <Sheet
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title="Return a physical asset"
+      description="Closes the assignment and keeps it as history."
+      footer={footer}
+    >
       <form
         id="return-form"
         noValidate
@@ -164,8 +200,18 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
           <Facts
             items={[
               { label: 'Assignment', value: <Mono>#{assignment.id}</Mono> },
-              { label: 'Asset', value: <><Mono>{assignment.assetTag}</Mono> · {assignment.assetType}</> },
-              { label: assignment.program ? 'Program' : 'Employee', value: (assignment.employee ?? assignment.program)?.name },
+              {
+                label: 'Asset',
+                value: (
+                  <>
+                    <Mono>{assignment.assetTag}</Mono> · {assignment.assetType}
+                  </>
+                ),
+              },
+              {
+                label: assignment.program ? 'Program' : 'Employee',
+                value: (assignment.employee ?? assignment.program)?.name,
+              },
               { label: 'Issued', value: `${formatDate(assignment.issuedAt)} · ${assignment.daysOut} d` },
             ]}
           />
@@ -177,26 +223,31 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
             const chosen = ratings.find((rating) => rating.id === field.state.value)
             const dropped = Boolean(chosen && issueRating && chosen.score < issueRating.score)
             return (
-            <Field
-              label="Return condition rating"
-              error={fieldError(field, undefined, submitted)}
-              hint={
-                dropped && issueRating ? (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-warn">
-                    <TrendingDown className="size-3.5" aria-hidden /> Down from {issueRating.name} at issue. The drop is kept on the record.
-                  </span>
-                ) : issueRating ? (
-                  `Issued as ${issueRating.name}`
-                ) : undefined
-              }
-            >
-              <Segmented
+              <Field
                 label="Return condition rating"
-                value={field.state.value}
-                onChange={field.handleChange}
-                options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.score) }))}
-              />
-            </Field>
+                error={fieldError(field, undefined, submitted)}
+                hint={
+                  dropped && issueRating ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-warn">
+                      <TrendingDown className="size-3.5" aria-hidden /> Down from {issueRating.name} at issue. The drop
+                      is kept on the record.
+                    </span>
+                  ) : issueRating ? (
+                    `Issued as ${issueRating.name}`
+                  ) : undefined
+                }
+              >
+                <Segmented
+                  label="Return condition rating"
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  options={ratings.map((rating) => ({
+                    value: rating.id,
+                    label: rating.name,
+                    tone: ratingTone(rating.score),
+                  }))}
+                />
+              </Field>
             )
           }}
         </form.Field>
@@ -220,7 +271,12 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
         <form.Field name="notes">
           {(field) => (
             <Field label="Condition notes" optional>
-              <Textarea rows={3} value={field.state.value} onChange={(event) => field.handleChange(event.target.value)} placeholder="e.g. Cracked case corner, screen intact. Charger not returned." />
+              <Textarea
+                rows={3}
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder="e.g. Cracked case corner, screen intact. Charger not returned."
+              />
             </Field>
           )}
         </form.Field>
@@ -240,7 +296,11 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
   const [result, setResult] = useState<ReturnBulkResult | null>(null)
   const [serverError, setServerError] = useState<ApiError | null>(null)
 
-  const give = useWrite((value: { ids: number[]; conditionRatingId: number; assessedById: number | null; notes: string }) => api.post<ReturnBulkResult>('/assignments/return-bulk', value), { silent: true })
+  const give = useWrite(
+    (value: { ids: number[]; conditionRatingId: number; assessedById: number | null; notes: string }) =>
+      api.post<ReturnBulkResult>('/assignments/return-bulk', value),
+    { silent: true },
+  )
 
   const form = useForm({
     defaultValues: {
@@ -248,11 +308,18 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
       assessor: people.find((person) => person.id === user.employeeId) ?? null,
       notes: '',
     } as Values,
-    validators: { onSubmit: ({ value }) => (value.ratingId ? undefined : { fields: { ratingId: 'Rate their condition.' } }) },
+    validators: {
+      onSubmit: ({ value }) => (value.ratingId ? undefined : { fields: { ratingId: 'Rate their condition.' } }),
+    },
     onSubmit: async ({ value }) => {
       setServerError(null)
       try {
-        const res = await give.mutateAsync({ ids: rows.map((row) => row.id), conditionRatingId: value.ratingId!, assessedById: value.assessor?.id ?? null, notes: value.notes })
+        const res = await give.mutateAsync({
+          ids: rows.map((row) => row.id),
+          conditionRatingId: value.ratingId!,
+          assessedById: value.assessor?.id ?? null,
+          notes: value.notes,
+        })
         if (res.failed.length === 0) {
           toast({ title: `${plural(res.returned.length, 'asset')} returned` })
           onClose(res.returned)
@@ -335,7 +402,11 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
                   label="Return condition rating"
                   value={field.state.value}
                   onChange={field.handleChange}
-                  options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.score) }))}
+                  options={ratings.map((rating) => ({
+                    value: rating.id,
+                    label: rating.name,
+                    tone: ratingTone(rating.score),
+                  }))}
                 />
               </Field>
             )}
@@ -357,7 +428,11 @@ export function BulkReturnSheet({ rows, onClose }: { rows: AssignmentRow[]; onCl
           <form.Field name="notes">
             {(field) => (
               <Field label="Condition notes" optional>
-                <Textarea rows={3} value={field.state.value} onChange={(event) => field.handleChange(event.target.value)} />
+                <Textarea
+                  rows={3}
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
               </Field>
             )}
           </form.Field>

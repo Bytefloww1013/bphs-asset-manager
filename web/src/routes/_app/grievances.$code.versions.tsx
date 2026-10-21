@@ -12,7 +12,11 @@ import { formatDateTime } from '@/lib/format.ts'
 import { grievanceQuery, grievanceVersionsQuery } from '@/lib/queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/$code/versions')({
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(grievanceQuery(params.code)), context.queryClient.ensureQueryData(grievanceVersionsQuery(params.code))]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(grievanceQuery(params.code)),
+      context.queryClient.ensureQueryData(grievanceVersionsQuery(params.code)),
+    ]),
   errorComponent: GrievanceLoadError,
   component: VersionsPage,
 })
@@ -49,7 +53,11 @@ function VersionsPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/grievances/$code" params={{ code: grievance.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/grievances/$code"
+          params={{ code: grievance.code }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {grievance.code}
         </Link>
         <div className="mt-3">
@@ -62,7 +70,11 @@ function VersionsPage() {
 
       {versions.length === 0 ? (
         <Panel>
-          <EmptyState icon={History} title="This grievance has not been edited" description="It still says what it said when it was recorded, so there is no earlier version to show." />
+          <EmptyState
+            icon={History}
+            title="This grievance has not been edited"
+            description="It still says what it said when it was recorded, so there is no earlier version to show."
+          />
         </Panel>
       ) : (
         versions.map((version) => (

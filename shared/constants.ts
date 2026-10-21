@@ -17,10 +17,17 @@ export const SECTION_LABEL: Record<Section, string> = { ...WORKSPACE_LABEL, empl
 /** Each level includes the ones before it. Full is what a Super Admin can do, within that section. */
 export const ACCESS_LEVELS = ['none', 'read', 'assign', 'edit', 'full'] as const
 export type AccessLevel = (typeof ACCESS_LEVELS)[number]
-export const ACCESS_LEVEL_LABEL: Record<AccessLevel, string> = { none: 'None', read: 'Read Only', assign: 'Assign', edit: 'Edit', full: 'Full' }
+export const ACCESS_LEVEL_LABEL: Record<AccessLevel, string> = {
+  none: 'None',
+  read: 'Read Only',
+  assign: 'Assign',
+  edit: 'Edit',
+  full: 'Full',
+}
 /** The four levels every section has. Assign sits between Read and Edit, and only Tasks offers it. */
 export const SHARED_LEVELS = ['none', 'read', 'edit', 'full'] as const satisfies readonly AccessLevel[]
-export const levelsFor = (section: Section): readonly AccessLevel[] => (section === 'tasks' ? ACCESS_LEVELS : SHARED_LEVELS)
+export const levelsFor = (section: Section): readonly AccessLevel[] =>
+  section === 'tasks' ? ACCESS_LEVELS : SHARED_LEVELS
 /** An account's level in each section. A section that is not named is None, so a section added later starts closed. */
 export type Access = Partial<Record<Section, Exclude<AccessLevel, 'none'>>>
 
@@ -30,7 +37,19 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number]
 export const auditActionLabel = (action: AuditAction) => action.replaceAll('_', ' ')
 
 /** What the Grievance Audit Log records. It is a log of its own: nothing here is written to the Audit Log, and nothing there is written here. */
-export const GRIEVANCE_AUDIT_ACTIONS = ['create', 'update', 'delete', 'status', 'owner', 'void', 'entry', 'attach', 'withdraw', 'download', 'export'] as const
+export const GRIEVANCE_AUDIT_ACTIONS = [
+  'create',
+  'update',
+  'delete',
+  'status',
+  'owner',
+  'void',
+  'entry',
+  'attach',
+  'withdraw',
+  'download',
+  'export',
+] as const
 export type GrievanceAuditAction = (typeof GRIEVANCE_AUDIT_ACTIONS)[number]
 
 export const CONDITION_KINDS = ['intake', 'issue', 'return'] as const
@@ -65,7 +84,10 @@ export function ratingBand(score: number): RatingBand {
 export function defaultRating<T extends { score: number }>(ratings: readonly T[]): T | undefined {
   const distance = (rating: T) => Math.abs(rating.score - RATING_DEFAULT_SCORE)
   return ratings.reduce<T | undefined>(
-    (best, rating) => (!best || distance(rating) < distance(best) || (distance(rating) === distance(best) && rating.score > best.score) ? rating : best),
+    (best, rating) =>
+      !best || distance(rating) < distance(best) || (distance(rating) === distance(best) && rating.score > best.score)
+        ? rating
+        : best,
     undefined,
   )
 }
@@ -81,7 +103,13 @@ export const OVERDUE_DAYS = 365
 
 export const GRIEVANCE_STATUSES = ['open', 'in_progress', 'resolved', 'closed', 'voided'] as const
 export type GrievanceStatus = (typeof GRIEVANCE_STATUSES)[number]
-const GRIEVANCE_STATUS_LABELS: Record<GrievanceStatus, string> = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved', closed: 'Closed', voided: 'Voided' }
+const GRIEVANCE_STATUS_LABELS: Record<GrievanceStatus, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+  voided: 'Voided',
+}
 export const grievanceStatusLabel = (status: GrievanceStatus) => GRIEVANCE_STATUS_LABELS[status]
 /** How much of a grievance's text the list carries. The text in full is on the grievance's own page. */
 export const GRIEVANCE_PREVIEW_LENGTH = 300
@@ -93,7 +121,12 @@ export type GrievancePersonRole = (typeof GRIEVANCE_PERSON_ROLES)[number]
 /** What a timeline entry is. `system` entries are written by the app itself, never by a form. */
 export const GRIEVANCE_ENTRY_KINDS = ['action', 'event', 'correction', 'system'] as const
 export type GrievanceEntryKind = (typeof GRIEVANCE_ENTRY_KINDS)[number]
-const GRIEVANCE_ENTRY_KIND_LABELS: Record<GrievanceEntryKind, string> = { action: 'Action', event: 'Event', correction: 'Correction', system: 'Automatic' }
+const GRIEVANCE_ENTRY_KIND_LABELS: Record<GrievanceEntryKind, string> = {
+  action: 'Action',
+  event: 'Event',
+  correction: 'Correction',
+  system: 'Automatic',
+}
 export const grievanceEntryKindLabel = (kind: GrievanceEntryKind) => GRIEVANCE_ENTRY_KIND_LABELS[kind]
 /** An entry's number within its grievance, as in E01. */
 export const grievanceEntryCode = (seq: number) => `E${String(seq).padStart(2, '0')}`
@@ -114,36 +147,66 @@ export const ATTACHMENT_TYPES = {
 } as const
 export type AttachmentExtension = keyof typeof ATTACHMENT_TYPES
 /** A file name's extension, lower-cased; empty when it has none. */
-export const fileExtension = (name: string) => (name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '')
+export const fileExtension = (name: string) =>
+  name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : ''
 
 /** A grievance's ID: the year it was entered and its number within that year, as in GR-2026-0001. */
 export const grievanceCode = (year: number, seq: number) => `GR-${year}-${String(seq).padStart(4, '0')}`
 
 /** The Review Audit Log's actions. Review code writes there and never to the Audit Log or the Grievance Audit Log. */
-export const REVIEW_AUDIT_ACTIONS = ['create', 'update', 'status', 'void', 'entry', 'attach', 'withdraw', 'download', 'export'] as const
+export const REVIEW_AUDIT_ACTIONS = [
+  'create',
+  'update',
+  'status',
+  'void',
+  'entry',
+  'attach',
+  'withdraw',
+  'download',
+  'export',
+] as const
 export type ReviewAuditAction = (typeof REVIEW_AUDIT_ACTIONS)[number]
 
 export const REVIEW_STATUSES = ['open', 'in_progress', 'completed', 'voided'] as const
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number]
-const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = { open: 'Open', in_progress: 'In progress', completed: 'Completed', voided: 'Voided' }
+const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  voided: 'Voided',
+}
 export const reviewStatusLabel = (status: ReviewStatus) => REVIEW_STATUS_LABELS[status]
 
 /** What keeps an employee from being archived on the review side: "the reviewer on 1 open review and responsible for 2 open CAPs". */
 export function openReviewWork(reviewing: number, caps: number) {
   const count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
-  return [reviewing && `the reviewer on ${count(reviewing, 'open review')}`, caps && `responsible for ${count(caps, 'open CAP')}`].filter(Boolean).join(' and ')
+  return [
+    reviewing && `the reviewer on ${count(reviewing, 'open review')}`,
+    caps && `responsible for ${count(caps, 'open CAP')}`,
+  ]
+    .filter(Boolean)
+    .join(' and ')
 }
 
 /** Where a Corrective Action Plan stands. */
 export const REVIEW_CAP_STATUSES = ['not_started', 'in_progress', 'completed', 'cancelled'] as const
 export type ReviewCapStatus = (typeof REVIEW_CAP_STATUSES)[number]
-const REVIEW_CAP_STATUS_LABELS: Record<ReviewCapStatus, string> = { not_started: 'Not started', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled' }
+const REVIEW_CAP_STATUS_LABELS: Record<ReviewCapStatus, string> = {
+  not_started: 'Not started',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
 export const reviewCapStatusLabel = (status: ReviewCapStatus) => REVIEW_CAP_STATUS_LABELS[status]
 
 /** What an entry on a review's history is. `system` entries are written by the app itself, never by a form. */
 export const REVIEW_ENTRY_KINDS = ['update', 'correction', 'system'] as const
 export type ReviewEntryKind = (typeof REVIEW_ENTRY_KINDS)[number]
-const REVIEW_ENTRY_KIND_LABELS: Record<ReviewEntryKind, string> = { update: 'Update', correction: 'Correction', system: 'Automatic' }
+const REVIEW_ENTRY_KIND_LABELS: Record<ReviewEntryKind, string> = {
+  update: 'Update',
+  correction: 'Correction',
+  system: 'Automatic',
+}
 export const reviewEntryKindLabel = (kind: ReviewEntryKind) => REVIEW_ENTRY_KIND_LABELS[kind]
 
 /** A review's ID: the year it was entered and its number within that year, as in AR-2026-0001. */
@@ -219,7 +282,14 @@ export const isInAppPath = (value: string) => /^\/(?![/\\])/.test(value)
 // ---- Tasks ------------------------------------------------------------------------------
 
 /** A task's status is never stored: `taskStatus()` in shared/tasks.ts works it out from the task's timestamps. */
-export const TASK_STATUSES = ['scheduled', 'outstanding', 'past_due', 'awaiting_approval', 'completed', 'cancelled'] as const
+export const TASK_STATUSES = [
+  'scheduled',
+  'outstanding',
+  'past_due',
+  'awaiting_approval',
+  'completed',
+  'cancelled',
+] as const
 export type TaskStatus = (typeof TASK_STATUSES)[number]
 const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   scheduled: 'Scheduled',
@@ -245,26 +315,50 @@ export const TASK_FANOUT_MAX_BYTES = 200 * 1024 * 1024
 /** Reminder days, as iCalendar's BYDAY names them, Monday first. */
 export const TASK_WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const
 export type TaskWeekday = (typeof TASK_WEEKDAYS)[number]
-export const TASK_WEEKDAY_LABEL: Record<TaskWeekday, string> = { MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun' }
+export const TASK_WEEKDAY_LABEL: Record<TaskWeekday, string> = {
+  MO: 'Mon',
+  TU: 'Tue',
+  WE: 'Wed',
+  TH: 'Thu',
+  FR: 'Fri',
+  SA: 'Sat',
+  SU: 'Sun',
+}
 export const TASK_REMINDER_PRESETS = {
   none: [],
   weekdays: ['MO', 'TU', 'WE', 'TH', 'FR'],
   every_day: [...TASK_WEEKDAYS],
 } as const satisfies Record<string, readonly TaskWeekday[]>
-export const TASK_REMINDER_PRESET_LABEL: Record<keyof typeof TASK_REMINDER_PRESETS, string> = { none: 'None', weekdays: 'Weekdays', every_day: 'Every day' }
+export const TASK_REMINDER_PRESET_LABEL: Record<keyof typeof TASK_REMINDER_PRESETS, string> = {
+  none: 'None',
+  weekdays: 'Weekdays',
+  every_day: 'Every day',
+}
 /** Reminders go out at this time of day unless the assigner picks another, in the assigner's time zone. */
 export const TASK_REMINDER_TIME = '09:00'
 
 /** What the assigner hears while a task is past due: nothing, the first notice only, or every reminder the assignee gets. */
 export const TASK_ASSIGNER_REMINDERS = ['none', 'first', 'every'] as const
 export type TaskAssignerReminders = (typeof TASK_ASSIGNER_REMINDERS)[number]
-export const TASK_ASSIGNER_REMINDERS_LABEL: Record<TaskAssignerReminders, string> = { none: 'None', first: 'First notice only', every: 'Every reminder' }
+export const TASK_ASSIGNER_REMINDERS_LABEL: Record<TaskAssignerReminders, string> = {
+  none: 'None',
+  first: 'First notice only',
+  every: 'Every reminder',
+}
 
 /** Who added a task's file: the assigner, with the task, or the assignee, with a completion. */
 export type TaskFileSide = 'assigner' | 'assignee'
 
 /** What a task's history records. */
-export const TASK_EVENT_KINDS = ['assigned', 'edited', 'completed', 'sent_back', 'approved', 'cancelled', 'file_withdrawn'] as const
+export const TASK_EVENT_KINDS = [
+  'assigned',
+  'edited',
+  'completed',
+  'sent_back',
+  'approved',
+  'cancelled',
+  'file_withdrawn',
+] as const
 export type TaskEventKind = (typeof TASK_EVENT_KINDS)[number]
 const TASK_EVENT_LABELS: Record<TaskEventKind, string> = {
   assigned: 'Assigned',

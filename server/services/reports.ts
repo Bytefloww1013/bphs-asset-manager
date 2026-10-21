@@ -35,7 +35,9 @@ export function auditWhere(query: Omit<AuditQuery, 'limit' | 'offset' | 'action'
   if (query.to) parts.push(sql`l.occurred_at < ${Date.parse(query.to)}`)
   if (query.q) {
     const like = `%${query.q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`
-    parts.push(sql`(l.details like ${like} escape '\\' or ${ACTOR} like ${like} escape '\\' or l.entity_type like ${like} escape '\\')`)
+    parts.push(
+      sql`(l.details like ${like} escape '\\' or ${ACTOR} like ${like} escape '\\' or l.entity_type like ${like} escape '\\')`,
+    )
   }
   return sql.join(parts, sql` and `)
 }
@@ -44,14 +46,18 @@ export function listAudit(db: DbLike, query: AuditQuery): AuditPage {
   const where = auditWhere(query)
   const total = db.get<{ n: number }>(sql`select count(*) as n ${AUDIT_FROM} where ${where}`)?.n ?? 0
   const entries = db
-    .all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} where ${where} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`)
+    .all<AuditRaw>(
+      sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} where ${where} order by l.occurred_at desc, l.id desc limit ${query.limit} offset ${query.offset}`,
+    )
     .map(toEntry)
   return { total, entries }
 }
 
 export function listAuditForExport(db: DbLike, query: Omit<AuditQuery, 'limit' | 'offset'>): AuditEntry[] {
   return db
-    .all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} where ${auditWhere(query)} order by l.occurred_at desc, l.id desc limit 50000`)
+    .all<AuditRaw>(
+      sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} where ${auditWhere(query)} order by l.occurred_at desc, l.id desc limit 50000`,
+    )
     .map(toEntry)
 }
 
@@ -84,9 +90,17 @@ export function buildDashboard(db: DbLike): DashboardData {
     holders.set(assignment.employee.id, entry)
   }
 
-  const scores = new Map(db.select({ id: conditionRatings.id, score: conditionRatings.score }).from(conditionRatings).all().map((r) => [r.id, r.score]))
+  const scores = new Map(
+    db
+      .select({ id: conditionRatings.id, score: conditionRatings.score })
+      .from(conditionRatings)
+      .all()
+      .map((r) => [r.id, r.score]),
+  )
 
-  const recent = db.all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} order by l.occurred_at desc, l.id desc limit 8`).map(toEntry)
+  const recent = db
+    .all<AuditRaw>(sql`select ${AUDIT_COLUMNS} ${AUDIT_FROM} order by l.occurred_at desc, l.id desc limit 8`)
+    .map(toEntry)
 
   return {
     totals,
@@ -100,9 +114,16 @@ export function buildDashboard(db: DbLike): DashboardData {
       program: a.program,
       daysOut: a.daysOut,
     })),
-    topHolders: [...holders.values()].sort((a, b) => b.count - a.count || a.employee.name.localeCompare(b.employee.name)).slice(0, 5),
+    topHolders: [...holders.values()]
+      .sort((a, b) => b.count - a.count || a.employee.name.localeCompare(b.employee.name))
+      .slice(0, 5),
     poorCondition: rows
-      .filter((row) => row.state !== 'retired' && row.condition && (scores.get(row.condition.ratingId) ?? RATING_SCORE_MAX) < RATING_ATTENTION_BELOW)
+      .filter(
+        (row) =>
+          row.state !== 'retired' &&
+          row.condition &&
+          (scores.get(row.condition.ratingId) ?? RATING_SCORE_MAX) < RATING_ATTENTION_BELOW,
+      )
       .slice(0, 6)
       .map((row) => ({
         assetId: row.id,
@@ -114,4 +135,3 @@ export function buildDashboard(db: DbLike): DashboardData {
     recent,
   }
 }
-

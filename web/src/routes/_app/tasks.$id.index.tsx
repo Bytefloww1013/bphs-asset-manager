@@ -2,7 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { CheckCircle2, ChevronLeft, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { TASK_ASSIGNER_REMINDERS_LABEL, TASK_NOTE_MAX, TASK_REMINDER_PRESETS, TASK_REMINDER_PRESET_LABEL, TASK_WEEKDAY_LABEL } from '@shared/constants.ts'
+import {
+  TASK_ASSIGNER_REMINDERS_LABEL,
+  TASK_NOTE_MAX,
+  TASK_REMINDER_PRESETS,
+  TASK_REMINDER_PRESET_LABEL,
+  TASK_WEEKDAY_LABEL,
+} from '@shared/constants.ts'
 import { canEditTask, taskApproveReason, taskClosedReason, taskEditReason } from '@shared/permissions.ts'
 import type { TaskDetail } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -56,7 +62,8 @@ function TaskPage() {
 
   const ownership = ownershipOf(task)
   // The server's checks, said before anything is pressed: a cancelled, completed or awaiting task takes no edit and no cancel.
-  const noEdit = (canEditTask(user, ownership) ? null : taskEditReason(ownership)) ?? taskClosedReason(task.status) ?? undefined
+  const noEdit =
+    (canEditTask(user, ownership) ? null : taskEditReason(ownership)) ?? taskClosedReason(task.status) ?? undefined
   const noApprove = taskApproveReason(user, ownership) ?? undefined
   const sentBack = task.status === 'outstanding' || task.status === 'past_due' ? sendBackNote(task.events) : null
 
@@ -70,11 +77,19 @@ function TaskPage() {
           <TaskStatusBadge status={task.status} />
         </div>
         <div className="mt-1.5 flex flex-wrap items-start justify-between gap-3">
-          <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{task.title}</h1>
+          <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+            {task.title}
+          </h1>
           <div className="flex flex-wrap items-center gap-2">
             {task.status === 'awaiting_approval' && (
               <>
-                <Button variant="primary" icon={<CheckCircle2 className="size-4" aria-hidden />} disabledReason={noApprove} loading={approve.isPending} onClick={() => approve.mutate(undefined)}>
+                <Button
+                  variant="primary"
+                  icon={<CheckCircle2 className="size-4" aria-hidden />}
+                  disabledReason={noApprove}
+                  loading={approve.isPending}
+                  onClick={() => approve.mutate(undefined)}
+                >
                   Approve
                 </Button>
                 <Button disabledReason={noApprove} onClick={() => setSendingBack(true)}>
@@ -82,13 +97,21 @@ function TaskPage() {
                 </Button>
               </>
             )}
-            <Button disabledReason={noEdit} onClick={() => void navigate({ to: '/tasks/$id/edit', params: { id: String(id) } })}>
+            <Button
+              disabledReason={noEdit}
+              onClick={() => void navigate({ to: '/tasks/$id/edit', params: { id: String(id) } })}
+            >
               Edit
             </Button>
             <Button variant="danger-ghost" disabledReason={noEdit} onClick={() => setConfirm('cancel')}>
               Cancel task
             </Button>
-            <Button variant="danger" icon={<Trash2 className="size-4" aria-hidden />} disabledReason={noFull} onClick={() => setConfirm('delete')}>
+            <Button
+              variant="danger"
+              icon={<Trash2 className="size-4" aria-hidden />}
+              disabledReason={noFull}
+              onClick={() => setConfirm('delete')}
+            >
               Delete
             </Button>
           </div>
@@ -100,7 +123,12 @@ function TaskPage() {
           <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{sentBack.note}</p>
         </Alert>
       )}
-      {task.cancelledAt && <Alert title="Cancelled">Cancelled {formatDateTime(task.cancelledAt)}. It stays as a record but has left {task.assignee.name}&rsquo;s list.</Alert>}
+      {task.cancelledAt && (
+        <Alert title="Cancelled">
+          Cancelled {formatDateTime(task.cancelledAt)}. It stays as a record but has left {task.assignee.name}&rsquo;s
+          list.
+        </Alert>
+      )}
 
       <Panel aria-label="Facts">
         <dl className="grid divide-line max-sm:divide-y sm:grid-cols-2 lg:grid-cols-4 lg:divide-x">
@@ -118,8 +146,12 @@ function TaskPage() {
         {task.completedAt && (
           <dl className="grid divide-line border-t border-line max-sm:divide-y sm:grid-cols-3 sm:divide-x">
             <Fact label="Completed">{formatDateTime(task.completedAt)}</Fact>
-            <Fact label="Approved">{task.approvedAt ? formatDateTime(task.approvedAt) : task.requiresApproval ? 'Not yet' : 'Not needed'}</Fact>
-            <Fact label="Completion note">{task.completionNote && <span className="whitespace-pre-wrap">{task.completionNote}</span>}</Fact>
+            <Fact label="Approved">
+              {task.approvedAt ? formatDateTime(task.approvedAt) : task.requiresApproval ? 'Not yet' : 'Not needed'}
+            </Fact>
+            <Fact label="Completion note">
+              {task.completionNote && <span className="whitespace-pre-wrap">{task.completionNote}</span>}
+            </Fact>
           </dl>
         )}
       </Panel>
@@ -165,7 +197,11 @@ function TaskPage() {
 function SendBackSheet({ task, onClose }: { task: TaskDetail; onClose: () => void }) {
   const [note, setNote] = useState('')
   const [missing, setMissing] = useState<string>()
-  const change = useChange<TaskDetail>(`/tasks/${task.id}/send-back`, () => `Sent back to ${task.assignee.name}`, onClose)
+  const change = useChange<TaskDetail>(
+    `/tasks/${task.id}/send-back`,
+    () => `Sent back to ${task.assignee.name}`,
+    onClose,
+  )
 
   function commit() {
     setMissing(note.trim() ? undefined : 'Say what still needs doing')
@@ -173,8 +209,19 @@ function SendBackSheet({ task, onClose }: { task: TaskDetail; onClose: () => voi
   }
 
   return (
-    <ChangeSheet title="Send back" description={task.title} submit="Send back" change={change} onSubmit={commit} onClose={onClose}>
-      <Field label="Note" hint={`${task.assignee.name} sees it on the task, which is open again.`} error={missing ?? change.field('note')}>
+    <ChangeSheet
+      title="Send back"
+      description={task.title}
+      submit="Send back"
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
+      <Field
+        label="Note"
+        hint={`${task.assignee.name} sees it on the task, which is open again.`}
+        error={missing ?? change.field('note')}
+      >
         <Textarea rows={4} maxLength={TASK_NOTE_MAX} value={note} onChange={(event) => setNote(event.target.value)} />
       </Field>
     </ChangeSheet>

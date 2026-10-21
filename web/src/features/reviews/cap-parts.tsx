@@ -11,7 +11,11 @@ export function CapLink({ code, seq, chip }: { code: string; seq: number; chip?:
     <Link
       to="/reviews/$code/caps/$cap"
       params={{ code, cap: reviewCapCode(seq) }}
-      className={chip ? 'rounded-md border border-line-strong bg-sunken px-1.5 text-xs text-ink-2 hover:border-accent-line hover:bg-accent-soft hover:text-accent' : 'font-medium text-accent hover:underline'}
+      className={
+        chip
+          ? 'rounded-md border border-line-strong bg-sunken px-1.5 text-xs text-ink-2 hover:border-accent-line hover:bg-accent-soft hover:text-accent'
+          : 'font-medium text-accent hover:underline'
+      }
     >
       <Mono>{reviewCapCode(seq)}</Mono>
     </Link>

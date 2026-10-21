@@ -1,10 +1,41 @@
 import { sql } from 'drizzle-orm'
-import { blob, check, type AnySQLiteColumn, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import type { AssetStatus, AuditAction, ConditionKind, DigitalAssetStatus, GrievanceAuditAction, GrievanceEntryKind, GrievancePersonRole, GrievanceStatus, MaintenanceStatus, ReviewAuditAction, ReviewCapStatus, ReviewEntryKind, ReviewStatus, Access, TaskAssignerReminders, TaskEventKind, TaskFileSide, TaskWeekday } from '../../shared/constants.ts'
+import {
+  blob,
+  check,
+  type AnySQLiteColumn,
+  index,
+  integer,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
+import type {
+  AssetStatus,
+  AuditAction,
+  ConditionKind,
+  DigitalAssetStatus,
+  GrievanceAuditAction,
+  GrievanceEntryKind,
+  GrievancePersonRole,
+  GrievanceStatus,
+  MaintenanceStatus,
+  ReviewAuditAction,
+  ReviewCapStatus,
+  ReviewEntryKind,
+  ReviewStatus,
+  Access,
+  TaskAssignerReminders,
+  TaskEventKind,
+  TaskFileSide,
+  TaskWeekday,
+} from '../../shared/constants.ts'
 import type { GrievanceVersionPerson } from '../../shared/types.ts'
 
 const ms = (name: string) => integer(name, { mode: 'timestamp_ms' })
-const createdAt = () => ms('created_at').notNull().default(sql`(unixepoch() * 1000)`)
+const createdAt = () =>
+  ms('created_at')
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`)
 
 // ---- People -------------------------------------------------------------------
 
@@ -375,7 +406,9 @@ export const grievanceEntries = sqliteTable(
     seq: integer('seq').notNull(),
     kind: text('kind').$type<GrievanceEntryKind>().notNull(),
     /** Set only on a correction: the entry it corrects, in the same grievance. */
-    correctsEntryId: integer('corrects_entry_id').references((): AnySQLiteColumn => grievanceEntries.id, { onDelete: 'restrict' }),
+    correctsEntryId: integer('corrects_entry_id').references((): AnySQLiteColumn => grievanceEntries.id, {
+      onDelete: 'restrict',
+    }),
     /** When it happened, as the person recording it gave it. */
     occurredAt: ms('occurred_at').notNull(),
     /** When it was written down. Set by the server. */
@@ -384,7 +417,9 @@ export const grievanceEntries = sqliteTable(
     shortDescription: text('short_description').notNull(),
     bodyHtml: text('body_html').notNull(),
     bodyText: text('body_text').notNull(),
-    documentedByEmployeeId: integer('documented_by_employee_id').references(() => employees.id, { onDelete: 'set null' }),
+    documentedByEmployeeId: integer('documented_by_employee_id').references(() => employees.id, {
+      onDelete: 'set null',
+    }),
     documentedByUserId: integer('documented_by_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
@@ -426,7 +461,10 @@ export const grievanceAttachments = sqliteTable(
     withdrawnAt: ms('withdrawn_at'),
     withdrawnReason: text('withdrawn_reason'),
   },
-  (t) => [index('ix_grievance_attachments_grievance').on(t.grievanceId), index('ix_grievance_attachments_entry').on(t.entryId)],
+  (t) => [
+    index('ix_grievance_attachments_grievance').on(t.grievanceId),
+    index('ix_grievance_attachments_entry').on(t.entryId),
+  ],
 )
 
 /** The bytes of each attachment. Only `server/lib/grievance-files.ts` reads or writes this table. */
@@ -539,14 +577,18 @@ export const reviewEntries = sqliteTable(
     /** E01, E02 and so on: the order entries were recorded in. */
     seq: integer('seq').notNull(),
     kind: text('kind').$type<ReviewEntryKind>().notNull(),
-    correctsEntryId: integer('corrects_entry_id').references((): AnySQLiteColumn => reviewEntries.id, { onDelete: 'restrict' }),
+    correctsEntryId: integer('corrects_entry_id').references((): AnySQLiteColumn => reviewEntries.id, {
+      onDelete: 'restrict',
+    }),
     occurredAt: ms('occurred_at').notNull(),
     recordedAt: ms('recorded_at').notNull(),
     title: text('title').notNull(),
     shortDescription: text('short_description').notNull(),
     bodyHtml: text('body_html').notNull(),
     bodyText: text('body_text').notNull(),
-    documentedByEmployeeId: integer('documented_by_employee_id').references(() => employees.id, { onDelete: 'set null' }),
+    documentedByEmployeeId: integer('documented_by_employee_id').references(() => employees.id, {
+      onDelete: 'set null',
+    }),
     documentedByUserId: integer('documented_by_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
@@ -575,7 +617,11 @@ export const reviewAuditLog = sqliteTable(
     reviewId: integer('review_id').references(() => reviews.id, { onDelete: 'restrict' }),
     details: text('details').notNull().default(''),
   },
-  (t) => [index('ix_review_audit_time').on(t.occurredAt), index('ix_review_audit_action').on(t.action), index('ix_review_audit_review').on(t.reviewId)],
+  (t) => [
+    index('ix_review_audit_time').on(t.occurredAt),
+    index('ix_review_audit_action').on(t.action),
+    index('ix_review_audit_review').on(t.reviewId),
+  ],
 )
 
 /**
@@ -646,9 +692,15 @@ export const maintenanceRequests = sqliteTable(
     // The same Zoho entry sent twice. Hand entries have no Added Time, and nulls never collide.
     uniqueIndex('uq_maintenance_dedupe').on(t.email, t.zohoAddedTime),
     index('ix_maintenance_received').on(t.receivedAt),
-    check('ck_maintenance_status', sql`${t.status} in ('not_started', 'dispatched', 'on_hold', 'rejected', 'finished')`),
+    check(
+      'ck_maintenance_status',
+      sql`${t.status} in ('not_started', 'dispatched', 'on_hold', 'rejected', 'finished')`,
+    ),
     // Dispatched means someone has it; Not Started means nobody does yet.
-    check('ck_maintenance_dispatch', sql`(${t.status} != 'dispatched' or ${t.assignedEmployeeId} is not null) and (${t.status} != 'not_started' or ${t.assignedEmployeeId} is null)`),
+    check(
+      'ck_maintenance_dispatch',
+      sql`(${t.status} != 'dispatched' or ${t.assignedEmployeeId} is not null) and (${t.status} != 'not_started' or ${t.assignedEmployeeId} is null)`,
+    ),
   ],
 )
 
@@ -667,7 +719,10 @@ export const maintenanceNotes = sqliteTable(
     createdByLabel: text('created_by_label').notNull(),
     createdAt: ms('created_at').notNull(),
   },
-  (t) => [index('ix_maintenance_notes_request').on(t.requestId, t.createdAt), check('ck_maintenance_notes_kind', sql`${t.kind} in ('note', 'system')`)],
+  (t) => [
+    index('ix_maintenance_notes_request').on(t.requestId, t.createdAt),
+    check('ck_maintenance_notes_kind', sql`${t.kind} in ('note', 'system')`),
+  ],
 )
 
 // ---- Notifications ----------------------------------------------------------------------
@@ -694,7 +749,9 @@ export const notifications = sqliteTable(
   },
   (t) => [
     index('ix_notifications_user').on(t.userId, t.archivedAt, t.createdAt),
-    index('ix_notifications_unread').on(t.userId).where(sql`${t.readAt} is null and ${t.archivedAt} is null`),
+    index('ix_notifications_unread')
+      .on(t.userId)
+      .where(sql`${t.readAt} is null and ${t.archivedAt} is null`),
     // The overdue reminders and the notices look rows up by what they are about.
     index('ix_notifications_source').on(t.sourceKey, t.kind),
   ],
@@ -762,7 +819,9 @@ export const tasks = sqliteTable(
     index('ix_tasks_assignee').on(t.assigneeUserId, t.sendAt),
     index('ix_tasks_due').on(t.dueAt),
     // The clock's every-minute look for what is still to be sent.
-    index('ix_tasks_unsent').on(t.sendAt).where(sql`${t.arrivedAt} is null`),
+    index('ix_tasks_unsent')
+      .on(t.sendAt)
+      .where(sql`${t.arrivedAt} is null`),
     check('ck_tasks_assigner_reminders', sql`${t.assignerReminders} in ('none', 'first', 'every')`),
     check('ck_tasks_due', sql`${t.dueAt} > ${t.sendAt}`),
     check('ck_tasks_approved', sql`${t.approvedAt} is null or ${t.completedAt} is not null`),
@@ -789,7 +848,10 @@ export const taskEvents = sqliteTable(
   },
   (t) => [
     index('ix_task_events_task').on(t.taskId, t.createdAt),
-    check('ck_task_events_kind', sql`${t.kind} in ('assigned', 'edited', 'completed', 'sent_back', 'approved', 'cancelled', 'file_withdrawn')`),
+    check(
+      'ck_task_events_kind',
+      sql`${t.kind} in ('assigned', 'edited', 'completed', 'sent_back', 'approved', 'cancelled', 'file_withdrawn')`,
+    ),
   ],
 )
 
@@ -814,7 +876,10 @@ export const taskAttachments = sqliteTable(
     withdrawnAt: ms('withdrawn_at'),
     withdrawnReason: text('withdrawn_reason'),
   },
-  (t) => [index('ix_task_attachments_task').on(t.taskId), check('ck_task_attachments_side', sql`${t.side} in ('assigner', 'assignee')`)],
+  (t) => [
+    index('ix_task_attachments_task').on(t.taskId),
+    check('ck_task_attachments_side', sql`${t.side} in ('assigner', 'assignee')`),
+  ],
 )
 
 /** The bytes of each task file. Only `server/lib/task-files.ts` reads or writes this table. */

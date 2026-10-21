@@ -43,11 +43,18 @@ function EditGrievancePage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/grievances/$code" params={{ code: grievance.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/grievances/$code"
+          params={{ code: grievance.code }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {grievance.code}
         </Link>
         <div className="mt-3">
-          <PageHeader title="Edit grievance" description="Change what the grievance says or who is named on it. What it said before is kept as a version, and the timeline records which fields changed and why." />
+          <PageHeader
+            title="Edit grievance"
+            description="Change what the grievance says or who is named on it. What it said before is kept as a version, and the timeline records which fields changed and why."
+          />
         </div>
       </div>
       {refused ? (

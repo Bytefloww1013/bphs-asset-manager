@@ -31,16 +31,23 @@ async function maintenance(secret = SECRET) {
     return { status: res.status, data }
   }
   const hook = (body: unknown, secretSent: string | null = SECRET) =>
-    post(JSON.stringify(body), { 'content-type': 'application/json', ...(secretSent === null ? {} : { 'x-webhook-secret': secretSent }) })
-  const person = (code: string, firstName: string) => t.db.insert(employees).values({ code, firstName, lastName: 'Fixer' }).returning().get()
+    post(JSON.stringify(body), {
+      'content-type': 'application/json',
+      ...(secretSent === null ? {} : { 'x-webhook-secret': secretSent }),
+    })
+  const person = (code: string, firstName: string) =>
+    t.db.insert(employees).values({ code, firstName, lastName: 'Fixer' }).returning().get()
   const cookie = await t.asSuper()
-  const get = async (id: number) => (await t.call('GET', `/api/maintenance/${id}`, { cookie })).data as MaintenanceDetail
-  const act = (id: number, action: 'dispatch' | 'status' | 'notes', body: unknown) => t.call('POST', `/api/maintenance/${id}/${action}`, { cookie, body })
+  const get = async (id: number) =>
+    (await t.call('GET', `/api/maintenance/${id}`, { cookie })).data as MaintenanceDetail
+  const act = (id: number, action: 'dispatch' | 'status' | 'notes', body: unknown) =>
+    t.call('POST', `/api/maintenance/${id}/${action}`, { cookie, body })
   const lines = (detail: MaintenanceDetail) => detail.notes.map((note) => note.body)
   return { t, post, hook, cookie, get, act, lines, sam: person('E-2001', 'Sam'), lee: person('E-2002', 'Lee') }
 }
 
-const count = (t: Awaited<ReturnType<typeof setup>>, table: string) => t.db.get<{ n: number }>(sql.raw(`select count(*) as n from ${table}`))!.n
+const count = (t: Awaited<ReturnType<typeof setup>>, table: string) =>
+  t.db.get<{ n: number }>(sql.raw(`select count(*) as n from ${table}`))!.n
 
 describe('the Zoho webhook', () => {
   it('is off until a secret is configured, and refuses a missing or wrong one', async () => {
@@ -84,7 +91,14 @@ describe('the Zoho webhook', () => {
     const { hook, get } = await maintenance()
     const res = await hook({ description: '  Light out  ', urgent: 5, lastName: ['Doe'], somethingNew: 'x' })
     expect(res.status).toBe(201)
-    expect(await get(res.data.id)).toMatchObject({ firstName: '', lastName: null, email: '', description: 'Light out', urgent: null, zohoAddedTime: null })
+    expect(await get(res.data.id)).toMatchObject({
+      firstName: '',
+      lastName: null,
+      email: '',
+      description: 'Light out',
+      urgent: null,
+      zohoAddedTime: null,
+    })
   })
 
   it('refuses an entry with no description, logging the keys it had but not their values', async () => {
@@ -93,13 +107,18 @@ describe('the Zoho webhook', () => {
     expect((await hook({ firstName: 'Jane', Description: 'Wrong case' })).status).toBe(400)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Keys received: firstName, Description'))
     expect(warn.mock.calls.flat().join()).not.toMatch(/Jane|Wrong case/)
-    expect((await post('not json', { 'content-type': 'application/json', 'x-webhook-secret': SECRET })).status).toBe(400)
+    expect((await post('not json', { 'content-type': 'application/json', 'x-webhook-secret': SECRET })).status).toBe(
+      400,
+    )
     warn.mockRestore()
   })
 
   it('takes JSON only: a form-encoded post is refused before it is read', async () => {
     const { t, post } = await maintenance()
-    const res = await post(new URLSearchParams(ENTRY).toString(), { 'content-type': 'application/x-www-form-urlencoded', 'x-webhook-secret': SECRET })
+    const res = await post(new URLSearchParams(ENTRY).toString(), {
+      'content-type': 'application/x-www-form-urlencoded',
+      'x-webhook-secret': SECRET,
+    })
     expect(res.status).toBe(403)
     expect(count(t, 'maintenance_requests')).toBe(0)
   })
@@ -108,11 +127,25 @@ describe('the Zoho webhook', () => {
 describe('maintenance requests', () => {
   it('can be entered by hand, with a first name, location and description', async () => {
     const { t, cookie, lines } = await maintenance()
-    const made = await t.call('POST', '/api/maintenance', { cookie, body: { firstName: 'Ann', location: 'Gym', description: 'Door sticks', email: '', noticedDate: '2026-10-14' } })
+    const made = await t.call('POST', '/api/maintenance', {
+      cookie,
+      body: { firstName: 'Ann', location: 'Gym', description: 'Door sticks', email: '', noticedDate: '2026-10-14' },
+    })
     expect(made.status).toBe(201)
-    expect(made.data).toMatchObject({ requestedBy: 'Ann', email: '', program: '', urgent: 'No', noticedDate: '2026-10-14', zohoAddedTime: null, status: 'not_started' })
+    expect(made.data).toMatchObject({
+      requestedBy: 'Ann',
+      email: '',
+      program: '',
+      urgent: 'No',
+      noticedDate: '2026-10-14',
+      zohoAddedTime: null,
+      status: 'not_started',
+    })
     expect(lines(made.data)).toEqual(['Entered by Priya Raghunathan'])
-    const refused = await t.call('POST', '/api/maintenance', { cookie, body: { firstName: ' ', email: 'not-an-email' } })
+    const refused = await t.call('POST', '/api/maintenance', {
+      cookie,
+      body: { firstName: ' ', email: 'not-an-email' },
+    })
     expect(refused.status).toBe(422)
     expect(Object.keys(refused.data.details.fields).sort()).toEqual(['description', 'email', 'firstName', 'location'])
   })
@@ -120,32 +153,64 @@ describe('maintenance requests', () => {
   it('is Dispatched when someone is chosen, and back to Not Started when they are cleared', async () => {
     const { hook, act, get, lines, sam, lee } = await maintenance()
     const { id } = (await hook(ENTRY)).data
-    expect((await act(id, 'dispatch', { employeeId: sam.id })).data).toMatchObject({ status: 'dispatched', assignee: { id: sam.id, name: 'Sam Fixer' } })
-    expect((await act(id, 'dispatch', { employeeId: lee.id })).data).toMatchObject({ status: 'dispatched', assignee: { id: lee.id } })
-    expect((await act(id, 'dispatch', { employeeId: null })).data).toMatchObject({ status: 'not_started', assignee: null })
-    expect(lines(await get(id)).slice(1)).toEqual(['Dispatched to Sam Fixer', 'Dispatch changed: Sam Fixer → Lee Fixer', 'Dispatch to Lee Fixer cleared; back to Not Started'])
+    expect((await act(id, 'dispatch', { employeeId: sam.id })).data).toMatchObject({
+      status: 'dispatched',
+      assignee: { id: sam.id, name: 'Sam Fixer' },
+    })
+    expect((await act(id, 'dispatch', { employeeId: lee.id })).data).toMatchObject({
+      status: 'dispatched',
+      assignee: { id: lee.id },
+    })
+    expect((await act(id, 'dispatch', { employeeId: null })).data).toMatchObject({
+      status: 'not_started',
+      assignee: null,
+    })
+    expect(lines(await get(id)).slice(1)).toEqual([
+      'Dispatched to Sam Fixer',
+      'Dispatch changed: Sam Fixer → Lee Fixer',
+      'Dispatch to Lee Fixer cleared; back to Not Started',
+    ])
   })
 
   it('keeps the status when the employee changes on a request that is not Not Started or Dispatched', async () => {
     const { hook, act, sam } = await maintenance()
     const { id } = (await hook(ENTRY)).data
     expect((await act(id, 'status', { status: 'on_hold' })).data).toMatchObject({ status: 'on_hold', assignee: null })
-    expect((await act(id, 'dispatch', { employeeId: sam.id })).data).toMatchObject({ status: 'on_hold', assignee: { id: sam.id } })
-    expect((await act(id, 'status', { status: 'finished' })).data).toMatchObject({ status: 'finished', assignee: { id: sam.id } })
+    expect((await act(id, 'dispatch', { employeeId: sam.id })).data).toMatchObject({
+      status: 'on_hold',
+      assignee: { id: sam.id },
+    })
+    expect((await act(id, 'status', { status: 'finished' })).data).toMatchObject({
+      status: 'finished',
+      assignee: { id: sam.id },
+    })
     expect((await act(id, 'dispatch', { employeeId: null })).data).toMatchObject({ status: 'finished', assignee: null })
   })
 
   it('applies the status rules', async () => {
     const { t, hook, act, get, lines, sam } = await maintenance()
     const { id } = (await hook(ENTRY)).data
-    expect((await act(id, 'status', { status: 'dispatched' })).data).toMatchObject({ message: 'Choose who it is dispatched to.' })
+    expect((await act(id, 'status', { status: 'dispatched' })).data).toMatchObject({
+      message: 'Choose who it is dispatched to.',
+    })
     expect((await act(id, 'status', { status: 'not_started' })).status).toBe(409)
     await act(id, 'dispatch', { employeeId: sam.id })
-    expect((await act(id, 'status', { status: 'rejected' })).data).toMatchObject({ status: 'rejected', assignee: { id: sam.id } })
-    expect((await act(id, 'status', { status: 'not_started' })).data).toMatchObject({ status: 'not_started', assignee: null })
-    expect(lines(await get(id)).slice(2)).toEqual(['Status: Dispatched → Rejected', 'Status: Rejected → Not Started; dispatch to Sam Fixer cleared'])
+    expect((await act(id, 'status', { status: 'rejected' })).data).toMatchObject({
+      status: 'rejected',
+      assignee: { id: sam.id },
+    })
+    expect((await act(id, 'status', { status: 'not_started' })).data).toMatchObject({
+      status: 'not_started',
+      assignee: null,
+    })
+    expect(lines(await get(id)).slice(2)).toEqual([
+      'Status: Dispatched → Rejected',
+      'Status: Rejected → Not Started; dispatch to Sam Fixer cleared',
+    ])
     // The database holds the rule as well, whatever writes to it.
-    expect(() => t.sqlite.prepare(`update maintenance_requests set status = 'dispatched' where id = ?`).run(id)).toThrow(/CHECK constraint failed/)
+    expect(() =>
+      t.sqlite.prepare(`update maintenance_requests set status = 'dispatched' where id = ?`).run(id),
+    ).toThrow(/CHECK constraint failed/)
   })
 
   it('can be dispatched only to an active employee', async () => {
@@ -160,7 +225,11 @@ describe('maintenance requests', () => {
     const { hook, act } = await maintenance()
     const { id } = (await hook(ENTRY)).data
     const noted = (await act(id, 'notes', { body: '  Parts ordered.\nBack Monday.  ' })).data as MaintenanceDetail
-    expect(noted.notes.at(-1)).toMatchObject({ kind: 'note', body: 'Parts ordered.\nBack Monday.', createdBy: 'Priya Raghunathan' })
+    expect(noted.notes.at(-1)).toMatchObject({
+      kind: 'note',
+      body: 'Parts ordered.\nBack Monday.',
+      createdBy: 'Priya Raghunathan',
+    })
     expect((await act(id, 'notes', { body: '   ' })).status).toBe(422)
     expect((await act(9999, 'notes', { body: 'Hello' })).status).toBe(404)
   })
@@ -173,7 +242,9 @@ describe('maintenance requests', () => {
     expect((await t.call('DELETE', `/api/maintenance/${id}`, { cookie })).status).toBe(204)
     expect((await t.call('GET', `/api/maintenance/${id}`, { cookie })).status).toBe(404)
     expect(count(t, 'maintenance_notes')).toBe(0)
-    expect(t.db.select().from(auditLog).where(eq(auditLog.entityType, 'maintenance_request')).all()).toMatchObject([{ action: 'delete', entityId: id, details: 'MR-0001' }])
+    expect(t.db.select().from(auditLog).where(eq(auditLog.entityType, 'maintenance_request')).all()).toMatchObject([
+      { action: 'delete', entityId: id, details: 'MR-0001' },
+    ])
   })
 
   it('keeps the employee it is dispatched to from being deleted', async () => {
@@ -182,7 +253,8 @@ describe('maintenance requests', () => {
     await act(id, 'dispatch', { employeeId: sam.id })
     expect((await t.call('DELETE', `/api/employees/${sam.id}`, { cookie })).data).toMatchObject({
       error: 'has_history',
-      message: 'Sam Fixer cannot be deleted. Dispatched on a maintenance request. Archive instead; history is never deleted.',
+      message:
+        'Sam Fixer cannot be deleted. Dispatched on a maintenance request. Archive instead; history is never deleted.',
     })
     await act(id, 'dispatch', { employeeId: null })
     expect((await t.call('DELETE', `/api/employees/${sam.id}`, { cookie })).status).toBe(204)
@@ -194,6 +266,9 @@ describe('maintenance requests', () => {
     const second = (await hook({ ...ENTRY, addedTime: 'later' })).data.id
     await act(first, 'dispatch', { employeeId: sam.id })
     const rows = (await t.call('GET', '/api/maintenance', { cookie })).data
-    expect(rows).toMatchObject([{ id: second, assignee: null }, { id: first, assignee: { name: 'Sam Fixer' } }])
+    expect(rows).toMatchObject([
+      { id: second, assignee: null },
+      { id: first, assignee: { name: 'Sam Fixer' } },
+    ])
   })
 })

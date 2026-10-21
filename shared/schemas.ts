@@ -1,5 +1,30 @@
 import { z } from 'zod'
-import { AUDIT_ACTIONS, GRIEVANCE_AUDIT_ACTIONS, GRIEVANCE_STATUSES, MAINTENANCE_DESCRIPTION_MAX, MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, NOTICE_BODY_MAX, NOTICE_TITLE_MAX, NOTIFICATION_VIEWS, RATING_SCORE_MAX, RATING_SCORE_MIN, REVIEW_AUDIT_ACTIONS, REVIEW_CAP_STATUSES, REVIEW_STATUSES, SECTIONS, TASK_ASSIGNER_REMINDERS, TASK_NOTE_MAX, TASK_REMINDER_PRESETS, TASK_REMINDER_TIME, TASK_STATUSES, TASK_TITLE_MAX, TASK_WEEKDAYS, levelsFor, type Section } from './constants.ts'
+import {
+  AUDIT_ACTIONS,
+  GRIEVANCE_AUDIT_ACTIONS,
+  GRIEVANCE_STATUSES,
+  MAINTENANCE_DESCRIPTION_MAX,
+  MAINTENANCE_NOTE_MAX,
+  MAINTENANCE_STATUSES,
+  NOTICE_BODY_MAX,
+  NOTICE_TITLE_MAX,
+  NOTIFICATION_VIEWS,
+  RATING_SCORE_MAX,
+  RATING_SCORE_MIN,
+  REVIEW_AUDIT_ACTIONS,
+  REVIEW_CAP_STATUSES,
+  REVIEW_STATUSES,
+  SECTIONS,
+  TASK_ASSIGNER_REMINDERS,
+  TASK_NOTE_MAX,
+  TASK_REMINDER_PRESETS,
+  TASK_REMINDER_TIME,
+  TASK_STATUSES,
+  TASK_TITLE_MAX,
+  TASK_WEEKDAYS,
+  levelsFor,
+  type Section,
+} from './constants.ts'
 import { isStrongPassword } from './password.ts'
 import { looksLikeSecret } from './secrets.ts'
 import { isTimeZone } from './tasks.ts'
@@ -34,7 +59,10 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>
 
 export const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1, 'Enter your current password').max(MAX_PASSWORD, tooLong('Current password', MAX_PASSWORD)),
+  currentPassword: z
+    .string()
+    .min(1, 'Enter your current password')
+    .max(MAX_PASSWORD, tooLong('Current password', MAX_PASSWORD)),
   newPassword: password,
 })
 export type PasswordChangeInput = z.infer<typeof passwordChangeSchema>
@@ -107,8 +135,14 @@ export const issueSchema = z
     assessedById: id.nullable().optional(),
     notes: optionalText(1000, 'Notes'),
   })
-  .refine((value) => !(value.employeeId && value.programId), { path: ['programId'], message: 'Choose an employee or a program, not both' })
-  .refine((value) => value.employeeId || value.programId, { path: ['employeeId'], message: 'Choose an employee or a program' })
+  .refine((value) => !(value.employeeId && value.programId), {
+    path: ['programId'],
+    message: 'Choose an employee or a program, not both',
+  })
+  .refine((value) => value.employeeId || value.programId, {
+    path: ['employeeId'],
+    message: 'Choose an employee or a program',
+  })
 export type IssueInput = z.infer<typeof issueSchema>
 
 export const returnSchema = z.object({
@@ -225,7 +259,8 @@ export const ratingUpdateSchema = z.object({
 // ---- Grievances -------------------------------------------------------------------
 const pad = (n: number) => String(n).padStart(2, '0')
 /** Today as `YYYY-MM-DD`, on the clock of whichever side is asking. */
-export const localToday = (now: Date = new Date()) => `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+export const localToday = (now: Date = new Date()) =>
+  `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 
 // A calendar date, not an instant: it is stored as the text that was entered, so no time zone can move it to another day.
 const calendarDate = (label: string) =>
@@ -257,8 +292,14 @@ const grievanceFields = {
   title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
   shortDescription: requiredText(GRIEVANCE_SHORT_DESCRIPTION_MAX, 'Short description'),
   /** The body as HTML from the editor. The server sanitises it and never stores what it was sent. */
-  body: z.string({ error: 'Write the grievance before saving' }).min(1, 'Write the grievance before saving').max(BODY_HTML_MAX, 'The grievance is too long'),
-  dateMade: calendarDate('date the grievance was made').refine((value) => value <= localToday(), 'The date made cannot be in the future'),
+  body: z
+    .string({ error: 'Write the grievance before saving' })
+    .min(1, 'Write the grievance before saving')
+    .max(BODY_HTML_MAX, 'The grievance is too long'),
+  dateMade: calendarDate('date the grievance was made').refine(
+    (value) => value <= localToday(),
+    'The date made cannot be in the future',
+  ),
   categoryId: z.number({ error: 'Choose a category' }).int().positive(),
   employeeIds: people('Choose at least one employee involved'),
   managementIds: people('Choose at least one person from management'),
@@ -266,16 +307,26 @@ const grievanceFields = {
 
 const notInBothLists = (value: { employeeIds: number[]; managementIds: number[] }, ctx: z.RefinementCtx) => {
   if (value.employeeIds.some((employee) => value.managementIds.includes(employee))) {
-    ctx.addIssue({ code: 'custom', path: ['managementIds'], message: 'Nobody can be in both Employees Involved and Management Involved' })
+    ctx.addIssue({
+      code: 'custom',
+      path: ['managementIds'],
+      message: 'Nobody can be in both Employees Involved and Management Involved',
+    })
   }
 }
 
-export const grievanceCreateSchema = z.object({ ...grievanceFields, ownerId: z.number({ error: 'Choose an owner' }).int().positive() }).superRefine(notInBothLists)
+export const grievanceCreateSchema = z
+  .object({ ...grievanceFields, ownerId: z.number({ error: 'Choose an owner' }).int().positive() })
+  .superRefine(notInBothLists)
 export type GrievanceCreateInput = z.infer<typeof grievanceCreateSchema>
 
 /** A note on a change to a grievance, or the reason for one. Plain text; it becomes the body of the automatic timeline entry. */
 export const GRIEVANCE_NOTE_MAX = 2000
-const note = z.string().trim().max(GRIEVANCE_NOTE_MAX, `Keep the note to ${GRIEVANCE_NOTE_MAX} characters or fewer`).default('')
+const note = z
+  .string()
+  .trim()
+  .max(GRIEVANCE_NOTE_MAX, `Keep the note to ${GRIEVANCE_NOTE_MAX} characters or fewer`)
+  .default('')
 
 /** Voiding is not one of these: it has its own request, its own permission and no way back. */
 export const GRIEVANCE_OPEN_STATUSES = ['open', 'in_progress', 'resolved', 'closed'] as const
@@ -283,11 +334,15 @@ export const GRIEVANCE_OPEN_STATUSES = ['open', 'in_progress', 'resolved', 'clos
 export const grievanceStatusChangeSchema = z
   .object({ status: z.enum(GRIEVANCE_OPEN_STATUSES, { error: 'Choose a status' }), note })
   .superRefine((value, ctx) => {
-    if (value.status === 'closed' && !value.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Say why it is being closed' })
+    if (value.status === 'closed' && !value.note)
+      ctx.addIssue({ code: 'custom', path: ['note'], message: 'Say why it is being closed' })
   })
 export type GrievanceStatusChangeInput = z.infer<typeof grievanceStatusChangeSchema>
 
-export const grievanceOwnerChangeSchema = z.object({ ownerId: z.number({ error: 'Choose an owner' }).int().positive(), note })
+export const grievanceOwnerChangeSchema = z.object({
+  ownerId: z.number({ error: 'Choose an owner' }).int().positive(),
+  note,
+})
 export type GrievanceOwnerChangeInput = z.infer<typeof grievanceOwnerChangeSchema>
 
 /**
@@ -295,7 +350,11 @@ export type GrievanceOwnerChangeInput = z.infer<typeof grievanceOwnerChangeSchem
  * editor loaded, so that a save made over someone else's is refused.
  */
 export const grievanceUpdateSchema = z
-  .object({ ...grievanceFields, version: z.number().int().positive(), reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason for change') })
+  .object({
+    ...grievanceFields,
+    version: z.number().int().positive(),
+    reason: requiredText(GRIEVANCE_NOTE_MAX, 'Reason for change'),
+  })
   .superRefine(notInBothLists)
 export type GrievanceUpdateInput = z.infer<typeof grievanceUpdateSchema>
 
@@ -333,7 +392,11 @@ export const grievanceEntryCreateSchema = z.discriminatedUnion(
       ...entryText,
     }),
     // A correction happens when it is written, so it is not asked when; it says which entry it corrects, by number.
-    z.object({ kind: z.literal('correction'), correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(), ...entryText }),
+    z.object({
+      kind: z.literal('correction'),
+      correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(),
+      ...entryText,
+    }),
   ],
   { error: 'Choose Action, Event or Correction' },
 )
@@ -357,7 +420,10 @@ export const REVIEW_FINDINGS_MAX = 2000
 const reviewFields = {
   title: requiredText(GRIEVANCE_TITLE_MAX, 'Title'),
   summary: requiredText(REVIEW_SUMMARY_MAX, 'Summary'),
-  reviewDate: calendarDate('review date').refine((value) => value <= localToday(), 'The review date cannot be in the future'),
+  reviewDate: calendarDate('review date').refine(
+    (value) => value <= localToday(),
+    'The review date cannot be in the future',
+  ),
   reviewerId: z.number({ error: 'Choose who conducted the review' }).int().positive(),
   employeeId: z.number({ error: 'Choose the employee reviewed' }).int().positive(),
   findings: z.string().trim().max(REVIEW_FINDINGS_MAX, tooLong('Findings', REVIEW_FINDINGS_MAX)).default(''),
@@ -366,14 +432,17 @@ const reviewFields = {
 }
 
 const notTheReviewer = (value: { reviewerId: number; employeeId: number }, ctx: z.RefinementCtx) => {
-  if (value.reviewerId === value.employeeId) ctx.addIssue({ code: 'custom', path: ['employeeId'], message: 'The employee reviewed cannot also be the reviewer' })
+  if (value.reviewerId === value.employeeId)
+    ctx.addIssue({ code: 'custom', path: ['employeeId'], message: 'The employee reviewed cannot also be the reviewer' })
 }
 
 export const reviewCreateSchema = z.object(reviewFields).superRefine(notTheReviewer)
 export type ReviewCreateInput = z.infer<typeof reviewCreateSchema>
 
 /** An edit: every field, and the version the editor loaded, so that a save made over someone else's is refused. */
-export const reviewUpdateSchema = z.object({ ...reviewFields, version: z.number().int().positive() }).superRefine(notTheReviewer)
+export const reviewUpdateSchema = z
+  .object({ ...reviewFields, version: z.number().int().positive() })
+  .superRefine(notTheReviewer)
 export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>
 
 export const reviewEntryCreateSchema = z.discriminatedUnion(
@@ -381,7 +450,11 @@ export const reviewEntryCreateSchema = z.discriminatedUnion(
   [
     // `capSeq` files the update under one of the review's CAPs. A correction goes wherever the entry it corrects is.
     z.object({ kind: z.literal('update'), occurredAt, capSeq: z.number().int().positive().optional(), ...entryText }),
-    z.object({ kind: z.literal('correction'), correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(), ...entryText }),
+    z.object({
+      kind: z.literal('correction'),
+      correctsSeq: z.number({ error: 'Say which entry this corrects' }).int().positive(),
+      ...entryText,
+    }),
   ],
   { error: 'Choose Update or Correction' },
 )
@@ -403,16 +476,24 @@ export const reviewCapUpdateSchema = z.object({ ...capFields, version: z.number(
 export type ReviewCapUpdateInput = z.infer<typeof reviewCapUpdateSchema>
 
 export const reviewCapStatusSchema = z
-  .object({ status: z.enum(REVIEW_CAP_STATUSES, { error: 'Choose a status' }), note, version: z.number().int().positive() })
+  .object({
+    status: z.enum(REVIEW_CAP_STATUSES, { error: 'Choose a status' }),
+    note,
+    version: z.number().int().positive(),
+  })
   .superRefine((value, ctx) => {
-    if (value.status === 'cancelled' && !value.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Say why it is being cancelled' })
+    if (value.status === 'cancelled' && !value.note)
+      ctx.addIssue({ code: 'custom', path: ['note'], message: 'Say why it is being cancelled' })
   })
 export type ReviewCapStatusInput = z.infer<typeof reviewCapStatusSchema>
 
 /** Voiding is not one of these, as with grievances: it has its own request, needs Full and has no way back. */
 export const REVIEW_OPEN_STATUSES = ['open', 'in_progress', 'completed'] as const
 
-export const reviewStatusChangeSchema = z.object({ status: z.enum(REVIEW_OPEN_STATUSES, { error: 'Choose a status' }), note })
+export const reviewStatusChangeSchema = z.object({
+  status: z.enum(REVIEW_OPEN_STATUSES, { error: 'Choose a status' }),
+  note,
+})
 export type ReviewStatusChangeInput = z.infer<typeof reviewStatusChangeSchema>
 
 export const reviewVoidSchema = grievanceVoidSchema
@@ -426,7 +507,10 @@ export const reviewAttachmentWithdrawSchema = grievanceAttachmentWithdrawSchema
 export type ReviewAttachmentWithdrawInput = GrievanceAttachmentWithdrawInput
 
 /** Reported by the Action items page when it saves the list, since the browser makes the file. */
-export const reviewActionItemsExportSchema = z.object({ format: z.enum(['csv', 'xlsx']), rows: z.number().int().min(0) })
+export const reviewActionItemsExportSchema = z.object({
+  format: z.enum(['csv', 'xlsx']),
+  rows: z.number().int().min(0),
+})
 export type ReviewActionItemsExportInput = z.infer<typeof reviewActionItemsExportSchema>
 
 // `from` and `to` are days, both inclusive, compared with the review date.
@@ -444,7 +528,10 @@ export type ReviewListQuery = z.infer<typeof reviewListQuerySchema>
 /** None is left out rather than stored. */
 export const accessSchema = z
   .partialRecord(z.enum(SECTIONS), z.enum(['read', 'assign', 'edit', 'full']))
-  .refine((access) => Object.entries(access).every(([section, level]) => levelsFor(section as Section).includes(level)), 'Assign is a level in Employee Tasks only.')
+  .refine(
+    (access) => Object.entries(access).every(([section, level]) => levelsFor(section as Section).includes(level)),
+    'Assign is a level in Employee Tasks only.',
+  )
 
 export const userCreateSchema = z.object({
   name: requiredText(120, 'Name'),
@@ -491,7 +578,12 @@ export const maintenanceCreateSchema = z.object({
   firstName: requiredText(100, 'First name'),
   lastName: optionalText(100, 'Last name'),
   // Optional, for a request phoned in, but a real address when given.
-  email: z.string().trim().toLowerCase().pipe(z.union([z.literal(''), z.email('Enter a valid email address')])).optional(),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.union([z.literal(''), z.email('Enter a valid email address')]))
+    .optional(),
   program: optionalText(100, 'Program'),
   location: requiredText(200, 'Location'),
   description: requiredText(MAINTENANCE_DESCRIPTION_MAX, 'Description'),
@@ -501,7 +593,9 @@ export const maintenanceCreateSchema = z.object({
 export type MaintenanceCreateInput = z.infer<typeof maintenanceCreateSchema>
 
 /** Who the request is dispatched to; null clears it. */
-export const maintenanceDispatchSchema = z.object({ employeeId: z.number({ error: 'Choose an employee' }).int().positive().nullable() })
+export const maintenanceDispatchSchema = z.object({
+  employeeId: z.number({ error: 'Choose an employee' }).int().positive().nullable(),
+})
 export const maintenanceStatusSchema = z.object({ status: z.enum(MAINTENANCE_STATUSES, { error: 'Choose a status' }) })
 export const maintenanceNoteSchema = z.object({ body: requiredText(MAINTENANCE_NOTE_MAX, 'Note') })
 
@@ -518,7 +612,10 @@ export type NotificationListInput = z.infer<typeof notificationListSchema>
 export const noticeSchema = z.object({
   title: requiredText(NOTICE_TITLE_MAX, 'Title'),
   body: requiredText(NOTICE_BODY_MAX, 'Message'),
-  audience: z.union([z.literal('all'), z.object({ userIds: z.array(id).min(1, 'Pick at least one account').max(1000) })]),
+  audience: z.union([
+    z.literal('all'),
+    z.object({ userIds: z.array(id).min(1, 'Pick at least one account').max(1000) }),
+  ]),
 })
 export type NoticeInput = z.infer<typeof noticeSchema>
 
@@ -526,7 +623,10 @@ export type NoticeInput = z.infer<typeof noticeSchema>
 const instant = (what: string) => z.iso.datetime({ offset: true, error: `Enter ${what}` })
 const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Enter a time, as in 09:00')
 /** Each day once, Monday first, whatever order the browser sent them in. */
-const weekdays = z.array(z.enum(TASK_WEEKDAYS)).max(7).transform((days) => TASK_WEEKDAYS.filter((day) => days.includes(day)))
+const weekdays = z
+  .array(z.enum(TASK_WEEKDAYS))
+  .max(7)
+  .transform((days) => TASK_WEEKDAYS.filter((day) => days.includes(day)))
 
 /** What a task says and when, with no defaults: an edit sends only what it changes. */
 const taskFields = {
@@ -550,7 +650,11 @@ export const DUE_AFTER_SEND = 'It must be due after it is sent'
 /** Due after it is sent: after its send time, or, sent now (or not changed in an edit), after now. */
 const dueAfterSend = (task: { sendAt?: string | null; dueAt?: string }, ctx: z.RefinementCtx) => {
   if (!task.dueAt || Date.parse(task.dueAt) > (task.sendAt ? Date.parse(task.sendAt) : Date.now())) return
-  ctx.addIssue({ code: 'custom', message: task.sendAt ? DUE_AFTER_SEND : 'It must be due in the future', path: ['dueAt'] })
+  ctx.addIssue({
+    code: 'custom',
+    message: task.sendAt ? DUE_AFTER_SEND : 'It must be due in the future',
+    path: ['dueAt'],
+  })
 }
 
 /** One task for each account picked (fan-out). */

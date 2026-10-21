@@ -38,19 +38,44 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
   const { data: employees = [] } = useQuery(employeesQuery)
   // What the form started from, read once, as on the review form: a CAP that changes underneath is for the save to refuse.
   const [was] = useState(cap)
-  const [entry, setEntry] = useState<EntryText>({ title: was?.title ?? '', shortDescription: was?.shortDescription ?? '', body: was?.bodyHtml ?? '', files: [] })
-  const [responsible, setResponsible] = useState<EmployeeRow | null>(() => employees.find((row) => row.id === was?.responsible.id) ?? null)
+  const [entry, setEntry] = useState<EntryText>({
+    title: was?.title ?? '',
+    shortDescription: was?.shortDescription ?? '',
+    body: was?.bodyHtml ?? '',
+    files: [],
+  })
+  const [responsible, setResponsible] = useState<EmployeeRow | null>(
+    () => employees.find((row) => row.id === was?.responsible.id) ?? null,
+  )
   const [dueDate, setDueDate] = useState(was?.dueDate ?? '')
   const [problem, setProblem] = useState<Problem | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const saved = useRef(false)
 
   const path = `/reviews/${encodeURIComponent(review.code)}/caps`
-  const save = useWrite((input: unknown) => (was ? api.patch<ReviewCap>(`${path}/${was.seq}`, input) : api.post<ReviewCap>(path, input)), { silent: true })
+  const save = useWrite(
+    (input: unknown) => (was ? api.patch<ReviewCap>(`${path}/${was.seq}`, input) : api.post<ReviewCap>(path, input)),
+    { silent: true },
+  )
   const dirty = was
-    ? entry.title !== was.title || entry.shortDescription !== was.shortDescription || entry.body !== was.bodyHtml || responsible?.id !== was.responsible.id || dueDate !== (was.dueDate ?? '')
-    : Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || entry.files.length || responsible || dueDate)
-  const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
+    ? entry.title !== was.title ||
+      entry.shortDescription !== was.shortDescription ||
+      entry.body !== was.bodyHtml ||
+      responsible?.id !== was.responsible.id ||
+      dueDate !== (was.dueDate ?? '')
+    : Boolean(
+        entry.title.trim() ||
+        entry.shortDescription.trim() ||
+        entry.body ||
+        entry.files.length ||
+        responsible ||
+        dueDate,
+      )
+  const leaving = useBlocker({
+    shouldBlockFn: () => dirty && !saved.current,
+    enableBeforeUnload: () => dirty && !saved.current,
+    withResolver: true,
+  })
   const stale = problem?.code === 'stale_version'
   // Someone already responsible stays offered after they are archived; anyone newly named must be active.
   const offered = employees.filter((person) => person.state === 'active' || person.id === was?.responsible.id)
@@ -65,14 +90,25 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
     const { files, ...text } = entry
     // An empty date input is no due date, which the server takes as null.
     const fields = { ...text, responsibleId: responsible?.id, dueDate: dueDate || null }
-    const parsed = was ? reviewCapUpdateSchema.safeParse({ ...fields, version: was.version }) : reviewCapCreateSchema.safeParse(fields)
+    const parsed = was
+      ? reviewCapUpdateSchema.safeParse({ ...fields, version: was.version })
+      : reviewCapCreateSchema.safeParse(fields)
     const filesWrong = filesProblem(files)
     if (!parsed.success || filesWrong)
-      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
+      return refuse({
+        message: 'Some of this is missing or needs changing. Nothing has been saved.',
+        fields: {
+          ...(parsed.success ? {} : fieldMessages(parsed.error)),
+          ...(filesWrong ? { files: filesWrong } : {}),
+        },
+      })
     try {
       const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
-      toast({ title: `${reviewCapCode(row.seq)} ${was ? 'edited' : `added to ${review.code}`}`, description: row.title })
+      toast({
+        title: `${reviewCapCode(row.seq)} ${was ? 'edited' : `added to ${review.code}`}`,
+        description: row.title,
+      })
       await navigate({ to: '/reviews/$code/caps/$cap', params: { code: review.code, cap: reviewCapCode(row.seq) } })
     } catch (e) {
       refuse(splitApiError(e))
@@ -80,12 +116,19 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
   }
 
   const error = (name: string) => problem?.fields[name] ?? null
-  const clear = (name: string) => setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
+  const clear = (name: string) =>
+    setProblem((now) =>
+      now && name in now.fields
+        ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) }
+        : now,
+    )
   const change = <K extends keyof EntryText>(name: K, value: EntryText[K]) => {
     setEntry((now) => ({ ...now, [name]: value }))
     clear(name)
   }
-  const back = was ? { to: '/reviews/$code/caps/$cap' as const, params: { code: review.code, cap: reviewCapCode(was.seq) } } : { to: '/reviews/$code' as const, params: { code: review.code } }
+  const back = was
+    ? { to: '/reviews/$code/caps/$cap' as const, params: { code: review.code, cap: reviewCapCode(was.seq) } }
+    : { to: '/reviews/$code' as const, params: { code: review.code } }
 
   return (
     <>
@@ -114,13 +157,24 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1">
               <dt className="font-medium text-ink">CAP</dt>
-              <dd className="text-ink-3">{was ? <Mono className="text-ink-2">{reviewCapCode(was.seq)}</Mono> : 'Numbered when saved'}</dd>
+              <dd className="text-ink-3">
+                {was ? <Mono className="text-ink-2">{reviewCapCode(was.seq)}</Mono> : 'Numbered when saved'}
+              </dd>
             </div>
           </dl>
 
           {stale ? (
-            <Alert tone="bad" title="Someone else changed this CAP first" action={<Button onClick={() => void refreshData(queryClient).then(onReload)}>Discard my changes and reload</Button>}>
-              {problem.message} What you have typed is still below, so you can copy what you need. Then reload the CAP as it now stands and make your change again.
+            <Alert
+              tone="bad"
+              title="Someone else changed this CAP first"
+              action={
+                <Button onClick={() => void refreshData(queryClient).then(onReload)}>
+                  Discard my changes and reload
+                </Button>
+              }
+            >
+              {problem.message} What you have typed is still below, so you can copy what you need. Then reload the CAP
+              as it now stands and make your change again.
             </Alert>
           ) : (
             problem && (
@@ -130,9 +184,19 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
             )
           )}
 
-          <EntryFields value={entry} onChange={change} error={error} files={!was} shortDescriptionHint="What is to be done, in one or two sentences, shown on the history and in Action items." />
+          <EntryFields
+            value={entry}
+            onChange={change}
+            error={error}
+            files={!was}
+            shortDescriptionHint="What is to be done, in one or two sentences, shown on the history and in Action items."
+          />
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Responsible" hint="The one employee who sees it through. Having an account is not needed." error={error('responsibleId')}>
+            <Field
+              label="Responsible"
+              hint="The one employee who sees it through. Having an account is not needed."
+              error={error('responsibleId')}
+            >
               <Combobox
                 items={offered}
                 value={responsible}
@@ -145,7 +209,11 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
               />
             </Field>
             <Field label="Due date" optional hint="Nothing is marked overdue when it passes." error={error('dueDate')}>
-              <DateInput className="sm:max-w-56" value={dueDate} onChange={(event) => (setDueDate(event.target.value), clear('dueDate'))} />
+              <DateInput
+                className="sm:max-w-56"
+                value={dueDate}
+                onChange={(event) => (setDueDate(event.target.value), clear('dueDate'))}
+              />
             </Field>
           </div>
 
@@ -177,7 +245,11 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
         open={leaving.status === 'blocked'}
         onOpenChange={(open) => !open && leaving.reset?.()}
         title="Leave without saving?"
-        description={was ? 'Your changes have not been saved. If you leave now, they are lost.' : 'This CAP has not been saved. If you leave now, what you have written is lost.'}
+        description={
+          was
+            ? 'Your changes have not been saved. If you leave now, they are lost.'
+            : 'This CAP has not been saved. If you leave now, what you have written is lost.'
+        }
         confirmLabel="Leave"
         tone="danger"
         onConfirm={() => leaving.proceed?.()}

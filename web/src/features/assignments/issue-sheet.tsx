@@ -25,7 +25,16 @@ import { useUser } from '@/lib/session.ts'
 export function IssueSheet() {
   const search = useSearch({ from: '/_app' })
   const navigate = useNavigate()
-  const close = () => void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, issue: undefined, employee: undefined, program: undefined }) })
+  const close = () =>
+    void navigate({
+      to: '.',
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        issue: undefined,
+        employee: undefined,
+        program: undefined,
+      }),
+    })
   if (search.issue === undefined) return null
   return (
     <IssueForm
@@ -41,14 +50,34 @@ export function IssueSheet() {
 
 /** The holder is an employee or a program. The choice not in use keeps what was picked, so switching back loses nothing. */
 type HolderKind = 'employee' | 'program'
-type Values = { asset: AssetRow | null; to: HolderKind; employee: EmployeeRef | null; program: ProgramRef | null; ratingId: number | null; assessor: EmployeeRef | null; notes: string }
+type Values = {
+  asset: AssetRow | null
+  to: HolderKind
+  employee: EmployeeRef | null
+  program: ProgramRef | null
+  ratingId: number | null
+  assessor: EmployeeRef | null
+  notes: string
+}
 
 const HOLDER_KINDS: { value: HolderKind; label: string }[] = [
   { value: 'employee', label: 'Employee' },
   { value: 'program', label: 'Program' },
 ]
 
-function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { assetId: number | null; employeeId: number | null; toProgram: boolean; programId: number | null; onClose: () => void }) {
+function IssueForm({
+  assetId,
+  employeeId,
+  toProgram,
+  programId,
+  onClose,
+}: {
+  assetId: number | null
+  employeeId: number | null
+  toProgram: boolean
+  programId: number | null
+  onClose: () => void
+}) {
   const user = useUser()
   const { data: assets = [] } = useQuery(assetsQuery)
   const { data: lookups } = useQuery(lookupsQuery)
@@ -103,18 +132,30 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
   })
 
   const issue = useWrite(
-    async (value: { assetId: number; employeeId: number | null; programId: number | null; conditionRatingId: number; assessedById: number | null; notes: string }) => {
+    async (value: {
+      assetId: number
+      employeeId: number | null
+      programId: number | null
+      conditionRatingId: number
+      assessedById: number | null
+      notes: string
+    }) => {
       const row = await api.post<AssignmentRow>('/assignments', value)
       // Before useWrite refetches the lists, so the sheet never sees the asset as assigned while it is still the preset or the choice.
       setOurs((ids) => [...ids, value.assetId])
-      if (addAnother.current) setIssued({ assessorId: value.assessedById, to: value.programId ? 'program' : 'employee' })
+      if (addAnother.current)
+        setIssued({ assessorId: value.assessedById, to: value.programId ? 'program' : 'employee' })
       return row
     },
     { silent: true },
   )
 
   const form = useForm({
-    defaultValues: startingValues(preset, issued ? issued.assessorId : user.employeeId, issued ? issued.to : toProgram ? 'program' : 'employee'),
+    defaultValues: startingValues(
+      preset,
+      issued ? issued.assessorId : user.employeeId,
+      issued ? issued.to : toProgram ? 'program' : 'employee',
+    ),
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}
@@ -201,7 +242,13 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
   )
 
   return (
-    <Sheet open onOpenChange={(next) => !next && onClose()} title="Issue a physical asset" description="Creates one assignment, one condition record and one audit entry." footer={footer}>
+    <Sheet
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title="Issue a physical asset"
+      description="Creates one assignment, one condition record and one audit entry."
+      footer={footer}
+    >
       <form
         id="issue-form"
         noValidate
@@ -212,7 +259,11 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
           submit(false)
         }}
         onKeyDown={(event) => {
-          if (event.key !== 'Enter' || (event.target as HTMLElement).tagName === 'TEXTAREA' && !(event.metaKey || event.ctrlKey)) return
+          if (
+            event.key !== 'Enter' ||
+            ((event.target as HTMLElement).tagName === 'TEXTAREA' && !(event.metaKey || event.ctrlKey))
+          )
+            return
           if (event.shiftKey) {
             event.preventDefault()
             submit(true)
@@ -230,7 +281,11 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
         {warning && (
           <Alert tone="warn" title={`${warning.tag} can't be issued`}>
             It is {stateLabel(warning.state).toLowerCase()}
-            {warning.holder || warning.program ? ` to ${(warning.holder ?? warning.program)?.name}` : ''}. {warning.state === 'assigned' ? 'Return it first; a handoff is a return followed by an issue.' : 'Reinstate it before issuing.'} {unavailable ? 'Or choose another asset below.' : 'Choose another asset to carry on.'}
+            {warning.holder || warning.program ? ` to ${(warning.holder ?? warning.program)?.name}` : ''}.{' '}
+            {warning.state === 'assigned'
+              ? 'Return it first; a handoff is a return followed by an issue.'
+              : 'Reinstate it before issuing.'}{' '}
+            {unavailable ? 'Or choose another asset below.' : 'Choose another asset to carry on.'}
           </Alert>
         )}
         {serverError && (
@@ -248,8 +303,11 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
                 field.state.value ? (
                   <span>
                     {field.state.value.type}
-                    {field.state.value.serial ? ` · serial ${field.state.value.serial}` : ''} · last condition {field.state.value.condition?.rating ?? 'unrecorded'}
-                    {field.state.value.lastReturnedAt ? ` · returned ${formatDate(field.state.value.lastReturnedAt)}` : ''}
+                    {field.state.value.serial ? ` · serial ${field.state.value.serial}` : ''} · last condition{' '}
+                    {field.state.value.condition?.rating ?? 'unrecorded'}
+                    {field.state.value.lastReturnedAt
+                      ? ` · returned ${formatDate(field.state.value.lastReturnedAt)}`
+                      : ''}
                   </span>
                 ) : (
                   `${available.length} in storage and ready to issue`
@@ -304,7 +362,13 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
         {to === 'program' ? (
           <form.Field name="program">
             {(field) => (
-              <Field label="Program" error={fieldError(field, undefined, submitted)} hint={programs.length === 0 ? 'There are no active programs. Add one on the Programs screen.' : undefined}>
+              <Field
+                label="Program"
+                error={fieldError(field, undefined, submitted)}
+                hint={
+                  programs.length === 0 ? 'There are no active programs. Add one on the Programs screen.' : undefined
+                }
+              >
                 <Combobox
                   items={programs}
                   value={field.state.value}
@@ -361,7 +425,11 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
                 label="Condition rating"
                 value={field.state.value}
                 onChange={field.handleChange}
-                options={ratings.map((rating) => ({ value: rating.id, label: rating.name, tone: ratingTone(rating.score) }))}
+                options={ratings.map((rating) => ({
+                  value: rating.id,
+                  label: rating.name,
+                  tone: ratingTone(rating.score),
+                }))}
               />
             </Field>
           )}
@@ -386,7 +454,12 @@ function IssueForm({ assetId, employeeId, toProgram, programId, onClose }: { ass
         <form.Field name="notes">
           {(field) => (
             <Field label="Condition notes" optional>
-              <Textarea rows={3} value={field.state.value} onChange={(event) => field.handleChange(event.target.value)} placeholder="e.g. Scuff on rear casing, screen clean, charger included." />
+              <Textarea
+                rows={3}
+                value={field.state.value}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder="e.g. Scuff on rear casing, screen clean, charger included."
+              />
             </Field>
           )}
         </form.Field>

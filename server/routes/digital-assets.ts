@@ -1,5 +1,10 @@
 import { Hono } from 'hono'
-import { digitalAssetCreateSchema, digitalAssetUpdateSchema, digitalIssueSchema, digitalUnassignSchema } from '../../shared/schemas.ts'
+import {
+  digitalAssetCreateSchema,
+  digitalAssetUpdateSchema,
+  digitalIssueSchema,
+  digitalUnassignSchema,
+} from '../../shared/schemas.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, requireFull, type Env } from '../http.ts'
 import {
@@ -17,7 +22,9 @@ export function digitalAssetRoutes(db: Db) {
   const app = new Hono<Env>()
 
   app.get('/', (c) => c.json(listDigitalAssets(db)))
-  app.post('/', json(digitalAssetCreateSchema), (c) => c.json(createDigitalAsset(db, c.get('user'), c.req.valid('json')), 201))
+  app.post('/', json(digitalAssetCreateSchema), (c) =>
+    c.json(createDigitalAsset(db, c.get('user'), c.req.valid('json')), 201),
+  )
   app.get('/:id', (c) => c.json(getDigitalAssetDetail(db, intParam(c, 'id'))))
   app.patch('/:id', json(digitalAssetUpdateSchema), (c) =>
     c.json(updateDigitalAsset(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),

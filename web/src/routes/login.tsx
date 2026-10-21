@@ -18,10 +18,13 @@ import { APP_NAME } from '@/lib/brand.ts'
 
 export const Route = createFileRoute('/login')({
   // Where the user was when they were sent here, so signing in takes them back to it.
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({ redirect: returnPath(search.redirect) }),
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+    redirect: returnPath(search.redirect),
+  }),
   beforeLoad: async ({ context, search }) => {
     const user = await context.queryClient.ensureQueryData(meQuery)
-    if (user) throw user.mustChangePassword ? redirect({ to: '/password-change' }) : redirect({ href: search.redirect ?? '/' })
+    if (user)
+      throw user.mustChangePassword ? redirect({ to: '/password-change' }) : redirect({ href: search.redirect ?? '/' })
   },
   component: LoginPage,
 })
@@ -36,7 +39,9 @@ function LoginPage() {
     mutationFn: (value: LoginInput) => api.post<{ user: SessionUser }>('/auth/login', value),
     onSuccess: async ({ user }) => {
       queryClient.setQueryData(meQuery.queryKey, user)
-      await (user.mustChangePassword ? router.navigate({ to: '/password-change' }) : router.navigate({ href: cameFrom ?? '/' }))
+      await (user.mustChangePassword
+        ? router.navigate({ to: '/password-change' })
+        : router.navigate({ href: cameFrom ?? '/' }))
     },
   })
 
@@ -55,7 +60,13 @@ function LoginPage() {
     <div className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">
       <main className="grid w-full max-w-[26rem] items-center lg:max-w-[72rem] lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-12">
         <div className="hidden lg:block" aria-hidden>
-          <img src="/brand/brightpath-hero.webp" width="1916" height="821" alt="" className="h-[32rem] w-full rounded-panel object-cover object-left" />
+          <img
+            src="/brand/brightpath-hero.webp"
+            width="1916"
+            height="821"
+            alt=""
+            className="h-[32rem] w-full rounded-panel object-cover object-left"
+          />
         </div>
         <div className="w-full">
           <div className="mb-8 flex justify-center">
@@ -66,7 +77,11 @@ function LoginPage() {
             <p className="mt-1 text-sm text-ink-3">Use your {APP_NAME} account.</p>
 
             {error && (
-              <Alert tone={locked ? 'warn' : 'bad'} className="mt-5" title={locked ? 'Account locked' : 'Could not sign in'}>
+              <Alert
+                tone={locked ? 'warn' : 'bad'}
+                className="mt-5"
+                title={locked ? 'Account locked' : 'Could not sign in'}
+              >
                 {locked
                   ? `Too many incorrect attempts. Try again after ${formatTime(error.details?.lockedUntil)}, or ask a Super Admin to clear the lock.`
                   : error.message}
@@ -112,7 +127,10 @@ function LoginPage() {
               <form.Field name="remember">
                 {(field) => (
                   <label className="flex items-center gap-2 text-sm text-ink-2">
-                    <Checkbox checked={field.state.value} onChange={(event) => field.handleChange(event.target.checked)} />
+                    <Checkbox
+                      checked={field.state.value}
+                      onChange={(event) => field.handleChange(event.target.checked)}
+                    />
                     Keep me signed in for {REMEMBER_DAYS} days
                   </label>
                 )}
@@ -124,7 +142,10 @@ function LoginPage() {
           </div>
           <p className="mt-5 flex items-start justify-center gap-2 px-4 text-center text-sm text-ink-3">
             <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>Five incorrect attempts lock an account for 15 minutes; only a Super Admin can clear a lock or reset a password.</span>
+            <span>
+              Five incorrect attempts lock an account for 15 minutes; only a Super Admin can clear a lock or reset a
+              password.
+            </span>
           </p>
         </div>
       </main>

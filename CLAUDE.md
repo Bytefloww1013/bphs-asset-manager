@@ -42,3 +42,15 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - Commit after each phase (with its slices' boxes ticked), not after each slice.
 - Never push to `main` (or anywhere) unless the user says to.
 - Write the plan only. Implement nothing until the user gives the go-ahead.
+
+# TOOLS AND COMMANDS
+
+- `bun run format` / `bun run format:check` - Oxfmt (config `.oxfmtrc.json`); run `format` before committing.
+# WORKFLOWS
+
+- PRs to `main` are squash-merge-only: a blame-ignore-revs SHA can only be added in a follow-up PR after the merge.
+
+# GOTCHAS
+
+- Oxfmt isn't in Super-Linter -> it runs in the `test` job; never enable `VALIDATE_*_PRETTIER` or `VALIDATE_BIOME_FORMAT`.
+- Markdown and generated files are in Oxfmt's `ignorePatterns` -> don't format them by hand either.

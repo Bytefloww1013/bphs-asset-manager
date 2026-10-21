@@ -20,7 +20,12 @@ import { areaOf } from '@/lib/workspace.ts'
 export function UnreadBadge({ count, className }: { count: number | undefined; className?: string }) {
   if (!count) return null
   return (
-    <span className={cn('inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-bad px-1 text-[0.6875rem] font-semibold leading-none tabular-nums text-white', className)}>
+    <span
+      className={cn(
+        'inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-bad px-1 text-[0.6875rem] font-semibold leading-none tabular-nums text-white',
+        className,
+      )}
+    >
       {count > 99 ? '99+' : count}
       <span className="sr-only"> unread</span>
     </span>
@@ -49,11 +54,17 @@ export function NotificationLine({ row }: { row: NotificationRow }) {
     <>
       <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', highlight && 'bg-accent')} aria-hidden />
       <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm [overflow-wrap:anywhere]', highlight ? 'font-semibold text-ink' : 'text-ink-2')}>
+        <span
+          className={cn('block text-sm [overflow-wrap:anywhere]', highlight ? 'font-semibold text-ink' : 'text-ink-2')}
+        >
           {!row.readAt && <span className="sr-only">Unread: </span>}
           {row.title}
         </span>
-        {row.body && <span className="mt-0.5 line-clamp-3 whitespace-pre-line text-sm text-ink-3 [overflow-wrap:anywhere]">{row.body}</span>}
+        {row.body && (
+          <span className="mt-0.5 line-clamp-3 whitespace-pre-line text-sm text-ink-3 [overflow-wrap:anywhere]">
+            {row.body}
+          </span>
+        )}
         <span className="mt-0.5 block text-xs text-ink-3">
           {/* A kind this page does not know yet, from a newer server or an older row, still draws. */}
           {NOTIFICATION_KIND_LABEL[row.kind] ?? 'Notification'} ·{' '}
@@ -75,7 +86,11 @@ export function NotificationBell({ align }: { align: 'start' | 'end' }) {
       <Popover.Trigger
         type="button"
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-        className={buttonStyles('ghost', 'md', 'relative size-9 p-0 data-[state=open]:bg-sunken data-[state=open]:text-ink')}
+        className={buttonStyles(
+          'ghost',
+          'md',
+          'relative size-9 p-0 data-[state=open]:bg-sunken data-[state=open]:text-ink',
+        )}
       >
         <Bell className="size-5" aria-hidden />
         <UnreadBadge count={unread} className="absolute -right-1 -top-1" />
@@ -116,7 +131,9 @@ function Latest({ onDone }: { onDone: () => void }) {
         </Button>
       </div>
       {isError ? (
-        <p className="px-4 py-8 text-center text-sm text-ink-3">Notifications could not be loaded. Try again in a moment.</p>
+        <p className="px-4 py-8 text-center text-sm text-ink-3">
+          Notifications could not be loaded. Try again in a moment.
+        </p>
       ) : !data ? (
         <div className="flex justify-center py-8">
           <Spinner />

@@ -35,7 +35,8 @@ export const Route = createFileRoute('/_app')({
     // Opening the app at its front page goes back to the workspace last used. Asked on every first load, wherever it lands,
     // so that choosing Assets in the switcher later is never undone.
     const reopen = workspaceToReopen()
-    if (location.href === '/' && reopen !== 'assets' && canUseWorkspace(user, reopen)) throw redirect({ to: WORKSPACE_HOME[reopen] })
+    if (location.href === '/' && reopen !== 'assets' && canUseWorkspace(user, reopen))
+      throw redirect({ to: WORKSPACE_HOME[reopen] })
     return { user, assets: canUseWorkspace(user, 'assets') }
   },
   // Pickers in the Issue and Return sheets need these; fetch once, up front.

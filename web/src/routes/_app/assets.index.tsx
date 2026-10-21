@@ -11,7 +11,15 @@ import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { QuickAddAsset } from '@/features/assets/quick-add.tsx'
-import { AssetStateBadge, AssetTagLink, DaysOut, HolderCell, RatingBadge, assetSearchText, stateLabel } from '@/features/common/status.tsx'
+import {
+  AssetStateBadge,
+  AssetTagLink,
+  DaysOut,
+  HolderCell,
+  RatingBadge,
+  assetSearchText,
+  stateLabel,
+} from '@/features/common/status.tsx'
 import { ExportButton } from '@/features/common/export-button.tsx'
 import { EXPORTS } from '@/lib/exports.ts'
 import { assetsQuery } from '@/lib/queries.ts'
@@ -21,7 +29,9 @@ type StateFilter = 'all' | 'assigned' | 'in_storage' | 'retired'
 
 export const Route = createFileRoute('/_app/assets/')({
   validateSearch: (search: Record<string, unknown>): { state?: StateFilter } => ({
-    state: ['assigned', 'in_storage', 'retired'].includes(String(search.state)) ? (search.state as StateFilter) : undefined,
+    state: ['assigned', 'in_storage', 'retired'].includes(String(search.state))
+      ? (search.state as StateFilter)
+      : undefined,
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(assetsQuery),
   component: AssetsPage,
@@ -44,14 +54,39 @@ const columns = [
   c.accessor((row) => row.serial ?? '', {
     id: 'serial',
     header: 'Serial',
-    cell: (info) => (info.getValue() ? <Mono className="text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-3">—</span>),
+    cell: (info) =>
+      info.getValue() ? <Mono className="text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-3">—</span>,
     meta: { hideBelow: 'lg' },
   }),
-  c.accessor('state', { header: 'Status', cell: (info) => <AssetStateBadge state={info.getValue()} />, meta: { hideBelow: 'md' } }),
-  c.accessor((row) => (row.holder ?? row.program)?.name ?? '', { id: 'holder', header: 'Assigned to', cell: (info) => <HolderCell employee={info.row.original.holder} program={info.row.original.program} />, meta: { hideBelow: 'md' } }),
-  c.accessor((row) => row.condition?.rating ?? '', { id: 'condition', header: 'Condition', cell: (info) => <RatingBadge name={info.row.original.condition?.rating} />, meta: { hideBelow: 'lg' } }),
-  c.accessor((row) => row.daysOut ?? -1, { id: 'days', header: 'Days out', cell: (info) => <DaysOut days={info.row.original.daysOut} />, meta: { align: 'right', hideBelow: 'xl' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AssetRowActions asset={info.row.original} />, meta: { align: 'right', width: 'md:w-48', pinned: true } }),
+  c.accessor('state', {
+    header: 'Status',
+    cell: (info) => <AssetStateBadge state={info.getValue()} />,
+    meta: { hideBelow: 'md' },
+  }),
+  c.accessor((row) => (row.holder ?? row.program)?.name ?? '', {
+    id: 'holder',
+    header: 'Assigned to',
+    cell: (info) => <HolderCell employee={info.row.original.holder} program={info.row.original.program} />,
+    meta: { hideBelow: 'md' },
+  }),
+  c.accessor((row) => row.condition?.rating ?? '', {
+    id: 'condition',
+    header: 'Condition',
+    cell: (info) => <RatingBadge name={info.row.original.condition?.rating} />,
+    meta: { hideBelow: 'lg' },
+  }),
+  c.accessor((row) => row.daysOut ?? -1, {
+    id: 'days',
+    header: 'Days out',
+    cell: (info) => <DaysOut days={info.row.original.daysOut} />,
+    meta: { align: 'right', hideBelow: 'xl' },
+  }),
+  c.display({
+    id: 'actions',
+    header: () => <span className="sr-only">Actions</span>,
+    cell: (info) => <AssetRowActions asset={info.row.original} />,
+    meta: { align: 'right', width: 'md:w-48', pinned: true },
+  }),
 ]
 const getRowId = (row: AssetRow) => String(row.id)
 
@@ -81,16 +116,22 @@ function AssetsPage() {
   )
   const rows = useMemo(() => (state === 'all' ? data : data.filter((asset) => asset.state === state)), [data, state])
 
-  const table = useGrid({ data: rows, columns, getRowId, searchText: assetSearchText, search, resetKey: state, initialSorting: [{ id: 'tag', desc: false }] })
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    searchText: assetSearchText,
+    search,
+    resetKey: state,
+    initialSorting: [{ id: 'tag', desc: false }],
+  })
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Physical Assets"
         description="Every device on the register, with its current holder and latest condition."
-        actions={
-          <ExportButton dataset={EXPORTS.assets} items={data} />
-        }
+        actions={<ExportButton dataset={EXPORTS.assets} items={data} />}
       />
 
       {!readOnly && <QuickAddAsset onAdded={setFlash} />}
@@ -108,7 +149,13 @@ function AssetsPage() {
               { value: 'retired', label: 'Retired', count: counts.retired },
             ]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search physical assets" placeholder="Search tag, serial, holder, department" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-80"
+            aria-label="Search physical assets"
+            placeholder="Search tag, serial, holder, department"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </Toolbar>
         <DataGrid
           table={table}
@@ -116,8 +163,21 @@ function AssetsPage() {
           noun="assets"
           loading={isPending}
           rowClassName={(row) => (row.original.id === flash ? 'animate-row-flash' : undefined)}
-          empty={<EmptyState icon={Laptop} title="No physical assets yet" description="Add the first one above, or paste rows copied from a spreadsheet." />}
-          noMatches={<EmptyState icon={Laptop} title="No physical assets match" description="Try a different search, or switch the status filter." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
+          empty={
+            <EmptyState
+              icon={Laptop}
+              title="No physical assets yet"
+              description="Add the first one above, or paste rows copied from a spreadsheet."
+            />
+          }
+          noMatches={
+            <EmptyState
+              icon={Laptop}
+              title="No physical assets match"
+              description="Try a different search, or switch the status filter."
+              action={<Button onClick={() => setSearch('')}>Clear search</Button>}
+            />
+          }
         />
       </div>
     </div>

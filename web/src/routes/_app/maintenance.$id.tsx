@@ -2,7 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft, Trash2, Wrench } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { MAINTENANCE_NOTE_MAX, MAINTENANCE_STATUSES, maintenanceStatusLabel, type MaintenanceStatus } from '@shared/constants.ts'
+import {
+  MAINTENANCE_NOTE_MAX,
+  MAINTENANCE_STATUSES,
+  maintenanceStatusLabel,
+  type MaintenanceStatus,
+} from '@shared/constants.ts'
 import { formatUsDate } from '@shared/dates.ts'
 import type { EmployeeRow, MaintenanceDetail } from '@shared/types.ts'
 import { Badge } from '@/components/ui/badge.tsx'
@@ -22,11 +27,18 @@ import { useDenied } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/maintenance/$id')({
   loader: ({ context, params }) =>
-    Promise.all([context.queryClient.ensureQueryData(maintenanceRequestQuery(Number(params.id))), context.queryClient.ensureQueryData(employeesQuery)]),
+    Promise.all([
+      context.queryClient.ensureQueryData(maintenanceRequestQuery(Number(params.id))),
+      context.queryClient.ensureQueryData(employeesQuery),
+    ]),
   errorComponent: ({ error }) => (
     <EmptyState
       icon={Wrench}
-      title={error instanceof ApiError && (error.status === 404 || error.status === 422) ? 'No request with that ID' : 'Could not load this request'}
+      title={
+        error instanceof ApiError && (error.status === 404 || error.status === 422)
+          ? 'No request with that ID'
+          : 'Could not load this request'
+      }
       description={error instanceof Error ? error.message : undefined}
       action={
         <Link to="/maintenance" className={buttonStyles('primary')}>
@@ -42,7 +54,9 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0 px-5 py-4">
       <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="mt-1 text-sm font-medium text-ink [overflow-wrap:anywhere]">{children || <span className="font-normal text-ink-3">—</span>}</dd>
+      <dd className="mt-1 text-sm font-medium text-ink [overflow-wrap:anywhere]">
+        {children || <span className="font-normal text-ink-3">—</span>}
+      </dd>
     </div>
   )
 }
@@ -62,13 +76,22 @@ function RequestPage() {
   const noEdit = useDenied('maintenance', 'edit')
   const noFull = useDenied('maintenance', 'full')
 
-  const dispatch = useWrite((employeeId: number | null) => api.post<MaintenanceDetail>(`/maintenance/${id}/dispatch`, { employeeId }), {
-    success: (now) => (now.assignee ? `Dispatched to ${now.assignee.name}` : 'Dispatch cleared'),
+  const dispatch = useWrite(
+    (employeeId: number | null) => api.post<MaintenanceDetail>(`/maintenance/${id}/dispatch`, { employeeId }),
+    {
+      success: (now) => (now.assignee ? `Dispatched to ${now.assignee.name}` : 'Dispatch cleared'),
+    },
+  )
+  const status = useWrite(
+    (next: MaintenanceStatus) => api.post<MaintenanceDetail>(`/maintenance/${id}/status`, { status: next }),
+    {
+      success: (now) => `Status: ${maintenanceStatusLabel(now.status)}`,
+    },
+  )
+  const addNote = useWrite((body: string) => api.post<MaintenanceDetail>(`/maintenance/${id}/notes`, { body }), {
+    success: 'Note added',
+    onSuccess: () => setNote(''),
   })
-  const status = useWrite((next: MaintenanceStatus) => api.post<MaintenanceDetail>(`/maintenance/${id}/status`, { status: next }), {
-    success: (now) => `Status: ${maintenanceStatusLabel(now.status)}`,
-  })
-  const addNote = useWrite((body: string) => api.post<MaintenanceDetail>(`/maintenance/${id}/notes`, { body }), { success: 'Note added', onSuccess: () => setNote('') })
   const remove = useWrite(() => api.delete(`/maintenance/${id}`), {
     success: `${request?.code} deleted`,
     onSuccess: () => navigate({ to: '/maintenance' }),
@@ -83,7 +106,10 @@ function RequestPage() {
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
-        <Link to="/maintenance" className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/maintenance"
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> Requests
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -92,8 +118,15 @@ function RequestPage() {
           <UrgentBadge urgent={request.urgent} />
         </div>
         <div className="mt-1.5 flex flex-wrap items-start justify-between gap-3">
-          <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{request.location}</h1>
-          <Button variant="danger" icon={<Trash2 className="size-4" aria-hidden />} disabledReason={noFull} onClick={() => setDeleting(true)}>
+          <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+            {request.location}
+          </h1>
+          <Button
+            variant="danger"
+            icon={<Trash2 className="size-4" aria-hidden />}
+            disabledReason={noFull}
+            onClick={() => setDeleting(true)}
+          >
             Delete
           </Button>
         </div>
@@ -122,7 +155,9 @@ function RequestPage() {
 
       <Panel>
         <PanelHeader title="Description" className="border-b border-line" />
-        <p className="max-w-[75ch] whitespace-pre-wrap px-5 py-5 text-sm leading-6 text-ink-2 [overflow-wrap:anywhere]">{request.description}</p>
+        <p className="max-w-[75ch] whitespace-pre-wrap px-5 py-5 text-sm leading-6 text-ink-2 [overflow-wrap:anywhere]">
+          {request.description}
+        </p>
       </Panel>
 
       <Panel className="grid gap-5 p-5 sm:grid-cols-2">
@@ -140,9 +175,17 @@ function RequestPage() {
           />
         </Field>
         <Field label="Status" hint={request.assignee ? undefined : 'Dispatched needs someone chosen first.'}>
-          <Select value={request.status} disabled={!!noEdit || status.isPending} onChange={(event) => status.mutate(event.target.value as MaintenanceStatus)}>
+          <Select
+            value={request.status}
+            disabled={!!noEdit || status.isPending}
+            onChange={(event) => status.mutate(event.target.value as MaintenanceStatus)}
+          >
             {MAINTENANCE_STATUSES.map((value) => (
-              <option key={value} value={value} disabled={value === 'dispatched' && !request.assignee && request.status !== value}>
+              <option
+                key={value}
+                value={value}
+                disabled={value === 'dispatched' && !request.assignee && request.status !== value}
+              >
                 {maintenanceStatusLabel(value)}
               </option>
             ))}
@@ -151,7 +194,11 @@ function RequestPage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Timeline" description="What happened to this request, oldest first." className="border-b border-line" />
+        <PanelHeader
+          title="Timeline"
+          description="What happened to this request, oldest first."
+          className="border-b border-line"
+        />
         <ol className="flex flex-col divide-y divide-line">
           {request.notes.map((line) => (
             <li key={line.id} className="flex flex-col gap-1 px-5 py-3">
@@ -164,26 +211,44 @@ function RequestPage() {
                 <span className="font-medium text-ink-2">{line.createdBy}</span>
                 <span>{formatDateTime(line.createdAt)}</span>
               </div>
-              <p className={line.kind === 'system' ? 'text-sm text-ink-2' : 'whitespace-pre-wrap text-sm leading-6 text-ink [overflow-wrap:anywhere]'}>{line.body}</p>
+              <p
+                className={
+                  line.kind === 'system'
+                    ? 'text-sm text-ink-2'
+                    : 'whitespace-pre-wrap text-sm leading-6 text-ink [overflow-wrap:anywhere]'
+                }
+              >
+                {line.body}
+              </p>
             </li>
           ))}
         </ol>
-        {!noEdit && <form
-          className="flex flex-col gap-3 border-t border-line p-5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (note.trim() && !noteTooLong) addNote.mutate(note.trim())
-          }}
-        >
-          <Field label="Add a note" hint={`${note.trim().length} of ${MAINTENANCE_NOTE_MAX} characters`} error={noteTooLong ? `A note can be at most ${MAINTENANCE_NOTE_MAX} characters.` : null}>
-            <Textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
-          </Field>
-          <div>
-            <Button type="submit" loading={addNote.isPending} disabledReason={note.trim() ? undefined : 'Type a note first'}>
-              Add note
-            </Button>
-          </div>
-        </form>}
+        {!noEdit && (
+          <form
+            className="flex flex-col gap-3 border-t border-line p-5"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (note.trim() && !noteTooLong) addNote.mutate(note.trim())
+            }}
+          >
+            <Field
+              label="Add a note"
+              hint={`${note.trim().length} of ${MAINTENANCE_NOTE_MAX} characters`}
+              error={noteTooLong ? `A note can be at most ${MAINTENANCE_NOTE_MAX} characters.` : null}
+            >
+              <Textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
+            </Field>
+            <div>
+              <Button
+                type="submit"
+                loading={addNote.isPending}
+                disabledReason={note.trim() ? undefined : 'Type a note first'}
+              >
+                Add note
+              </Button>
+            </div>
+          </form>
+        )}
       </Panel>
 
       <ConfirmDialog

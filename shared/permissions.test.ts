@@ -1,8 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import type { Access } from './constants.ts'
-import { canApproveTask, canAssignTasks, canAt, canCancelTask, canDeleteTask, canEditTask, canManageGrievance, canManageReview, canViewEmployeeTasks, describeAccess, levelOf, workspacesOf } from './permissions.ts'
+import {
+  canApproveTask,
+  canAssignTasks,
+  canAt,
+  canCancelTask,
+  canDeleteTask,
+  canEditTask,
+  canManageGrievance,
+  canManageReview,
+  canViewEmployeeTasks,
+  describeAccess,
+  levelOf,
+  workspacesOf,
+} from './permissions.ts'
 
-const user = (access: Access, employeeId: number | null = null, superAdmin = false) => ({ access, superAdmin, employeeId })
+const user = (access: Access, employeeId: number | null = null, superAdmin = false) => ({
+  access,
+  superAdmin,
+  employeeId,
+})
 
 describe('access levels', () => {
   it('gives a Super Admin Full everywhere, whatever is stored', () => {
@@ -81,7 +98,12 @@ describe('tasks', () => {
   const ASSIGNER = 1
   const ASSIGNEE = 2
   const OTHER = 3
-  const account = (id: number, level?: 'read' | 'assign' | 'edit' | 'full', superAdmin = false) => ({ id, access: level ? { tasks: level } : {}, superAdmin, employeeId: null })
+  const account = (id: number, level?: 'read' | 'assign' | 'edit' | 'full', superAdmin = false) => ({
+    id,
+    access: level ? { tasks: level } : {},
+    superAdmin,
+    employeeId: null,
+  })
   const byAssigner = { assignerUserId: ASSIGNER, assigneeUserId: ASSIGNEE, assignerSuperAdmin: false }
   const bySuperAdmin = { ...byAssigner, assignerSuperAdmin: true }
 
@@ -92,8 +114,14 @@ describe('tasks', () => {
   })
 
   it('shows Employee Tasks from Read, and lets Assign and above assign', () => {
-    expect([undefined, 'read', 'assign', 'edit', 'full'].map((level) => canViewEmployeeTasks(account(OTHER, level as 'read')))).toEqual([false, true, true, true, true])
-    expect([undefined, 'read', 'assign', 'edit', 'full'].map((level) => canAssignTasks(account(OTHER, level as 'read')))).toEqual([false, false, true, true, true])
+    expect(
+      [undefined, 'read', 'assign', 'edit', 'full'].map((level) =>
+        canViewEmployeeTasks(account(OTHER, level as 'read')),
+      ),
+    ).toEqual([false, true, true, true, true])
+    expect(
+      [undefined, 'read', 'assign', 'edit', 'full'].map((level) => canAssignTasks(account(OTHER, level as 'read'))),
+    ).toEqual([false, false, true, true, true])
     expect(canAssignTasks(account(OTHER, undefined, true))).toBe(true)
   })
 

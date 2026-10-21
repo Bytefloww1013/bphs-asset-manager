@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "semi": false,
+  "printWidth": 120,
+  "ignorePatterns": [
+    "web/src/routeTree.gen.ts",
+    "server/db/migrations/**",
+    "bun.lock",
+    "brand-assets/**",
+    "docs/**",
+    ".impeccable/**",
+    ".rtk/**",
+    "handoff/**",
+    "**/*.md"
+  ]
+}

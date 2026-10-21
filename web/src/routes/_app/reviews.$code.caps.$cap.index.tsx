@@ -2,7 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { CheckCircle2, ChevronLeft, FileQuestion, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { REVIEW_CAP_STATUSES, reviewCapCode, reviewCapSeq, reviewCapStatusLabel, reviewEntryCode, reviewEntryKindLabel, type ReviewCapStatus } from '@shared/constants.ts'
+import {
+  REVIEW_CAP_STATUSES,
+  reviewCapCode,
+  reviewCapSeq,
+  reviewCapStatusLabel,
+  reviewEntryCode,
+  reviewEntryKindLabel,
+  type ReviewCapStatus,
+} from '@shared/constants.ts'
 import { canManageReview, reviewManageReason } from '@shared/permissions.ts'
 import { GRIEVANCE_NOTE_MAX } from '@shared/schemas.ts'
 import type { ReviewCap, ReviewDetail } from '@shared/types.ts'
@@ -12,7 +20,14 @@ import { Field, Segmented, Textarea } from '@/components/ui/form.tsx'
 import { Fact, Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { Sheet } from '@/components/ui/overlay.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
-import { AttachFiles, AttachmentList, FilePicker, FILES_HINT, filesProblem, withFiles } from '@/features/common/files.tsx'
+import {
+  AttachFiles,
+  AttachmentList,
+  FilePicker,
+  FILES_HINT,
+  filesProblem,
+  withFiles,
+} from '@/features/common/files.tsx'
 import { useWrite } from '@/features/common/hooks.ts'
 import { EntryMarker, Timeline } from '@/features/common/timeline.tsx'
 import { ReviewLoadError } from '@/features/reviews/load-error.tsx'
@@ -52,7 +67,11 @@ function CapPage() {
   if (!review || !entries || !caps || !allFiles) return null
 
   const back = (
-    <Link to="/reviews/$code" params={{ code: review.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+    <Link
+      to="/reviews/$code"
+      params={{ code: review.code }}
+      className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+    >
       <ChevronLeft className="size-4" aria-hidden /> {review.code}
     </Link>
   )
@@ -63,7 +82,11 @@ function CapPage() {
         <EmptyState
           icon={FileQuestion}
           title="No CAP with that number"
-          description={caps.length ? `${review.code} has ${caps.length === 1 ? 'one CAP' : `${caps.length} CAPs`}, ${reviewCapCode(1)} to ${reviewCapCode(caps.length)}.` : `${review.code} has no CAPs yet.`}
+          description={
+            caps.length
+              ? `${review.code} has ${caps.length === 1 ? 'one CAP' : `${caps.length} CAPs`}, ${reviewCapCode(1)} to ${reviewCapCode(caps.length)}.`
+              : `${review.code} has no CAPs yet.`
+          }
           action={
             <Link to="/reviews/$code" params={{ code: review.code }} className={buttonStyles('primary')}>
               Back to the review
@@ -80,7 +103,11 @@ function CapPage() {
   const files = allFiles.filter((file) => file.cap === cap.seq)
   // Someone who may not use a button still sees it, with the reason, as on a grievance; the server refuses whatever the page shows.
   const refused =
-    review.status === 'completed' ? `${review.code} is Completed. Reopen it to change a CAP.` : canManageReview(user, review.reviewer.id) ? undefined : reviewManageReason(review.reviewer.name)
+    review.status === 'completed'
+      ? `${review.code} is Completed. Reopen it to change a CAP.`
+      : canManageReview(user, review.reviewer.id)
+        ? undefined
+        : reviewManageReason(review.reviewer.name)
   const manage = review.status !== 'voided'
 
   return (
@@ -95,25 +122,51 @@ function CapPage() {
               <span className="text-xs font-semibold uppercase tracking-wide text-ink-3">Corrective action plan</span>
               <ReviewCapStatusBadge status={cap.status} />
             </div>
-            <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{cap.title}</h1>
+            <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+              {cap.title}
+            </h1>
             <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{cap.shortDescription}</p>
           </div>
         </div>
         {manage && (
           <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
-            <Button variant="primary" icon={<Plus className="size-4" />} disabledReason={refused} onClick={() => void navigate({ to: '/reviews/$code/entries/new', params: { code: review.code }, search: { cap: cap.seq } })}>
+            <Button
+              variant="primary"
+              icon={<Plus className="size-4" />}
+              disabledReason={refused}
+              onClick={() =>
+                void navigate({
+                  to: '/reviews/$code/entries/new',
+                  params: { code: review.code },
+                  search: { cap: cap.seq },
+                })
+              }
+            >
               Add update
             </Button>
             <Button
-              disabledReason={refused ?? (closed(cap.status) ? `It is ${reviewCapStatusLabel(cap.status)}. Reopen it before editing it.` : undefined)}
-              onClick={() => void navigate({ to: '/reviews/$code/caps/$cap/edit', params: { code: review.code, cap: capCode } })}
+              disabledReason={
+                refused ??
+                (closed(cap.status)
+                  ? `It is ${reviewCapStatusLabel(cap.status)}. Reopen it before editing it.`
+                  : undefined)
+              }
+              onClick={() =>
+                void navigate({ to: '/reviews/$code/caps/$cap/edit', params: { code: review.code, cap: capCode } })
+              }
             >
               Edit
             </Button>
             <Button disabledReason={refused} onClick={() => setTask('status')}>
               Change status
             </Button>
-            <Button icon={<CheckCircle2 className="size-4" />} disabledReason={refused ?? (closed(cap.status) ? `It is already ${reviewCapStatusLabel(cap.status)}.` : undefined)} onClick={() => setTask('completed')}>
+            <Button
+              icon={<CheckCircle2 className="size-4" />}
+              disabledReason={
+                refused ?? (closed(cap.status) ? `It is already ${reviewCapStatusLabel(cap.status)}.` : undefined)
+              }
+              onClick={() => setTask('completed')}
+            >
               Mark complete
             </Button>
             {!refused && <AttachFiles section="reviews" code={review.code} cap={cap.seq} />}
@@ -135,7 +188,9 @@ function CapPage() {
           <Fact label="Responsible">
             <Person person={cap.responsible} />
           </Fact>
-          <Fact label="Due date">{cap.dueDate ? <Mono>{cap.dueDate}</Mono> : <span className="font-normal text-ink-3">None set</span>}</Fact>
+          <Fact label="Due date">
+            {cap.dueDate ? <Mono>{cap.dueDate}</Mono> : <span className="font-normal text-ink-3">None set</span>}
+          </Fact>
           <Fact label="Completed">
             {cap.completedAt ? (
               <>
@@ -162,19 +217,44 @@ function CapPage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Details" description={cap.version === 1 ? 'As they were written.' : "As they are now. Each edit is on the history, with what it replaced."} className="border-b border-line" />
-        {cap.bodyHtml ? <RichTextView html={cap.bodyHtml} className="max-w-[75ch] px-5 py-5" /> : <p className="px-5 py-5 text-sm text-ink-3">Nothing was written beyond the short description.</p>}
+        <PanelHeader
+          title="Details"
+          description={
+            cap.version === 1
+              ? 'As they were written.'
+              : 'As they are now. Each edit is on the history, with what it replaced.'
+          }
+          className="border-b border-line"
+        />
+        {cap.bodyHtml ? (
+          <RichTextView html={cap.bodyHtml} className="max-w-[75ch] px-5 py-5" />
+        ) : (
+          <p className="px-5 py-5 text-sm text-ink-3">Nothing was written beyond the short description.</p>
+        )}
       </Panel>
 
       {files.length > 0 && (
         <Panel>
-          <PanelHeader title="Files" description={`On ${capCode}: evidence of the work, as a rule. Each one downloads to be opened on your computer. Downloads are logged.`} className="border-b border-line" />
-          <AttachmentList section="reviews" code={review.code} files={files} sealed={!manage || review.status === 'completed'} />
+          <PanelHeader
+            title="Files"
+            description={`On ${capCode}: evidence of the work, as a rule. Each one downloads to be opened on your computer. Downloads are logged.`}
+            className="border-b border-line"
+          />
+          <AttachmentList
+            section="reviews"
+            code={review.code}
+            files={files}
+            sealed={!manage || review.status === 'completed'}
+          />
         </Panel>
       )}
 
       <Panel>
-        <PanelHeader title="History" description={`Updates on ${capCode}, and every change made to it. The review's timeline shows these too.`} className="border-b border-line" />
+        <PanelHeader
+          title="History"
+          description={`Updates on ${capCode}, and every change made to it. The review's timeline shows these too.`}
+          className="border-b border-line"
+        />
         <Timeline
           entries={history}
           filters={[['update', 'Updates']]}
@@ -184,7 +264,12 @@ function CapPage() {
           actions={(entry) =>
             manage &&
             !refused && (
-              <Link to="/reviews/$code/entries/new" params={{ code: review.code }} search={{ corrects: entry.seq }} className="font-medium text-accent hover:underline print:hidden">
+              <Link
+                to="/reviews/$code/entries/new"
+                params={{ code: review.code }}
+                search={{ corrects: entry.seq }}
+                className="font-medium text-accent hover:underline print:hidden"
+              >
                 Add correction<span className="sr-only"> to {reviewEntryCode(entry.seq)}</span>
               </Link>
             )
@@ -192,30 +277,52 @@ function CapPage() {
         />
       </Panel>
 
-      {task && <StatusSheet review={review} cap={cap} preset={task === 'status' ? null : task} onClose={() => setTask(null)} />}
+      {task && (
+        <StatusSheet review={review} cap={cap} preset={task === 'status' ? null : task} onClose={() => setTask(null)} />
+      )}
     </div>
   )
 }
 
 /** Change a CAP's status. Mark complete opens it with Completed chosen. Cancelling needs a reason; any note goes on the history with the change. */
-function StatusSheet({ review, cap, preset, onClose }: { review: ReviewDetail; cap: ReviewCap; preset: ReviewCapStatus | null; onClose: () => void }) {
-  const options = REVIEW_CAP_STATUSES.filter((status) => status !== cap.status).map((value) => ({ value, label: reviewCapStatusLabel(value) }))
+function StatusSheet({
+  review,
+  cap,
+  preset,
+  onClose,
+}: {
+  review: ReviewDetail
+  cap: ReviewCap
+  preset: ReviewCapStatus | null
+  onClose: () => void
+}) {
+  const options = REVIEW_CAP_STATUSES.filter((status) => status !== cap.status).map((value) => ({
+    value,
+    label: reviewCapStatusLabel(value),
+  }))
   const [status, setStatus] = useState<ReviewCapStatus | null>(preset)
   const [note, setNote] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [missing, setMissing] = useState<{ status?: string; note?: string; files?: string }>({})
   const [error, setError] = useState<ApiError | null>(null)
   const capCode = reviewCapCode(cap.seq)
-  const write = useWrite((body: unknown) => api.post<ReviewCap>(`/reviews/${encodeURIComponent(review.code)}/caps/${cap.seq}/status`, body), {
-    silent: true,
-    success: (next) => `${capCode} is now ${reviewCapStatusLabel(next.status)}`,
-  })
+  const write = useWrite(
+    (body: unknown) => api.post<ReviewCap>(`/reviews/${encodeURIComponent(review.code)}/caps/${cap.seq}/status`, body),
+    {
+      silent: true,
+      success: (next) => `${capCode} is now ${reviewCapStatusLabel(next.status)}`,
+    },
+  )
   const cancelling = status === 'cancelled'
 
   async function commit() {
     // Files go with a completion only: the evidence that the work was done.
     const sent = status === 'completed' ? files : []
-    const next = { status: status ? undefined : 'Choose a status', note: cancelling && !note.trim() ? 'Say why it is being cancelled' : undefined, files: filesProblem(sent) ?? undefined }
+    const next = {
+      status: status ? undefined : 'Choose a status',
+      note: cancelling && !note.trim() ? 'Say why it is being cancelled' : undefined,
+      files: filesProblem(sent) ?? undefined,
+    }
     setMissing(next)
     if (next.status || next.note || next.files) return
     setError(null)
@@ -258,20 +365,44 @@ function StatusSheet({ review, cap, preset, onClose }: { review: ReviewDetail; c
             {error.message}
           </Alert>
         )}
-        <Field label="New status" hint={`It is ${reviewCapStatusLabel(cap.status)} now.`} error={missing.status ?? error?.fields.status}>
+        <Field
+          label="New status"
+          hint={`It is ${reviewCapStatusLabel(cap.status)} now.`}
+          error={missing.status ?? error?.fields.status}
+        >
           <Segmented value={status} onChange={setStatus} options={options} />
         </Field>
         {status === 'completed' && (
           <>
-            <Alert>The time and your name are recorded as its completion. Reopening it later clears them; the history keeps both.</Alert>
+            <Alert>
+              The time and your name are recorded as its completion. Reopening it later clears them; the history keeps
+              both.
+            </Alert>
             <Field label="Evidence" optional hint={FILES_HINT} error={missing.files ?? error?.fields.files}>
-              <FilePicker value={files} onChange={(picked) => (setFiles(picked), setMissing((now) => ({ ...now, files: undefined })))} />
+              <FilePicker
+                value={files}
+                onChange={(picked) => (setFiles(picked), setMissing((now) => ({ ...now, files: undefined })))}
+              />
             </Field>
           </>
         )}
-        {cancelling && <Alert>A cancelled CAP stays on the review, with this reason, and no longer counts towards the review being done.</Alert>}
-        <Field label={cancelling ? 'Reason' : 'Note'} optional={!cancelling} hint="Shown on the history with the change." error={missing.note ?? error?.fields.note}>
-          <Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={GRIEVANCE_NOTE_MAX} rows={4} />
+        {cancelling && (
+          <Alert>
+            A cancelled CAP stays on the review, with this reason, and no longer counts towards the review being done.
+          </Alert>
+        )}
+        <Field
+          label={cancelling ? 'Reason' : 'Note'}
+          optional={!cancelling}
+          hint="Shown on the history with the change."
+          error={missing.note ?? error?.fields.note}
+        >
+          <Textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={GRIEVANCE_NOTE_MAX}
+            rows={4}
+          />
         </Field>
       </form>
     </Sheet>

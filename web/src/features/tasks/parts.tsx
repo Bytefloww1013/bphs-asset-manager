@@ -4,13 +4,22 @@ import { PanelHeader, Panel } from '@/components/ui/layout.tsx'
 import { formatDateTime } from '@/lib/format.ts'
 
 /** Who a task belongs to, as the shared permission checks take it. */
-export const ownershipOf = (task: TaskRow) => ({ assigneeUserId: task.assignee.id, assignerUserId: task.assigner.id, assignerSuperAdmin: task.assignerSuperAdmin, status: task.status })
+export const ownershipOf = (task: TaskRow) => ({
+  assigneeUserId: task.assignee.id,
+  assignerUserId: task.assigner.id,
+  assignerSuperAdmin: task.assignerSuperAdmin,
+  status: task.status,
+})
 
 /** What happened to a task, oldest first. */
 export function TaskHistory({ events }: { events: TaskEventRow[] }) {
   return (
     <Panel>
-      <PanelHeader title="History" description="What happened to this task, oldest first." className="border-b border-line" />
+      <PanelHeader
+        title="History"
+        description="What happened to this task, oldest first."
+        className="border-b border-line"
+      />
       <ol className="flex flex-col divide-y divide-line">
         {events.map((event) => (
           <li key={event.id} className="flex flex-col gap-1 px-5 py-3">
@@ -22,7 +31,9 @@ export function TaskHistory({ events }: { events: TaskEventRow[] }) {
               {taskEventLabel(event.kind)}
               {event.details && <span className="text-ink-3"> · {event.details}</span>}
             </p>
-            {event.note && <p className="whitespace-pre-wrap text-sm leading-6 text-ink [overflow-wrap:anywhere]">{event.note}</p>}
+            {event.note && (
+              <p className="whitespace-pre-wrap text-sm leading-6 text-ink [overflow-wrap:anywhere]">{event.note}</p>
+            )}
           </li>
         ))}
       </ol>

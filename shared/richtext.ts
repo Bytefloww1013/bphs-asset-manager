@@ -2,7 +2,21 @@
  * The formatting a rich-text body may carry. The editor offers exactly this and the server keeps exactly this: anything else in
  * what a browser sends is removed before it is stored. No images, no inline styles, no scripts.
  */
-export const RICH_TEXT_TAGS = ['p', 'br', 'strong', 'em', 'u', 's', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'a'] as const
+export const RICH_TEXT_TAGS = [
+  'p',
+  'br',
+  'strong',
+  'em',
+  'u',
+  's',
+  'h2',
+  'h3',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'a',
+] as const
 
 /** The only schemes a link may use. */
 export const RICH_TEXT_LINK_SCHEMES = ['http', 'https', 'mailto'] as const

@@ -33,7 +33,9 @@ export function Names({ people }: { people: Pick<GrievancePerson, 'code' | 'name
   ))
 }
 
-export const Heading = ({ children }: { children: ReactNode }) => <h2 className="mb-3 border-b border-ink pb-1 text-base font-semibold">{children}</h2>
+export const Heading = ({ children }: { children: ReactNode }) => (
+  <h2 className="mb-3 border-b border-ink pb-1 text-base font-semibold">{children}</h2>
+)
 
 /** One row of the print table. A row is what Firefox breaks pages between. */
 export const Row = ({ className, children }: { className?: string; children: ReactNode }) => (
@@ -48,7 +50,17 @@ type PrintedEntry = Omit<GrievanceEntry, 'id' | 'kind'> & { kind: string }
  * One entry with every field, its details open. Its block is kept on one page where it fits; a section's heading rides with its
  * first entry. `about` follows its number, as a review entry's CAP does.
  */
-export function Entry({ entry, kindLabel, about, heading }: { entry: PrintedEntry; kindLabel: string; about?: ReactNode; heading?: ReactNode }) {
+export function Entry({
+  entry,
+  kindLabel,
+  about,
+  heading,
+}: {
+  entry: PrintedEntry
+  kindLabel: string
+  about?: ReactNode
+  heading?: ReactNode
+}) {
   return (
     <div className="break-inside-avoid pt-5">
       {heading}
@@ -65,7 +77,9 @@ export function Entry({ entry, kindLabel, about, heading }: { entry: PrintedEntr
             <Fact label="Recorded">{formatDateTime(entry.recordedAt)}</Fact>
             <Fact label="Documented by">{entry.documentedBy}</Fact>
             {entry.corrects !== null && <Fact label="Corrects">{grievanceEntryCode(entry.corrects)}</Fact>}
-            {entry.correctedBy.length > 0 && <Fact label="Corrected by">{entry.correctedBy.map(grievanceEntryCode).join(', ')}</Fact>}
+            {entry.correctedBy.length > 0 && (
+              <Fact label="Corrected by">{entry.correctedBy.map(grievanceEntryCode).join(', ')}</Fact>
+            )}
           </dl>
           {entry.shortDescription && <p className="mt-2 [overflow-wrap:anywhere]">{entry.shortDescription}</p>}
           {entry.bodyHtml && <RichTextView html={entry.bodyHtml} className="mt-2" />}
@@ -76,7 +90,13 @@ export function Entry({ entry, kindLabel, about, heading }: { entry: PrintedEntr
 }
 
 /** Every file, withdrawn ones too, with its fingerprint. `where` says what it came with, after its name. */
-export function FileTable<F extends GrievanceAttachment>({ files, where }: { files: F[]; where: (file: F) => string | null }) {
+export function FileTable<F extends GrievanceAttachment>({
+  files,
+  where,
+}: {
+  files: F[]
+  where: (file: F) => string | null
+}) {
   return (
     <div className="pt-6">
       <Heading>Files</Heading>
@@ -167,8 +187,16 @@ export function Printout({
           {back}
           {options}
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-xs text-ink-3">Print from this button and choose “Save as PDF” in the dialog. Each print is logged.</span>
-            <Button variant="primary" icon={<Printer className="size-4" aria-hidden />} disabled={!ready} loading={logPrint.isPending} onClick={() => logPrint.mutate()}>
+            <span className="text-xs text-ink-3">
+              Print from this button and choose “Save as PDF” in the dialog. Each print is logged.
+            </span>
+            <Button
+              variant="primary"
+              icon={<Printer className="size-4" aria-hidden />}
+              disabled={!ready}
+              loading={logPrint.isPending}
+              onClick={() => logPrint.mutate()}
+            >
               Print
             </Button>
           </div>

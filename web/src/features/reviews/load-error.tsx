@@ -9,7 +9,9 @@ export function ReviewLoadError({ error }: { error: unknown }) {
   return (
     <EmptyState
       icon={ClipboardCheck}
-      title={error instanceof ApiError && error.status === 404 ? 'No review with that ID' : 'Could not load this review'}
+      title={
+        error instanceof ApiError && error.status === 404 ? 'No review with that ID' : 'Could not load this review'
+      }
       description={error instanceof Error ? error.message : undefined}
       action={
         <Link to="/reviews" className={buttonStyles('primary')}>

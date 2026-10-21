@@ -14,7 +14,10 @@ import { employeesQuery, grievanceAccountHoldersQuery } from '@/lib/queries.ts'
 import { useDenied, useUser } from '@/lib/session.ts'
 
 /** What to say under an Owner field when the person chosen has no account that works in Grievances: only Grievances Edit could then change the grievance. */
-export function ownerAccountNote(owner: { id: number; name: string } | null, accountHolders: number[] | undefined): string | null {
+export function ownerAccountNote(
+  owner: { id: number; name: string } | null,
+  accountHolders: number[] | undefined,
+): string | null {
   if (!owner || !accountHolders || accountHolders.includes(owner.id)) return null
   return `${owner.name} has no account with access to Grievances, so only someone with Edit access to Grievances will be able to change this grievance.`
 }
@@ -31,18 +34,28 @@ export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) 
   const noVoid = useDenied('grievances', 'full')
   const [task, setTask] = useState<Task | null>(null)
   if (grievance.status === 'voided') return null
-  const notOwner = canManageGrievance(user, grievance.owner.id) ? undefined : grievanceManageReason(grievance.owner.name)
+  const notOwner = canManageGrievance(user, grievance.owner.id)
+    ? undefined
+    : grievanceManageReason(grievance.owner.name)
   const close = () => setTask(null)
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button disabledReason={notOwner ?? (grievance.status === 'closed' ? 'Reopen it before editing it.' : undefined)} onClick={() => void navigate({ to: '/grievances/$code/edit', params: { code: grievance.code } })}>
+      <Button
+        disabledReason={notOwner ?? (grievance.status === 'closed' ? 'Reopen it before editing it.' : undefined)}
+        onClick={() => void navigate({ to: '/grievances/$code/edit', params: { code: grievance.code } })}
+      >
         Edit
       </Button>
       <Button disabledReason={notOwner} onClick={() => setTask('status')}>
         Change status
       </Button>
-      <Button disabledReason={notOwner ?? (grievance.status === 'closed' ? 'Reopen it before changing its owner.' : undefined)} onClick={() => setTask('owner')}>
+      <Button
+        disabledReason={
+          notOwner ?? (grievance.status === 'closed' ? 'Reopen it before changing its owner.' : undefined)
+        }
+        onClick={() => setTask('owner')}
+      >
         Change owner
       </Button>
       <Button variant="danger-ghost" disabledReason={noVoid} onClick={() => setTask('void')}>
@@ -55,31 +68,64 @@ export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) 
   )
 }
 
-const useChange = (grievance: GrievanceDetail, action: Task, success: (next: GrievanceDetail) => string, onClose: () => void) =>
-  useWriteChange(`/grievances/${grievance.code}/${action}`, success, onClose)
+const useChange = (
+  grievance: GrievanceDetail,
+  action: Task,
+  success: (next: GrievanceDetail) => string,
+  onClose: () => void,
+) => useWriteChange(`/grievances/${grievance.code}/${action}`, success, onClose)
 const about = (grievance: GrievanceDetail) => `${grievance.code} · ${grievance.title}`
 
 function StatusSheet({ grievance, onClose }: { grievance: GrievanceDetail; onClose: () => void }) {
-  const options = GRIEVANCE_OPEN_STATUSES.filter((status) => status !== grievance.status).map((value) => ({ value, label: grievanceStatusLabel(value) }))
+  const options = GRIEVANCE_OPEN_STATUSES.filter((status) => status !== grievance.status).map((value) => ({
+    value,
+    label: grievanceStatusLabel(value),
+  }))
   const [status, setStatus] = useState<(typeof options)[number]['value'] | null>(null)
   const [note, setNote] = useState('')
   const [missing, setMissing] = useState<{ status?: string; note?: string }>({})
-  const change = useChange(grievance, 'status', (next) => `${next.code} is now ${grievanceStatusLabel(next.status)}`, onClose)
+  const change = useChange(
+    grievance,
+    'status',
+    (next) => `${next.code} is now ${grievanceStatusLabel(next.status)}`,
+    onClose,
+  )
   const closing = status === 'closed'
 
   function commit() {
-    const next = { status: status ? undefined : 'Choose a status', note: closing && !note.trim() ? 'Say why it is being closed' : undefined }
+    const next = {
+      status: status ? undefined : 'Choose a status',
+      note: closing && !note.trim() ? 'Say why it is being closed' : undefined,
+    }
     setMissing(next)
     if (!next.status && !next.note) void change.send({ status, note })
   }
 
   return (
-    <ChangeSheet title="Change status" description={about(grievance)} submit="Change status" change={change} onSubmit={commit} onClose={onClose}>
-      <Field label="New status" hint={`It is ${grievanceStatusLabel(grievance.status)} now.`} error={missing.status ?? change.field('status')}>
+    <ChangeSheet
+      title="Change status"
+      description={about(grievance)}
+      submit="Change status"
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
+      <Field
+        label="New status"
+        hint={`It is ${grievanceStatusLabel(grievance.status)} now.`}
+        error={missing.status ?? change.field('status')}
+      >
         <Segmented value={status} onChange={setStatus} options={options} />
       </Field>
-      {closing && <Alert>A closed grievance takes no new actions or events and cannot be edited until it is reopened.</Alert>}
-      <Field label="Note" optional={!closing} hint="Shown on the timeline with the change." error={missing.note ?? change.field('note')}>
+      {closing && (
+        <Alert>A closed grievance takes no new actions or events and cannot be edited until it is reopened.</Alert>
+      )}
+      <Field
+        label="Note"
+        optional={!closing}
+        hint="Shown on the timeline with the change."
+        error={missing.note ?? change.field('note')}
+      >
         <Note value={note} onChange={setNote} />
       </Field>
     </ChangeSheet>
@@ -105,7 +151,14 @@ function OwnerSheet({ grievance, onClose }: { grievance: GrievanceDetail; onClos
   }
 
   return (
-    <ChangeSheet title="Change owner" description={about(grievance)} submit="Change owner" change={change} onSubmit={commit} onClose={onClose}>
+    <ChangeSheet
+      title="Change owner"
+      description={about(grievance)}
+      submit="Change owner"
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
       <Field label="New owner" hint={`${grievance.owner.name} owns it now.`} error={missing ?? change.field('ownerId')}>
         <Combobox
           items={candidates}
@@ -122,7 +175,9 @@ function OwnerSheet({ grievance, onClose }: { grievance: GrievanceDetail; onClos
         />
       </Field>
       {noAccount && <Alert tone="warn">{noAccount}</Alert>}
-      {losesIt && !noAccount && <Alert>Once {owner.name} owns it, you will no longer be able to change this grievance.</Alert>}
+      {losesIt && !noAccount && (
+        <Alert>Once {owner.name} owns it, you will no longer be able to change this grievance.</Alert>
+      )}
       <Field label="Note" optional hint="Shown on the timeline with the change." error={change.field('note')}>
         <Note value={note} onChange={setNote} />
       </Field>
@@ -141,10 +196,19 @@ function VoidSheet({ grievance, onClose }: { grievance: GrievanceDetail; onClose
   }
 
   return (
-    <ChangeSheet title="Void this grievance" description={about(grievance)} submit="Void grievance" danger change={change} onSubmit={commit} onClose={onClose}>
+    <ChangeSheet
+      title="Void this grievance"
+      description={about(grievance)}
+      submit="Void grievance"
+      danger
+      change={change}
+      onSubmit={commit}
+      onClose={onClose}
+    >
       <Alert tone="warn" title="This cannot be undone">
-        A voided grievance is kept as a record, with its timeline and this reason, but nothing about it can be changed again and it leaves every list but All. Use it for a
-        grievance entered by mistake; one that has run its course is closed instead.
+        A voided grievance is kept as a record, with its timeline and this reason, but nothing about it can be changed
+        again and it leaves every list but All. Use it for a grievance entered by mistake; one that has run its course
+        is closed instead.
       </Alert>
       <Field label="Reason" hint="Shown on the timeline." error={missing ?? change.field('reason')}>
         <Note value={reason} onChange={setReason} />

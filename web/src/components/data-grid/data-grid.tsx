@@ -39,7 +39,7 @@ interface DataGridProps<TData extends RowData> {
 // A pinned column stays at the right edge of a table that is wider than its panel. Only then does it need a background of its own,
 // the row's (--row-bg), and a short fade so what scrolls under it does not end at a hard line.
 const pinned =
-  "sticky right-0 group-data-[overflowing]/grid:bg-(--row-bg) group-data-[overflowing]/grid:before:absolute group-data-[overflowing]/grid:before:inset-y-0 group-data-[overflowing]/grid:before:-left-4 group-data-[overflowing]/grid:before:w-4 group-data-[overflowing]/grid:before:bg-linear-to-r group-data-[overflowing]/grid:before:from-transparent group-data-[overflowing]/grid:before:to-(--row-bg)"
+  'sticky right-0 group-data-[overflowing]/grid:bg-(--row-bg) group-data-[overflowing]/grid:before:absolute group-data-[overflowing]/grid:before:inset-y-0 group-data-[overflowing]/grid:before:-left-4 group-data-[overflowing]/grid:before:w-4 group-data-[overflowing]/grid:before:bg-linear-to-r group-data-[overflowing]/grid:before:from-transparent group-data-[overflowing]/grid:before:to-(--row-bg)'
 
 /** Whether the table is wider than the panel it scrolls in. It can become so when the window narrows or when the rows change. */
 function useOverflowing() {
@@ -59,7 +59,19 @@ function useOverflowing() {
 }
 
 /** Presentational shell over a TanStack Table instance: sortable headers, calm rows, pagination. */
-export function DataGrid<TData extends RowData>({ table, label, noun, loading, empty, noMatches, rowClassName, rowProps, detail, footer, className }: DataGridProps<TData>) {
+export function DataGrid<TData extends RowData>({
+  table,
+  label,
+  noun,
+  loading,
+  empty,
+  noMatches,
+  rowClassName,
+  rowProps,
+  detail,
+  footer,
+  className,
+}: DataGridProps<TData>) {
   const rows = table.getRowModel().rows
   const total = table.getPrePaginatedRowModel().rows.length
   const sourceCount = table.getCoreRowModel().rows.length
@@ -75,7 +87,10 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
         <table className="w-full border-collapse text-sm" aria-label={label} aria-busy={loading || undefined}>
           <thead>
             {table.getHeaderGroups().map((group) => (
-              <tr key={group.id} className="border-b border-line bg-sunken/70 [--row-bg:color-mix(in_oklab,var(--color-sunken)_70%,var(--color-surface))]">
+              <tr
+                key={group.id}
+                className="border-b border-line bg-sunken/70 [--row-bg:color-mix(in_oklab,var(--color-sunken)_70%,var(--color-surface))]"
+              >
                 {group.headers.map((header) => {
                   const meta = header.column.columnDef.meta
                   const sorted = header.column.getIsSorted()
@@ -127,7 +142,13 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
               ? Array.from({ length: 8 }, (_, i) => (
                   <tr key={i} className="border-b border-line last:border-0">
                     {table.getAllLeafColumns().map((column) => (
-                      <td key={column.id} className={cn('h-14 px-3 sm:px-4', column.columnDef.meta?.hideBelow && hide[column.columnDef.meta.hideBelow])}>
+                      <td
+                        key={column.id}
+                        className={cn(
+                          'h-14 px-3 sm:px-4',
+                          column.columnDef.meta?.hideBelow && hide[column.columnDef.meta.hideBelow],
+                        )}
+                      >
                         <Skeleton className="h-4 w-4/5" />
                       </td>
                     ))}
@@ -136,44 +157,44 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
               : rows.map((row) => {
                   const more = detail?.(row)
                   return (
-                  <Fragment key={row.id}>
-                  <tr
-                    data-selected={row.getIsSelected() || undefined}
-                    {...rowProps?.(row)}
-                    className={cn(
-                      'border-b border-line transition-colors last:border-0 hover:bg-canvas focus-visible:bg-canvas data-[selected]:bg-accent-soft/70',
-                      // The same backgrounds as solid colours, for a pinned cell to paint itself with.
-                      '[--row-bg:var(--color-surface)] hover:[--row-bg:var(--color-canvas)] focus-visible:[--row-bg:var(--color-canvas)] data-[selected]:[--row-bg:color-mix(in_oklab,var(--color-accent-soft)_70%,var(--color-surface))]',
-                      rowClassName?.(row),
-                    )}
-                  >
-                    {row.getAllCells().map((cell) => {
-                      const meta = cell.column.columnDef.meta
-                      return (
-                        <td
-                          key={cell.id}
-                          className={cn(
-                            'h-14 px-3 py-2 align-middle text-ink sm:px-4',
-                            meta?.align === 'right' && 'text-right tabular-nums',
-                            meta?.align === 'center' && 'text-center',
-                            meta?.hideBelow && hide[meta.hideBelow],
-                            meta?.pinned && pinned,
-                            meta?.cellClassName,
-                          )}
-                        >
-                          <table.FlexRender cell={cell} />
-                        </td>
-                      )
-                    })}
-                  </tr>
-                  {more != null && (
-                    <tr className="border-b border-line bg-canvas/60 last:border-0">
-                      <td colSpan={row.getAllCells().length} className="px-3 py-3 sm:px-4">
-                        {more}
-                      </td>
-                    </tr>
-                  )}
-                  </Fragment>
+                    <Fragment key={row.id}>
+                      <tr
+                        data-selected={row.getIsSelected() || undefined}
+                        {...rowProps?.(row)}
+                        className={cn(
+                          'border-b border-line transition-colors last:border-0 hover:bg-canvas focus-visible:bg-canvas data-[selected]:bg-accent-soft/70',
+                          // The same backgrounds as solid colours, for a pinned cell to paint itself with.
+                          '[--row-bg:var(--color-surface)] hover:[--row-bg:var(--color-canvas)] focus-visible:[--row-bg:var(--color-canvas)] data-[selected]:[--row-bg:color-mix(in_oklab,var(--color-accent-soft)_70%,var(--color-surface))]',
+                          rowClassName?.(row),
+                        )}
+                      >
+                        {row.getAllCells().map((cell) => {
+                          const meta = cell.column.columnDef.meta
+                          return (
+                            <td
+                              key={cell.id}
+                              className={cn(
+                                'h-14 px-3 py-2 align-middle text-ink sm:px-4',
+                                meta?.align === 'right' && 'text-right tabular-nums',
+                                meta?.align === 'center' && 'text-center',
+                                meta?.hideBelow && hide[meta.hideBelow],
+                                meta?.pinned && pinned,
+                                meta?.cellClassName,
+                              )}
+                            >
+                              <table.FlexRender cell={cell} />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                      {more != null && (
+                        <tr className="border-b border-line bg-canvas/60 last:border-0">
+                          <td colSpan={row.getAllCells().length} className="px-3 py-3 sm:px-4">
+                            {more}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })}
           </tbody>
@@ -195,10 +216,22 @@ export function DataGrid<TData extends RowData>({ table, label, noun, loading, e
               <span className="mr-2 tabular-nums">
                 Page {pageIndex + 1} of {pageCount}
               </span>
-              <IconButton label="Previous page" size="sm" variant="secondary" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>
+              <IconButton
+                label="Previous page"
+                size="sm"
+                variant="secondary"
+                disabled={!table.getCanPreviousPage()}
+                onClick={() => table.previousPage()}
+              >
                 <ChevronLeft className="size-4" />
               </IconButton>
-              <IconButton label="Next page" size="sm" variant="secondary" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>
+              <IconButton
+                label="Next page"
+                size="sm"
+                variant="secondary"
+                disabled={!table.getCanNextPage()}
+                onClick={() => table.nextPage()}
+              >
                 <ChevronRight className="size-4" />
               </IconButton>
             </div>

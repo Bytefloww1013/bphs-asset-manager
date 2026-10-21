@@ -4,7 +4,16 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Copy, KeyRound, Lock, LockOpen, Link2, Shield, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
-import { ACCESS_LEVEL_LABEL, levelsFor, SECTION_LABEL, SECTIONS, SHARED_LEVELS, type Access, type AccessLevel, type Section } from '@shared/constants.ts'
+import {
+  ACCESS_LEVEL_LABEL,
+  levelsFor,
+  SECTION_LABEL,
+  SECTIONS,
+  SHARED_LEVELS,
+  type Access,
+  type AccessLevel,
+  type Section,
+} from '@shared/constants.ts'
 import { describeAccess, type Grantee } from '@shared/permissions.ts'
 import type { UserRow, UserWithPassword } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -103,15 +112,26 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
           onInteractOutside={(event) => event.preventDefault()}
           className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 animate-pop-in rounded-panel border border-line bg-surface p-6 shadow-pop outline-none"
         >
-          <Dialog.Title className="text-lg font-semibold tracking-[-0.01em]">One-time password for {result.user.name}</Dialog.Title>
+          <Dialog.Title className="text-lg font-semibold tracking-[-0.01em]">
+            One-time password for {result.user.name}
+          </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-5 text-ink-2">
-            Give this to them in person or over a channel you trust. It is shown only now, and they must choose a new password the first time they sign in.
+            Give this to them in person or over a channel you trust. It is shown only now, and they must choose a new
+            password the first time they sign in.
           </Dialog.Description>
           <div className="mt-4 flex items-center gap-2 rounded-control border border-line-strong bg-canvas p-1.5 pl-4">
-            <code className="min-w-0 flex-1 select-all truncate font-mono text-lg font-medium tracking-wide">{result.oneTimePassword}</code>
+            <code className="min-w-0 flex-1 select-all truncate font-mono text-lg font-medium tracking-wide">
+              {result.oneTimePassword}
+            </code>
             <Button
               icon={<Copy className="size-4" />}
-              onClick={async () => toast((await copyText(result.oneTimePassword)) ? { title: 'Password copied' } : { tone: 'warn', title: 'Could not copy', description: 'Select the password and press Ctrl+C.' })}
+              onClick={async () =>
+                toast(
+                  (await copyText(result.oneTimePassword))
+                    ? { title: 'Password copied' }
+                    : { tone: 'warn', title: 'Could not copy', description: 'Select the password and press Ctrl+C.' },
+                )
+              }
             >
               Copy
             </Button>
@@ -128,7 +148,8 @@ function OneTimePassword({ result, onClose }: { result: UserWithPassword; onClos
   )
 }
 
-const levelOptions = (levels: readonly AccessLevel[]) => levels.map((level) => ({ value: level, label: ACCESS_LEVEL_LABEL[level] }))
+const levelOptions = (levels: readonly AccessLevel[]) =>
+  levels.map((level) => ({ value: level, label: ACCESS_LEVEL_LABEL[level] }))
 // "Set all to" offers the levels every section has: Assign is Tasks' alone.
 const SHARED_OPTIONS = levelOptions(SHARED_LEVELS)
 
@@ -143,11 +164,27 @@ function withLevel(access: Access, sections: readonly Section[], level: AccessLe
 }
 
 /** A section's levels, with the "i" button after them. The button sits outside the group, so the arrow keys still move only between levels. */
-function SectionLevels({ id, section, value, onChange }: { id?: string; section: Section; value: AccessLevel; onChange: (level: AccessLevel) => void }) {
+function SectionLevels({
+  id,
+  section,
+  value,
+  onChange,
+}: {
+  id?: string
+  section: Section
+  value: AccessLevel
+  onChange: (level: AccessLevel) => void
+}) {
   const label = `What each level means in ${SECTION_LABEL[section]}`
   return (
     <div className="flex items-start gap-1.5">
-      <Segmented id={id} label={SECTION_LABEL[section]} value={value} onChange={onChange} options={levelOptions(levelsFor(section))} />
+      <Segmented
+        id={id}
+        label={SECTION_LABEL[section]}
+        value={value}
+        onChange={onChange}
+        options={levelOptions(levelsFor(section))}
+      />
       <InfoPopover label={label}>
         <p className="mb-2 font-medium">{label}</p>
         <dl className="flex flex-col gap-2">
@@ -164,7 +201,15 @@ function SectionLevels({ id, section, value, onChange }: { id?: string; section:
 }
 
 /** A level for each section, a control that sets them all at once, and the Super Admin switch, which overrides them. */
-function AccessFields({ value, onChange, error }: { value: Grantee; onChange: (next: Grantee) => void; error?: string }) {
+function AccessFields({
+  value,
+  onChange,
+  error,
+}: {
+  value: Grantee
+  onChange: (next: Grantee) => void
+  error?: string
+}) {
   const levels = SECTIONS.map((section) => value.access[section] ?? 'none')
   const all = levels.every((level) => level === levels[0]) ? levels[0]! : null
   return (
@@ -172,18 +217,44 @@ function AccessFields({ value, onChange, error }: { value: Grantee; onChange: (n
       <div className="flex items-start justify-between gap-4">
         <div className="text-sm leading-5">
           <p className="font-medium text-ink">Super Admin</p>
-          <p className="text-xs text-ink-3">Full access to every section, including any added later, and the only accounts that can manage accounts.</p>
+          <p className="text-xs text-ink-3">
+            Full access to every section, including any added later, and the only accounts that can manage accounts.
+          </p>
         </div>
-        <Switch label="Super Admin" checked={value.superAdmin} onChange={(superAdmin) => onChange({ ...value, superAdmin })} />
+        <Switch
+          label="Super Admin"
+          checked={value.superAdmin}
+          onChange={(superAdmin) => onChange({ ...value, superAdmin })}
+        />
       </div>
       {!value.superAdmin && (
         <>
-          <Field label="Set all to" hint="Read Only sees a section. Edit also adds and changes records. Full also deletes, archives and voids.">
-            <Segmented label="Set all to" value={all} onChange={(level) => onChange({ ...value, access: withLevel(value.access, SECTIONS, level) })} options={SHARED_OPTIONS} />
+          <Field
+            label="Set all to"
+            hint="Read Only sees a section. Edit also adds and changes records. Full also deletes, archives and voids."
+          >
+            <Segmented
+              label="Set all to"
+              value={all}
+              onChange={(level) => onChange({ ...value, access: withLevel(value.access, SECTIONS, level) })}
+              options={SHARED_OPTIONS}
+            />
           </Field>
           {SECTIONS.map((section) => (
-            <Field key={section} label={SECTION_LABEL[section]} hint={section === 'employees' ? 'None hides the Employees page. Every account can still choose employees in a form.' : undefined}>
-              <SectionLevels section={section} value={value.access[section] ?? 'none'} onChange={(level) => onChange({ ...value, access: withLevel(value.access, [section], level) })} />
+            <Field
+              key={section}
+              label={SECTION_LABEL[section]}
+              hint={
+                section === 'employees'
+                  ? 'None hides the Employees page. Every account can still choose employees in a form.'
+                  : undefined
+              }
+            >
+              <SectionLevels
+                section={section}
+                value={value.access[section] ?? 'none'}
+                onChange={(level) => onChange({ ...value, access: withLevel(value.access, [section], level) })}
+              />
             </Field>
           ))}
           {error && (
@@ -215,7 +286,10 @@ const AccessSummary = ({ user }: { user: UserRow }) =>
 function AccessSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const [grant, setGrant] = useState<Grantee>({ access: user.access, superAdmin: user.superAdmin })
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite(() => api.patch(`/users/${user.id}`, grant), { silent: true, success: `${user.name}'s access changed` })
+  const save = useWrite(() => api.patch(`/users/${user.id}`, grant), {
+    silent: true,
+    success: `${user.name}'s access changed`,
+  })
 
   async function submit() {
     setError(null)
@@ -280,7 +354,10 @@ function LinkSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const [employee, setEmployee] = useState<(typeof people)[number] | null>(null)
   const [missing, setMissing] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
-  const save = useWrite((employeeId: number) => api.patch(`/users/${user.id}`, { employeeId }), { silent: true, success: `${user.name} is linked to ${employee?.name}` })
+  const save = useWrite((employeeId: number) => api.patch(`/users/${user.id}`, { employeeId }), {
+    silent: true,
+    success: `${user.name} is linked to ${employee?.name}`,
+  })
 
   async function submit() {
     setError(null)
@@ -298,8 +375,16 @@ function LinkSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
     <Sheet
       open
       onOpenChange={(open) => !open && onClose()}
-      title={user.employeeId == null ? `Link ${user.name} to an employee` : `Change the employee linked to ${user.name}`}
-      description={current ? `Linked now to ${personLabel(current)}.` : user.employeeId == null ? 'This account is not linked to an employee yet.' : undefined}
+      title={
+        user.employeeId == null ? `Link ${user.name} to an employee` : `Change the employee linked to ${user.name}`
+      }
+      description={
+        current
+          ? `Linked now to ${personLabel(current)}.`
+          : user.employeeId == null
+            ? 'This account is not linked to an employee yet.'
+            : undefined
+      }
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
@@ -318,8 +403,23 @@ function LinkSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
           void submit()
         }}
       >
-        <Field label="Linked employee" hint={LINK_HINT} error={(missing ? 'Choose the employee this account belongs to.' : null) ?? error?.message}>
-          <Combobox items={people} value={employee} onChange={(person) => { setEmployee(person); setMissing(false) }} getKey={(p) => p.id} getLabel={personLabel} getSearch={(p) => p.department ?? ''} placeholder="Search employees" />
+        <Field
+          label="Linked employee"
+          hint={LINK_HINT}
+          error={(missing ? 'Choose the employee this account belongs to.' : null) ?? error?.message}
+        >
+          <Combobox
+            items={people}
+            value={employee}
+            onChange={(person) => {
+              setEmployee(person)
+              setMissing(false)
+            }}
+            getKey={(p) => p.id}
+            getLabel={personLabel}
+            getSearch={(p) => p.department ?? ''}
+            placeholder="Search employees"
+          />
         </Field>
       </form>
     </Sheet>
@@ -327,7 +427,8 @@ function LinkSheet({ user, onClose }: { user: UserRow; onClose: () => void }) {
 }
 
 function StateBadge({ user }: { user: UserRow }) {
-  if (user.state === 'locked') return <Badge tone="warn">Locked until {user.lockedUntil ? formatTime(user.lockedUntil) : ''}</Badge>
+  if (user.state === 'locked')
+    return <Badge tone="warn">Locked until {user.lockedUntil ? formatTime(user.lockedUntil) : ''}</Badge>
   if (user.state === 'deactivated') return <Badge tone="neutral">Deactivated</Badge>
   return <Badge tone="ok">Active</Badge>
 }
@@ -348,13 +449,45 @@ function UserActions({ user, onSecret }: { user: UserRow; onSecret: (result: Use
   const isMe = user.id === me.id
 
   const items: MenuItem[] = [
-    { label: 'Reset password', icon: KeyRound, onSelect: () => setConfirm('reset'), disabledReason: isMe ? 'Use "Change password" in your user menu.' : undefined },
-    { label: 'Clear lock', icon: LockOpen, onSelect: () => unlock.mutate(undefined), disabledReason: user.state === 'locked' || user.failedLogins > 0 ? undefined : 'This account is not locked.' },
-    { label: 'Change access', icon: Shield, onSelect: () => setConfirm('access'), disabledReason: isMe ? 'You cannot change your own access.' : undefined },
-    { label: user.employeeId == null ? 'Link employee' : 'Change linked employee', icon: Link2, onSelect: () => setConfirm('link'), disabledReason: isMe ? 'You cannot change the employee linked to your own account.' : undefined },
+    {
+      label: 'Reset password',
+      icon: KeyRound,
+      onSelect: () => setConfirm('reset'),
+      disabledReason: isMe ? 'Use "Change password" in your user menu.' : undefined,
+    },
+    {
+      label: 'Clear lock',
+      icon: LockOpen,
+      onSelect: () => unlock.mutate(undefined),
+      disabledReason: user.state === 'locked' || user.failedLogins > 0 ? undefined : 'This account is not locked.',
+    },
+    {
+      label: 'Change access',
+      icon: Shield,
+      onSelect: () => setConfirm('access'),
+      disabledReason: isMe ? 'You cannot change your own access.' : undefined,
+    },
+    {
+      label: user.employeeId == null ? 'Link employee' : 'Change linked employee',
+      icon: Link2,
+      onSelect: () => setConfirm('link'),
+      disabledReason: isMe ? 'You cannot change the employee linked to your own account.' : undefined,
+    },
     user.state === 'deactivated'
-      ? { label: 'Reactivate', icon: UserRoundCheck, onSelect: () => reactivate.mutate(undefined), separatorBefore: true }
-      : { label: 'Deactivate', icon: UserRoundX, tone: 'danger', separatorBefore: true, onSelect: () => setConfirm('deactivate'), disabledReason: isMe ? 'You cannot deactivate your own account.' : undefined },
+      ? {
+          label: 'Reactivate',
+          icon: UserRoundCheck,
+          onSelect: () => reactivate.mutate(undefined),
+          separatorBefore: true,
+        }
+      : {
+          label: 'Deactivate',
+          icon: UserRoundX,
+          tone: 'danger',
+          separatorBefore: true,
+          onSelect: () => setConfirm('deactivate'),
+          disabledReason: isMe ? 'You cannot deactivate your own account.' : undefined,
+        },
   ]
   return (
     <div className="flex justify-end">
@@ -394,7 +527,10 @@ function UsersTable() {
       header: 'User',
       cell: (info) => (
         <div className="min-w-0 leading-5">
-          <Stacked primary={<span className="font-medium">{info.getValue()}</span>} secondary={<Mono>{info.row.original.email}</Mono>} />
+          <Stacked
+            primary={<span className="font-medium">{info.getValue()}</span>}
+            secondary={<Mono>{info.row.original.email}</Mono>}
+          />
           {/* On a phone the Access and Status columns do not fit, so both are shown here. */}
           <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:hidden">
             <AccessSummary user={info.row.original} />
@@ -403,14 +539,56 @@ function UsersTable() {
         </div>
       ),
     }),
-    c.accessor((row) => describeAccess(row), { id: 'access', header: 'Access', cell: (info) => <AccessSummary user={info.row.original} />, meta: { hideBelow: 'sm' } }),
-    c.accessor('state', { header: 'Status', cell: (info) => <StateBadge user={info.row.original} />, meta: { hideBelow: 'sm' } }),
-    c.accessor('failedLogins', { header: 'Failed logins', cell: (info) => <span className={info.getValue() >= 3 ? 'font-semibold text-warn' : 'text-ink-2'}>{info.getValue()}</span>, meta: { align: 'right', hideBelow: 'lg' } }),
-    c.accessor('mustChangePassword', { header: 'Password', cell: (info) => (info.getValue() ? <Badge tone="warn">Must change</Badge> : <span className="text-ink-3">Set</span>), meta: { hideBelow: 'lg' } }),
-    c.accessor((row) => row.lastLoginAt ?? '', { id: 'lastLogin', header: 'Last sign-in', cell: (info) => (info.row.original.lastLoginAt ? <span title={formatDateTime(info.row.original.lastLoginAt)}>{formatRelative(info.row.original.lastLoginAt)}</span> : <span className="text-ink-3">Never</span>), meta: { hideBelow: 'md' } }),
-    c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <UserActions user={info.row.original} onSecret={setSecret} />, meta: { align: 'right', width: 'w-16', pinned: true } }),
+    c.accessor((row) => describeAccess(row), {
+      id: 'access',
+      header: 'Access',
+      cell: (info) => <AccessSummary user={info.row.original} />,
+      meta: { hideBelow: 'sm' },
+    }),
+    c.accessor('state', {
+      header: 'Status',
+      cell: (info) => <StateBadge user={info.row.original} />,
+      meta: { hideBelow: 'sm' },
+    }),
+    c.accessor('failedLogins', {
+      header: 'Failed logins',
+      cell: (info) => (
+        <span className={info.getValue() >= 3 ? 'font-semibold text-warn' : 'text-ink-2'}>{info.getValue()}</span>
+      ),
+      meta: { align: 'right', hideBelow: 'lg' },
+    }),
+    c.accessor('mustChangePassword', {
+      header: 'Password',
+      cell: (info) =>
+        info.getValue() ? <Badge tone="warn">Must change</Badge> : <span className="text-ink-3">Set</span>,
+      meta: { hideBelow: 'lg' },
+    }),
+    c.accessor((row) => row.lastLoginAt ?? '', {
+      id: 'lastLogin',
+      header: 'Last sign-in',
+      cell: (info) =>
+        info.row.original.lastLoginAt ? (
+          <span title={formatDateTime(info.row.original.lastLoginAt)}>
+            {formatRelative(info.row.original.lastLoginAt)}
+          </span>
+        ) : (
+          <span className="text-ink-3">Never</span>
+        ),
+      meta: { hideBelow: 'md' },
+    }),
+    c.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      cell: (info) => <UserActions user={info.row.original} onSecret={setSecret} />,
+      meta: { align: 'right', width: 'w-16', pinned: true },
+    }),
   ])
-  const table = useGrid({ data, columns, getRowId: (row) => String(row.id), initialSorting: [{ id: 'name', desc: false }] })
+  const table = useGrid({
+    data,
+    columns,
+    getRowId: (row) => String(row.id),
+    initialSorting: [{ id: 'name', desc: false }],
+  })
   const locked = data.filter((u) => u.state === 'locked').length
   const off = data.filter((u) => u.state === 'deactivated').length
 
@@ -433,13 +611,27 @@ function UsersTable() {
   )
 }
 
-function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (result: UserWithPassword) => void }) {
+function NewAccountSheet({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void
+  onCreated: (result: UserWithPassword) => void
+}) {
   const { people } = useLinkablePeople()
   const [error, setError] = useState<ApiError | null>(null)
-  const create = useWrite((body: Grantee & { name: string; email: string; employeeId: number }) => api.post<UserWithPassword>('/users', body), { silent: true })
+  const create = useWrite(
+    (body: Grantee & { name: string; email: string; employeeId: number }) => api.post<UserWithPassword>('/users', body),
+    { silent: true },
+  )
 
   const form = useForm({
-    defaultValues: { name: '', email: '', grant: { access: {}, superAdmin: false } as Grantee, employee: null as (typeof people)[number] | null },
+    defaultValues: {
+      name: '',
+      email: '',
+      grant: { access: {}, superAdmin: false } as Grantee,
+      employee: null as (typeof people)[number] | null,
+    },
     validators: {
       onSubmit: ({ value }) => {
         const fields: Record<string, string> = {}
@@ -453,7 +645,12 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
       setError(null)
       if (!value.employee) return
       try {
-        const result = await create.mutateAsync({ name: value.name, email: value.email, ...value.grant, employeeId: value.employee.id })
+        const result = await create.mutateAsync({
+          name: value.name,
+          email: value.email,
+          ...value.grant,
+          employeeId: value.employee.id,
+        })
         onClose()
         onCreated(result)
       } catch (e) {
@@ -492,30 +689,66 @@ function NewAccountSheet({ onClose, onCreated }: { onClose: () => void; onCreate
           void form.handleSubmit()
         }}
       >
-        {error && error.code !== 'duplicate_email' && !error.fields.email && !error.fields.access && !error.fields.employeeId && (
-          <Alert tone="bad" title="Could not create the account">
-            {error.message}
-          </Alert>
-        )}
+        {error &&
+          error.code !== 'duplicate_email' &&
+          !error.fields.email &&
+          !error.fields.access &&
+          !error.fields.employeeId && (
+            <Alert tone="bad" title="Could not create the account">
+              {error.message}
+            </Alert>
+          )}
         <form.Field name="name">
           {(field) => (
             <Field label="Full name" error={fieldError(field, undefined, submitted)}>
-              <Input autoFocus value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+              <Input
+                autoFocus
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
             </Field>
           )}
         </form.Field>
         <form.Field name="email">
           {(field) => (
-            <Field label="Email" error={(error?.code === 'duplicate_email' || error?.fields.email ? error.message : null) ?? fieldError(field, undefined, submitted)}>
-              <Input type="email" value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} onBlur={field.handleBlur} />
+            <Field
+              label="Email"
+              error={
+                (error?.code === 'duplicate_email' || error?.fields.email ? error.message : null) ??
+                fieldError(field, undefined, submitted)
+              }
+            >
+              <Input
+                type="email"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
             </Field>
           )}
         </form.Field>
-        <form.Field name="grant">{(field) => <AccessFields value={field.state.value} onChange={field.handleChange} error={error?.fields.access} />}</form.Field>
+        <form.Field name="grant">
+          {(field) => (
+            <AccessFields value={field.state.value} onChange={field.handleChange} error={error?.fields.access} />
+          )}
+        </form.Field>
         <form.Field name="employee">
           {(field) => (
-            <Field label="Linked employee" hint={LINK_HINT} error={(error?.fields.employeeId ? error.message : null) ?? fieldError(field, undefined, submitted)}>
-              <Combobox items={people} value={field.state.value} onChange={field.handleChange} getKey={(p) => p.id} getLabel={personLabel} getSearch={(p) => p.department ?? ''} placeholder="Search employees" />
+            <Field
+              label="Linked employee"
+              hint={LINK_HINT}
+              error={(error?.fields.employeeId ? error.message : null) ?? fieldError(field, undefined, submitted)}
+            >
+              <Combobox
+                items={people}
+                value={field.state.value}
+                onChange={field.handleChange}
+                getKey={(p) => p.id}
+                getLabel={personLabel}
+                getSearch={(p) => p.department ?? ''}
+                placeholder="Search employees"
+              />
             </Field>
           )}
         </form.Field>

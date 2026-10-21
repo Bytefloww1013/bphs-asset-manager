@@ -101,7 +101,9 @@ function ReviewPage() {
     ],
     ['First activity', <Mono>{formatDateTime(times[0])}</Mono>],
     ['Latest activity', <Mono>{formatDateTime(times.at(-1))}</Mono>],
-    ...(review.completedAt ? [['Completed', <Mono>{formatDateTime(review.completedAt)}</Mono>] as [string, ReactNode]] : []),
+    ...(review.completedAt
+      ? [['Completed', <Mono>{formatDateTime(review.completedAt)}</Mono>] as [string, ReactNode]]
+      : []),
   ]
 
   return (
@@ -114,7 +116,9 @@ function ReviewPage() {
           <Mono className="text-sm font-medium text-ink-2">{review.code}</Mono>
           <ReviewStatusBadge status={review.status} />
         </div>
-        <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">{review.title}</h1>
+        <h1 className="mt-1.5 max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
+          {review.title}
+        </h1>
         <p className="mt-1.5 max-w-[75ch] text-sm text-ink-2 [overflow-wrap:anywhere]">{review.summary}</p>
         <div className="mt-4 flex flex-wrap items-center gap-2 print:hidden">
           {manage && <ReviewActions review={review} />}
@@ -150,17 +154,35 @@ function ReviewPage() {
 
       <Panel>
         <PanelHeader title="Findings" className="border-b border-line" />
-        <p className="max-w-[75ch] whitespace-pre-line px-5 py-5 text-sm text-ink-2 [overflow-wrap:anywhere]">{review.findings || 'None written yet.'}</p>
+        <p className="max-w-[75ch] whitespace-pre-line px-5 py-5 text-sm text-ink-2 [overflow-wrap:anywhere]">
+          {review.findings || 'None written yet.'}
+        </p>
       </Panel>
 
       <Panel>
-        <PanelHeader title="Review" description={review.version === 1 ? 'As it was recorded.' : `Version ${review.version}. Each edit is on the history, with what it replaced.`} className="border-b border-line" />
-        {review.bodyHtml ? <RichTextView html={review.bodyHtml} className="max-w-[75ch] px-5 py-5" /> : <p className="px-5 py-5 text-sm text-ink-3">The review in full has not been written yet.</p>}
+        <PanelHeader
+          title="Review"
+          description={
+            review.version === 1
+              ? 'As it was recorded.'
+              : `Version ${review.version}. Each edit is on the history, with what it replaced.`
+          }
+          className="border-b border-line"
+        />
+        {review.bodyHtml ? (
+          <RichTextView html={review.bodyHtml} className="max-w-[75ch] px-5 py-5" />
+        ) : (
+          <p className="px-5 py-5 text-sm text-ink-3">The review in full has not been written yet.</p>
+        )}
       </Panel>
 
       {files.length > 0 && (
         <Panel>
-          <PanelHeader title="Files" description="On the review and its CAPs. Each one downloads to be opened on your computer. Downloads are logged." className="border-b border-line" />
+          <PanelHeader
+            title="Files"
+            description="On the review and its CAPs. Each one downloads to be opened on your computer. Downloads are logged."
+            className="border-b border-line"
+          />
           <AttachmentList section="reviews" code={review.code} files={files} sealed={!add} />
         </Panel>
       )}
@@ -185,10 +207,18 @@ function ReviewPage() {
               add && (
                 <>
                   <AttachFiles section="reviews" code={review.code} />
-                  <Link to="/reviews/$code/caps/new" params={{ code: review.code }} className={buttonStyles('secondary')}>
+                  <Link
+                    to="/reviews/$code/caps/new"
+                    params={{ code: review.code }}
+                    className={buttonStyles('secondary')}
+                  >
                     <Flag className="size-4" aria-hidden /> Add CAP
                   </Link>
-                  <Link to="/reviews/$code/entries/new" params={{ code: review.code }} className={buttonStyles('primary')}>
+                  <Link
+                    to="/reviews/$code/entries/new"
+                    params={{ code: review.code }}
+                    className={buttonStyles('primary')}
+                  >
                     <Plus className="size-4" aria-hidden /> Add update
                   </Link>
                 </>
@@ -207,18 +237,33 @@ function ReviewPage() {
             orderKey="review-timeline-order"
             link={(row, title) =>
               row.kind === 'cap' ? (
-                <Link to="/reviews/$code/caps/$cap" params={{ code: review.code, cap: row.code }} className="hover:text-accent hover:underline">
+                <Link
+                  to="/reviews/$code/caps/$cap"
+                  params={{ code: review.code, cap: row.code }}
+                  className="hover:text-accent hover:underline"
+                >
                   {title}
                 </Link>
               ) : (
                 title
               )
             }
-            tags={(row) => (row.kind === 'cap' ? <CapFacts cap={row.plan} /> : row.cap !== null && <CapLink code={review.code} seq={row.cap} chip />)}
+            tags={(row) =>
+              row.kind === 'cap' ? (
+                <CapFacts cap={row.plan} />
+              ) : (
+                row.cap !== null && <CapLink code={review.code} seq={row.cap} chip />
+              )
+            }
             actions={(entry) =>
               add &&
               entry.kind !== 'cap' && (
-                <Link to="/reviews/$code/entries/new" params={{ code: review.code }} search={{ corrects: entry.seq }} className="font-medium text-accent hover:underline print:hidden">
+                <Link
+                  to="/reviews/$code/entries/new"
+                  params={{ code: review.code }}
+                  search={{ corrects: entry.seq }}
+                  className="font-medium text-accent hover:underline print:hidden"
+                >
                   Add correction<span className="sr-only"> to {reviewEntryCode(entry.seq)}</span>
                 </Link>
               )

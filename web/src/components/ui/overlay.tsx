@@ -31,7 +31,9 @@ export function Sheet({
         <Dialog.Content
           onOpenAutoFocus={(event) => {
             // Land on the field the task starts with, not on the Close button.
-            const target = body.current?.querySelector<HTMLElement>('[data-autofocus], input:not([type=hidden]):not([disabled]), textarea, select, [role=radio][tabindex="0"]')
+            const target = body.current?.querySelector<HTMLElement>(
+              '[data-autofocus], input:not([type=hidden]):not([disabled]), textarea, select, [role=radio][tabindex="0"]',
+            )
             if (target) {
               event.preventDefault()
               target.focus()
@@ -48,7 +50,9 @@ export function Sheet({
               {description ? (
                 <Dialog.Description className="mt-0.5 text-sm text-ink-3">{description}</Dialog.Description>
               ) : (
-                <Dialog.Description className="sr-only">{typeof title === 'string' ? title : 'Dialog'}</Dialog.Description>
+                <Dialog.Description className="sr-only">
+                  {typeof title === 'string' ? title : 'Dialog'}
+                </Dialog.Description>
               )}
             </div>
             <Dialog.Close asChild>
@@ -57,8 +61,14 @@ export function Sheet({
               </IconButton>
             </Dialog.Close>
           </header>
-          <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
-          {footer && <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-canvas px-6 py-3.5">{footer}</footer>}
+          <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            {children}
+          </div>
+          {footer && (
+            <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-canvas px-6 py-3.5">
+              {footer}
+            </footer>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -163,14 +173,20 @@ export function Menu({ label, items, trigger }: { label: string; items: MenuItem
                 className={cn(
                   'flex cursor-default select-none flex-col rounded-[6px] px-2.5 py-1.5 text-sm outline-none',
                   'data-[highlighted]:bg-sunken data-[disabled]:cursor-not-allowed data-[disabled]:text-ink-3',
-                  item.tone === 'danger' && !item.disabledReason ? 'text-bad data-[highlighted]:bg-bad-soft' : 'text-ink',
+                  item.tone === 'danger' && !item.disabledReason
+                    ? 'text-bad data-[highlighted]:bg-bad-soft'
+                    : 'text-ink',
                 )}
               >
                 <span className="flex items-center gap-2 font-medium">
                   {item.icon && <item.icon className="size-4 shrink-0" aria-hidden />}
                   {item.label}
                 </span>
-                {item.disabledReason && <span className={cn('mt-0.5 text-xs font-normal text-ink-3', item.icon && 'pl-6')}>{item.disabledReason}</span>}
+                {item.disabledReason && (
+                  <span className={cn('mt-0.5 text-xs font-normal text-ink-3', item.icon && 'pl-6')}>
+                    {item.disabledReason}
+                  </span>
+                )}
               </DropdownMenu.Item>
             </div>
           ))}

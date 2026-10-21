@@ -17,7 +17,9 @@ import { assetsQuery, lookupsQuery } from '@/lib/queries.ts'
 import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/available')({
-  validateSearch: (search: Record<string, unknown>): { type?: string } => ({ type: typeof search.type === 'string' ? search.type : undefined }),
+  validateSearch: (search: Record<string, unknown>): { type?: string } => ({
+    type: typeof search.type === 'string' ? search.type : undefined,
+  }),
   loader: ({ context }) => context.queryClient.ensureQueryData(assetsQuery),
   component: AvailablePage,
 })
@@ -30,7 +32,13 @@ function AvailableActions({ asset }: { asset: AssetRow }) {
   const readOnly = useDenied('assets', 'edit')
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Button size="sm" variant="primary" aria-keyshortcuts="I" disabledReason={readOnly} onClick={() => sheets.issue(asset.id)}>
+      <Button
+        size="sm"
+        variant="primary"
+        aria-keyshortcuts="I"
+        disabledReason={readOnly}
+        onClick={() => sheets.issue(asset.id)}
+      >
         Issue <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none max-sm:hidden">I</Kbd>
       </Button>
       <AssetRowActions asset={asset} hidePrimary />
@@ -49,15 +57,35 @@ const columns = [
     ),
   }),
   c.accessor('type', { header: 'Type', meta: { hideBelow: 'md' } }),
-  c.accessor((row) => row.serial ?? '', { id: 'serial', header: 'Serial', cell: (info) => (info.getValue() ? <Mono className="text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-3">—</span>), meta: { hideBelow: 'md' } }),
-  c.accessor((row) => row.condition?.rating ?? '', { id: 'condition', header: 'Latest condition', cell: (info) => <RatingBadge name={info.row.original.condition?.rating} /> }),
+  c.accessor((row) => row.serial ?? '', {
+    id: 'serial',
+    header: 'Serial',
+    cell: (info) =>
+      info.getValue() ? <Mono className="text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-3">—</span>,
+    meta: { hideBelow: 'md' },
+  }),
+  c.accessor((row) => row.condition?.rating ?? '', {
+    id: 'condition',
+    header: 'Latest condition',
+    cell: (info) => <RatingBadge name={info.row.original.condition?.rating} />,
+  }),
   c.accessor((row) => row.lastReturnedAt ?? '', {
     id: 'returned',
     header: 'Last returned',
-    cell: (info) => (info.row.original.lastReturnedAt ? <Mono className="text-ink-2">{formatDate(info.row.original.lastReturnedAt)}</Mono> : <span className="text-ink-3">Never issued</span>),
+    cell: (info) =>
+      info.row.original.lastReturnedAt ? (
+        <Mono className="text-ink-2">{formatDate(info.row.original.lastReturnedAt)}</Mono>
+      ) : (
+        <span className="text-ink-3">Never issued</span>
+      ),
     meta: { hideBelow: 'lg' },
   }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <AvailableActions asset={info.row.original} />, meta: { align: 'right', width: 'md:w-52', pinned: true } }),
+  c.display({
+    id: 'actions',
+    header: () => <span className="sr-only">Actions</span>,
+    cell: (info) => <AvailableActions asset={info.row.original} />,
+    meta: { align: 'right', width: 'md:w-52', pinned: true },
+  }),
 ]
 const getRowId = (row: AssetRow) => String(row.id)
 
@@ -78,25 +106,48 @@ function AvailablePage() {
   }, [stock])
   // The Overview links here for every type, including one with nothing free, so a type the register knows gets its tab even at
   // zero. A name it does not know (a link from before a rename) shows everything instead of an empty list under no tab.
-  const known = linked !== undefined && (data.some((asset) => asset.type === linked) || (lookups?.assetTypes ?? []).some((item) => item.name === linked))
+  const known =
+    linked !== undefined &&
+    (data.some((asset) => asset.type === linked) || (lookups?.assetTypes ?? []).some((item) => item.name === linked))
   const type = known ? linked : 'all'
-  const tabs = type === 'all' || byType.some(([name]) => name === type) ? byType : [...byType, [type, 0] as [string, number]]
+  const tabs =
+    type === 'all' || byType.some(([name]) => name === type) ? byType : [...byType, [type, 0] as [string, number]]
   const rows = useMemo(() => (type === 'all' ? stock : stock.filter((asset) => asset.type === type)), [stock, type])
 
-  const table = useGrid({ data: rows, columns, getRowId, searchText: assetSearchText, search, resetKey: type, initialSorting: [{ id: 'tag', desc: false }] })
+  const table = useGrid({
+    data: rows,
+    columns,
+    getRowId,
+    searchText: assetSearchText,
+    search,
+    resetKey: type,
+    initialSorting: [{ id: 'tag', desc: false }],
+  })
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Available" description={`${plural(stock.length, 'physical asset')} in storage: in service, with no active assignment.`} />
+      <PageHeader
+        title="Available"
+        description={`${plural(stock.length, 'physical asset')} in storage: in service, with no active assignment.`}
+      />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
           <FilterTabs
             label="Filter by type"
             value={type}
             onChange={(next) => void navigate({ search: { type: next === 'all' ? undefined : next } })}
-            options={[{ value: 'all', label: 'All', count: stock.length }, ...tabs.map(([name, count]) => ({ value: name, label: name, count }))]}
+            options={[
+              { value: 'all', label: 'All', count: stock.length },
+              ...tabs.map(([name, count]) => ({ value: name, label: name, count })),
+            ]}
           />
-          <SearchInput className="w-full sm:w-80" aria-label="Search available physical assets" placeholder="Search tag or serial" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-80"
+            aria-label="Search available physical assets"
+            placeholder="Search tag or serial"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </Toolbar>
         <DataGrid
           table={table}
@@ -106,7 +157,12 @@ function AvailablePage() {
           rowProps={(row) => ({
             tabIndex: 0,
             onKeyDown: (event) => {
-              if (event.key.toLowerCase() === 'i' && !event.metaKey && !event.ctrlKey && event.target === event.currentTarget) {
+              if (
+                event.key.toLowerCase() === 'i' &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                event.target === event.currentTarget
+              ) {
                 event.preventDefault()
                 sheets.issue(row.original.id)
               }
@@ -125,10 +181,21 @@ function AvailablePage() {
                 }
               />
             ) : (
-              <EmptyState icon={PackageCheck} title="Nothing is available" description="Every asset in service is assigned. Add stock from the Physical Assets page." />
+              <EmptyState
+                icon={PackageCheck}
+                title="Nothing is available"
+                description="Every asset in service is assigned. Add stock from the Physical Assets page."
+              />
             )
           }
-          noMatches={<EmptyState icon={PackageCheck} title="No available assets match" description="Try another type or search." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
+          noMatches={
+            <EmptyState
+              icon={PackageCheck}
+              title="No available assets match"
+              description="Try another type or search."
+              action={<Button onClick={() => setSearch('')}>Clear search</Button>}
+            />
+          }
         />
         <p className="text-sm text-ink-3">
           Focus a row with <Kbd>Tab</Kbd> and press <Kbd>I</Kbd> to issue it.

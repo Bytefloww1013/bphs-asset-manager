@@ -34,7 +34,11 @@ function RowActions({ row }: { row: AssignmentRow }) {
       <Button size="sm" onClick={() => sheets.returnAsset(row.id)}>
         Return
       </Button>
-      <Link to="/assets/$tag" params={{ tag: row.assetTag }} className={buttonStyles('ghost', 'sm', 'hidden md:inline-flex')}>
+      <Link
+        to="/assets/$tag"
+        params={{ tag: row.assetTag }}
+        className={buttonStyles('ghost', 'sm', 'hidden md:inline-flex')}
+      >
         History
       </Link>
     </div>
@@ -54,7 +58,13 @@ const columns = [
         onChange={table.getToggleAllPageRowsSelectedHandler()}
       />
     ),
-    cell: ({ row }) => <Checkbox aria-label={`Select ${row.original.assetTag}`} checked={row.getIsSelected()} onChange={row.getToggleSelectedHandler()} />,
+    cell: ({ row }) => (
+      <Checkbox
+        aria-label={`Select ${row.original.assetTag}`}
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+      />
+    ),
     meta: { width: 'w-12' },
   }),
   c.accessor('assetTag', {
@@ -73,14 +83,40 @@ const columns = [
       />
     ),
   }),
-  c.accessor((row) => holder(row).name, { id: 'holder', header: 'Holder', cell: (info) => <HolderCell employee={info.row.original.employee} program={info.row.original.program} />, meta: { hideBelow: 'md' } }),
-  c.accessor('issuedAt', { header: 'Issued', cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>, meta: { hideBelow: 'md' } }),
-  c.accessor((row) => row.issueRating ?? '', { id: 'issueRating', header: 'Condition at issue', cell: (info) => <RatingBadge name={info.row.original.issueRating} />, meta: { hideBelow: 'lg' } }),
-  c.accessor('daysOut', { header: 'Days out', cell: (info) => <DaysOut days={info.getValue()} />, meta: { align: 'right', hideBelow: 'sm' } }),
-  c.display({ id: 'actions', header: () => <span className="sr-only">Actions</span>, cell: (info) => <RowActions row={info.row.original} />, meta: { align: 'right', width: 'md:w-44', pinned: true } }),
+  c.accessor((row) => holder(row).name, {
+    id: 'holder',
+    header: 'Holder',
+    cell: (info) => <HolderCell employee={info.row.original.employee} program={info.row.original.program} />,
+    meta: { hideBelow: 'md' },
+  }),
+  c.accessor('issuedAt', {
+    header: 'Issued',
+    cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>,
+    meta: { hideBelow: 'md' },
+  }),
+  c.accessor((row) => row.issueRating ?? '', {
+    id: 'issueRating',
+    header: 'Condition at issue',
+    cell: (info) => <RatingBadge name={info.row.original.issueRating} />,
+    meta: { hideBelow: 'lg' },
+  }),
+  c.accessor('daysOut', {
+    header: 'Days out',
+    cell: (info) => <DaysOut days={info.getValue()} />,
+    meta: { align: 'right', hideBelow: 'sm' },
+  }),
+  c.display({
+    id: 'actions',
+    header: () => <span className="sr-only">Actions</span>,
+    cell: (info) => <RowActions row={info.row.original} />,
+    meta: { align: 'right', width: 'md:w-44', pinned: true },
+  }),
 ]
 const getRowId = (row: AssignmentRow) => String(row.id)
-const searchText = (row: AssignmentRow) => [row.assetTag, row.assetType, holder(row).name, holder(row).code, row.employee?.department, row.issueRating].filter(Boolean).join(' ')
+const searchText = (row: AssignmentRow) =>
+  [row.assetTag, row.assetType, holder(row).name, holder(row).code, row.employee?.department, row.issueRating]
+    .filter(Boolean)
+    .join(' ')
 
 function AssignmentsPage() {
   usePageTitle('Assignments')
@@ -88,7 +124,15 @@ function AssignmentsPage() {
   const [search, setSearch] = useState('')
   const [returning, setReturning] = useState<AssignmentRow[] | null>(null)
   const readOnly = useDenied('assets', 'edit')
-  const table = useGrid({ data, columns, getRowId, searchText, search, selectable: true, initialSorting: [{ id: 'daysOut', desc: true }] })
+  const table = useGrid({
+    data,
+    columns,
+    getRowId,
+    searchText,
+    search,
+    selectable: true,
+    initialSorting: [{ id: 'daysOut', desc: true }],
+  })
   const selected = table.getSelectedRowModel().rows.map((row) => row.original)
   // A search hides rows without unticking them, so say how many of the ticked rows are out of sight.
   const hidden = selected.length - table.getFilteredSelectedRowModel().rows.length
@@ -104,7 +148,9 @@ function AssignmentsPage() {
             <Button
               variant="primary"
               icon={<Undo2 className="size-4" />}
-              disabledReason={readOnly ?? (selected.length === 0 ? 'Tick one or more rows to return them together' : undefined)}
+              disabledReason={
+                readOnly ?? (selected.length === 0 ? 'Tick one or more rows to return them together' : undefined)
+              }
               onClick={() => setReturning(selected)}
             >
               {selected.length > 0 ? `Return selected (${selected.length})` : 'Return selected'}
@@ -114,11 +160,21 @@ function AssignmentsPage() {
       />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
-          <SearchInput className="w-full sm:w-96" aria-label="Search assignments" placeholder="Search tag, holder, department" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <SearchInput
+            className="w-full sm:w-96"
+            aria-label="Search assignments"
+            placeholder="Search tag, holder, department"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
           {selected.length > 0 && (
             <p className="text-sm text-ink-3">
               {plural(selected.length, 'row')} selected{hidden > 0 && `, ${hidden} hidden by the search`}.{' '}
-              <button type="button" className="font-medium text-accent hover:text-accent-hover" onClick={() => table.resetRowSelection()}>
+              <button
+                type="button"
+                className="font-medium text-accent hover:text-accent-hover"
+                onClick={() => table.resetRowSelection()}
+              >
                 Clear
               </button>
             </p>
@@ -129,8 +185,26 @@ function AssignmentsPage() {
           label="Active assignments"
           noun="assignments"
           loading={isPending}
-          empty={<EmptyState icon={ClipboardList} title="Nothing is out" description="When a physical asset is issued to an employee or a program it shows up here until it is returned." action={<Link to="/available" className={buttonStyles('primary')}>See available assets</Link>} />}
-          noMatches={<EmptyState icon={ClipboardList} title="No assignments match" description="Try a different name or tag." action={<Button onClick={() => setSearch('')}>Clear search</Button>} />}
+          empty={
+            <EmptyState
+              icon={ClipboardList}
+              title="Nothing is out"
+              description="When a physical asset is issued to an employee or a program it shows up here until it is returned."
+              action={
+                <Link to="/available" className={buttonStyles('primary')}>
+                  See available assets
+                </Link>
+              }
+            />
+          }
+          noMatches={
+            <EmptyState
+              icon={ClipboardList}
+              title="No assignments match"
+              description="Try a different name or tag."
+              action={<Button onClick={() => setSearch('')}>Clear search</Button>}
+            />
+          }
         />
       </div>
       {returning && (

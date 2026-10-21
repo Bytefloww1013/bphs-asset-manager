@@ -7,7 +7,10 @@ import { put } from '../lib/grievance-files.ts'
 import type { Upload } from '../lib/uploads.ts'
 
 /** A file as the pages see it: everything about it but its bytes. `entrySeq` is the number of the entry it came with, if any. */
-export const attachmentShape = (row: typeof grievanceAttachments.$inferSelect, entrySeq: number | null): GrievanceAttachment => ({
+export const attachmentShape = (
+  row: typeof grievanceAttachments.$inferSelect,
+  entrySeq: number | null,
+): GrievanceAttachment => ({
   id: row.id,
   filename: row.filename,
   contentType: row.contentType,
@@ -35,11 +38,25 @@ export function saveAttachments(
   return uploads.map(({ bytes, ...upload }) => {
     const row = tx
       .insert(grievanceAttachments)
-      .values({ grievanceId: grievance.id, entryId: entry?.id, ...upload, size: bytes.length, uploadedByUserId: actor.id, uploadedByLabel: actor.name, uploadedAt: at })
+      .values({
+        grievanceId: grievance.id,
+        entryId: entry?.id,
+        ...upload,
+        size: bytes.length,
+        uploadedByUserId: actor.id,
+        uploadedByLabel: actor.name,
+        uploadedAt: at,
+      })
       .returning()
       .get()
     put(tx, row.id, bytes)
-    writeGrievanceAudit(tx, actor, { action: 'attach', entityType: 'grievance_attachment', entityId: row.id, details: `${grievance.code} · ${row.filename}`, at })
+    writeGrievanceAudit(tx, actor, {
+      action: 'attach',
+      entityType: 'grievance_attachment',
+      entityId: row.id,
+      details: `${grievance.code} · ${row.filename}`,
+      at,
+    })
     return attachmentShape(row, entry?.seq ?? null)
   })
 }

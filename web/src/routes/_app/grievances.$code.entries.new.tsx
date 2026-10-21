@@ -27,18 +27,27 @@ export const Route = createFileRoute('/_app/grievances/$code/entries/new')({
     const corrects = Number(search.corrects)
     return Number.isInteger(corrects) && corrects > 0 ? { corrects } : {}
   },
-  loader: ({ context, params }) => Promise.all([context.queryClient.ensureQueryData(grievanceQuery(params.code)), context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code))]),
+  loader: ({ context, params }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(grievanceQuery(params.code)),
+      context.queryClient.ensureQueryData(grievanceEntriesQuery(params.code)),
+    ]),
   errorComponent: GrievanceLoadError,
   component: NewEntryPage,
 })
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** This minute, in the shape a date-and-time input takes: local time, no zone. */
-const localNow = (now = new Date()) => `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+const localNow = (now = new Date()) =>
+  `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
 /** The instant a date-and-time input names, or nothing when it is empty or half filled in. */
-const instant = (local: string) => (local && !Number.isNaN(new Date(local).getTime()) ? new Date(local).toISOString() : undefined)
+const instant = (local: string) =>
+  local && !Number.isNaN(new Date(local).getTime()) ? new Date(local).toISOString() : undefined
 
-const KIND_HINTS = { action: 'Something done about the grievance: a meeting held, a letter sent.', event: 'Something that happened: a reply received, a deadline passed.' }
+const KIND_HINTS = {
+  action: 'Something done about the grievance: a meeting held, a letter sent.',
+  event: 'Something that happened: a reply received, a deadline passed.',
+}
 
 // As on New grievance, nothing typed here is kept in browser storage.
 function NewEntryPage() {
@@ -50,7 +59,9 @@ function NewEntryPage() {
   // A correction is this same form with its type fixed and the entry it corrects named; that entry is never touched.
   const correcting = corrects !== undefined
   const original = correcting ? entries?.find((entry) => entry.seq === corrects && entry.kind !== 'system') : undefined
-  useGrievancePageTitle(`${correcting ? `Correct ${grievanceEntryCode(corrects)} of` : 'Add to'} ${grievance?.code ?? code.toUpperCase()}`)
+  useGrievancePageTitle(
+    `${correcting ? `Correct ${grievanceEntryCode(corrects)} of` : 'Add to'} ${grievance?.code ?? code.toUpperCase()}`,
+  )
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -61,9 +72,16 @@ function NewEntryPage() {
   const formRef = useRef<HTMLFormElement>(null)
   const saved = useRef(false)
 
-  const save = useWrite((input: unknown) => api.post<GrievanceEntry>(`/grievances/${encodeURIComponent(code)}/entries`, input), { silent: true })
+  const save = useWrite(
+    (input: unknown) => api.post<GrievanceEntry>(`/grievances/${encodeURIComponent(code)}/entries`, input),
+    { silent: true },
+  )
   const dirty = Boolean(entry.title.trim() || entry.shortDescription.trim() || entry.body || entry.files.length)
-  const leaving = useBlocker({ shouldBlockFn: () => dirty && !saved.current, enableBeforeUnload: () => dirty && !saved.current, withResolver: true })
+  const leaving = useBlocker({
+    shouldBlockFn: () => dirty && !saved.current,
+    enableBeforeUnload: () => dirty && !saved.current,
+    withResolver: true,
+  })
 
   if (!grievance || !entries) return null
   const sealed = grievance.status === 'closed' || grievance.status === 'voided'
@@ -77,10 +95,20 @@ function NewEntryPage() {
   async function commit() {
     setProblem(null)
     const { files, ...text } = entry
-    const parsed = grievanceEntryCreateSchema.safeParse(correcting ? { kind: 'correction', correctsSeq: corrects, ...text } : { kind, occurredAt: instant(occurredAt), ...text })
+    const parsed = grievanceEntryCreateSchema.safeParse(
+      correcting
+        ? { kind: 'correction', correctsSeq: corrects, ...text }
+        : { kind, occurredAt: instant(occurredAt), ...text },
+    )
     const filesWrong = filesProblem(files)
     if (!parsed.success || filesWrong)
-      return refuse({ message: 'Some of this is missing or needs changing. Nothing has been saved.', fields: { ...(parsed.success ? {} : fieldMessages(parsed.error)), ...(filesWrong ? { files: filesWrong } : {}) } })
+      return refuse({
+        message: 'Some of this is missing or needs changing. Nothing has been saved.',
+        fields: {
+          ...(parsed.success ? {} : fieldMessages(parsed.error)),
+          ...(filesWrong ? { files: filesWrong } : {}),
+        },
+      })
     try {
       const row = await save.mutateAsync(withFiles(parsed.data, files))
       saved.current = true
@@ -92,7 +120,12 @@ function NewEntryPage() {
   }
 
   const error = (name: string) => problem?.fields[name] ?? null
-  const clear = (name: string) => setProblem((now) => (now && name in now.fields ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) } : now))
+  const clear = (name: string) =>
+    setProblem((now) =>
+      now && name in now.fields
+        ? { ...now, fields: Object.fromEntries(Object.entries(now.fields).filter(([key]) => key !== name)) }
+        : now,
+    )
   const edit =
     <T,>(name: string, set: (value: T) => void) =>
     (value: T) => {
@@ -107,14 +140,24 @@ function NewEntryPage() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <Link to="/grievances/$code" params={{ code: grievance.code }} className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
+        <Link
+          to="/grievances/$code"
+          params={{ code: grievance.code }}
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {grievance.code}
         </Link>
         <div className="mt-3">
           {correcting ? (
-            <PageHeader title="Add a correction" description={`What ${grievanceEntryCode(corrects)} should have said. It is added as a new entry; ${grievanceEntryCode(corrects)} itself stays exactly as it was written.`} />
+            <PageHeader
+              title="Add a correction"
+              description={`What ${grievanceEntryCode(corrects)} should have said. It is added as a new entry; ${grievanceEntryCode(corrects)} itself stays exactly as it was written.`}
+            />
           ) : (
-            <PageHeader title="Add an action or event" description="What was done, or what happened. Once saved it cannot be changed or removed, only corrected by a later entry." />
+            <PageHeader
+              title="Add an action or event"
+              description="What was done, or what happened. Once saved it cannot be changed or removed, only corrected by a later entry."
+            />
           )}
         </div>
       </div>
@@ -151,7 +194,11 @@ function NewEntryPage() {
               <div className="flex flex-wrap gap-x-3 gap-y-1">
                 <dt className="font-medium text-ink">Corrects</dt>
                 <dd className="min-w-0 [overflow-wrap:anywhere]">
-                  <Link to="/grievances/$code/entries/$seq" params={{ code: grievance.code, seq: grievanceEntryCode(original.seq) }} className="font-medium text-accent hover:underline">
+                  <Link
+                    to="/grievances/$code/entries/$seq"
+                    params={{ code: grievance.code, seq: grievanceEntryCode(original.seq) }}
+                    className="font-medium text-accent hover:underline"
+                  >
                     <Mono>{grievanceEntryCode(original.seq)}</Mono>: {original.title}
                   </Link>
                   <span className="block text-ink-2">{original.shortDescription}</span>
@@ -166,7 +213,9 @@ function NewEntryPage() {
             </Alert>
           ) : correcting && !original ? (
             <Alert tone="bad" title={`${grievanceEntryCode(corrects)} cannot be corrected`}>
-              {entries.some((entry) => entry.seq === corrects) ? 'It is an automatic entry, written by the app.' : `${grievance.code} has no entry with that number.`}
+              {entries.some((entry) => entry.seq === corrects)
+                ? 'It is an automatic entry, written by the app.'
+                : `${grievance.code} has no entry with that number.`}
             </Alert>
           ) : (
             <>
@@ -179,13 +228,25 @@ function NewEntryPage() {
               {!correcting && (
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Type" hint={KIND_HINTS[kind]} error={error('kind')}>
-                    <Select value={kind} onChange={(event) => edit('kind', setKind)(event.target.value as 'action' | 'event')}>
+                    <Select
+                      value={kind}
+                      onChange={(event) => edit('kind', setKind)(event.target.value as 'action' | 'event')}
+                    >
                       <option value="action">Action</option>
                       <option value="event">Event</option>
                     </Select>
                   </Field>
-                  <Field label="Occurred at" hint="When it happened, which may be earlier than now." error={error('occurredAt')}>
-                    <Input type="datetime-local" max={localNow()} value={occurredAt} onChange={(event) => edit('occurredAt', setOccurredAt)(event.target.value)} />
+                  <Field
+                    label="Occurred at"
+                    hint="When it happened, which may be earlier than now."
+                    error={error('occurredAt')}
+                  >
+                    <Input
+                      type="datetime-local"
+                      max={localNow()}
+                      value={occurredAt}
+                      onChange={(event) => edit('occurredAt', setOccurredAt)(event.target.value)}
+                    />
                   </Field>
                 </div>
               )}
@@ -194,7 +255,11 @@ function NewEntryPage() {
                 value={entry}
                 onChange={change}
                 error={error}
-                shortDescriptionHint={correcting ? 'What was wrong and what is right, in one or two sentences.' : 'One or two sentences, shown on the timeline.'}
+                shortDescriptionHint={
+                  correcting
+                    ? 'What was wrong and what is right, in one or two sentences.'
+                    : 'One or two sentences, shown on the timeline.'
+                }
               />
             </>
           )}

@@ -2,12 +2,8 @@
   "name": "bphs-connect",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "packageManager": "bun@1.3.14",
   "description": "BPHS-Connect: IT asset register (React SPA + Hono API + SQLite)",
-  "engines": {
-    "node": ">=24"
-  },
+  "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,magenta \"bun:dev:api\" \"bun:dev:web\"",
     "dev:api": "tsx watch --clear-screen=false --env-file-if-exists=.env server/index.ts",
@@ -17,6 +13,8 @@
     "start": "NODE_ENV=production node --env-file-if-exists=.env server/index.ts",
     "typecheck": "tsc -p web/tsconfig.json && tsc -p server/tsconfig.json",
     "test": "vitest run",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "db:generate": "drizzle-kit generate",
     "db:seed": "node --env-file-if-exists=.env server/seed.ts",
     "db:backup": "node --env-file-if-exists=.env server/backup.ts",
@@ -63,10 +61,15 @@
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^10.0.6",
     "drizzle-kit": "^0.31.11",
+    "oxfmt": "0.74.0",
     "tailwindcss": "^4.3.3",
     "tsx": "4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
-  }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "bun@1.3.14"
 }

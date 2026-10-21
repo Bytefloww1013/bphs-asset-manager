@@ -1,7 +1,13 @@
 import { maintenanceStatusLabel, type MaintenanceStatus } from '@shared/constants.ts'
 import { Badge, type Tone } from '@/components/ui/badge.tsx'
 
-const tones: Record<MaintenanceStatus, Tone> = { not_started: 'neutral', dispatched: 'accent', on_hold: 'warn', rejected: 'bad', finished: 'ok' }
+const tones: Record<MaintenanceStatus, Tone> = {
+  not_started: 'neutral',
+  dispatched: 'accent',
+  on_hold: 'warn',
+  rejected: 'bad',
+  finished: 'ok',
+}
 
 export function MaintenanceStatusBadge({ status }: { status: MaintenanceStatus }) {
   return <Badge tone={tones[status]}>{maintenanceStatusLabel(status)}</Badge>

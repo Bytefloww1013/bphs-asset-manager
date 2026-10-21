@@ -45,9 +45,15 @@ export function cleanRichText(input: string): RichText {
 /** As `cleanRichText`, and refuses a body that is empty (unless `optional`) or longer than the limit. */
 export function requireRichText(input: string, field: string, options: { optional?: boolean } = {}): RichText {
   const body = cleanRichText(input)
-  if (!body.text && !options.optional) throw new HttpError(422, 'body_required', 'Write something before saving.', { field })
+  if (!body.text && !options.optional)
+    throw new HttpError(422, 'body_required', 'Write something before saving.', { field })
   if (body.text.length > RICH_TEXT_MAX_CHARS) {
-    throw new HttpError(422, 'body_too_long', `This is too long. The limit is ${RICH_TEXT_MAX_CHARS.toLocaleString('en-US')} characters.`, { field })
+    throw new HttpError(
+      422,
+      'body_too_long',
+      `This is too long. The limit is ${RICH_TEXT_MAX_CHARS.toLocaleString('en-US')} characters.`,
+      { field },
+    )
   }
   // A body of nothing but empty paragraphs is stored as nothing.
   return body.text ? body : { html: '', text: '' }

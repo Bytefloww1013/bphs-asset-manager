@@ -31,7 +31,7 @@ export const LEVEL_HELP: Record<Section, Partial<Record<AccessLevel, string>>> =
     none: 'The Employee Tasks workspace is hidden. Tasks sent to this account are still in My Space.',
     read: "See every account's tasks, with their history.",
     assign: 'Also assign tasks, and edit or cancel the tasks this account assigned.',
-    edit: 'Also edit or cancel anyone\'s task, except one a Super Admin assigned, and approve or send back completed tasks.',
+    edit: "Also edit or cancel anyone's task, except one a Super Admin assigned, and approve or send back completed tasks.",
     full: 'Also delete tasks, and edit or cancel tasks a Super Admin assigned.',
   },
   employees: {
@@ -40,4 +40,6 @@ export const LEVEL_HELP: Record<Section, Partial<Record<AccessLevel, string>>> =
     edit: 'Also add and change employees.',
     full: 'Also archive, restore and delete them.',
   },
-} satisfies Record<Exclude<Section, 'tasks'>, Record<(typeof SHARED_LEVELS)[number], string>> & { tasks: Record<(typeof ACCESS_LEVELS)[number], string> }
+} satisfies Record<Exclude<Section, 'tasks'>, Record<(typeof SHARED_LEVELS)[number], string>> & {
+  tasks: Record<(typeof ACCESS_LEVELS)[number], string>
+}

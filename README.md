@@ -40,6 +40,10 @@ Other scripts:
 
 Bun only installs packages and runs these scripts; every script still executes on Node, because `better-sqlite3` is a native addon that Bun's runtime cannot load. Use `bun run test`, not `bun test`: the latter is Bun's own test runner, not Vitest. Commit `bun.lock`.
 
+### Formatting
+
+[Oxfmt](https://oxc.rs/docs/guide/usage/formatter) formats the code (settings in `.oxfmtrc.json`). Run `bun run format` before you push: CI runs `bun run format:check` and fails on any unformatted file. For format-on-save, install the Oxc editor extension (see the Oxfmt docs above). Markdown and generated files (`web/src/routeTree.gen.ts`, Drizzle migrations) are not formatted.
+
 For browser checks, `docs/verify/scratch-server.sh start|stop` runs a freshly seeded build on :3388 (its data under `/home/josh/tmp/bphs-qa-tasks`, never the real `DATA_DIR`), and `node docs/verify/tasks-smoke.mjs` drives it in headless Firefox: a task is assigned, shows on the assignee's bell, and is marked complete. puppeteer-core is installed outside the repo, in `/home/josh/tmp/bphs-qa-tools`; `FIREFOX` overrides `/snap/bin/firefox`.
 
 ## Deploy with Docker

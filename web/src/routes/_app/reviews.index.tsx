@@ -30,7 +30,8 @@ interface ReviewSearch {
   q?: string
 }
 
-const isDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
+const isDate = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && startOfLocalDay(value) !== null
 const isId = (value: unknown) => (Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : undefined)
 
 export const Route = createFileRoute('/_app/reviews/')({
@@ -60,7 +61,11 @@ const columns = [
   c.accessor('code', {
     header: 'Review ID',
     cell: (info) => (
-      <Link to="/reviews/$code" params={{ code: info.getValue() }} className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline">
+      <Link
+        to="/reviews/$code"
+        params={{ code: info.getValue() }}
+        className="whitespace-nowrap font-mono text-sm font-medium text-accent hover:underline"
+      >
         {info.getValue()}
       </Link>
     ),
@@ -69,7 +74,12 @@ const columns = [
     header: 'Title',
     cell: (info) => (
       <div className="min-w-40 max-w-64 leading-5">
-        <Link to="/reviews/$code" params={{ code: info.row.original.code }} className="block truncate font-medium hover:underline" title={info.getValue()}>
+        <Link
+          to="/reviews/$code"
+          params={{ code: info.row.original.code }}
+          className="block truncate font-medium hover:underline"
+          title={info.getValue()}
+        >
           {info.getValue()}
         </Link>
         <div className="truncate text-xs text-ink-3" title={info.row.original.summary}>
@@ -78,18 +88,52 @@ const columns = [
       </div>
     ),
   }),
-  c.accessor((row) => row.employee.name, { id: 'employee', header: 'Employee reviewed', cell: (info) => <span className="whitespace-nowrap text-ink-2">{name(info.row.original.employee)}</span>, meta: { hideBelow: 'md' } }),
-  c.accessor((row) => row.reviewer.name, { id: 'reviewer', header: 'Reviewed by', cell: (info) => <span className="whitespace-nowrap text-ink-2">{name(info.row.original.reviewer)}</span>, meta: { hideBelow: 'lg' } }),
-  c.accessor('reviewDate', { header: 'Review date', cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>, meta: { hideBelow: 'sm' } }),
-  c.accessor('status', { header: 'Status', cell: (info) => <ReviewStatusBadge status={info.getValue()} />, enableSorting: false }),
+  c.accessor((row) => row.employee.name, {
+    id: 'employee',
+    header: 'Employee reviewed',
+    cell: (info) => <span className="whitespace-nowrap text-ink-2">{name(info.row.original.employee)}</span>,
+    meta: { hideBelow: 'md' },
+  }),
+  c.accessor((row) => row.reviewer.name, {
+    id: 'reviewer',
+    header: 'Reviewed by',
+    cell: (info) => <span className="whitespace-nowrap text-ink-2">{name(info.row.original.reviewer)}</span>,
+    meta: { hideBelow: 'lg' },
+  }),
+  c.accessor('reviewDate', {
+    header: 'Review date',
+    cell: (info) => <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>,
+    meta: { hideBelow: 'sm' },
+  }),
+  c.accessor('status', {
+    header: 'Status',
+    cell: (info) => <ReviewStatusBadge status={info.getValue()} />,
+    enableSorting: false,
+  }),
   c.accessor((row) => row.caps.done, {
     id: 'caps',
     header: 'CAPs',
-    cell: (info) => (info.row.original.caps.total ? <span className="whitespace-nowrap text-ink-2">{info.row.original.caps.done} of {info.row.original.caps.total} done</span> : <span className="text-ink-4">None</span>),
+    cell: (info) =>
+      info.row.original.caps.total ? (
+        <span className="whitespace-nowrap text-ink-2">
+          {info.row.original.caps.done} of {info.row.original.caps.total} done
+        </span>
+      ) : (
+        <span className="text-ink-4">None</span>
+      ),
     enableSorting: false,
     meta: { hideBelow: 'xl' },
   }),
-  c.accessor('nextDue', { header: 'Next due', cell: (info) => (info.getValue() ? <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-4">None</span>), meta: { hideBelow: 'xl' } }),
+  c.accessor('nextDue', {
+    header: 'Next due',
+    cell: (info) =>
+      info.getValue() ? (
+        <Mono className="whitespace-nowrap text-ink-2">{info.getValue()}</Mono>
+      ) : (
+        <span className="text-ink-4">None</span>
+      ),
+    meta: { hideBelow: 'xl' },
+  }),
   c.accessor('lastActivityAt', {
     header: 'Last activity',
     cell: (info) => (
@@ -106,7 +150,8 @@ function ReviewsPage() {
   const readOnly = useDenied('reviews', 'edit')
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
-  const setFilter = (patch: ReviewSearch, replace = false) => void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
+  const setFilter = (patch: ReviewSearch, replace = false) =>
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace })
   // The box holds what is being typed and follows the address only when something else changes it (the Back button).
   const [q, setQ] = useState(search.q ?? '')
   const typing = useRef(false)
@@ -137,11 +182,27 @@ function ReviewsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Reviews" description="Administrative reviews of employees, with their corrective action plans." actions={readOnly ? undefined : newReview} />
+      <PageHeader
+        title="Reviews"
+        description="Administrative reviews of employees, with their corrective action plans."
+        actions={readOnly ? undefined : newReview}
+      />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
-          <FilterTabs label="Filter by status" value={tab} onChange={(next) => setFilter({ status: next === 'open' ? undefined : next })} options={TABS.map((value) => ({ value, label: tabLabel(value), count: counts?.[value] }))} />
-          <SearchInput className="w-full sm:w-72" aria-label="Search reviews" placeholder="Search ID, title or a name" maxLength={MAX_SEARCH} value={q} onChange={(event) => setQ(event.target.value)} />
+          <FilterTabs
+            label="Filter by status"
+            value={tab}
+            onChange={(next) => setFilter({ status: next === 'open' ? undefined : next })}
+            options={TABS.map((value) => ({ value, label: tabLabel(value), count: counts?.[value] }))}
+          />
+          <SearchInput
+            className="w-full sm:w-72"
+            aria-label="Search reviews"
+            placeholder="Search ID, title or a name"
+            maxLength={MAX_SEARCH}
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+          />
         </Toolbar>
         <Toolbar>
           {(
@@ -150,7 +211,13 @@ function ReviewsPage() {
               ['employee', 'Employee reviewed', 'Any employee', data?.employees],
             ] as const
           ).map(([key, label, any, people]) => (
-            <Select key={key} aria-label={label} className="w-48" value={search[key] ?? ''} onChange={(event) => setFilter({ [key]: isId(event.target.value) })}>
+            <Select
+              key={key}
+              aria-label={label}
+              className="w-48"
+              value={search[key] ?? ''}
+              onChange={(event) => setFilter({ [key]: isId(event.target.value) })}
+            >
               <option value="">{any}</option>
               {people?.map((person) => (
                 <option key={person.id} value={person.id}>
@@ -161,11 +228,21 @@ function ReviewsPage() {
           ))}
           <label className="flex items-center gap-2 text-sm text-ink-3">
             Reviewed from
-            <DateInput className="w-40" value={search.from ?? ''} max={search.to} onChange={(event) => setFilter({ from: event.target.value || undefined })} />
+            <DateInput
+              className="w-40"
+              value={search.from ?? ''}
+              max={search.to}
+              onChange={(event) => setFilter({ from: event.target.value || undefined })}
+            />
           </label>
           <label className="flex items-center gap-2 text-sm text-ink-3">
             to
-            <DateInput className="w-40" value={search.to ?? ''} min={search.from} onChange={(event) => setFilter({ to: event.target.value || undefined })} />
+            <DateInput
+              className="w-40"
+              value={search.to ?? ''}
+              min={search.from}
+              onChange={(event) => setFilter({ to: event.target.value || undefined })}
+            />
           </label>
           {narrowed && (
             <Button variant="ghost" onClick={clear}>
@@ -184,7 +261,11 @@ function ReviewsPage() {
                 <EmptyState
                   icon={SearchX}
                   title="No reviews match"
-                  description={counts?.all ? `Nothing under ${tabLabel(tab)} matches, but ${counts.all} elsewhere ${counts.all === 1 ? 'does' : 'do'}. Try the All tab, or clear the filters.` : 'Widen the dates or clear the filters.'}
+                  description={
+                    counts?.all
+                      ? `Nothing under ${tabLabel(tab)} matches, but ${counts.all} elsewhere ${counts.all === 1 ? 'does' : 'do'}. Try the All tab, or clear the filters.`
+                      : 'Widen the dates or clear the filters.'
+                  }
                   action={
                     <Button variant="secondary" onClick={clear}>
                       Clear filters
@@ -192,9 +273,18 @@ function ReviewsPage() {
                   }
                 />
               ) : counts?.all && tab !== 'all' ? (
-                <EmptyState icon={ClipboardCheck} title={`No ${tabLabel(tab).toLowerCase()} reviews`} description="Reviews in other statuses are under their own tabs, and all of them are under All." />
+                <EmptyState
+                  icon={ClipboardCheck}
+                  title={`No ${tabLabel(tab).toLowerCase()} reviews`}
+                  description="Reviews in other statuses are under their own tabs, and all of them are under All."
+                />
               ) : (
-                <EmptyState icon={ClipboardCheck} title="No reviews yet" description="Administrative reviews recorded here will be listed on this page." action={readOnly ? undefined : newReview} />
+                <EmptyState
+                  icon={ClipboardCheck}
+                  title="No reviews yet"
+                  description="Administrative reviews recorded here will be listed on this page."
+                  action={readOnly ? undefined : newReview}
+                />
               )
             }
           />

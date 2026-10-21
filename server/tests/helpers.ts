@@ -18,7 +18,14 @@ export const GRIEVANCE_ADMIN: Access = { grievances: 'edit', employees: 'edit' }
 
 // verifyPassword reads the scrypt cost from the stored hash, so a low-cost test hash makes every sign-in near instant.
 const SALT = Buffer.alloc(16, 7)
-const passwordHash = ['scrypt', 16, 8, 1, SALT.toString('base64'), scryptSync(PASSWORD.normalize('NFKC'), SALT, 64, { N: 16, r: 8, p: 1 }).toString('base64')].join('$')
+const passwordHash = [
+  'scrypt',
+  16,
+  8,
+  1,
+  SALT.toString('base64'),
+  scryptSync(PASSWORD.normalize('NFKC'), SALT, 64, { N: 16, r: 8, p: 1 }).toString('base64'),
+].join('$')
 
 export async function setup() {
   const { db, sqlite } = createDb(':memory:')
@@ -32,7 +39,11 @@ export async function setup() {
     .returning()
     .get()
   const add = (name: string, email: string, extra: Partial<typeof users.$inferInsert>) =>
-    db.insert(users).values({ name, email, passwordHash, mustChangePassword: false, ...extra }).returning().get()
+    db
+      .insert(users)
+      .values({ name, email, passwordHash, mustChangePassword: false, ...extra })
+      .returning()
+      .get()
   const superUser = add('Priya Raghunathan', 'p.raghunathan@bphs.local', { superAdmin: true, employeeId: person.id })
   const adminUser = add('Marcus Oyelaran', 'm.oyelaran@bphs.local', { access: ADMIN })
   /** Another account, with the same password as the others. */
@@ -81,12 +92,17 @@ export const findUser = (db: Db, email: string) => db.select().from(users).where
 /** A raw database migrated up to, not including, the migration whose file starts with `prefix`, to test an upgrade. */
 export function migratedBefore(prefix: string, { foreignKeys = false } = {}) {
   const folder = path.join(import.meta.dirname, '../db/migrations')
-  const files = fs.readdirSync(folder).filter((file) => file.endsWith('.sql')).sort()
+  const files = fs
+    .readdirSync(folder)
+    .filter((file) => file.endsWith('.sql'))
+    .sort()
   const at = files.findIndex((file) => file.startsWith(prefix))
   const sqlite = new Database(':memory:')
   if (foreignKeys) sqlite.pragma('foreign_keys = ON')
   const apply = (list: string[]) => {
-    for (const file of list) for (const statement of fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint')) sqlite.exec(statement)
+    for (const file of list)
+      for (const statement of fs.readFileSync(path.join(folder, file), 'utf8').split('--> statement-breakpoint'))
+        sqlite.exec(statement)
   }
   apply(files.slice(0, at))
   /** `next` applies the migration named by `prefix`; `rest` applies it and every one after. */

@@ -22,7 +22,11 @@ export const Route = createFileRoute('/_app/assets/$tag')({
   errorComponent: ({ error }) => (
     <EmptyState
       icon={ScrollText}
-      title={error instanceof ApiError && error.status === 404 ? 'No physical asset with that tag' : 'Could not load this asset'}
+      title={
+        error instanceof ApiError && error.status === 404
+          ? 'No physical asset with that tag'
+          : 'Could not load this asset'
+      }
       description={error instanceof Error ? error.message : undefined}
       action={
         <Link to="/assets" className={buttonStyles('primary')}>
@@ -37,17 +41,51 @@ export const Route = createFileRoute('/_app/assets/$tag')({
 const h = columnsFor<HistoryRow>()
 const historyColumns = [
   h.accessor('id', { header: 'Assignment', cell: (info) => <Mono className="text-ink-2">#{info.getValue()}</Mono> }),
-  h.accessor((row) => (row.employee ?? row.program)?.name ?? '', { id: 'holder', header: 'Holder', cell: (info) => <HolderCell employee={info.row.original.employee} program={info.row.original.program} /> }),
-  h.accessor('issuedAt', { header: 'Issued', cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>, meta: { hideBelow: 'md' } }),
+  h.accessor((row) => (row.employee ?? row.program)?.name ?? '', {
+    id: 'holder',
+    header: 'Holder',
+    cell: (info) => <HolderCell employee={info.row.original.employee} program={info.row.original.program} />,
+  }),
+  h.accessor('issuedAt', {
+    header: 'Issued',
+    cell: (info) => <Mono className="text-ink-2">{formatDateTime(info.getValue())}</Mono>,
+    meta: { hideBelow: 'md' },
+  }),
   h.accessor((row) => row.returnedAt ?? '', {
     id: 'returnedAt',
     header: 'Returned',
-    cell: (info) => (info.row.original.returnedAt ? <Mono className="text-ink-2">{formatDateTime(info.row.original.returnedAt)}</Mono> : <Badge tone="accent">Still out</Badge>),
+    cell: (info) =>
+      info.row.original.returnedAt ? (
+        <Mono className="text-ink-2">{formatDateTime(info.row.original.returnedAt)}</Mono>
+      ) : (
+        <Badge tone="accent">Still out</Badge>
+      ),
     meta: { hideBelow: 'md' },
   }),
-  h.accessor((row) => row.issueRating ?? '', { id: 'issueRating', header: 'At issue', cell: (info) => <RatingBadge name={info.row.original.issueRating} />, enableSorting: false, meta: { hideBelow: 'lg' } }),
-  h.accessor((row) => row.returnRating ?? '', { id: 'returnRating', header: 'At return', cell: (info) => <RatingBadge name={info.row.original.returnRating} />, enableSorting: false, meta: { hideBelow: 'lg' } }),
-  h.accessor('daysHeld', { header: 'Held', cell: (info) => (info.row.original.returnedAt ? <span className="tabular-nums text-ink-2">{formatDays(info.getValue())}</span> : <DaysOut days={info.getValue()} />), meta: { align: 'right' } }),
+  h.accessor((row) => row.issueRating ?? '', {
+    id: 'issueRating',
+    header: 'At issue',
+    cell: (info) => <RatingBadge name={info.row.original.issueRating} />,
+    enableSorting: false,
+    meta: { hideBelow: 'lg' },
+  }),
+  h.accessor((row) => row.returnRating ?? '', {
+    id: 'returnRating',
+    header: 'At return',
+    cell: (info) => <RatingBadge name={info.row.original.returnRating} />,
+    enableSorting: false,
+    meta: { hideBelow: 'lg' },
+  }),
+  h.accessor('daysHeld', {
+    header: 'Held',
+    cell: (info) =>
+      info.row.original.returnedAt ? (
+        <span className="tabular-nums text-ink-2">{formatDays(info.getValue())}</span>
+      ) : (
+        <DaysOut days={info.getValue()} />
+      ),
+    meta: { align: 'right' },
+  }),
 ]
 const historyId = (row: HistoryRow) => String(row.id)
 
@@ -70,7 +108,13 @@ function AssetDetailPage() {
   const sheets = useSheetActions()
   const readOnly = useDenied('assets', 'edit')
   usePageTitle(tag.toUpperCase())
-  const table = useGrid({ data: data?.history ?? [], columns: historyColumns, getRowId: historyId, pageSize: 50, resetKey: tag })
+  const table = useGrid({
+    data: data?.history ?? [],
+    columns: historyColumns,
+    getRowId: historyId,
+    pageSize: 50,
+    resetKey: tag,
+  })
   if (!data) return null
   const { asset, history, conditions } = data
 
@@ -88,12 +132,24 @@ function AssetDetailPage() {
             </div>
             <p className="mt-1 text-sm text-ink-3">
               {asset.type}
-              {asset.serial ? <> · serial <Mono>{asset.serial}</Mono></> : ''} · added {formatDate(asset.createdAt)}
+              {asset.serial ? (
+                <>
+                  {' '}
+                  · serial <Mono>{asset.serial}</Mono>
+                </>
+              ) : (
+                ''
+              )}{' '}
+              · added {formatDate(asset.createdAt)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {asset.state === 'assigned' && asset.assignmentId && (
-              <Button variant="primary" disabledReason={readOnly} onClick={() => sheets.returnAsset(asset.assignmentId!)}>
+              <Button
+                variant="primary"
+                disabledReason={readOnly}
+                onClick={() => sheets.returnAsset(asset.assignmentId!)}
+              >
                 Return
               </Button>
             )}
@@ -110,7 +166,9 @@ function AssetDetailPage() {
               // once nothing shows the old tag's page it leaves the cache too: the route loader would hand a later visit that stale copy.
               onSaved={(row) => {
                 if (row.tag.toUpperCase() === tag.toUpperCase()) return
-                void navigate({ to: '/assets/$tag', params: { tag: row.tag }, replace: true }).then(() => queryClient.removeQueries({ queryKey: assetDetailQuery(tag).queryKey }))
+                void navigate({ to: '/assets/$tag', params: { tag: row.tag }, replace: true }).then(() =>
+                  queryClient.removeQueries({ queryKey: assetDetailQuery(tag).queryKey }),
+                )
               }}
             />
           </div>
@@ -121,15 +179,28 @@ function AssetDetailPage() {
         <dl className="grid divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
           <Fact label="Current holder">
             {asset.holder ? (
-              <><span>{asset.holder.name}</span> <Mono className="text-ink-3">{asset.holder.code}</Mono></>
+              <>
+                <span>{asset.holder.name}</span> <Mono className="text-ink-3">{asset.holder.code}</Mono>
+              </>
             ) : asset.program ? (
-              <><span>{asset.program.name}</span> <span className="font-normal text-ink-3">Program <Mono>{asset.program.code}</Mono></span></>
+              <>
+                <span>{asset.program.name}</span>{' '}
+                <span className="font-normal text-ink-3">
+                  Program <Mono>{asset.program.code}</Mono>
+                </span>
+              </>
             ) : (
               <span className="text-ink-3">{stateLabel(asset.state)}</span>
             )}
           </Fact>
           <Fact label="Department">{asset.holder?.department ?? <span className="text-ink-3">—</span>}</Fact>
-          <Fact label="Days out">{asset.daysOut === null ? <span className="text-ink-3">—</span> : <DaysOut days={asset.daysOut} className="justify-start" />}</Fact>
+          <Fact label="Days out">
+            {asset.daysOut === null ? (
+              <span className="text-ink-3">—</span>
+            ) : (
+              <DaysOut days={asset.daysOut} className="justify-start" />
+            )}
+          </Fact>
           <Fact label="Latest condition">
             {asset.condition ? (
               <span className="inline-flex items-center gap-2">
@@ -147,25 +218,38 @@ function AssetDetailPage() {
         <div>
           <h2 className="text-md font-semibold">Assignment history</h2>
           <p className="text-sm text-ink-3">
-            {plural(history.length, 'assignment')}, {plural(conditions.length, 'condition record')}. Nothing here is ever overwritten.
+            {plural(history.length, 'assignment')}, {plural(conditions.length, 'condition record')}. Nothing here is
+            ever overwritten.
           </p>
         </div>
         <DataGrid
           table={table}
           label="Assignment history"
           noun="assignments"
-          empty={<EmptyState icon={ScrollText} title="Never assigned" description="This asset has not been issued yet. Once it is, each handoff is recorded here with its condition." />}
+          empty={
+            <EmptyState
+              icon={ScrollText}
+              title="Never assigned"
+              description="This asset has not been issued yet. Once it is, each handoff is recorded here with its condition."
+            />
+          }
         />
       </section>
 
       <Panel>
-        <PanelHeader title="Condition log" description="A snapshot is taken when an asset is received, issued and returned." />
+        <PanelHeader
+          title="Condition log"
+          description="A snapshot is taken when an asset is received, issued and returned."
+        />
         {conditions.length === 0 ? (
           <p className="border-t border-line px-5 py-4 text-sm text-ink-3">No condition has been recorded.</p>
         ) : (
           <ol>
             {conditions.map((entry) => (
-              <li key={entry.id} className="grid gap-x-4 gap-y-1 border-t border-line px-5 py-3 sm:grid-cols-[7rem_8rem_minmax(0,1fr)_auto] sm:items-center">
+              <li
+                key={entry.id}
+                className="grid gap-x-4 gap-y-1 border-t border-line px-5 py-3 sm:grid-cols-[7rem_8rem_minmax(0,1fr)_auto] sm:items-center"
+              >
                 <span className="text-sm font-medium">{kindLabel[entry.kind]}</span>
                 <span className="justify-self-start">
                   <RatingBadge name={entry.rating} />

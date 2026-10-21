@@ -6,7 +6,9 @@ const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', '
  * with a 24-hour time after it for the Added Time), and a request entered here has `YYYY-MM-DD`. Anything else is shown as written.
  */
 export function formatUsDate(text: string | null): string | null {
-  const m = text?.match(/^(?:(\d{4})-(\d{2})-(\d{2})|(\d{2})-(\d{2}|[a-z]{3})-(\d{4}))(?: (\d{2}):(\d{2})(?::\d{2})?)?$/i)
+  const m = text?.match(
+    /^(?:(\d{4})-(\d{2})-(\d{2})|(\d{2})-(\d{2}|[a-z]{3})-(\d{4}))(?: (\d{2}):(\d{2})(?::\d{2})?)?$/i,
+  )
   if (!m) return text
   const year = Number(m[1] ?? m[6])
   const monthText = m[2] ?? m[5]!

@@ -1,6 +1,11 @@
 import { and, asc, desc, eq, inArray, isNull, lte } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { TASK_FANOUT_MAX_BYTES, type TaskEventKind, type TaskFileSide, type TaskWeekday } from '../../shared/constants.ts'
+import {
+  TASK_FANOUT_MAX_BYTES,
+  type TaskEventKind,
+  type TaskFileSide,
+  type TaskWeekday,
+} from '../../shared/constants.ts'
 import {
   APPROVAL_LOCKED_PROBLEM,
   canAssignTasks,
@@ -15,7 +20,14 @@ import {
   taskEditReason,
   taskFileWithdrawProblem,
 } from '../../shared/permissions.ts'
-import { DUE_AFTER_SEND, type MyTaskListQuery, type TaskAttachmentWithdrawInput, type TaskCreateInput, type TaskListQuery, type TaskUpdateInput } from '../../shared/schemas.ts'
+import {
+  DUE_AFTER_SEND,
+  type MyTaskListQuery,
+  type TaskAttachmentWithdrawInput,
+  type TaskCreateInput,
+  type TaskListQuery,
+  type TaskUpdateInput,
+} from '../../shared/schemas.ts'
 import { taskStatus } from '../../shared/tasks.ts'
 import type { AccountRef, TaskAttachment, TaskDetail, TaskRow } from '../../shared/types.ts'
 import type { Db, DbLike, Tx } from '../db/client.ts'
@@ -34,7 +46,11 @@ const assigner = alias(users, 'assigner')
 const ref = (user: typeof users.$inferSelect): AccountRef => ({ id: user.id, name: user.name, email: user.email })
 
 const selectTasks = (db: DbLike) =>
-  db.select({ task: tasks, assignee, assigner }).from(tasks).innerJoin(assignee, eq(assignee.id, tasks.assigneeUserId)).innerJoin(assigner, eq(assigner.id, tasks.assignerUserId))
+  db
+    .select({ task: tasks, assignee, assigner })
+    .from(tasks)
+    .innerJoin(assignee, eq(assignee.id, tasks.assigneeUserId))
+    .innerJoin(assigner, eq(assigner.id, tasks.assignerUserId))
 
 type Joined = { task: Task; assignee: typeof users.$inferSelect; assigner: typeof users.$inferSelect }
 
@@ -57,7 +73,12 @@ function toRow({ task, assignee, assigner }: Joined, now: Date): TaskRow {
 
 function toDetail(db: DbLike, joined: Joined, now: Date): TaskDetail {
   const { task } = joined
-  const events = db.select().from(taskEvents).where(eq(taskEvents.taskId, task.id)).orderBy(asc(taskEvents.createdAt), asc(taskEvents.id)).all()
+  const events = db
+    .select()
+    .from(taskEvents)
+    .where(eq(taskEvents.taskId, task.id))
+    .orderBy(asc(taskEvents.createdAt), asc(taskEvents.id))
+    .all()
   return {
     ...toRow(joined, now),
     bodyHtml: task.bodyHtml,
@@ -68,8 +89,21 @@ function toDetail(db: DbLike, joined: Joined, now: Date): TaskDetail {
     reminderTime: task.reminderTime,
     reminderZone: task.reminderZone,
     assignerReminders: task.assignerReminders,
-    events: events.map((event) => ({ id: event.id, kind: event.kind, note: event.note, details: event.details, actor: event.actorLabel, createdAt: event.createdAt.toISOString() })),
-    attachments: db.select().from(taskAttachments).where(eq(taskAttachments.taskId, task.id)).orderBy(asc(taskAttachments.id)).all().map(fileShape),
+    events: events.map((event) => ({
+      id: event.id,
+      kind: event.kind,
+      note: event.note,
+      details: event.details,
+      actor: event.actorLabel,
+      createdAt: event.createdAt.toISOString(),
+    })),
+    attachments: db
+      .select()
+      .from(taskAttachments)
+      .where(eq(taskAttachments.taskId, task.id))
+      .orderBy(asc(taskAttachments.id))
+      .all()
+      .map(fileShape),
   }
 }
 
@@ -90,7 +124,10 @@ const fileShape = (row: typeof taskAttachments.$inferSelect): TaskAttachment => 
 
 /** Employee Tasks: every account's tasks, newest first. Status is worked out, so it is filtered here rather than in SQL. */
 export function listTasks(db: DbLike, query: TaskListQuery, now = new Date()): TaskRow[] {
-  const where = and(query.assignee ? eq(tasks.assigneeUserId, query.assignee) : undefined, query.assigner ? eq(tasks.assignerUserId, query.assigner) : undefined)
+  const where = and(
+    query.assignee ? eq(tasks.assigneeUserId, query.assignee) : undefined,
+    query.assigner ? eq(tasks.assignerUserId, query.assigner) : undefined,
+  )
   return selectTasks(db)
     .where(where)
     .orderBy(desc(tasks.createdAt), desc(tasks.id))
@@ -108,24 +145,37 @@ export function getTask(db: DbLike, id: number, now = new Date()): TaskDetail {
 /** My Space: the tasks sent to this account, soonest due first. Scheduled ones stay hidden until they are sent. */
 export function listMyTasks(db: DbLike, userId: number, query: MyTaskListQuery, now = new Date()): TaskRow[] {
   return selectTasks(db)
-    .where(and(eq(tasks.assigneeUserId, userId), lte(tasks.sendAt, now), query.cancelled ? undefined : isNull(tasks.cancelledAt)))
+    .where(
+      and(
+        eq(tasks.assigneeUserId, userId),
+        lte(tasks.sendAt, now),
+        query.cancelled ? undefined : isNull(tasks.cancelledAt),
+      ),
+    )
     .orderBy(asc(tasks.dueAt), asc(tasks.id))
     .all()
     .map((row) => toRow(row, now))
 }
 
-const mine = (userId: number, id: number, now: Date) => and(eq(tasks.id, id), eq(tasks.assigneeUserId, userId), lte(tasks.sendAt, now))
+const mine = (userId: number, id: number, now: Date) =>
+  and(eq(tasks.id, id), eq(tasks.assigneeUserId, userId), lte(tasks.sendAt, now))
 
 /** One of this account's sent tasks. Anyone else's, or one not sent yet, is a 404. */
 export function getMyTask(db: DbLike, userId: number, id: number, now = new Date()): TaskDetail {
-  const row = selectTasks(db).where(mine(userId, id, now)).get()
+  const row = selectTasks(db)
+    .where(mine(userId, id, now))
+    .get()
   if (!row) throw notFound('Task')
   return toDetail(db, row, now)
 }
 
 /** The same check, for a write: the task row, if it is this account's and sent. */
 export function requireMyTask(db: DbLike, userId: number, id: number, now = new Date()): Task {
-  const task = db.select().from(tasks).where(mine(userId, id, now)).get()
+  const task = db
+    .select()
+    .from(tasks)
+    .where(mine(userId, id, now))
+    .get()
   if (!task) throw notFound('Task')
   return task
 }
@@ -133,7 +183,12 @@ export function requireMyTask(db: DbLike, userId: number, id: number, now = new 
 /** The active accounts a task can be sent to, for the assign form. */
 export function listTaskAccounts(db: DbLike, actor: Actor): AccountRef[] {
   if (!canAssignTasks(actor)) throw forbidden(needsAccess('tasks', 'assign'))
-  return db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(eq(users.isActive, true)).orderBy(asc(users.name)).all()
+  return db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(eq(users.isActive, true))
+    .orderBy(asc(users.name))
+    .all()
 }
 
 // ---- Writes -----------------------------------------------------------------------------
@@ -144,9 +199,24 @@ function requireTask(db: DbLike, id: number) {
   return task
 }
 
-function addEvent(db: DbLike, taskId: number, actor: Actor, kind: TaskEventKind, now: Date, extra: { note?: string | null; details?: string } = {}) {
+function addEvent(
+  db: DbLike,
+  taskId: number,
+  actor: Actor,
+  kind: TaskEventKind,
+  now: Date,
+  extra: { note?: string | null; details?: string } = {},
+) {
   db.insert(taskEvents)
-    .values({ taskId, kind, note: extra.note ?? null, details: extra.details ?? '', actorUserId: actor.id, actorLabel: actor.name, createdAt: now })
+    .values({
+      taskId,
+      kind,
+      note: extra.note ?? null,
+      details: extra.details ?? '',
+      actorUserId: actor.id,
+      actorLabel: actor.name,
+      createdAt: now,
+    })
     .run()
 }
 
@@ -155,7 +225,16 @@ function saveFiles(tx: DbLike, actor: Actor, taskId: number, side: TaskFileSide,
   for (const { bytes, sha256, ...upload } of uploads) {
     const row = tx
       .insert(taskAttachments)
-      .values({ taskId, side, ...upload, size: bytes.length, sha256, uploadedByUserId: actor.id, uploadedByLabel: actor.name, uploadedAt: now })
+      .values({
+        taskId,
+        side,
+        ...upload,
+        size: bytes.length,
+        sha256,
+        uploadedByUserId: actor.id,
+        uploadedByLabel: actor.name,
+        uploadedAt: now,
+      })
       .returning()
       .get()
     put(tx, row.id, bytes)
@@ -166,7 +245,16 @@ function saveFiles(tx: DbLike, actor: Actor, taskId: number, side: TaskFileSide,
 const joinDetails = (...parts: string[]) => parts.filter(Boolean).join(' · ')
 
 /** A task notification, deep-linked: the assignee's go to My Space, the assigner's to the workspace. */
-function tell(db: DbLike, actor: { id: number } | null, task: Pick<Task, 'id' | 'assigneeUserId' | 'assignerUserId'>, to: 'assignee' | 'assigner', kind: NewNotification['kind'], title: string, body: string | null, now: Date) {
+function tell(
+  db: DbLike,
+  actor: { id: number } | null,
+  task: Pick<Task, 'id' | 'assigneeUserId' | 'assignerUserId'>,
+  to: 'assignee' | 'assigner',
+  kind: NewNotification['kind'],
+  title: string,
+  body: string | null,
+  now: Date,
+) {
   notify(
     db,
     actor,
@@ -182,7 +270,8 @@ function tell(db: DbLike, actor: { id: number } | null, task: Pick<Task, 'id' | 
   )
 }
 
-const nameOf = (db: DbLike, userId: number) => db.select({ name: users.name }).from(users).where(eq(users.id, userId)).get()?.name ?? 'Someone'
+const nameOf = (db: DbLike, userId: number) =>
+  db.select({ name: users.name }).from(users).where(eq(users.id, userId)).get()?.name ?? 'Someone'
 
 function requireOpen(task: Task, now: Date) {
   const status = taskStatus(task, now)
@@ -201,21 +290,36 @@ export function requireEditableTask(db: DbLike, actor: Actor, id: number, now = 
 const PAST_SEND = 'Schedule it for a time still to come, or send it now.'
 
 /** Fan-out: one task for each account picked, each with its own history. Sent now, the assignees are told now; scheduled, the clock tells them. */
-export function createTasks(db: Db, actor: Actor, input: TaskCreateInput, uploads: Upload[] = [], now = new Date()): TaskRow[] {
+export function createTasks(
+  db: Db,
+  actor: Actor,
+  input: TaskCreateInput,
+  uploads: Upload[] = [],
+  now = new Date(),
+): TaskRow[] {
   if (!canAssignTasks(actor)) throw forbidden(needsAccess('tasks', 'assign'))
   const body = requireRichText(input.body, 'body', { optional: true })
   const assigneeIds = [...new Set(input.assigneeIds)]
   const sendAt = input.sendAt ? new Date(input.sendAt) : now
   if (sendAt.getTime() < now.getTime()) throw invalid(PAST_SEND, { field: 'sendAt' })
   const sent = sendAt.getTime() <= now.getTime()
-  if (input.requiresApproval && assigneeIds.includes(actor.id)) throw invalid(SELF_APPROVAL_PROBLEM, { field: 'requiresApproval' })
+  if (input.requiresApproval && assigneeIds.includes(actor.id))
+    throw invalid(SELF_APPROVAL_PROBLEM, { field: 'requiresApproval' })
   const uploadBytes = uploads.reduce((total, upload) => total + upload.bytes.length, 0)
   if (uploadBytes * assigneeIds.length > TASK_FANOUT_MAX_BYTES) {
-    throw invalid(`Each person gets their own copy of the files, and for ${assigneeIds.length} people that comes to more than ${TASK_FANOUT_MAX_BYTES / 1024 / 1024} MB. Attach smaller files, or assign it to fewer people at a time.`, { field: 'files' })
+    throw invalid(
+      `Each person gets their own copy of the files, and for ${assigneeIds.length} people that comes to more than ${TASK_FANOUT_MAX_BYTES / 1024 / 1024} MB. Attach smaller files, or assign it to fewer people at a time.`,
+      { field: 'files' },
+    )
   }
   const ids = db.transaction((tx) => {
-    const active = tx.select({ id: users.id }).from(users).where(and(inArray(users.id, assigneeIds), eq(users.isActive, true))).all()
-    if (active.length !== assigneeIds.length) throw invalid('Tasks can be sent to active accounts only.', { field: 'assigneeIds' })
+    const active = tx
+      .select({ id: users.id })
+      .from(users)
+      .where(and(inArray(users.id, assigneeIds), eq(users.isActive, true)))
+      .all()
+    if (active.length !== assigneeIds.length)
+      throw invalid('Tasks can be sent to active accounts only.', { field: 'assigneeIds' })
     return assigneeIds.map((assigneeUserId) => {
       const task = tx
         .insert(tasks)
@@ -240,7 +344,9 @@ export function createTasks(db: Db, actor: Actor, input: TaskCreateInput, upload
         .returning()
         .get()
       // Fan-out: each task gets its own copy of the files.
-      addEvent(tx, task.id, actor, 'assigned', now, { details: joinDetails(sent ? '' : 'Scheduled', saveFiles(tx, actor, task.id, 'assigner', uploads, now)) })
+      addEvent(tx, task.id, actor, 'assigned', now, {
+        details: joinDetails(sent ? '' : 'Scheduled', saveFiles(tx, actor, task.id, 'assigner', uploads, now)),
+      })
       if (sent) tell(tx, actor, task, 'assignee', 'task_assigned', `New task: ${task.title}`, `From ${actor.name}`, now)
       return task.id
     })
@@ -266,12 +372,24 @@ const FIELD_LABEL: Record<keyof TaskUpdateInput, string> = {
 }
 
 /** Edits what changed. Once sent, the send time is fixed and the assignee is told; before, nobody is. A new due date starts the past-due notices over. */
-export function updateTask(db: Db, actor: Actor, id: number, input: TaskUpdateInput, uploads: Upload[] = [], now = new Date()): TaskDetail {
+export function updateTask(
+  db: Db,
+  actor: Actor,
+  id: number,
+  input: TaskUpdateInput,
+  uploads: Upload[] = [],
+  now = new Date(),
+): TaskDetail {
   db.transaction((tx) => {
     const task = requireEditableTask(tx, actor, id, now)
     const next: Partial<typeof tasks.$inferInsert> = {}
     const changed: string[] = []
-    const set = <K extends keyof typeof next>(key: K, value: (typeof next)[K], field: keyof TaskUpdateInput, same: boolean) => {
+    const set = <K extends keyof typeof next>(
+      key: K,
+      value: (typeof next)[K],
+      field: keyof TaskUpdateInput,
+      same: boolean,
+    ) => {
       if (same) return
       next[key] = value
       changed.push(FIELD_LABEL[field])
@@ -285,7 +403,8 @@ export function updateTask(db: Db, actor: Actor, id: number, input: TaskUpdateIn
     if (input.sendAt !== undefined) {
       const sendAt = input.sendAt ? new Date(input.sendAt) : now
       if (sendAt.getTime() !== task.sendAt.getTime()) {
-        if (task.arrivedAt) throw invalid('It has already been sent, so its send time cannot change.', { field: 'sendAt' })
+        if (task.arrivedAt)
+          throw invalid('It has already been sent, so its send time cannot change.', { field: 'sendAt' })
         if (sendAt.getTime() < now.getTime()) throw invalid(PAST_SEND, { field: 'sendAt' })
         set('sendAt', sendAt, 'sendAt', false)
       }
@@ -298,27 +417,65 @@ export function updateTask(db: Db, actor: Actor, id: number, input: TaskUpdateIn
         next.lastRemindedOn = null
       }
     }
-    if ((next.dueAt ?? task.dueAt).getTime() <= (next.sendAt ?? task.sendAt).getTime()) throw invalid(DUE_AFTER_SEND, { field: 'dueAt' })
+    if ((next.dueAt ?? task.dueAt).getTime() <= (next.sendAt ?? task.sendAt).getTime())
+      throw invalid(DUE_AFTER_SEND, { field: 'dueAt' })
     if (input.requiresApproval !== undefined && input.requiresApproval !== task.requiresApproval) {
       if (actor.id === task.assigneeUserId) throw forbidden(APPROVAL_LOCKED_PROBLEM)
-      if (input.requiresApproval && task.assigneeUserId === task.assignerUserId) throw invalid(SELF_APPROVAL_PROBLEM, { field: 'requiresApproval' })
+      if (input.requiresApproval && task.assigneeUserId === task.assignerUserId)
+        throw invalid(SELF_APPROVAL_PROBLEM, { field: 'requiresApproval' })
       set('requiresApproval', input.requiresApproval, 'requiresApproval', false)
     }
-    if (input.requiresFile !== undefined) set('requiresFile', input.requiresFile, 'requiresFile', input.requiresFile === task.requiresFile)
-    if (input.reminderDays !== undefined) set('reminderDays', input.reminderDays, 'reminderDays', input.reminderDays.join() === task.reminderDays.join())
-    if (input.reminderTime !== undefined) set('reminderTime', input.reminderTime, 'reminderTime', input.reminderTime === task.reminderTime)
-    if (input.reminderZone !== undefined) set('reminderZone', input.reminderZone, 'reminderZone', input.reminderZone === task.reminderZone)
-    if (input.assignerReminders !== undefined) set('assignerReminders', input.assignerReminders, 'assignerReminders', input.assignerReminders === task.assignerReminders)
+    if (input.requiresFile !== undefined)
+      set('requiresFile', input.requiresFile, 'requiresFile', input.requiresFile === task.requiresFile)
+    if (input.reminderDays !== undefined)
+      set('reminderDays', input.reminderDays, 'reminderDays', input.reminderDays.join() === task.reminderDays.join())
+    if (input.reminderTime !== undefined)
+      set('reminderTime', input.reminderTime, 'reminderTime', input.reminderTime === task.reminderTime)
+    if (input.reminderZone !== undefined)
+      set('reminderZone', input.reminderZone, 'reminderZone', input.reminderZone === task.reminderZone)
+    if (input.assignerReminders !== undefined)
+      set(
+        'assignerReminders',
+        input.assignerReminders,
+        'assignerReminders',
+        input.assignerReminders === task.assignerReminders,
+      )
     if (uploads.length) changed.push('files')
     if (changed.length === 0) return
     // Moved to now, a scheduled task is sent with the edit, not on the clock's next tick.
     const sendsNow = !task.arrivedAt && (next.sendAt ?? task.sendAt).getTime() <= now.getTime()
     if (sendsNow) next.arrivedAt = now
     if (Object.keys(next).length) tx.update(tasks).set(next).where(eq(tasks.id, id)).run()
-    addEvent(tx, id, actor, 'edited', now, { details: joinDetails(`Changed ${changed.join(', ')}`, sendsNow ? 'Sent' : '', saveFiles(tx, actor, id, 'assigner', uploads, now)) })
+    addEvent(tx, id, actor, 'edited', now, {
+      details: joinDetails(
+        `Changed ${changed.join(', ')}`,
+        sendsNow ? 'Sent' : '',
+        saveFiles(tx, actor, id, 'assigner', uploads, now),
+      ),
+    })
     const title = next.title ?? task.title
-    if (sendsNow) tell(tx, actor, task, 'assignee', 'task_assigned', `New task: ${title}`, `From ${nameOf(tx, task.assignerUserId)}`, now)
-    else if (task.arrivedAt) tell(tx, actor, task, 'assignee', 'task_updated', `Task updated: ${title}`, `${actor.name} changed the ${changed.join(', ')}`, now)
+    if (sendsNow)
+      tell(
+        tx,
+        actor,
+        task,
+        'assignee',
+        'task_assigned',
+        `New task: ${title}`,
+        `From ${nameOf(tx, task.assignerUserId)}`,
+        now,
+      )
+    else if (task.arrivedAt)
+      tell(
+        tx,
+        actor,
+        task,
+        'assignee',
+        'task_updated',
+        `Task updated: ${title}`,
+        `${actor.name} changed the ${changed.join(', ')}`,
+        now,
+      )
   })
   return getTask(db, id, now)
 }
@@ -331,7 +488,17 @@ export function cancelTask(db: Db, actor: Actor, id: number, now = new Date()): 
     requireOpen(task, now)
     tx.update(tasks).set({ cancelledAt: now }).where(eq(tasks.id, id)).run()
     addEvent(tx, id, actor, 'cancelled', now)
-    if (task.arrivedAt) tell(tx, actor, task, 'assignee', 'task_cancelled', `Task cancelled: ${task.title}`, `${actor.name} cancelled it.`, now)
+    if (task.arrivedAt)
+      tell(
+        tx,
+        actor,
+        task,
+        'assignee',
+        'task_cancelled',
+        `Task cancelled: ${task.title}`,
+        `${actor.name} cancelled it.`,
+        now,
+      )
   })
   return getTask(db, id, now)
 }
@@ -346,25 +513,67 @@ export function deleteTask(db: Db, id: number) {
 }
 
 /** The assignee marks their own sent task complete. One that needs approval waits for it; the assigner is told either way. */
-export function completeTask(db: Db, actor: Actor, id: number, note: string | null | undefined, uploads: Upload[] = [], now = new Date()): TaskDetail {
+export function completeTask(
+  db: Db,
+  actor: Actor,
+  id: number,
+  note: string | null | undefined,
+  uploads: Upload[] = [],
+  now = new Date(),
+): TaskDetail {
   db.transaction((tx) => {
     const task = requireMyTask(tx, actor.id, id, now)
     requireOpen(task, now)
-    if (task.requiresFile && !uploads.length && !liveFiles(tx, id, 'assignee')) throw invalid('This task needs a file with its completion. Attach one.', { field: 'files' })
-    tx.update(tasks).set({ completedAt: now, completionNote: note || null }).where(eq(tasks.id, id)).run()
-    addEvent(tx, id, actor, 'completed', now, { note: note || null, details: saveFiles(tx, actor, id, 'assignee', uploads, now) })
-    if (task.requiresApproval) tell(tx, actor, task, 'assigner', 'task_approval_requested', `Awaiting approval: ${task.title}`, `${actor.name} completed it.`, now)
-    else tell(tx, actor, task, 'assigner', 'task_completed', `Task completed: ${task.title}`, `${actor.name} completed it.`, now)
+    if (task.requiresFile && !uploads.length && !liveFiles(tx, id, 'assignee'))
+      throw invalid('This task needs a file with its completion. Attach one.', { field: 'files' })
+    tx.update(tasks)
+      .set({ completedAt: now, completionNote: note || null })
+      .where(eq(tasks.id, id))
+      .run()
+    addEvent(tx, id, actor, 'completed', now, {
+      note: note || null,
+      details: saveFiles(tx, actor, id, 'assignee', uploads, now),
+    })
+    if (task.requiresApproval)
+      tell(
+        tx,
+        actor,
+        task,
+        'assigner',
+        'task_approval_requested',
+        `Awaiting approval: ${task.title}`,
+        `${actor.name} completed it.`,
+        now,
+      )
+    else
+      tell(
+        tx,
+        actor,
+        task,
+        'assigner',
+        'task_completed',
+        `Task completed: ${task.title}`,
+        `${actor.name} completed it.`,
+        now,
+      )
   })
   return getMyTask(db, actor.id, id, now)
 }
 
 const liveFiles = (db: DbLike, taskId: number, side: TaskFileSide) =>
-  db.select({ id: taskAttachments.id }).from(taskAttachments).where(and(eq(taskAttachments.taskId, taskId), eq(taskAttachments.side, side), isNull(taskAttachments.withdrawnAt))).all().length
+  db
+    .select({ id: taskAttachments.id })
+    .from(taskAttachments)
+    .where(and(eq(taskAttachments.taskId, taskId), eq(taskAttachments.side, side), isNull(taskAttachments.withdrawnAt)))
+    .all().length
 
 /** One of a task's files, or 404: an ID from another task is not found here. */
 function requireFile(db: DbLike, taskId: number, fileId: number) {
-  const row = db.select().from(taskAttachments).where(and(eq(taskAttachments.id, fileId), eq(taskAttachments.taskId, taskId))).get()
+  const row = db
+    .select()
+    .from(taskAttachments)
+    .where(and(eq(taskAttachments.id, fileId), eq(taskAttachments.taskId, taskId)))
+    .get()
   if (!row) throw notFound('File')
   return row
 }
@@ -379,24 +588,50 @@ function requireSeen(db: DbLike, actor: Actor, scope: TaskFileScope, taskId: num
 }
 
 /** A file's bytes, to be sent as a download, for anyone who can see the task. A withdrawn file has none to give. */
-export function downloadTaskFile(db: DbLike, actor: Actor, scope: TaskFileScope, taskId: number, fileId: number, now = new Date()) {
+export function downloadTaskFile(
+  db: DbLike,
+  actor: Actor,
+  scope: TaskFileScope,
+  taskId: number,
+  fileId: number,
+  now = new Date(),
+) {
   requireSeen(db, actor, scope, taskId, now)
   const row = requireFile(db, taskId, fileId)
-  if (row.withdrawnAt) throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
+  if (row.withdrawnAt)
+    throw new HttpError(410, 'attachment_withdrawn', `${row.filename} was withdrawn and can no longer be downloaded.`)
   const bytes = get(db, row.id)
   if (!bytes) throw notFound('File')
   return { filename: row.filename, contentType: row.contentType, bytes }
 }
 
 /** Take back a file added by mistake: it stays on the list, with the reason, but can no longer be downloaded. */
-export function withdrawTaskFile(db: Db, actor: Actor, scope: TaskFileScope, taskId: number, fileId: number, input: TaskAttachmentWithdrawInput, now = new Date()) {
+export function withdrawTaskFile(
+  db: Db,
+  actor: Actor,
+  scope: TaskFileScope,
+  taskId: number,
+  fileId: number,
+  input: TaskAttachmentWithdrawInput,
+  now = new Date(),
+) {
   db.transaction((tx) => {
     const task = requireSeen(tx, actor, scope, taskId, now)
     const row = requireFile(tx, taskId, fileId)
-    const file = { side: row.side, uploadedById: row.uploadedByUserId, withdrawnAt: row.withdrawnAt?.toISOString() ?? null }
+    const file = {
+      side: row.side,
+      uploadedById: row.uploadedByUserId,
+      withdrawnAt: row.withdrawnAt?.toISOString() ?? null,
+    }
     const problem = taskFileWithdrawProblem(actor, { ...task, status: taskStatus(task, now) }, file)
-    if (problem) throw row.withdrawnAt || mayWithdrawTaskFile(actor, task, file) ? conflict('attachment_locked', problem) : forbidden(problem)
-    tx.update(taskAttachments).set({ withdrawnAt: now, withdrawnReason: input.reason }).where(eq(taskAttachments.id, row.id)).run()
+    if (problem)
+      throw row.withdrawnAt || mayWithdrawTaskFile(actor, task, file)
+        ? conflict('attachment_locked', problem)
+        : forbidden(problem)
+    tx.update(taskAttachments)
+      .set({ withdrawnAt: now, withdrawnReason: input.reason })
+      .where(eq(taskAttachments.id, row.id))
+      .run()
     addEvent(tx, taskId, actor, 'file_withdrawn', now, { note: input.reason, details: row.filename })
   })
 }
@@ -405,7 +640,8 @@ function requireApprover(tx: DbLike, actor: Actor, id: number, now: Date) {
   const task = requireTask(tx, id)
   const reason = taskApproveReason(actor, task)
   if (reason) throw forbidden(reason)
-  if (taskStatus(task, now) !== 'awaiting_approval') throw conflict('task_not_awaiting', 'This task is not awaiting approval.')
+  if (taskStatus(task, now) !== 'awaiting_approval')
+    throw conflict('task_not_awaiting', 'This task is not awaiting approval.')
   return task
 }
 
@@ -414,7 +650,16 @@ export function approveTask(db: Db, actor: Actor, id: number, now = new Date()):
     const task = requireApprover(tx, actor, id, now)
     tx.update(tasks).set({ approvedAt: now }).where(eq(tasks.id, id)).run()
     addEvent(tx, id, actor, 'approved', now)
-    tell(tx, actor, task, 'assignee', 'task_approved', `Task approved: ${task.title}`, `${actor.name} approved it.`, now)
+    tell(
+      tx,
+      actor,
+      task,
+      'assignee',
+      'task_approved',
+      `Task approved: ${task.title}`,
+      `${actor.name} approved it.`,
+      now,
+    )
   })
   return getTask(db, id, now)
 }
@@ -425,7 +670,16 @@ export function sendBackTask(db: Db, actor: Actor, id: number, note: string, now
     const task = requireApprover(tx, actor, id, now)
     tx.update(tasks).set({ completedAt: null, completionNote: null }).where(eq(tasks.id, id)).run()
     addEvent(tx, id, actor, 'sent_back', now, { note })
-    tell(tx, actor, task, 'assignee', 'task_sent_back', `Task sent back: ${task.title}`, `${actor.name} sent it back with a note.`, now)
+    tell(
+      tx,
+      actor,
+      task,
+      'assignee',
+      'task_sent_back',
+      `Task sent back: ${task.title}`,
+      `${actor.name} sent it back with a note.`,
+      now,
+    )
   })
   return getTask(db, id, now)
 }
@@ -438,11 +692,24 @@ const PARTS = new Map<string, Intl.DateTimeFormat>()
 export function localTime(at: Date, zone: string): { date: string; weekday: TaskWeekday; time: string } {
   let format = PARTS.get(zone)
   if (!format) {
-    format = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
     PARTS.set(zone, format)
   }
   const part = Object.fromEntries(format.formatToParts(at).map((p) => [p.type, p.value]))
-  return { date: `${part.year}-${part.month}-${part.day}`, weekday: part.weekday!.slice(0, 2).toUpperCase() as TaskWeekday, time: `${part.hour}:${part.minute}` }
+  return {
+    date: `${part.year}-${part.month}-${part.day}`,
+    weekday: part.weekday!.slice(0, 2).toUpperCase() as TaskWeekday,
+    time: `${part.hour}:${part.minute}`,
+  }
 }
 
 /**
@@ -465,14 +732,30 @@ export function runTaskClock(db: Db, now = new Date()) {
   }
   db.transaction((tx) => {
     const unsent = tx
-      .select({ id: tasks.id, title: tasks.title, assigneeUserId: tasks.assigneeUserId, assignerUserId: tasks.assignerUserId, cancelledAt: tasks.cancelledAt, completedAt: tasks.completedAt })
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        assigneeUserId: tasks.assigneeUserId,
+        assignerUserId: tasks.assignerUserId,
+        cancelledAt: tasks.cancelledAt,
+        completedAt: tasks.completedAt,
+      })
       .from(tasks)
       .where(and(isNull(tasks.arrivedAt), lte(tasks.sendAt, now)))
       .all()
     each(tx, unsent, (tx, task) => {
       tx.update(tasks).set({ arrivedAt: now }).where(eq(tasks.id, task.id)).run()
       if (task.cancelledAt || task.completedAt) return
-      tell(tx, { id: task.assignerUserId }, task, 'assignee', 'task_assigned', `New task: ${task.title}`, `From ${nameOf(tx, task.assignerUserId)}`, now)
+      tell(
+        tx,
+        { id: task.assignerUserId },
+        task,
+        'assignee',
+        'task_assigned',
+        `New task: ${task.title}`,
+        `From ${nameOf(tx, task.assignerUserId)}`,
+        now,
+      )
       sent.arrived++
     })
 
@@ -499,7 +782,16 @@ export function runTaskClock(db: Db, now = new Date()) {
       if (firstNotice) {
         tx.update(tasks).set({ pastDueNotifiedAt: now }).where(eq(tasks.id, task.id)).run()
         if (toAssigner) {
-          tell(tx, null, task, 'assigner', 'task_past_due', `Task past due: ${task.title}`, `Assigned to ${nameOf(tx, task.assigneeUserId)}`, now)
+          tell(
+            tx,
+            null,
+            task,
+            'assigner',
+            'task_past_due',
+            `Task past due: ${task.title}`,
+            `Assigned to ${nameOf(tx, task.assigneeUserId)}`,
+            now,
+          )
           sent.pastDue++
         }
       }
@@ -514,7 +806,17 @@ export function runTaskClock(db: Db, now = new Date()) {
       tx.update(tasks).set({ lastRemindedOn: local.date }).where(eq(tasks.id, task.id)).run()
       tell(tx, null, task, 'assignee', 'task_past_due', `Task past due: ${task.title}`, 'This task is past due.', now)
       // The assigner was told a moment ago, in this same run: once is enough.
-      if (toAssigner && task.assignerReminders === 'every' && !firstNotice) tell(tx, null, task, 'assigner', 'task_past_due', `Task past due: ${task.title}`, `Assigned to ${nameOf(tx, task.assigneeUserId)}`, now)
+      if (toAssigner && task.assignerReminders === 'every' && !firstNotice)
+        tell(
+          tx,
+          null,
+          task,
+          'assigner',
+          'task_past_due',
+          `Task past due: ${task.title}`,
+          `Assigned to ${nameOf(tx, task.assigneeUserId)}`,
+          now,
+        )
       sent.reminded++
     })
   })

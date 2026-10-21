@@ -5,7 +5,13 @@ import { cn } from '@/lib/cn.ts'
 import type { Tone } from './badge.tsx'
 import { IconButton } from './button.tsx'
 
-const toneIcon: Record<Tone, LucideIcon> = { neutral: Info, accent: Info, ok: CheckCircle2, warn: AlertTriangle, bad: XCircle }
+const toneIcon: Record<Tone, LucideIcon> = {
+  neutral: Info,
+  accent: Info,
+  ok: CheckCircle2,
+  warn: AlertTriangle,
+  bad: XCircle,
+}
 const toneBox: Record<Tone, string> = {
   neutral: 'border-line bg-sunken text-ink-2',
   accent: 'border-accent-line bg-accent-soft text-ink',
@@ -13,12 +19,33 @@ const toneBox: Record<Tone, string> = {
   warn: 'border-warn-line bg-warn-soft text-ink',
   bad: 'border-bad-line bg-bad-soft text-ink',
 }
-const toneIconColor: Record<Tone, string> = { neutral: 'text-ink-3', accent: 'text-accent', ok: 'text-ok', warn: 'text-warn', bad: 'text-bad' }
+const toneIconColor: Record<Tone, string> = {
+  neutral: 'text-ink-3',
+  accent: 'text-accent',
+  ok: 'text-ok',
+  warn: 'text-warn',
+  bad: 'text-bad',
+}
 
-export function Alert({ tone = 'neutral', title, children, className, action }: { tone?: Tone; title?: ReactNode; children?: ReactNode; className?: string; action?: ReactNode }) {
+export function Alert({
+  tone = 'neutral',
+  title,
+  children,
+  className,
+  action,
+}: {
+  tone?: Tone
+  title?: ReactNode
+  children?: ReactNode
+  className?: string
+  action?: ReactNode
+}) {
   const Icon = toneIcon[tone]
   return (
-    <div role={tone === 'bad' || tone === 'warn' ? 'alert' : 'status'} className={cn('flex gap-3 rounded-control border p-3.5', toneBox[tone], className)}>
+    <div
+      role={tone === 'bad' || tone === 'warn' ? 'alert' : 'status'}
+      className={cn('flex gap-3 rounded-control border p-3.5', toneBox[tone], className)}
+    >
       <Icon className={cn('mt-0.5 size-4 shrink-0', toneIconColor[tone])} aria-hidden />
       <div className="min-w-0 flex-1 text-sm leading-5">
         {title && <p className="font-semibold">{title}</p>}
@@ -37,7 +64,19 @@ export function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden className={cn('animate-pulse-soft rounded-[6px] bg-sunken', className)} />
 }
 
-export function EmptyState({ icon: Icon, title, description, action, className }: { icon: LucideIcon; title: string; description?: ReactNode; action?: ReactNode; className?: string }) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  className,
+}: {
+  icon: LucideIcon
+  title: string
+  description?: ReactNode
+  action?: ReactNode
+  className?: string
+}) {
   return (
     <div className={cn('flex flex-col items-center px-6 py-14 text-center', className)}>
       <div className="flex size-11 items-center justify-center rounded-full bg-sunken text-ink-3">
@@ -83,12 +122,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       {/* Toasts sit outside every dialog. As a branch of Radix's dismissable layers they no longer count as "outside", so
           clicking one (its Dismiss button, say) leaves an open sheet or dialog alone instead of closing it. */}
-      <DismissableBranch aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-4 z-[80] flex flex-col items-end gap-2 sm:left-auto sm:w-96">
+      <DismissableBranch
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-4 bottom-4 z-[80] flex flex-col items-end gap-2 sm:left-auto sm:w-96"
+      >
         {items.map((item) => {
           const tone = item.tone ?? 'ok'
           const Icon = toneIcon[tone]
           return (
-            <div key={item.id} className="pointer-events-auto flex w-full animate-pop-in items-start gap-3 rounded-panel border border-line bg-surface p-3.5 pr-2 shadow-pop">
+            <div
+              key={item.id}
+              className="pointer-events-auto flex w-full animate-pop-in items-start gap-3 rounded-panel border border-line bg-surface p-3.5 pr-2 shadow-pop"
+            >
               <Icon className={cn('mt-0.5 size-4 shrink-0', toneIconColor[tone])} aria-hidden />
               <div className="min-w-0 flex-1 text-sm leading-5">
                 <p className="font-semibold text-ink">{item.title}</p>

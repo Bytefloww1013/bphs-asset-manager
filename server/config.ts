@@ -8,7 +8,8 @@ function int(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number
   const value = env[name]?.trim()
   if (!value) return fallback
   const parsed = /^\d+$/.test(value) ? Number(value) : Number.NaN
-  if (!(parsed >= min && parsed <= max)) throw new Error(`${name} must be a whole number from ${min} to ${max}, but it is "${value}".`)
+  if (!(parsed >= min && parsed <= max))
+    throw new Error(`${name} must be a whole number from ${min} to ${max}, but it is "${value}".`)
   return parsed
 }
 

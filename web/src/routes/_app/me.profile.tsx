@@ -37,7 +37,9 @@ function ProfilePage() {
           </Fact>
           <Fact label="Linked employee">
             {user.employeeId === null ? (
-              <span className="font-normal text-ink-3">{user.firstAccount ? 'None. The first account needs no employee.' : 'None'}</span>
+              <span className="font-normal text-ink-3">
+                {user.firstAccount ? 'None. The first account needs no employee.' : 'None'}
+              </span>
             ) : employee ? (
               <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span>{employee.name}</span>
@@ -61,7 +63,9 @@ function ProfilePage() {
         {user.superAdmin ? (
           <div className="flex flex-col items-start gap-2 border-t border-line px-5 py-4">
             <Badge tone="accent">Super Admin</Badge>
-            <p className="text-sm text-ink-2">Full access to every section, including any added later, and the only accounts that can manage accounts.</p>
+            <p className="text-sm text-ink-2">
+              Full access to every section, including any added later, and the only accounts that can manage accounts.
+            </p>
           </div>
         ) : (
           <dl className="divide-y divide-line border-t border-line">
@@ -71,7 +75,9 @@ function ProfilePage() {
                 <div key={section} className="grid gap-1 px-5 py-3 sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-4">
                   <dt className="text-sm font-medium text-ink">{SECTION_LABEL[section]}</dt>
                   <dd className="text-sm">
-                    <span className={level === 'none' ? 'text-ink-3' : 'font-medium text-ink'}>{ACCESS_LEVEL_LABEL[level]}</span>
+                    <span className={level === 'none' ? 'text-ink-3' : 'font-medium text-ink'}>
+                      {ACCESS_LEVEL_LABEL[level]}
+                    </span>
                     <span className="mt-0.5 block text-xs text-ink-3">{LEVEL_HELP[section][level]}</span>
                   </dd>
                 </div>
