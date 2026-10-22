@@ -76,9 +76,9 @@ Source: [issue #19](https://github.com/Bytefloww1013/bphs-asset-manager/issues/1
 
 ## Phase 4 - Verify
 
-- [ ] 4.1 `docs/verify/verify-done.sh` exits 0, output shown in chat
+- [x] 4.1 `docs/verify/verify-done.sh` exits 0, output shown in chat
 - [ ] 4.2 User confirms manual DoD items
-- [ ] 4.3 CLAUDE.md reviewed: added / pruned / unchanged, no branch-specific text
+- [x] 4.3 CLAUDE.md reviewed: added / pruned / unchanged, no branch-specific text (unchanged after Phase 1; two generic TOOLS lines added then)
 
 ## Blast-radius audit (3.3)
 
