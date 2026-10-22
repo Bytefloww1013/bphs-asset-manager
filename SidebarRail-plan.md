@@ -117,6 +117,6 @@ Each agent reads Phase 1-2 files and `.impeccable/mocks/sidebar-rail/src.html`, 
 
 ## Phase 6 - Verify
 
-- [ ] 6.1 `docs/verify/verify-done.sh` exits 0, output shown in chat
-- [ ] 6.2 User confirms manual DoD items
-- [ ] 6.3 CLAUDE.md reviewed: added / pruned / unchanged
+- [x] 6.1 `docs/verify/verify-done.sh` exits 0, output shown in chat
+- [x] 6.2 User confirms manual DoD items
+- [x] 6.3 CLAUDE.md reviewed: added (TanStack `Link` aria-current gotcha)
