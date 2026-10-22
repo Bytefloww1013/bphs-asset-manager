@@ -15,7 +15,7 @@ import type {
   HistoryRow,
 } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { assetTypes, assets, conditionRatings, conditions, employees } from '../db/schema.ts'
+import { assetBrands, assetTypes, assets, conditionRatings, conditions, employees } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, invalid, notFound, rowFailure } from '../lib/errors.ts'
 import { describeRowProblem } from '../../shared/rows.ts'
@@ -29,6 +29,11 @@ interface AssetBase {
   tag: string
   typeId: number
   type: string
+  brandId: number
+  brand: string
+  brandActive: number
+  model: string | null
+  entraObjectId: string | null
   serial: string | null
   status: 'in_service' | 'retired'
   createdAt: number
@@ -59,9 +64,10 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
   const now = new Date()
   const where = only?.id ? sql`where s.id = ${only.id}` : only?.tag ? sql`where s.tag = ${only.tag}` : sql``
   const base = db.all<AssetBase>(sql`
-    select s.id as id, s.tag as tag, s.type_id as typeId, t.name as type, s.serial as serial,
-           s.status as status, s.created_at as createdAt
-    from assets s join asset_types t on t.id = s.type_id ${where}
+    select s.id as id, s.tag as tag, s.type_id as typeId, t.name as type,
+           s.brand_id as brandId, b.name as brand, b.is_active as brandActive, s.model as model,
+           s.entra_object_id as entraObjectId, s.serial as serial, s.status as status, s.created_at as createdAt
+    from assets s join asset_types t on t.id = s.type_id join asset_brands b on b.id = s.brand_id ${where}
     order by s.tag collate nocase`)
   if (base.length === 0) return []
   // Asked for one asset, read only its rows below instead of every asset's.
@@ -120,6 +126,11 @@ export function loadAssetRows(db: DbLike, only?: { id?: number; tag?: string }):
       tag: row.tag,
       typeId: row.typeId,
       type: row.type,
+      brandId: row.brandId,
+      brand: row.brand,
+      brandActive: Boolean(row.brandActive),
+      model: row.model,
+      entraObjectId: row.entraObjectId,
       serial: row.serial,
       status: row.status,
       state: row.status === 'retired' ? 'retired' : assignment ? 'assigned' : 'in_storage',
@@ -251,6 +262,30 @@ function requireType(db: DbLike, id: number) {
   return type
 }
 
+/** "Unknown" and every other archived brand stay on the assets that have them, but none can be chosen. */
+function requireBrand(db: DbLike, id: number) {
+  const brand = db.select().from(assetBrands).where(eq(assetBrands.id, id)).get()
+  if (!brand || !brand.isActive) throw invalid('Choose an active brand.', { field: 'brandId' })
+  return brand
+}
+
+/** Entra ObjectIds arrive lowercase from the schema, so an exact match also catches a differently cased copy. */
+function assertEntraFree(db: DbLike, entraObjectId: string | null | undefined, exceptId?: number) {
+  if (!entraObjectId) return
+  const dup = db
+    .select({ id: assets.id, tag: assets.tag })
+    .from(assets)
+    .where(eq(assets.entraObjectId, entraObjectId))
+    .get()
+  if (dup && dup.id !== exceptId) {
+    throw conflict('duplicate_entra_object_id', `Entra ObjectId ${entraObjectId} is already on ${dup.tag}.`, {
+      field: 'entraObjectId',
+    })
+  }
+}
+
+const brandModel = (brand: string, model: string | null | undefined) => (model ? `${brand} ${model}` : brand)
+
 function assertTagFree(db: DbLike, tag: string, exceptId?: number) {
   const dup = db
     .select({ id: assets.id })
@@ -264,19 +299,31 @@ function assertTagFree(db: DbLike, tag: string, exceptId?: number) {
 
 function createInTx(tx: DbLike, actor: Actor, input: AssetCreateInput, now: Date, notifyHolder = true): number {
   const type = requireType(tx, input.typeId)
+  const brand = requireBrand(tx, input.brandId)
   const rating = requireActiveRating(tx, input.conditionRatingId)
   assertTagFree(tx, input.tag)
+  assertEntraFree(tx, input.entraObjectId)
 
   const asset = tx
     .insert(assets)
-    .values({ tag: input.tag, typeId: type.id, serial: input.serial ?? null, createdAt: now })
+    .values({
+      tag: input.tag,
+      typeId: type.id,
+      brandId: brand.id,
+      model: input.model ?? null,
+      entraObjectId: input.entraObjectId ?? null,
+      serial: input.serial ?? null,
+      createdAt: now,
+    })
     .returning({ id: assets.id })
     .get()
+  const details = [input.tag, type.name, brandModel(brand.name, input.model)]
+  if (input.entraObjectId) details.push(`Entra ObjectId ${input.entraObjectId}`)
   writeAudit(tx, actor, {
     action: 'create',
     entityType: 'asset',
     entityId: asset.id,
-    details: `${input.tag} · ${type.name}`,
+    details: details.join(' · '),
     at: now,
   })
 
@@ -319,6 +366,7 @@ export function createAsset(db: Db, actor: Actor, input: AssetCreateInput): Asse
 /** Paste-from-spreadsheet import. Rows are independent; bad rows are reported by number. */
 export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): AssetBulkResult {
   const types = db.select().from(assetTypes).all()
+  const brands = db.select().from(assetBrands).all()
   const ratings = db
     .select()
     .from(conditionRatings)
@@ -339,11 +387,21 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
     const line = index + 1
     const fail = (message: string) => result.errors.push({ row: line, message })
     if (!row.tag) return fail('Missing asset tag.')
-    const fields = assetBulkRowFields.safeParse({ tag: row.tag, serial: row.serial })
+    const fields = assetBulkRowFields.safeParse({
+      tag: row.tag,
+      model: row.model,
+      entraObjectId: row.entraObjectId,
+      serial: row.serial,
+    })
     if (!fields.success)
-      return fail(`${describeRowProblem(fields.error, { tag: 'Asset tag', serial: 'Serial number' })}.`)
+      return fail(
+        `${describeRowProblem(fields.error, { tag: 'Asset tag', model: 'Model', entraObjectId: 'Entra ObjectId', serial: 'Serial number' })}.`,
+      )
     const type = byName(types, row.type)
     if (!type || !type.isActive) return fail(`Unknown asset type "${row.type}".`)
+    if (!row.brand) return fail('Missing brand.')
+    const brand = byName(brands, row.brand)
+    if (!brand || !brand.isActive) return fail(`No active brand named "${row.brand}".`)
     const rating = row.condition ? byName(ratings, row.condition) : fallbackRating
     if (!rating) return fail(`Unknown condition "${row.condition ?? ''}".`)
     let holderId: number | null = null
@@ -368,6 +426,9 @@ export function createAssetsBulk(db: Db, actor: Actor, input: AssetBulkInput): A
           {
             tag: fields.data.tag,
             typeId: type.id,
+            brandId: brand.id,
+            model: fields.data.model ?? null,
+            entraObjectId: fields.data.entraObjectId ?? null,
             serial: fields.data.serial ?? null,
             conditionRatingId: rating.id,
             holderId,
@@ -401,6 +462,24 @@ export function updateAsset(db: Db, actor: Actor, id: number, input: AssetUpdate
       const next = requireType(tx, input.typeId)
       patch.typeId = next.id
       changes.push(`type: ${before?.name ?? current.typeId} → ${next.name}`)
+    }
+    if (input.brandId !== undefined) {
+      // An asset on an archived brand (such as "Unknown") must move to an active one when it is edited.
+      const next = requireBrand(tx, input.brandId)
+      if (next.id !== current.brandId) {
+        const before = tx.select().from(assetBrands).where(eq(assetBrands.id, current.brandId)).get()
+        patch.brandId = next.id
+        changes.push(`brand: ${before?.name ?? current.brandId} → ${next.name}`)
+      }
+    }
+    if (input.model !== undefined && (input.model ?? null) !== current.model) {
+      patch.model = input.model ?? null
+      changes.push(`model: ${current.model ?? '—'} → ${input.model ?? '—'}`)
+    }
+    if (input.entraObjectId !== undefined && (input.entraObjectId ?? null) !== current.entraObjectId) {
+      assertEntraFree(tx, input.entraObjectId, id)
+      patch.entraObjectId = input.entraObjectId ?? null
+      changes.push(`Entra ObjectId: ${current.entraObjectId ?? '—'} → ${input.entraObjectId ?? '—'}`)
     }
     if (input.serial !== undefined && (input.serial ?? null) !== current.serial) {
       patch.serial = input.serial ?? null

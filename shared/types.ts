@@ -61,6 +61,8 @@ export interface ConditionRatingRef {
 
 export interface Lookups {
   assetTypes: AssetTypeRef[]
+  /** Active brands only: "Unknown" and other archived brands are never offered. */
+  assetBrands: AssetTypeRef[]
   conditionRatings: ConditionRatingRef[]
   employees: EmployeeRef[]
   /** Active programs only. */
@@ -83,6 +85,13 @@ export interface AssetRow {
   tag: string
   typeId: number
   type: string
+  brandId: number
+  brand: string
+  /** False when the brand is archived, like "Unknown": an edit has to pick an active one. */
+  brandActive: boolean
+  model: string | null
+  /** The device's Microsoft Entra object ID, a lowercase UUID. */
+  entraObjectId: string | null
   serial: string | null
   status: AssetStatus
   state: AssetState
@@ -178,6 +187,9 @@ export interface AssignmentRow {
   assetId: number
   assetTag: string
   assetType: string
+  assetBrand: string
+  assetModel: string | null
+  assetEntraObjectId: string | null
   /** Who holds it: an employee or a program, one of the two. */
   employee: EmployeeRef | null
   program: ProgramRef | null
@@ -255,6 +267,9 @@ export interface AssetTypeRow {
   isActive: boolean
   assetCount: number
 }
+
+/** An asset brand, with how many physical assets use it. */
+export type AssetBrandRow = AssetTypeRow
 
 /** A digital asset type, with how many digital assets use it. */
 export type DigitalAssetTypeRow = AssetTypeRow
@@ -564,12 +579,22 @@ export interface DashboardData {
     assignmentId: number
     assetTag: string
     assetType: string
+    assetBrand: string
+    assetModel: string | null
     employee: EmployeeRef | null
     program: ProgramRef | null
     daysOut: number
   }[]
   topHolders: { employee: EmployeeRef; count: number }[]
-  poorCondition: { assetId: number; assetTag: string; assetType: string; rating: string; holder: string | null }[]
+  poorCondition: {
+    assetId: number
+    assetTag: string
+    assetType: string
+    assetBrand: string
+    assetModel: string | null
+    rating: string
+    holder: string | null
+  }[]
   recent: AuditEntry[]
 }
 

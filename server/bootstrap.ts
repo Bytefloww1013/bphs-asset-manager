@@ -1,10 +1,12 @@
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import type { Db } from './db/client.ts'
-import { assetTypes, conditionRatings, users } from './db/schema.ts'
+import { assetBrands, assetTypes, conditionRatings, users } from './db/schema.ts'
 import { config } from './config.ts'
 import { hashPassword } from './lib/password.ts'
 
 export const DEFAULT_TYPES = ['Laptop', 'Phone', 'Monitor', 'Keyboard', 'Mouse']
+/** The 0023 migration also leaves an archived "Unknown", so a new database counts active brands only. */
+export const DEFAULT_BRANDS = ['Apple', 'Dell', 'HP', 'Lenovo', 'Logitech', 'Microsoft', 'Samsung']
 /** Best condition first, each with its score out of 100. */
 export const DEFAULT_RATINGS = [
   { name: 'New', score: 100 },
@@ -23,6 +25,12 @@ export function ensureDefaultLists(db: Db) {
   if ((db.select({ n: count() }).from(assetTypes).get()?.n ?? 0) === 0) {
     db.insert(assetTypes)
       .values(DEFAULT_TYPES.map((name) => ({ name })))
+      .run()
+  }
+  if ((db.select({ n: count() }).from(assetBrands).where(eq(assetBrands.isActive, true)).get()?.n ?? 0) === 0) {
+    db.insert(assetBrands)
+      .values(DEFAULT_BRANDS.map((name) => ({ name })))
+      .onConflictDoNothing()
       .run()
   }
   if ((db.select({ n: count() }).from(conditionRatings).get()?.n ?? 0) === 0) {

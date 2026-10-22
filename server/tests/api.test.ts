@@ -16,18 +16,19 @@ const cookieExpiry = (header: string | null) => new Date(/expires=([^;]+)/i.exec
 async function seed() {
   const t = await setup()
   const cookie = await t.asSuper()
-  const { assetTypes, conditionRatings } = await t.lookups(cookie)
+  const { assetTypes, assetBrands, conditionRatings } = await t.lookups(cookie)
   const laptop = assetTypes.find((x) => x.name === 'Laptop')!
+  const dell = assetBrands.find((x) => x.name === 'Dell')!
   const good = conditionRatings.find((x) => x.name === 'Good')!
   const fair = conditionRatings.find((x) => x.name === 'Fair')!
   const make = async (tag: string, extra: Record<string, unknown> = {}) =>
     await t.call('POST', '/api/assets', {
       cookie,
-      body: { tag, typeId: laptop.id, conditionRatingId: good.id, ...extra },
+      body: { tag, typeId: laptop.id, brandId: dell.id, conditionRatingId: good.id, ...extra },
     })
   const program = async (code: string, name: string, address?: string) =>
     (await t.call('POST', '/api/programs', { cookie, body: { code, name, address } })).data
-  return { t, cookie, laptop, good, fair, make, program }
+  return { t, cookie, laptop, dell, good, fair, make, program }
 }
 
 describe('authentication', () => {
@@ -353,22 +354,22 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(audit.data.entries[0]).toMatchObject({
       action: 'create',
       entityType: 'asset',
-      details: 'BPHS-0150 · Laptop',
+      details: 'BPHS-0150 · Laptop · Dell',
     })
     const dup = await t.call('POST', '/api/assets', {
       cookie,
-      body: { tag: 'BPHS-0150', typeId: asset.typeId, conditionRatingId: 1 },
+      body: { tag: 'BPHS-0150', typeId: asset.typeId, brandId: asset.brandId, conditionRatingId: 1 },
     })
     expect(dup.status).toBe(409)
   })
 
   it('names the field and the limit when a value is refused, so a form can show it under that field', async () => {
-    const { t, cookie, laptop, good, make } = await seed()
+    const { t, cookie, laptop, dell, good, make } = await seed()
     const asset = (await make('BPHS-0400')).data
     const post = (body: Record<string, unknown>) =>
       t.call('POST', '/api/assets', {
         cookie,
-        body: { tag: 'BPHS-0401', typeId: laptop.id, conditionRatingId: good.id, ...body },
+        body: { tag: 'BPHS-0401', typeId: laptop.id, brandId: dell.id, conditionRatingId: good.id, ...body },
       })
     const fields = (res: { data: any }) => res.data.details.fields
 
@@ -432,13 +433,16 @@ describe('assets, assignments and the one-active-assignment rule', () => {
   })
 
   it('records nobody as the assessor when the field is sent empty, and the signed-in user only when it is not sent', async () => {
-    const { t, cookie, laptop, good } = await seed()
+    const { t, cookie, laptop, dell, good } = await seed()
     const assessors = async (tag: string) =>
       (await t.call('GET', `/api/assets/tag/${tag}`, { cookie })).data.conditions.map(
         (c: { kind: string; assessedBy: string | null }) => [c.kind, c.assessedBy],
       )
     const create = (tag: string, extra: Record<string, unknown>) =>
-      t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id, ...extra } })
+      t.call('POST', '/api/assets', {
+        cookie,
+        body: { tag, typeId: laptop.id, brandId: dell.id, conditionRatingId: good.id, ...extra },
+      })
 
     // Not sent: the signed-in user's own employee, at intake, issue and return.
     const own = (await create('BPHS-0160', {})).data
@@ -578,10 +582,10 @@ describe('assets, assignments and the one-active-assignment rule', () => {
       cookie,
       body: {
         rows: [
-          { tag: 'bphs-0201', type: 'laptop', serial: 'A1' },
-          { tag: 'BPHS-0202', type: 'Hoverboard' },
-          { tag: 'BPHS-0203', type: 'Phone', condition: 'Fair', holder: 'E-1042' },
-          { tag: 'BPHS-0201', type: 'Phone' },
+          { tag: 'bphs-0201', type: 'laptop', brand: 'dell', serial: 'A1' },
+          { tag: 'BPHS-0202', type: 'Hoverboard', brand: 'Dell' },
+          { tag: 'BPHS-0203', type: 'Phone', brand: 'Apple', condition: 'Fair', holder: 'E-1042' },
+          { tag: 'BPHS-0201', type: 'Phone', brand: 'Apple' },
         ],
       },
     })
@@ -597,9 +601,9 @@ describe('assets, assignments and the one-active-assignment rule', () => {
       cookie,
       body: {
         rows: [
-          { tag: 'T'.repeat(305), type: 'Laptop', serial: 'S'.repeat(500) },
-          { tag: 'BPHS-0301', type: 'Laptop', serial: 'S'.repeat(81) },
-          { tag: 'bphs-0302', type: 'Laptop', serial: 'S'.repeat(80) },
+          { tag: 'T'.repeat(305), type: 'Laptop', brand: 'Dell', serial: 'S'.repeat(500) },
+          { tag: 'BPHS-0301', type: 'Laptop', brand: 'Dell', serial: 'S'.repeat(81) },
+          { tag: 'bphs-0302', type: 'Laptop', brand: 'Dell', serial: 'S'.repeat(80) },
         ],
       },
     })
@@ -617,9 +621,12 @@ describe('assets, assignments and the one-active-assignment rule', () => {
   })
 
   it('keeps asset tags to characters that work on a label and in an address, wherever the tag comes from', async () => {
-    const { t, cookie, laptop, good, make } = await seed()
+    const { t, cookie, laptop, dell, good, make } = await seed()
     const create = (tag: string) =>
-      t.call('POST', '/api/assets', { cookie, body: { tag, typeId: laptop.id, conditionRatingId: good.id } })
+      t.call('POST', '/api/assets', {
+        cookie,
+        body: { tag, typeId: laptop.id, brandId: dell.id, conditionRatingId: good.id },
+      })
     const characters = 'Asset tag can only contain letters, digits, spaces, hyphens, underscores and dots'
 
     for (const tag of ['A/B', '50%', 'Q?X#Y', 'TAG\\1', 'É-1']) {
@@ -650,9 +657,9 @@ describe('assets, assignments and the one-active-assignment rule', () => {
       cookie,
       body: {
         rows: [
-          { tag: 'BPHS/0501', type: 'Laptop' },
-          { tag: '..', type: 'Laptop' },
-          { tag: 'BPHS-0502', type: 'Laptop' },
+          { tag: 'BPHS/0501', type: 'Laptop', brand: 'Dell' },
+          { tag: '..', type: 'Laptop', brand: 'Dell' },
+          { tag: 'BPHS-0502', type: 'Laptop', brand: 'Dell' },
         ],
       },
     })
@@ -665,7 +672,7 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     })
 
     // An asset tagged before the rule existed is still found, and can still be edited as long as its tag is left alone.
-    const old = t.db.insert(assets).values({ tag: 'OLD/TAG', typeId: laptop.id }).returning().get()
+    const old = t.db.insert(assets).values({ tag: 'OLD/TAG', typeId: laptop.id, brandId: dell.id }).returning().get()
     expect((await t.call('GET', '/api/assets/tag/OLD%2FTAG', { cookie })).status).toBe(200)
     const edited = await t.call('PATCH', `/api/assets/${old.id}`, { cookie, body: { serial: 'SN-1' } })
     expect(edited.status).toBe(200)
@@ -682,7 +689,13 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     try {
       const pasted = await t.call('POST', '/api/assets/bulk', {
         cookie,
-        body: { rows: ['OK-1', 'BOOM-409', 'BOOM-500', 'BOOM-500', 'OK-2'].map((tag) => ({ tag, type: 'Laptop' })) },
+        body: {
+          rows: ['OK-1', 'BOOM-409', 'BOOM-500', 'BOOM-500', 'OK-2'].map((tag) => ({
+            tag,
+            type: 'Laptop',
+            brand: 'Dell',
+          })),
+        },
       })
       expect(pasted.status).toBe(200)
       expect(pasted.data).toEqual({
@@ -739,7 +752,11 @@ describe('assets, assignments and the one-active-assignment rule', () => {
     expect(none.data.message).toBe('Paste at least one row')
     expect(none.data.details.fields.rows).toBe('Paste at least one row')
 
-    const rows = Array.from({ length: 501 }, (_, i) => ({ tag: `BPHS-${String(i + 1000)}`, type: 'Laptop' }))
+    const rows = Array.from({ length: 501 }, (_, i) => ({
+      tag: `BPHS-${String(i + 1000)}`,
+      type: 'Laptop',
+      brand: 'Dell',
+    }))
     const many = await t.call('POST', '/api/assets/bulk', { cookie, body: { rows } })
     expect(many.status).toBe(422)
     expect(many.data.message).toBe('Paste at most 500 rows at a time')
@@ -963,7 +980,7 @@ describe('importing employees and programs', () => {
   it('says why an employee cannot be deleted, in the list and when refusing', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
+    const { assetTypes, assetBrands, conditionRatings } = await t.lookups(cookie)
     const add = async (code: string, lastName: string) =>
       (await t.call('POST', '/api/employees', { cookie, body: { code, firstName: 'Test', lastName } })).data
     const holder = await add('E-1', 'Holder')
@@ -975,6 +992,7 @@ describe('importing employees and programs', () => {
       body: {
         tag: 'DEL-1',
         typeId: assetTypes[0]!.id,
+        brandId: assetBrands[0]!.id,
         conditionRatingId: conditionRatings[0]!.id,
         holderId: holder.id,
         assessedById: assessor.id,
@@ -1085,10 +1103,15 @@ describe('lists, users and audit', () => {
   it('protects types in use', async () => {
     const t = await setup()
     const cookie = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(cookie)
+    const { assetTypes, assetBrands, conditionRatings } = await t.lookups(cookie)
     await t.call('POST', '/api/assets', {
       cookie,
-      body: { tag: 'X-1', typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id },
+      body: {
+        tag: 'X-1',
+        typeId: assetTypes[0]!.id,
+        brandId: assetBrands[0]!.id,
+        conditionRatingId: conditionRatings[0]!.id,
+      },
     })
     const refused = await t.call('DELETE', `/api/asset-types/${assetTypes[0]!.id}`, { cookie })
     expect(refused.status).toBe(409)
@@ -1268,7 +1291,7 @@ describe('lists, users and audit', () => {
     await t.call('PATCH', `/api/condition-ratings/${id('Good')}`, { cookie, body: { name: 'Fine' } })
     const pasted = await t.call('POST', '/api/assets/bulk', {
       cookie,
-      body: { rows: [{ tag: 'W-6', type: 'Laptop' }] },
+      body: { rows: [{ tag: 'W-6', type: 'Laptop', brand: 'Dell' }] },
     })
     expect(pasted.data).toMatchObject({ created: 1, errors: [] })
     expect((await t.call('GET', '/api/assets/tag/W-6', { cookie })).data.asset.condition.rating).toBe('Fine')
@@ -1562,13 +1585,14 @@ describe('lists, users and audit', () => {
     ).toBe('m.oyelaran@bphs.local')
 
     // The same email is shown wherever a person is named for what they did.
-    const { conditionRatings } = await t.lookups(cookie)
+    const { assetBrands, conditionRatings } = await t.lookups(cookie)
     const asset = (
       await t.call('POST', '/api/assets', {
         cookie,
         body: {
           tag: 'WHO-1',
           typeId: typeList[1]!.id,
+          brandId: assetBrands[0]!.id,
           conditionRatingId: conditionRatings[0]!.id,
           holderId: t.person.id,
         },
@@ -2032,7 +2056,7 @@ describe('programs, and assets a program holds', () => {
     expect(audit.slice(1)).toEqual([
       ['return', 'BPHS-0141 ← program P-100 · Fair'],
       ['issue', 'BPHS-0141 → program P-100 · Good'],
-      ['create', 'BPHS-0141 · Laptop'],
+      ['create', 'BPHS-0141 · Laptop · Dell'],
     ])
   })
 

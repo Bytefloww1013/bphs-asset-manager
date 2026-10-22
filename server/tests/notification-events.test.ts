@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import {
+  assetBrands,
   assetTypes,
   conditionRatings,
   digitalAssetTypes,
@@ -52,7 +53,8 @@ function person(t: T, code: string, email?: string, extra: Partial<typeof users.
 
 function asset(t: T, tag: string, holderId?: number) {
   const typeId = t.db.select().from(assetTypes).get()!.id
-  return createAsset(t.db, t.adminUser, { tag, typeId, conditionRatingId: ratingId(t, 'Good'), holderId })
+  const brandId = t.db.select().from(assetBrands).where(eq(assetBrands.isActive, true)).get()!.id
+  return createAsset(t.db, t.adminUser, { tag, typeId, brandId, conditionRatingId: ratingId(t, 'Good'), holderId })
 }
 
 describe('assets issued to you', () => {
@@ -98,7 +100,7 @@ describe('assets issued to you', () => {
     })
     const typeName = t.db.select().from(assetTypes).get()!.name
     const pasted = createAssetsBulk(t.db, t.adminUser, {
-      rows: [{ tag: 'BPHS-0003', type: typeName, holder: 'E-1042' }],
+      rows: [{ tag: 'BPHS-0003', type: typeName, brand: 'Dell', holder: 'E-1042' }],
     })
     expect(pasted).toEqual({ created: 1, errors: [] })
     expect(everything(t)).toEqual([])
@@ -201,6 +203,7 @@ describe('links that follow the change', () => {
     createAsset(t.db, t.superUser, {
       tag: 'BPHS-0001',
       typeId: t.db.select().from(assetTypes).get()!.id,
+      brandId: t.db.select().from(assetBrands).where(eq(assetBrands.isActive, true)).get()!.id,
       conditionRatingId: ratingId(t, 'Good'),
       holderId: old.id,
     })

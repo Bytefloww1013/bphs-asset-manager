@@ -81,6 +81,7 @@ export async function setup() {
   const lookups = async (cookie: string) =>
     (await call('GET', '/api/lookups', { cookie })).data as {
       assetTypes: { id: number; name: string }[]
+      assetBrands: { id: number; name: string }[]
       conditionRatings: { id: number; name: string }[]
     }
 
