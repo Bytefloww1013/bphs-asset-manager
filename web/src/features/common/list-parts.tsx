@@ -13,13 +13,24 @@ import { useDenied } from '@/lib/session.ts'
 // The parts of an editable list of names: the lists on the Lists screen, and the grievance categories.
 
 /** Where the list is served from, under /api. */
-export type ListKind = 'asset-types' | 'digital-asset-types' | 'condition-ratings' | 'grievances/categories'
+export type ListKind =
+  | 'asset-types'
+  | 'asset-brands'
+  | 'digital-asset-types'
+  | 'condition-ratings'
+  | 'grievances/categories'
 
 /** Grievance categories belong to Grievances; the other lists to Assets. */
 const sectionOf = (kind: ListKind): Section => (kind === 'grievances/categories' ? 'grievances' : 'assets')
 
 const itemNoun = (kind: ListKind) =>
-  kind === 'condition-ratings' ? 'rating' : kind === 'grievances/categories' ? 'category' : 'type'
+  kind === 'condition-ratings'
+    ? 'rating'
+    : kind === 'grievances/categories'
+      ? 'category'
+      : kind === 'asset-brands'
+        ? 'brand'
+        : 'type'
 
 /** Click the pencil to rename in place; Enter saves, Esc cancels. */
 export function EditableName({

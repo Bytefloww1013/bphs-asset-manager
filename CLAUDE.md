@@ -48,6 +48,9 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - `bun run format` / `bun run format:check` - Oxfmt (config `.oxfmtrc.json`); run `format` before committing.
 - `bun run lint` / `bun run lint:fix` - Oxlint, type-aware via oxlint-tsgolint (config `.oxlintrc.json`); must exit 0 with no warnings.
 - `docs/verify/scratch-server.sh start|stop` - seeded scratch API + SPA on :3388 for browser checks; never the real DATA_DIR.
+- `docs/verify/verify-done.sh` - the current branch's Definition of Done checks, one PASS/FAIL line each; exit 0 means done.
+- `docs/verify/quick-check.sh` - format, lint, typecheck and test in one run; use it after each phase.
+
 # WORKFLOWS
 
 - PRs to `main` are squash-merge-only: a blame-ignore-revs SHA can only be added in a follow-up PR after the merge.

@@ -23,6 +23,9 @@ interface OpenRow {
   assetId: number
   assetTag: string
   assetType: string
+  assetBrand: string
+  assetModel: string | null
+  assetEntraObjectId: string | null
   issuedAt: number
   eId: number | null
   eCode: string | null
@@ -37,13 +40,15 @@ interface OpenRow {
 }
 
 const OPEN_SQL = sql`
-  select a.id as id, a.asset_id as assetId, s.tag as assetTag, t.name as assetType, a.issued_at as issuedAt,
+  select a.id as id, a.asset_id as assetId, s.tag as assetTag, t.name as assetType,
+         b.name as assetBrand, s.model as assetModel, s.entra_object_id as assetEntraObjectId, a.issued_at as issuedAt,
          e.id as eId, e.code as eCode, e.first_name as eFirst, e.last_name as eLast, e.department as eDept,
          p.id as pId, p.code as pCode, p.name as pName,
          r.name as issueRating, u.email as issuedByEmail
   from assignments a
   join assets s on s.id = a.asset_id
   join asset_types t on t.id = s.type_id
+  join asset_brands b on b.id = s.brand_id
   left join employees e on e.id = a.employee_id
   left join programs p on p.id = a.program_id
   join users u on u.id = a.issued_by_id
@@ -58,6 +63,9 @@ function toRow(row: OpenRow, now: Date): AssignmentRow {
     assetId: row.assetId,
     assetTag: row.assetTag,
     assetType: row.assetType,
+    assetBrand: row.assetBrand,
+    assetModel: row.assetModel,
+    assetEntraObjectId: row.assetEntraObjectId,
     employee:
       row.eId === null
         ? null

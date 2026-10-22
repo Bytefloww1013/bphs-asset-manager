@@ -202,7 +202,8 @@ function ReturnForm({ assignmentId, onClose }: { assignmentId: number; onClose: 
                 label: 'Asset',
                 value: (
                   <>
-                    <Mono>{assignment.assetTag}</Mono> · {assignment.assetType}
+                    <Mono>{assignment.assetTag}</Mono> · {assignment.assetType} ·{' '}
+                    {[assignment.assetBrand, assignment.assetModel].filter(Boolean).join(' ')}
                   </>
                 ),
               },

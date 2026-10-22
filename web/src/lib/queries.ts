@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions, type QueryClient } from '@tanstack/react-query'
 import type {
+  AssetBrandRow,
   AssetDetail,
   AssetRow,
   AssetTypeRow,
@@ -96,6 +97,11 @@ export const programsQuery = queryOptions({
 export const assetTypesQuery = queryOptions({
   queryKey: ['asset-types'],
   queryFn: () => api.get<AssetTypeRow[]>('/asset-types'),
+})
+
+export const assetBrandsQuery = queryOptions({
+  queryKey: ['asset-brands'],
+  queryFn: () => api.get<AssetBrandRow[]>('/asset-brands'),
 })
 
 export const maintenanceQuery = queryOptions({

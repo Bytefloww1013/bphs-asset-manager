@@ -302,7 +302,9 @@ function IssueForm({
               hint={
                 field.state.value ? (
                   <span>
-                    {field.state.value.type}
+                    {field.state.value.type} · {field.state.value.brand}
+                    {field.state.value.model ? ` ${field.state.value.model}` : ''}
+                    {field.state.value.entraObjectId ? ` · Entra ObjectId ${field.state.value.entraObjectId}` : ''}
                     {field.state.value.serial ? ` · serial ${field.state.value.serial}` : ''} · last condition{' '}
                     {field.state.value.condition?.rating ?? 'unrecorded'}
                     {field.state.value.lastReturnedAt
@@ -324,12 +326,12 @@ function IssueForm({
                 }}
                 getKey={(asset) => asset.id}
                 getLabel={(asset) => asset.tag}
-                getSearch={(asset) => `${asset.type} ${asset.serial ?? ''}`}
+                getSearch={(asset) => `${asset.type} ${asset.brand} ${asset.model ?? ''} ${asset.serial ?? ''}`}
                 renderItem={(asset) => (
                   <span className="flex items-baseline justify-between gap-3">
                     <Mono className="font-medium">{asset.tag}</Mono>
                     <span className="truncate text-xs text-ink-3">
-                      {asset.type}
+                      {asset.type} · {[asset.brand, asset.model].filter(Boolean).join(' ')}
                       {asset.serial ? ` · ${asset.serial}` : ''}
                     </span>
                   </span>

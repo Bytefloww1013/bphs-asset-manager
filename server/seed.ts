@@ -12,6 +12,7 @@ import { ensureDefaultLists } from './bootstrap.ts'
 import { config, isProduction } from './config.ts'
 import { createDb, runMigrations, type DbLike } from './db/client.ts'
 import {
+  assetBrands,
   assetTypes,
   assets,
   assignments,
@@ -50,13 +51,19 @@ if (db.select().from(users).limit(1).get()) {
 }
 
 // Small deterministic generator so every seed produces the same demo.
-let state = 20260727
-const rand = () => {
-  state = (state + 0x6d2b79f5) | 0
-  let t = Math.imul(state ^ (state >>> 15), 1 | state)
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+const generator = (seed: number) => {
+  let state = seed
+  return () => {
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
+const rand = generator(20260727)
+// Brands, models and Entra ObjectIds draw from their own sequence, so adding them left the rest of the demo as it was.
+const deviceRand = generator(20261022)
+const devicePick = <T>(list: readonly T[]): T => list[Math.floor(deviceRand() * list.length)]!
 const pick = <T>(list: readonly T[]): T => list[Math.floor(rand() * list.length)]!
 const int = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1))
 
@@ -182,6 +189,47 @@ const types = Object.fromEntries(
     .all()
     .map((t) => [t.name, t.id]),
 ) as Record<string, number>
+const brands = Object.fromEntries(
+  db
+    .select()
+    .from(assetBrands)
+    .all()
+    .filter((b) => b.isActive)
+    .map((b) => [b.name, b.id]),
+) as Record<string, number>
+
+/** Brand and model choices per type. A null model is a device nobody wrote the model down for. */
+const MODELS: Record<string, [string, (string | null)[]][]> = {
+  Laptop: [
+    ['Dell', ['Latitude 5440', 'Latitude 7440', null]],
+    ['Lenovo', ['ThinkPad T14 Gen 4', 'ThinkPad E14']],
+    ['HP', ['EliteBook 840 G10', 'ProBook 450 G9']],
+    ['Apple', ['MacBook Air 13 M2']],
+  ],
+  Phone: [
+    ['Apple', ['iPhone 13', 'iPhone 14', 'iPhone SE (3rd gen)']],
+    ['Samsung', ['Galaxy A54', 'Galaxy S23', null]],
+  ],
+  Monitor: [
+    ['Dell', ['P2422H', 'P2723DE', null]],
+    ['HP', ['E24 G5']],
+    ['Samsung', ['S24C450', null]],
+  ],
+  Keyboard: [
+    ['Logitech', ['K120', 'MK270', null]],
+    ['Microsoft', ['Wired Keyboard 600', null]],
+  ],
+  Mouse: [
+    ['Logitech', ['M90', 'M185', null]],
+    ['Microsoft', ['Basic Optical Mouse', null]],
+  ],
+}
+
+/** Laptops and phones are joined to Entra, so most carry its device ObjectId; a few were never enrolled. */
+const ENROLLED = new Set(['Laptop', 'Phone'])
+const hex = (n: number) => Array.from({ length: n }, () => Math.floor(deviceRand() * 16).toString(16)).join('')
+const objectId = () => `${hex(8)}-${hex(4)}-4${hex(3)}-${devicePick(['8', '9', 'a', 'b'])}${hex(3)}-${hex(12)}`
+
 const ratings = Object.fromEntries(
   db
     .select()
@@ -255,12 +303,25 @@ db.transaction((tx) => {
       const tag = `BPHS-${String(tagNumber).padStart(4, '0')}`
       const createdAt = daysAgo(int(120, 880))
       const who = pick(actors)
+      const [brandName, models] = devicePick(MODELS[typeName]!)
+      const model = devicePick(models)
+      const entraObjectId = ENROLLED.has(typeName) && deviceRand() < 0.85 ? objectId() : null
       const asset = tx
         .insert(assets)
-        .values({ tag, typeId: types[typeName]!, serial: serial(prefix), createdAt })
+        .values({
+          tag,
+          typeId: types[typeName]!,
+          brandId: brands[brandName]!,
+          model,
+          entraObjectId,
+          serial: serial(prefix),
+          createdAt,
+        })
         .returning()
         .get()
-      audit(tx, createdAt, who, 'create', 'asset', asset.id, `${tag} · ${typeName}`)
+      const details = [tag, typeName, model ? `${brandName} ${model}` : brandName]
+      if (entraObjectId) details.push(`Entra ObjectId ${entraObjectId}`)
+      audit(tx, createdAt, who, 'create', 'asset', asset.id, details.join(' · '))
       tx.insert(conditions)
         .values({
           assetId: asset.id,

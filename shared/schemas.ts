@@ -79,9 +79,25 @@ export const assetTag = z
   .refine((value) => !/^\.+$/.test(value), 'Asset tag cannot be only dots')
   .transform((value) => value.toUpperCase())
 
+// A Microsoft Entra object ID: a UUID in its canonical 8-4-4-4-12 form. Stored lowercase, so the same ID typed in capitals is
+// still a duplicate.
+export const ENTRA_OBJECT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const entraObjectId = z
+  .string()
+  .trim()
+  .refine((value) => value === '' || ENTRA_OBJECT_ID.test(value), {
+    message: 'Enter the Entra ObjectId as a GUID, like 4f8c2a1e-9b3d-4c7a-8e21-5d6f0a9b3c47',
+  })
+  .transform((value) => (value === '' ? null : value.toLowerCase()))
+  .nullable()
+  .optional()
+
 const assetCreateFields = z.object({
   tag: assetTag,
   typeId: id,
+  brandId: id,
+  model: optionalText(80, 'Model'),
+  entraObjectId,
   serial: optionalText(80, 'Serial number'),
   conditionRatingId: id,
   /** The employee to issue it to straight away. */
@@ -100,6 +116,9 @@ export type AssetCreateInput = z.infer<typeof assetCreateSchema>
 export const assetUpdateSchema = z.object({
   tag: assetTag.optional(),
   typeId: id.optional(),
+  brandId: id.optional(),
+  model: optionalText(80, 'Model'),
+  entraObjectId,
   serial: optionalText(80, 'Serial number'),
 })
 export type AssetUpdateInput = z.infer<typeof assetUpdateSchema>
@@ -110,6 +129,9 @@ export const assetBulkSchema = z.object({
       z.object({
         tag: z.string().trim(),
         type: z.string().trim(),
+        brand: z.string().trim(),
+        model: z.string().trim().optional(),
+        entraObjectId: z.string().trim().optional(),
         serial: z.string().trim().optional(),
         condition: z.string().trim().optional(),
         holder: z.string().trim().optional(),
@@ -121,8 +143,8 @@ export const assetBulkSchema = z.object({
 export type AssetBulkInput = z.infer<typeof assetBulkSchema>
 
 // Each pasted row is checked on its own, so a bad row is reported without refusing the rest. The tag and serial keep the
-// limits of Add asset; type, condition and holder are looked up by name and need none.
-export const assetBulkRowFields = assetCreateFields.pick({ tag: true, serial: true })
+// limits of Add asset, as do the model and Entra ObjectId; type, brand, condition and holder are looked up by name and need none.
+export const assetBulkRowFields = assetCreateFields.pick({ tag: true, model: true, entraObjectId: true, serial: true })
 
 // ---- Assignments ----------------------------------------------------------------
 // An asset is issued to an employee or assigned to a program: exactly one of the two.
@@ -240,7 +262,10 @@ export const assetTypeUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-/** Grievance categories follow the same rules as the asset type lists. */
+/** Asset brands and grievance categories follow the same rules as the asset type lists. */
+export const assetBrandCreateSchema = assetTypeCreateSchema
+export const assetBrandUpdateSchema = assetTypeUpdateSchema
+
 export const grievanceCategoryCreateSchema = assetTypeCreateSchema
 export const grievanceCategoryUpdateSchema = assetTypeUpdateSchema
 

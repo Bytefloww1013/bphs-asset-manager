@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm'
-import type { AssetTypeRow, ConditionRatingRow, DigitalAssetTypeRow } from '../../shared/types.ts'
+import type { AssetBrandRow, AssetTypeRow, ConditionRatingRow, DigitalAssetTypeRow } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { assetTypes, conditionRatings, digitalAssetTypes, type grievanceCategories } from '../db/schema.ts'
+import { assetBrands, assetTypes, conditionRatings, digitalAssetTypes, type grievanceCategories } from '../db/schema.ts'
 import { writeAudit, type Actor } from '../lib/audit.ts'
 import { conflict, notFound } from '../lib/errors.ts'
 
@@ -29,7 +29,12 @@ function typeRow(db: DbLike, id: number): AssetTypeRow {
  */
 export function assertNotLastActive(
   db: DbLike,
-  table: typeof assetTypes | typeof conditionRatings | typeof digitalAssetTypes | typeof grievanceCategories,
+  table:
+    | typeof assetTypes
+    | typeof assetBrands
+    | typeof conditionRatings
+    | typeof digitalAssetTypes
+    | typeof grievanceCategories,
   item: { id: number; name: string; isActive: boolean },
   noun: string,
 ) {
@@ -106,6 +111,95 @@ export function deleteAssetType(db: Db, actor: Actor, id: number) {
       entityType: 'assettype',
       entityId: id,
       details: `unused type "${row.name}"`,
+    })
+  })
+}
+
+// ---- Asset brands ----------------------------------------------------------------
+// The same rules as asset types. "Unknown", which the 0023 migration gave every older asset, starts archived.
+
+export function listAssetBrands(db: DbLike, id?: number): AssetBrandRow[] {
+  return db
+    .all<AssetBrandRow>(sql`
+    select b.id as id, b.name as name, b.is_active as isActive, count(a.id) as assetCount
+    from asset_brands b left join assets a on a.brand_id = b.id
+    ${id ? sql`where b.id = ${id}` : sql``}
+    group by b.id order by b.is_active desc, b.name collate nocase`)
+    .map((row) => ({ ...row, isActive: Boolean(row.isActive) }))
+}
+
+function brandRow(db: DbLike, id: number): AssetBrandRow {
+  const row = listAssetBrands(db, id)[0]
+  if (!row) throw notFound('Brand')
+  return row
+}
+
+function assertBrandNameFree(db: DbLike, name: string, exceptId?: number) {
+  const dup = db
+    .select({ id: assetBrands.id })
+    .from(assetBrands)
+    .where(sql`${assetBrands.name} = ${name} collate nocase`)
+    .get()
+  if (dup && dup.id !== exceptId)
+    throw conflict('duplicate_name', `A brand named "${name}" already exists.`, { field: 'name' })
+}
+
+export function createAssetBrand(db: Db, actor: Actor, name: string): AssetBrandRow {
+  const id = db.transaction((tx) => {
+    assertBrandNameFree(tx, name)
+    const row = tx.insert(assetBrands).values({ name }).returning({ id: assetBrands.id }).get()
+    writeAudit(tx, actor, { action: 'create', entityType: 'assetbrand', entityId: row.id, details: name })
+    return row.id
+  })
+  return brandRow(db, id)
+}
+
+export function updateAssetBrand(
+  db: Db,
+  actor: Actor,
+  id: number,
+  input: { name?: string; isActive?: boolean },
+): AssetBrandRow {
+  db.transaction((tx) => {
+    const current = tx.select().from(assetBrands).where(eq(assetBrands.id, id)).get()
+    if (!current) throw notFound('Brand')
+    const changes: string[] = []
+    const patch: Partial<typeof assetBrands.$inferInsert> = {}
+    if (input.name !== undefined && input.name !== current.name) {
+      assertBrandNameFree(tx, input.name, id)
+      patch.name = input.name
+      changes.push(`name: ${current.name} → ${input.name}`)
+    }
+    if (input.isActive !== undefined && input.isActive !== current.isActive) {
+      if (!input.isActive) assertNotLastActive(tx, assetBrands, current, 'brand')
+      patch.isActive = input.isActive
+      changes.push(`active: ${current.isActive} → ${input.isActive}`)
+    }
+    if (changes.length === 0) return
+    tx.update(assetBrands).set(patch).where(eq(assetBrands.id, id)).run()
+    writeAudit(tx, actor, {
+      action: 'update',
+      entityType: 'assetbrand',
+      entityId: id,
+      details: `${patch.name ?? current.name} · ${changes.join('; ')}`,
+    })
+  })
+  return brandRow(db, id)
+}
+
+export function deleteAssetBrand(db: Db, actor: Actor, id: number) {
+  db.transaction((tx) => {
+    const row = brandRow(tx, id)
+    if (row.assetCount > 0) {
+      throw conflict('in_use', `${row.assetCount} asset(s) use "${row.name}". Deactivate it instead.`)
+    }
+    assertNotLastActive(tx, assetBrands, row, 'brand')
+    tx.delete(assetBrands).where(eq(assetBrands.id, id)).run()
+    writeAudit(tx, actor, {
+      action: 'delete',
+      entityType: 'assetbrand',
+      entityId: id,
+      details: `unused brand "${row.name}"`,
     })
   })
 }

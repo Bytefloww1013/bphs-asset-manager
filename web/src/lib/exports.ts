@@ -52,6 +52,9 @@ export const EXPORTS = {
     headers: [
       'Asset tag',
       'Type',
+      'Brand',
+      'Model',
+      'Entra ObjectId',
       'Serial',
       'Status',
       'Assigned to',
@@ -64,6 +67,9 @@ export const EXPORTS = {
     row: (a) => [
       a.tag,
       a.type,
+      a.brand,
+      a.model,
+      a.entraObjectId,
       a.serial,
       stateLabel(a.state),
       (a.holder ?? a.program)?.name,
@@ -132,6 +138,9 @@ export const EXPORTS = {
     headers: [
       'Asset tag',
       'Type',
+      'Brand',
+      'Model',
+      'Entra ObjectId',
       'Holder type',
       'Holder',
       'Holder ID',
@@ -146,6 +155,9 @@ export const EXPORTS = {
       return [
         r.assetTag,
         r.assetType,
+        r.assetBrand,
+        r.assetModel,
+        r.assetEntraObjectId,
         r.program ? 'Program' : 'Employee',
         holder.name,
         holder.code,

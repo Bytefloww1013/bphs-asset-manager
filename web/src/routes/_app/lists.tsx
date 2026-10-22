@@ -14,23 +14,24 @@ import { useWrite } from '@/features/common/hooks.ts'
 import { ActiveSwitch, AddRow, DeleteButton, EditableName, isOnlyActive } from '@/features/common/list-parts.tsx'
 import { ratingTone } from '@/features/common/status.tsx'
 import { api, ApiError } from '@/lib/api.ts'
-import { assetTypesQuery, digitalAssetTypesQuery, ratingsQuery } from '@/lib/queries.ts'
+import { assetBrandsQuery, assetTypesQuery, digitalAssetTypesQuery, ratingsQuery } from '@/lib/queries.ts'
 import { useDenied, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/lists')({
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(assetTypesQuery),
+      context.queryClient.ensureQueryData(assetBrandsQuery),
       context.queryClient.ensureQueryData(digitalAssetTypesQuery),
       context.queryClient.ensureQueryData(ratingsQuery),
     ]),
   component: ListsPage,
 })
 
-type TypeKind = 'asset-types' | 'digital-asset-types'
+type TypeKind = 'asset-types' | 'asset-brands' | 'digital-asset-types'
 
 const t = columnsFor<AssetTypeRow>()
-/** Physical and digital asset types are the same kind of list, so they share their columns. */
+/** Physical and digital asset types and asset brands are the same kind of list, so they share their columns. */
 const typeColumns = (kind: TypeKind, counted: string) => [
   t.accessor('name', {
     header: 'Name',
@@ -63,7 +64,7 @@ const typeColumns = (kind: TypeKind, counted: string) => [
         id={info.row.original.id}
         name={info.row.original.name}
         inUse={info.row.original.assetCount > 0}
-        inUseReason={`${info.row.original.assetCount} ${kind === 'asset-types' ? 'assets' : 'digital assets'} use this type. Deactivate it instead.`}
+        inUseReason={`${info.row.original.assetCount} ${kind === 'digital-asset-types' ? 'digital assets' : 'assets'} use this ${kind === 'asset-brands' ? 'brand' : 'type'}. Deactivate it instead.`}
         onlyActive={isOnlyActive(info)}
       />
     ),
@@ -71,6 +72,7 @@ const typeColumns = (kind: TypeKind, counted: string) => [
   }),
 ]
 const physicalTypeColumns = typeColumns('asset-types', 'Physical assets')
+const brandColumns = typeColumns('asset-brands', 'Physical assets')
 const digitalTypeColumns = typeColumns('digital-asset-types', 'Digital assets')
 
 /** Click the pencil to change the score in place; Enter saves, Esc cancels. The table re-sorts itself, best first. */
@@ -274,11 +276,18 @@ const ratingColumns = [
 function ListsPage() {
   usePageTitle('Lists')
   const { data: types = [] } = useQuery(assetTypesQuery)
+  const { data: brands = [] } = useQuery(assetBrandsQuery)
   const { data: ratings = [] } = useQuery(ratingsQuery)
   const { data: digitalTypes = [] } = useQuery(digitalAssetTypesQuery)
   const typeTable = useGrid({
     data: types,
     columns: physicalTypeColumns,
+    getRowId: (row) => String(row.id),
+    pageSize: 100,
+  })
+  const brandTable = useGrid({
+    data: brands,
+    columns: brandColumns,
     getRowId: (row) => String(row.id),
     pageSize: 100,
   })
@@ -313,6 +322,20 @@ function ListsPage() {
               table={typeTable}
               label="Physical asset types"
               noun="types"
+              empty={null}
+              className="rounded-none border-0 border-t shadow-none"
+            />
+          </Panel>
+          <Panel className="overflow-hidden">
+            <PanelHeader
+              title="Physical asset brands"
+              description={`${brands.length} brands, ${brands.filter((x) => x.isActive).length} active`}
+            />
+            <AddRow kind="asset-brands" placeholder="New brand name" noun="Brand" />
+            <DataGrid
+              table={brandTable}
+              label="Physical asset brands"
+              noun="brands"
               empty={null}
               className="rounded-none border-0 border-t shadow-none"
             />

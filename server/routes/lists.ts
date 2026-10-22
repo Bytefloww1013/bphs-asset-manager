@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import {
+  assetBrandCreateSchema,
+  assetBrandUpdateSchema,
   assetTypeCreateSchema,
   assetTypeUpdateSchema,
   auditQuerySchema,
@@ -10,15 +12,19 @@ import { CSV_BOM, toCsv } from '../../shared/csv.ts'
 import type { Db } from '../db/client.ts'
 import { intParam, json, query, requireFull, type Env } from '../http.ts'
 import {
+  createAssetBrand,
   createAssetType,
   createDigitalAssetType,
   createRating,
+  deleteAssetBrand,
   deleteAssetType,
   deleteDigitalAssetType,
   deleteRating,
+  listAssetBrands,
   listAssetTypes,
   listDigitalAssetTypes,
   listRatings,
+  updateAssetBrand,
   updateAssetType,
   updateDigitalAssetType,
   updateRating,
@@ -38,6 +44,18 @@ export function listRoutes(db: Db) {
   )
   app.delete('/asset-types/:id', requireFull('assets'), (c) => {
     deleteAssetType(db, c.get('user'), intParam(c, 'id'))
+    return c.body(null, 204)
+  })
+
+  app.get('/asset-brands', (c) => c.json(listAssetBrands(db)))
+  app.post('/asset-brands', json(assetBrandCreateSchema), (c) =>
+    c.json(createAssetBrand(db, c.get('user'), c.req.valid('json').name), 201),
+  )
+  app.patch('/asset-brands/:id', json(assetBrandUpdateSchema), (c) =>
+    c.json(updateAssetBrand(db, c.get('user'), intParam(c, 'id'), c.req.valid('json'))),
+  )
+  app.delete('/asset-brands/:id', requireFull('assets'), (c) => {
+    deleteAssetBrand(db, c.get('user'), intParam(c, 'id'))
     return c.body(null, 204)
   })
 

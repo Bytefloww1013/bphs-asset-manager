@@ -74,7 +74,8 @@ const columns = [
         primary={<AssetTagLink tag={info.getValue()} />}
         secondary={
           <>
-            {info.row.original.assetType}
+            {info.row.original.assetType} ·{' '}
+            {[info.row.original.assetBrand, info.row.original.assetModel].filter(Boolean).join(' ')}
             <span className="md:hidden"> · {holder(info.row.original).name}</span>
             {/* On a phone there is no room for a Days out column beside Return, so the figure goes under the holder. */}
             <DaysOut days={info.row.original.daysOut} className="flex justify-start sm:hidden" />
@@ -114,7 +115,16 @@ const columns = [
 ]
 const getRowId = (row: AssignmentRow) => String(row.id)
 const searchText = (row: AssignmentRow) =>
-  [row.assetTag, row.assetType, holder(row).name, holder(row).code, row.employee?.department, row.issueRating]
+  [
+    row.assetTag,
+    row.assetType,
+    row.assetBrand,
+    row.assetModel,
+    holder(row).name,
+    holder(row).code,
+    row.employee?.department,
+    row.issueRating,
+  ]
     .filter(Boolean)
     .join(' ')
 

@@ -100,11 +100,16 @@ describe('section access', () => {
   it('asks for Full to delete or archive, and Full is enough', async () => {
     const t = await setup()
     const sup = await t.asSuper()
-    const { assetTypes, conditionRatings } = await t.lookups(sup)
+    const { assetTypes, assetBrands, conditionRatings } = await t.lookups(sup)
     const asset = (
       await t.call('POST', '/api/assets', {
         cookie: sup,
-        body: { tag: 'BP-9001', typeId: assetTypes[0]!.id, conditionRatingId: conditionRatings[0]!.id },
+        body: {
+          tag: 'BP-9001',
+          typeId: assetTypes[0]!.id,
+          brandId: assetBrands[0]!.id,
+          conditionRatingId: conditionRatings[0]!.id,
+        },
       })
     ).data
     const lee = t.db.insert(employees).values({ code: 'E-3001', firstName: 'Lee', lastName: 'Okoro' }).returning().get()

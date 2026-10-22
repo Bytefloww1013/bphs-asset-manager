@@ -330,7 +330,9 @@ function EmployeeHoldingsSheet({ employee, onClose }: { employee: EmployeeRow; o
               {physical.map((asset) => (
                 <li key={asset.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                   <AssetTagLink tag={asset.tag} />
-                  <span className="min-w-0 truncate text-ink-2">{asset.type}</span>
+                  <span className="min-w-0 truncate text-ink-2">
+                    {asset.type} · {[asset.brand, asset.model].filter(Boolean).join(' ')}
+                  </span>
                 </li>
               ))}
             </ul>

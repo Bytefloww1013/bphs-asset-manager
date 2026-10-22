@@ -76,7 +76,10 @@ function Overview() {
                     {data.longestOut.map((row) => (
                       <li key={row.assignmentId} className="flex items-center gap-4 border-t border-line px-5 py-2.5">
                         <div className="w-36 shrink-0">
-                          <Stacked primary={<AssetTagLink tag={row.assetTag} />} secondary={row.assetType} />
+                          <Stacked
+                            primary={<AssetTagLink tag={row.assetTag} />}
+                            secondary={`${row.assetType} · ${[row.assetBrand, row.assetModel].filter(Boolean).join(' ')}`}
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
                           <Stacked
@@ -145,7 +148,7 @@ function Overview() {
                         <div className="min-w-0 flex-1">
                           <Stacked
                             primary={<AssetTagLink tag={row.assetTag} />}
-                            secondary={`${row.assetType} · ${row.holder ?? 'in storage'}`}
+                            secondary={`${row.assetType} · ${[row.assetBrand, row.assetModel].filter(Boolean).join(' ')} · ${row.holder ?? 'in storage'}`}
                           />
                         </div>
                         <RatingBadge name={row.rating} />
