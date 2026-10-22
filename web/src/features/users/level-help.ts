@@ -28,7 +28,7 @@ export const LEVEL_HELP: Record<Section, Partial<Record<AccessLevel, string>>> =
     full: 'Also void a review and withdraw a file.',
   },
   tasks: {
-    none: 'The Employee Tasks workspace is hidden. Tasks sent to this account are still in My Space.',
+    none: 'The Employee Tasks workspace is hidden. Tasks sent to this account are still in Home.',
     read: "See every account's tasks, with their history.",
     assign: 'Also assign tasks, and edit or cancel the tasks this account assigned.',
     edit: "Also edit or cancel anyone's task, except one a Super Admin assigned, and approve or send back completed tasks.",

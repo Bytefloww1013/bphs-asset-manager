@@ -105,9 +105,9 @@ Each agent reads Phase 1-2 files and `.impeccable/mocks/sidebar-rail/src.html`, 
 
 ## Phase 4 - Assemble (serial)
 
-- [ ] 4.1 Rewrite `app-shell.tsx` on the parts: grid of rail + panel + main, collapse state from `sidebar-prefs` with `inert`, skip link first, `data-workspace`, remember and reopen workspace as today, drawer closes past `lg`; remove `WorkspaceSwitcher`, `BackLink`, `NavList`, `useNav`, `UserMenu`.
-- [ ] 4.2 `web/src/routes/_app/me.index.tsx` redirects to `/me/inbox`; `web/src/features/users/level-help.ts` says "Home" for "My Space".
-- [ ] 4.3 `bun run format`, then `lint`, `typecheck`, `test`, `build` clean; fix what they find.
+- [x] 4.1 Rewrite `app-shell.tsx` on the parts: grid of rail + panel + main, collapse state from `sidebar-prefs` with `inert`, skip link first, `data-workspace`, remember and reopen workspace as today, drawer closes past `lg`; remove `WorkspaceSwitcher`, `BackLink`, `NavList`, `useNav`, `UserMenu`.
+- [x] 4.2 `web/src/routes/_app/me.index.tsx` redirects to `/me/inbox`; `web/src/features/users/level-help.ts` says "Home" for "My Space".
+- [x] 4.3 `bun run format`, then `lint`, `typecheck`, `test`, `build` clean; fix what they find.
 
 ## Phase 5 - Docs and smoke (fan-out: 2 subagents for docs, smoke run by the lead)
 

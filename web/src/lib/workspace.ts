@@ -49,7 +49,7 @@ export function workspaceToReopen(): Workspace {
   return lastWorkspace()
 }
 
-/** The workspace used last, which My Space's Back link returns to. */
+/** The workspace used last, which reopening the app returns to. */
 export function lastWorkspace(): Workspace {
   try {
     const saved = localStorage.getItem(KEY) as Workspace
