@@ -79,7 +79,7 @@ Smoke steps (`docs/verify/sidebar-smoke.mjs`, Chrome for Testing, seeded data):
 ## Goal
 
 ```
-/goal <approved goal line>
+/goal Every slice in SidebarRail-plan.md is ticked and the navigation rail + pages panel is built to its UI contract; proven by `bash docs/verify/verify-done.sh` exiting 0 with its PASS lines shown in chat; server/, shared/, route files, routeTree.gen.ts and existing tokens unchanged, no count on Grievances or Administrative Reviews, nothing on main and nothing pushed, commit per phase with disjoint file ownership for subagents; if manual DoD items remain, stop and ask the user; stop after 60 turns and report what is blocking.
 ```
 
 ## Phase 1 - Nav model (serial)
