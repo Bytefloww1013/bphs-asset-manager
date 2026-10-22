@@ -45,12 +45,27 @@ const columns = [
       <div className="leading-5">
         <AssetTagLink tag={info.getValue()} />
         <div className="text-xs text-ink-3 md:hidden">
-          {info.row.original.type} · {stateLabel(info.row.original.state)}
+          {info.row.original.type} · {info.row.original.brand} · {stateLabel(info.row.original.state)}
         </div>
       </div>
     ),
   }),
   c.accessor('type', { header: 'Type', meta: { hideBelow: 'md' } }),
+  c.accessor('brand', { header: 'Brand', meta: { hideBelow: 'lg' } }),
+  // Model and Entra ObjectId wait for the widest screens: beside the rail at 1366px there is no room for them.
+  c.accessor((row) => row.model ?? '', {
+    id: 'model',
+    header: 'Model',
+    cell: (info) => info.getValue() || <span className="text-ink-3">—</span>,
+    meta: { hideBelow: '2xl' },
+  }),
+  c.accessor((row) => row.entraObjectId ?? '', {
+    id: 'entraObjectId',
+    header: 'Entra ObjectId',
+    cell: (info) =>
+      info.getValue() ? <Mono className="text-ink-2">{info.getValue()}</Mono> : <span className="text-ink-3">—</span>,
+    meta: { hideBelow: '2xl' },
+  }),
   c.accessor((row) => row.serial ?? '', {
     id: 'serial',
     header: 'Serial',
@@ -152,7 +167,7 @@ function AssetsPage() {
           <SearchInput
             className="w-full sm:w-80"
             aria-label="Search physical assets"
-            placeholder="Search tag, serial, holder, department"
+            placeholder="Search tag, brand, serial, holder"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />

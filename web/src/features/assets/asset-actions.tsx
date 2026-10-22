@@ -134,6 +134,16 @@ export function AssetRowActions({
   )
 }
 
+interface EditValues {
+  tag: string
+  typeId: string
+  brandId: string
+  model: string
+  entraObjectId: string
+  serial: string
+}
+const EDIT_FIELDS = ['tag', 'typeId', 'brandId', 'model', 'entraObjectId', 'serial'] as const
+
 /** `onSaved` gets the row as the server stored it, so a caller can follow a renamed tag. */
 export function AssetEditSheet({
   asset,
@@ -146,24 +156,39 @@ export function AssetEditSheet({
 }) {
   const { data: lookups } = useQuery(lookupsQuery)
   const types = lookups?.assetTypes ?? []
+  const brands = lookups?.assetBrands ?? []
   const [error, setError] = useState<ApiError | null>(null)
   const save = useWrite(
-    (body: { tag?: string; typeId: number; serial: string }) => api.patch<AssetRow>(`/assets/${asset.id}`, body),
+    (body: { tag?: string; typeId: number; brandId: number; model: string; entraObjectId: string; serial: string }) =>
+      api.patch<AssetRow>(`/assets/${asset.id}`, body),
     { silent: true, success: (row) => `${row.tag} updated` },
   )
   // A tag that was not edited is not sent, so an asset tagged before a rule existed (BPHS/01) can still have its type and serial corrected.
-  const changes = (value: { tag: string; typeId: string; serial: string }) => ({
+  const changes = (value: EditValues) => ({
     ...(value.tag.trim().toUpperCase() === asset.tag.toUpperCase() ? {} : { tag: value.tag }),
     typeId: Number(value.typeId),
+    brandId: Number(value.brandId),
+    model: value.model,
+    entraObjectId: value.entraObjectId,
     serial: value.serial,
   })
 
   const form = useForm({
-    defaultValues: { tag: asset.tag, typeId: String(asset.typeId), serial: asset.serial ?? '' },
+    // An archived brand (like "Unknown" from before brands existed) can't be kept, so Brand starts empty and must be chosen.
+    defaultValues: {
+      tag: asset.tag,
+      typeId: String(asset.typeId),
+      brandId: asset.brandActive ? String(asset.brandId) : '',
+      model: asset.model ?? '',
+      entraObjectId: asset.entraObjectId ?? '',
+      serial: asset.serial ?? '',
+    } satisfies EditValues,
     validators: {
       onSubmit: ({ value }) => {
         const checked = assetUpdateSchema.safeParse(changes(value))
-        return checked.success ? undefined : { fields: fieldMessages(checked.error) }
+        const fields = checked.success ? {} : fieldMessages(checked.error)
+        if (!value.brandId) fields.brandId = 'Choose a brand'
+        return Object.keys(fields).length > 0 ? { fields } : undefined
       },
     },
     onSubmit: async ({ value }) => {
@@ -178,8 +203,8 @@ export function AssetEditSheet({
     },
   })
   const submitted = form.state.submissionAttempts > 0
-  // A message about one of the three fields is shown under it; the alert is for anything else the server said.
-  const inline = !!error && (!!error.fields.tag || !!error.fields.typeId || !!error.fields.serial)
+  // A message about one of the fields is shown under it; the alert is for anything else the server said.
+  const inline = !!error && EDIT_FIELDS.some((name) => !!error.fields[name])
 
   return (
     <Sheet
@@ -241,6 +266,49 @@ export function AssetEditSheet({
                   <option value={asset.typeId}>{asset.type} (inactive)</option>
                 )}
               </Select>
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="brandId">
+          {(field) => (
+            <Field
+              label="Brand"
+              hint={asset.brandActive ? undefined : `${asset.brand} is archived; choose a brand`}
+              error={fieldError(field, error?.fields, submitted)}
+            >
+              <Select value={field.state.value} onChange={(e) => field.handleChange(e.target.value)}>
+                {!asset.brandActive && (
+                  <option value="" disabled>
+                    Choose a brand
+                  </option>
+                )}
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="model">
+          {(field) => (
+            <Field label="Model" optional error={fieldError(field, error?.fields, submitted)}>
+              <Input value={field.state.value} onChange={(e) => field.handleChange(e.target.value)} />
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="entraObjectId">
+          {(field) => (
+            <Field label="Entra ObjectId" optional error={fieldError(field, error?.fields, submitted)}>
+              <Input
+                mono
+                spellCheck={false}
+                autoComplete="off"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                onBlur={field.handleBlur}
+              />
             </Field>
           )}
         </form.Field>

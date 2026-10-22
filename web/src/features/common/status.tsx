@@ -103,6 +103,9 @@ export function assetSearchText(asset: AssetRow): string {
   return [
     asset.tag,
     asset.type,
+    asset.brand,
+    asset.model,
+    asset.entraObjectId,
     asset.serial,
     asset.holder?.name,
     asset.holder?.code,

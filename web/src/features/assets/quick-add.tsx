@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CornerDownLeft } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultRating } from '@shared/constants.ts'
+import { entraObjectId } from '@shared/schemas.ts'
 import { nextTag } from '@shared/tags.ts'
 import type { AssetBulkResult, AssetRow, EmployeeRef, ProgramRef } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -15,20 +16,25 @@ import { plural } from '@/lib/format.ts'
 import { assetsQuery, lookupsQuery } from '@/lib/queries.ts'
 import { useUser } from '@/lib/session.ts'
 
-/** Rows pasted from a spreadsheet: tag, type, serial, condition, holder. A header row is skipped. */
+/** Rows pasted from a spreadsheet: tag, type, brand, model, Entra ObjectId, serial, condition, holder. A header row is skipped. */
 function parsePaste(text: string) {
   const rows = text
     .split(/\r?\n/)
     .map((line) => line.split('\t').map((cell) => cell.trim()))
     .filter((cells) => cells.some(Boolean))
   if (rows[0] && /^(asset\s*)?tag$/i.test(rows[0][0] ?? '')) rows.shift()
-  return rows.map(([tag = '', type = '', serial = '', condition = '', holder = '']) => ({
-    tag,
-    type,
-    serial,
-    condition,
-    holder,
-  }))
+  return rows.map(
+    ([tag = '', type = '', brand = '', model = '', entraObjectId = '', serial = '', condition = '', holder = '']) => ({
+      tag,
+      type,
+      brand,
+      model,
+      entraObjectId,
+      serial,
+      condition,
+      holder,
+    }),
+  )
 }
 
 /** What the server (or this form) refused: a sentence for the alert, and a message per field. */
@@ -38,7 +44,7 @@ interface Problem {
 }
 
 // The fields of this form that show their own message; anything else the server says goes in the alert.
-const SHOWN_UNDER_FIELDS = ['tag', 'typeId', 'serial', 'conditionRatingId']
+const SHOWN_UNDER_FIELDS = ['tag', 'typeId', 'brandId', 'model', 'entraObjectId', 'serial', 'conditionRatingId']
 
 export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const user = useUser()
@@ -46,6 +52,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const { data: lookups } = useQuery(lookupsQuery)
   const { data: assets = [] } = useQuery(assetsQuery)
   const types = lookups?.assetTypes ?? []
+  const brands = lookups?.assetBrands ?? []
   const ratings = lookups?.conditionRatings ?? []
   const people = lookups?.employees ?? []
   const programs = lookups?.programs ?? []
@@ -53,6 +60,10 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
   const tagRef = useRef<HTMLInputElement>(null)
   const [tag, setTag] = useState('')
   const [typeId, setTypeId] = useState('')
+  // Brand has no default: a wrong one would pass unnoticed. Like Type and Model, it is kept for the next asset.
+  const [brandId, setBrandId] = useState('')
+  const [model, setModel] = useState('')
+  const [entra, setEntra] = useState('')
   const [serial, setSerial] = useState('')
   const [ratingId, setRatingId] = useState('')
   const [to, setTo] = useState<'employee' | 'program'>('employee')
@@ -96,10 +107,21 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       tagRef.current?.focus()
       return
     }
+    const fields: Record<string, string> = {}
+    if (!brandId) fields.brandId = 'Choose a brand'
+    const entraChecked = entraObjectId.safeParse(entra)
+    if (!entraChecked.success) fields.entraObjectId = entraChecked.error.issues[0]?.message ?? 'Enter a GUID'
+    if (Object.keys(fields).length > 0) {
+      setProblem({ message: 'Check the highlighted fields.', fields })
+      return
+    }
     try {
       const row = await add.mutateAsync({
         tag,
         typeId: Number(effectiveType),
+        brandId: Number(brandId),
+        model,
+        entraObjectId: entra,
         serial,
         conditionRatingId: Number(effectiveRating),
         holderId: to === 'employee' ? (holder?.id ?? null) : null,
@@ -112,6 +134,7 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       })
       onAdded(row.id)
       setTag('')
+      setEntra('')
       setSerial('')
       setHolder(null)
       setProgram(null)
@@ -156,8 +179,8 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-md font-semibold">Quick add</h2>
         <p className="text-sm text-ink-3">
-          Enter adds the physical asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, serial,
-          condition, holder); you see them before they are added.
+          Enter adds the physical asset. Paste rows from a spreadsheet into Asset tag to add many (tag, type, brand,
+          model, Entra ObjectId, serial, condition, holder); you see them before they are added.
         </p>
       </div>
       <form
@@ -194,10 +217,34 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             ))}
           </Select>
         </Field>
-        <Field label="Serial number" optional error={problem?.fields.serial} className="lg:col-span-3">
+        <Field label="Brand" error={problem?.fields.brandId} className="lg:col-span-3">
+          <Select value={brandId} onChange={(event) => setBrandId(event.target.value)}>
+            <option value="" disabled>
+              Choose a brand
+            </option>
+            {brands.map((brand) => (
+              <option key={brand.id} value={brand.id}>
+                {brand.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Model" optional error={problem?.fields.model} className="lg:col-span-3">
+          <Input value={model} onChange={(event) => setModel(event.target.value)} autoComplete="off" />
+        </Field>
+        <Field label="Entra ObjectId" optional error={problem?.fields.entraObjectId} className="lg:col-span-4">
+          <Input
+            mono
+            value={entra}
+            onChange={(event) => setEntra(event.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Field>
+        <Field label="Serial number" optional error={problem?.fields.serial} className="lg:col-span-4">
           <Input mono value={serial} onChange={(event) => setSerial(event.target.value)} autoComplete="off" />
         </Field>
-        <Field label="Condition" error={problem?.fields.conditionRatingId} className="lg:col-span-3">
+        <Field label="Condition" error={problem?.fields.conditionRatingId} className="lg:col-span-4">
           <Select value={effectiveRating} onChange={(event) => setRatingId(event.target.value)}>
             {ratings.map((rating) => (
               <option key={rating.id} value={rating.id}>
@@ -255,7 +302,16 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-ink-3">
                 <tr>
-                  {['Asset tag', 'Type', 'Serial number', 'Condition', 'Issue to'].map((heading) => (
+                  {[
+                    'Asset tag',
+                    'Type',
+                    'Brand',
+                    'Model',
+                    'Entra ObjectId',
+                    'Serial number',
+                    'Condition',
+                    'Issue to',
+                  ].map((heading) => (
                     <th
                       key={heading}
                       scope="col"
@@ -271,6 +327,9 @@ export function QuickAddAsset({ onAdded }: { onAdded: (id: number) => void }) {
                   <tr key={index} className="border-t border-line">
                     <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[0.8125rem]">{row.tag}</td>
                     <td className="px-3 py-1.5">{row.type}</td>
+                    <td className="px-3 py-1.5">{row.brand}</td>
+                    <td className="px-3 py-1.5">{row.model}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-[0.8125rem]">{row.entraObjectId}</td>
                     <td className="px-3 py-1.5 font-mono text-[0.8125rem]">{row.serial}</td>
                     <td className="px-3 py-1.5">{row.condition}</td>
                     <td className="px-3 py-1.5">{row.holder}</td>

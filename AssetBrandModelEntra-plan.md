@@ -63,10 +63,10 @@ Source: [issue #19](https://github.com/Bytefloww1013/bphs-asset-manager/issues/1
 
 ## Phase 2 - Web (fan-out, disjoint files)
 
-- [ ] 2.1 Agent A - Lists and compact views: `web/src/routes/_app/lists.tsx`, `assignments.tsx`, `index.tsx`, `programs.tsx`, `web/src/features/employees/employee-parts.tsx`.
-- [ ] 2.2 Agent B - Tables, detail and exports: `assets.index.tsx`, `available.tsx`, `assets.$tag.tsx`, `web/src/lib/exports.ts`, new `web/src/lib/exports.test.ts`, `web/src/features/common/status.tsx`.
-- [ ] 2.3 Agent C - Forms: `web/src/features/assets/quick-add.tsx`, `asset-actions.tsx`, `web/src/features/assignments/issue-sheet.tsx`, `return-sheet.tsx`, `web/src/features/common/printout.tsx`.
-- [ ] 2.4 Fan-in: review the diffs, `docs/verify/quick-check.sh` passes.
+- [x] 2.1 Agent A - Lists and compact views: `web/src/routes/_app/lists.tsx`, `assignments.tsx`, `index.tsx`, `programs.tsx`, `web/src/features/employees/employee-parts.tsx`.
+- [x] 2.2 Agent B - Tables, detail and exports: `assets.index.tsx`, `available.tsx`, `assets.$tag.tsx`, `web/src/lib/exports.ts`, new `web/src/lib/exports.test.ts`, `web/src/features/common/status.tsx`.
+- [x] 2.3 Agent C - Forms: `web/src/features/assets/quick-add.tsx`, `asset-actions.tsx`, `web/src/features/assignments/issue-sheet.tsx`, `return-sheet.tsx`, `web/src/features/common/printout.tsx`.
+- [x] 2.4 Fan-in: review the diffs, `docs/verify/quick-check.sh` passes.
 
 ## Phase 3 - Docs, smoke test and blast-radius audit
 

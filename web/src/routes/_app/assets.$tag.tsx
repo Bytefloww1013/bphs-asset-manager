@@ -13,6 +13,7 @@ import { AssetRowActions } from '@/features/assets/asset-actions.tsx'
 import { useSheetActions } from '@/features/assignments/open.ts'
 import { AssetStateBadge, DaysOut, HolderCell, RatingBadge, stateLabel } from '@/features/common/status.tsx'
 import { ApiError } from '@/lib/api.ts'
+import { cn } from '@/lib/cn.ts'
 import { formatDate, formatDateTime, formatDays, plural } from '@/lib/format.ts'
 import { assetDetailQuery } from '@/lib/queries.ts'
 import { useDenied, usePageTitle } from '@/lib/session.ts'
@@ -91,11 +92,12 @@ const historyId = (row: HistoryRow) => String(row.id)
 
 const kindLabel: Record<ConditionEntry['kind'], string> = { intake: 'Received', issue: 'Issued', return: 'Returned' }
 
-function Fact({ label, children }: { label: string; children: ReactNode }) {
+/** `wrap` lets a long identifier break across lines instead of being cut off. */
+function Fact({ label, wrap, children }: { label: string; wrap?: boolean; children: ReactNode }) {
   return (
     <div className="min-w-0 px-5 py-4">
       <dt className="text-xs text-ink-3">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-medium text-ink">{children}</dd>
+      <dd className={cn('mt-1 text-sm font-medium text-ink', wrap ? 'break-all' : 'truncate')}>{children}</dd>
     </div>
   )
 }
@@ -131,16 +133,8 @@ function AssetDetailPage() {
               <AssetStateBadge state={asset.state} />
             </div>
             <p className="mt-1 text-sm text-ink-3">
-              {asset.type}
-              {asset.serial ? (
-                <>
-                  {' '}
-                  · serial <Mono>{asset.serial}</Mono>
-                </>
-              ) : (
-                ''
-              )}{' '}
-              · added {formatDate(asset.createdAt)}
+              {asset.type} · {asset.brand}
+              {asset.model ? ` ${asset.model}` : ''} · added {formatDate(asset.createdAt)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -210,6 +204,26 @@ function AssetDetailPage() {
             ) : (
               <span className="text-ink-3">Not recorded</span>
             )}
+          </Fact>
+        </dl>
+        <dl className="grid divide-y divide-line border-t border-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+          <Fact label="Brand">
+            {/* An archived brand, like "Unknown" on an asset from before brands, is still named: an edit asks for an active one. */}
+            <span className="inline-flex items-center gap-2">
+              <span className="truncate">{asset.brand}</span>
+              {!asset.brandActive && (
+                <Badge tone="neutral" dot={false}>
+                  archived
+                </Badge>
+              )}
+            </span>
+          </Fact>
+          <Fact label="Model">{asset.model ?? <span className="text-ink-3">—</span>}</Fact>
+          <Fact label="Serial">
+            {asset.serial ? <Mono>{asset.serial}</Mono> : <span className="text-ink-3">—</span>}
+          </Fact>
+          <Fact label="Entra ObjectId" wrap>
+            {asset.entraObjectId ? <Mono>{asset.entraObjectId}</Mono> : <span className="text-ink-3">—</span>}
           </Fact>
         </dl>
       </Panel>
