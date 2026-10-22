@@ -17,6 +17,9 @@
   --color-surface: oklch(1 0 0);
   --color-sunken: oklch(0.962 0.006 262);
   --color-sidebar: oklch(0.958 0.008 262);
+  /* The workspace rail sits a step cooler than the pages panel beside it. */
+  --color-rail: oklch(0.938 0.01 262);
+  --color-rail-hover: oklch(0.905 0.012 262);
   --color-line: oklch(0.925 0.006 262);
   --color-line-strong: oklch(0.86 0.008 262);
 

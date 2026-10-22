@@ -98,10 +98,10 @@ Smoke steps (`docs/verify/sidebar-smoke.mjs`, Chrome for Testing, seeded data):
 
 Each agent reads Phase 1-2 files and `.impeccable/mocks/sidebar-rail/src.html`, writes only its own files, and does not touch `app-shell.tsx`. Fan-in before Phase 4.
 
-- [ ] 3.1 Agent A owns `rail.tsx`, `account-menu.tsx`, `web/src/styles.css`: the rail (logo, panel toggle by prop, areas, More menu via `fitRail` and a `ResizeObserver`, bell slot, avatar account menu without "My Space"); adds `--color-rail` and `--color-rail-hover` only.
-- [ ] 3.2 Agent B owns `pages-panel.tsx`: header, Confidential line, "Jump to…" trigger by prop, `PageList`, the "Pin this page" / "Unpin this page" button for the current page outside Home (via `sidebar-prefs`), the panel swap animation with `prefers-reduced-motion` respected.
-- [ ] 3.3 Agent C owns `quick-switcher.tsx`: the Radix dialog combobox over `jumpIndex`, arrow keys, Enter, Escape, and `useQuickSwitcherShortcut` for Ctrl/Cmd K.
-- [ ] 3.4 Agent D owns `phone-nav.tsx`: the top bar and the drill-down drawer (Radix Dialog, `PageList` with `onNavigate`, "All workspaces" level, focus moved to the new level's heading).
+- [x] 3.1 Agent A owns `rail.tsx`, `account-menu.tsx`, `web/src/styles.css`: the rail (logo, panel toggle by prop, areas, More menu via `fitRail` and a `ResizeObserver`, bell slot, avatar account menu without "My Space"); adds `--color-rail` and `--color-rail-hover` only.
+- [x] 3.2 Agent B owns `pages-panel.tsx`: header, Confidential line, "Jump to…" trigger by prop, `PageList`, the "Pin this page" / "Unpin this page" button for the current page outside Home (via `sidebar-prefs`), the panel swap animation with `prefers-reduced-motion` respected.
+- [x] 3.3 Agent C owns `quick-switcher.tsx`: the Radix dialog combobox over `jumpIndex`, arrow keys, Enter, Escape, and `useQuickSwitcherShortcut` for Ctrl/Cmd K.
+- [x] 3.4 Agent D owns `phone-nav.tsx`: the top bar and the drill-down drawer (Radix Dialog, `PageList` with `onNavigate`, "All workspaces" level, focus moved to the new level's heading).
 
 ## Phase 4 - Assemble (serial)
 
