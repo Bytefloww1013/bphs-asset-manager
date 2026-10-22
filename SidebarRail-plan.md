@@ -1,6 +1,6 @@
 # Sidebar rail (issue #6) - Implementation
 
-Status: planned, not started | Started: 2026-10-22 | Branch: `refactor/issue6-sidebar-ui`
+Status: in progress | Started: 2026-10-22 | Branch: `refactor/issue6-sidebar-ui`
 
 Reference design: the throwaway prototype at `.impeccable/mocks/sidebar-rail/index.html` (gitignored; rebuild with `node .impeccable/mocks/sidebar-rail/build.mjs`). Where it and issue #6 differ, the prototype wins. Its example workspaces, figures and rows are not part of this work.
 
@@ -84,10 +84,10 @@ Smoke steps (`docs/verify/sidebar-smoke.mjs`, Chrome for Testing, seeded data):
 
 ## Phase 1 - Nav model (serial)
 
-- [ ] 1.1 `web/src/lib/nav.ts`: the areas in rail order (Home + workspaces) with full name, short label, icon, confidential flag, and `navFor(area, user, unread)` returning the page groups now built by `useNav` in `app-shell.tsx` (Home's pages renamed as in Decisions; lock reasons; "Coming later"; counts only on Home's Inbox). `areasFor(user)` uses `workspacesOf`.
-- [ ] 1.2 `nav.ts`: `fitRail(count, height, activeIndex)` returning the areas shown and the overflow, the active one always shown; `jumpIndex(user)` a flat list of `{ area, group, label, to }` without disabled entries.
-- [ ] 1.3 `web/src/lib/sidebar-prefs.ts`: read and write `bphs.sidebar` and `bphs.pins` (try/catch like `rememberWorkspace`; pins filtered to paths in the nav model, at most 8).
-- [ ] 1.4 Widen `vitest.config.ts` to `web/src/lib/**/*.test.ts`; `nav.test.ts` (Priya, Marcus, Dana, ops: areas and order; no count on confidential areas; `fitRail` keeps the active area; `jumpIndex` has no disabled entry) and `sidebar-prefs.test.ts` (unknown or record paths dropped, storage errors ignored).
+- [x] 1.1 `web/src/lib/nav.ts`: the areas in rail order (Home + workspaces) with full name, short label, icon, confidential flag, and `navFor(area, user, unread)` returning the page groups now built by `useNav` in `app-shell.tsx` (Home's pages renamed as in Decisions; lock reasons; "Coming later"; counts only on Home's Inbox). `areasFor(user)` uses `workspacesOf`.
+- [x] 1.2 `nav.ts`: `fitRail(count, height, activeIndex)` returning the areas shown and the overflow, the active one always shown; `jumpIndex(user)` a flat list of `{ area, group, label, to }` without disabled entries.
+- [x] 1.3 `web/src/lib/sidebar-prefs.ts`: read and write `bphs.sidebar` and `bphs.pins` (try/catch like `rememberWorkspace`; pins filtered to paths in the nav model, at most 8).
+- [x] 1.4 Widen `vitest.config.ts` to `web/src/lib/**/*.test.ts`; `nav.test.ts` (Priya, Marcus, Dana, ops: areas and order; no count on confidential areas; `fitRail` keeps the active area; `jumpIndex` has no disabled entry) and `sidebar-prefs.test.ts` (unknown or record paths dropped, storage errors ignored).
 
 ## Phase 2 - Shared list (serial)
 
