@@ -133,7 +133,7 @@ export interface NavEntry {
   to?: NavPath
   label: string
   icon: LucideIcon
-  /** Why the page will turn the account away: the entry stays a link, with a lock and this as its screen-reader text. */
+  /** Why the page would turn the account away. Shown, greyed out, with a lock and this under its name, but is not a link. */
   lock?: string
   /** Why the entry cannot be opened yet. It is shown, greyed out, but is not a link. */
   soon?: string

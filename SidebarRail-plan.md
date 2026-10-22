@@ -91,15 +91,15 @@ Smoke steps (`docs/verify/sidebar-smoke.mjs`, Chrome for Testing, seeded data):
 
 ## Phase 2 - Shared list (serial)
 
-- [ ] 2.1 `web/src/components/shell/nav-badge.tsx`: the one trailing slot (count, lock, soon) with its screen-reader text, reusing `UnreadBadge`.
-- [ ] 2.2 `web/src/components/shell/page-list.tsx`: `PageList({ area, onNavigate })` rendering `navFor` groups with `NavBadge`, the `yields` active rule, `aria-current="page"`, and the disabled `span role=link aria-disabled`.
+- [x] 2.1 `web/src/components/shell/nav-badge.tsx`: the one trailing slot (count, lock, soon) with its screen-reader text, reusing `UnreadBadge`.
+- [x] 2.2 `web/src/components/shell/page-list.tsx`: `PageList({ area, onNavigate })` rendering `navFor` groups with `NavBadge`, the `yields` active rule, `aria-current="page"`, and the disabled `span role=link aria-disabled` for locked and coming-later entries (reason under the name, as in the prototype); on Home it ends with the collapsible Pinned section, so the panel and the drawer share it.
 
 ## Phase 3 - Shell parts (fan-out: 4 subagents, disjoint file ownership)
 
 Each agent reads Phase 1-2 files and `.impeccable/mocks/sidebar-rail/src.html`, writes only its own files, and does not touch `app-shell.tsx`. Fan-in before Phase 4.
 
 - [ ] 3.1 Agent A owns `rail.tsx`, `account-menu.tsx`, `web/src/styles.css`: the rail (logo, panel toggle by prop, areas, More menu via `fitRail` and a `ResizeObserver`, bell slot, avatar account menu without "My Space"); adds `--color-rail` and `--color-rail-hover` only.
-- [ ] 3.2 Agent B owns `pages-panel.tsx`: header, Confidential line, "Jump to…" trigger by prop, `PageList`, Home's Pinned section and pin button (via `sidebar-prefs`), the panel swap animation with `prefers-reduced-motion` respected.
+- [ ] 3.2 Agent B owns `pages-panel.tsx`: header, Confidential line, "Jump to…" trigger by prop, `PageList`, the "Pin this page" / "Unpin this page" button for the current page outside Home (via `sidebar-prefs`), the panel swap animation with `prefers-reduced-motion` respected.
 - [ ] 3.3 Agent C owns `quick-switcher.tsx`: the Radix dialog combobox over `jumpIndex`, arrow keys, Enter, Escape, and `useQuickSwitcherShortcut` for Ctrl/Cmd K.
 - [ ] 3.4 Agent D owns `phone-nav.tsx`: the top bar and the drill-down drawer (Radix Dialog, `PageList` with `onNavigate`, "All workspaces" level, focus moved to the new level's heading).
 
