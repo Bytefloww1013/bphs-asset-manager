@@ -48,18 +48,18 @@ Still open from the 2026-10-14 security review, most serious first, checked agai
 - [x] Show a maintenance request's Date, Noticed and Zoho time in US format (10/15/2026 12:40 PM). Zoho sends day first and has no setting for it. Deployed 2026-10-16.
 - [x] Per-section access (None, Read, Edit or Full in Assets, Grievances, Maintenance and Employees) in place of roles. Deployed 2026-10-16.
 - [x] Administrative Reviews: a fourth workspace for reviews of employees' work, their Corrective Action Plans (CAPs), files, a printable case file and a Review Audit Log. Deployed (the live site serves `eacce4d`, the reviews case file). After deploying: link every account except the first to its employee on **Users**, since an unlinked account cannot open Reviews; give each account its Reviews level; and print one case file from each browser.
-- [ ] Employee Tasks: a fifth workspace for assigning tasks to accounts, completed in My Space › Tasks, with a minute-by-minute task clock for scheduled sends and reminders. Built on `feature-task-system`, not deployed. Deploying adds migrations 0020–0022. After deploying: widen the nginx 101m location to `/api/reviews`, `/api/tasks` and `/api/me/tasks` ([DEPLOY-GUIDE.md step 9](DEPLOY-GUIDE.md#9-configure-nginx)), give each account its Tasks level on **Users**, and assign a test task with a send time a few minutes ahead to see the clock deliver it.
+- [ ] Employee Tasks: a fifth workspace for assigning tasks to accounts, completed in Home › My tasks, with a minute-by-minute task clock for scheduled sends and reminders. Built on `feature-task-system`, not deployed. Deploying adds migrations 0020–0022. After deploying: widen the nginx 101m location to `/api/reviews`, `/api/tasks` and `/api/me/tasks` ([DEPLOY-GUIDE.md step 9](DEPLOY-GUIDE.md#9-configure-nginx)), give each account its Tasks level on **Users**, and assign a test task with a send time a few minutes ahead to see the clock deliver it.
 - [ ] _Add requests here._ Build and check each one locally, then redeploy with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first.
 
 ## Future TODOs
 
 Ideas agreed on but not planned yet. Each gets its own `[feature]-plan.md` when its turn comes.
 
-- [ ] **@mentions.** Typing `@` in a note or comment opens a list of people who have accounts, at the cursor, narrowed with each character typed. The person mentioned gets a notification with a link to where they were mentioned. Never in Grievances or Administrative Reviews. Builds on the notifications in My Space.
+- [ ] **@mentions.** Typing `@` in a note or comment opens a list of people who have accounts, at the cursor, narrowed with each character typed. The person mentioned gets a notification with a link to where they were mentioned. Never in Grievances or Administrative Reviews. Builds on the notifications in Home.
 - [ ] **Custom notification triggers.** Rules such as "notify me when a new asset is assigned to my program" or "when an asset comes back in poor condition". Default audience: Edit/Full in the section plus Super Admins. The notifications tables are designed so this needs only a rules table.
-- [ ] **Show many workspaces cleanly.** Staff keep asking for more features and workspaces. Employee Tasks makes five, and the workspace switcher is getting crowded: decide how it should look with many of them (grouped list, a launcher, search). The redesign is still to do.
-- [ ] **Mailbox in My Space.** Messages between people, with replies.
-- [ ] **Personal Dashboard in My Space.** A home page each person can arrange, within limits.
+- [x] **Show many workspaces cleanly.** Staff keep asking for more features and workspaces, and with Employee Tasks the old workspace switcher was crowded. Replaced (#6) by a workspace rail with "More" for those that do not fit, a pages panel beside it, Ctrl K / ⌘ K "Jump to…" for any page, and a phone drawer with "All workspaces". Built on `refactor/issue6-sidebar-ui`, not merged yet.
+- [ ] **Mailbox in Home.** Messages between people, with replies.
+- [ ] **My Dashboard in Home** ([#14](https://github.com/Bytefloww1013/bphs-asset-manager/issues/14)). A home page each person can arrange, within limits. It already shows in Home as "My Dashboard", greyed out, "Coming later"; #14 tracks its first version.
 - [ ] **Delete the Zoho test submission.** The 2026-10-15 Test Webhook and test entry under **Maintenance**, if still there. Setting the secret and configuring the webhook are done (see Production above).
 
 ## Maybe
