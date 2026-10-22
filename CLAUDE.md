@@ -47,6 +47,9 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 
 - `bun run format` / `bun run format:check` - Oxfmt (config `.oxfmtrc.json`); run `format` before committing.
 - `bun run lint` / `bun run lint:fix` - Oxlint, type-aware via oxlint-tsgolint (config `.oxlintrc.json`); must exit 0 with no warnings.
+- `docs/verify/verify-done.sh` - DoD for the current feature (sidebar rail, issue 6, `SidebarRail-plan.md`); exit 0 = done.
+- `docs/verify/scratch-server.sh start|stop` - seeded scratch API + SPA on :3388 for browser checks; never the real DATA_DIR.
+- `node docs/verify/sidebar-smoke.mjs` - shell smoke in Chrome for Testing against the scratch server.
 # WORKFLOWS
 
 - PRs to `main` are squash-merge-only: a blame-ignore-revs SHA can only be added in a follow-up PR after the merge.
