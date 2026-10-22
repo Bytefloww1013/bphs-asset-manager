@@ -111,9 +111,9 @@ Each agent reads Phase 1-2 files and `.impeccable/mocks/sidebar-rail/src.html`, 
 
 ## Phase 5 - Docs and smoke (fan-out: 2 subagents for docs, smoke run by the lead)
 
-- [ ] 5.1 Agent E owns `DESIGN.md`: Navigation rewritten for the rail, panel, More, collapse, Pinned, quick switcher, phone drill-down, badges; Home in place of My Space.
-- [ ] 5.2 Agent F owns `PRODUCT.md`, `README.md`, `RUNBOOK.md`, `TODO.md`: "My Space" → "Home" where it names the UI; the switcher wording; TODO "Show many workspaces cleanly" ticked, "Personal Dashboard" pointing at #14.
-- [ ] 5.3 Lead: `docs/verify/scratch-server.sh start`, `node docs/verify/sidebar-smoke.mjs`, fix until it passes, `scratch-server.sh stop`.
+- [x] 5.1 Agent E owns `DESIGN.md`: Navigation rewritten for the rail, panel, More, collapse, Pinned, quick switcher, phone drill-down, badges; Home in place of My Space.
+- [x] 5.2 Agent F owns `PRODUCT.md`, `README.md`, `RUNBOOK.md`, `TODO.md`: "My Space" → "Home" where it names the UI; the switcher wording; TODO "Show many workspaces cleanly" ticked, "Personal Dashboard" pointing at #14.
+- [x] 5.3 Lead: `docs/verify/scratch-server.sh start`, `node docs/verify/sidebar-smoke.mjs`, fix until it passes, `scratch-server.sh stop`.
 
 ## Phase 6 - Verify
 

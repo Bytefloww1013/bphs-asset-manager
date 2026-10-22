@@ -61,4 +61,5 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - `plugins` in `.oxlintrc.json` replaces Oxlint's default list -> name every plugin wanted. Turn a noisy rule off there with a one-line reason, never with `oxlint-disable` comments.
 - tsgolint reads the root `tsconfig.json` (a solution file) -> keep it referencing `web` and `server`, or files under `shared/` are linted without their strict options.
 - Markdown and generated files are in Oxfmt's `ignorePatterns` -> don't format them by hand either.
+- TanStack `Link` sets `aria-current="page"` itself, after `activeProps`, whenever the address is at or under its `to` -> for another value (the rail's `"true"`), spread `useLinkProps` onto a plain `<a>` and set `aria-current` last.
 - Bun runs `node-gyp rebuild` for `better-sqlite3` (it ignores `"gypfile": false`), which fails in CI and Docker -> keep `trustedDependencies` in `package.json` explicit (it replaces Bun's default list); add a new dependency there only if its install script is really needed.

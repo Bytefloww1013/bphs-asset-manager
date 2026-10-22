@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from '@tanstack/react-router'
-import { Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, Search } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn.ts'
 import { areaById, jumpIndex, type JumpEntry } from '@/lib/nav.ts'
@@ -184,8 +184,13 @@ function Switcher({ onDone }: { onDone: () => void }) {
       {matches.length === 0 && <p className="px-3.5 pb-4 pt-2.5 text-sm text-ink-3">No page matches.</p>}
       <div aria-hidden className="flex shrink-0 gap-3.5 border-t border-line bg-canvas px-3.5 py-2 text-xs text-ink-3">
         <span className="flex items-center gap-1">
-          <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd> move
+          <Kbd>
+            <ArrowUp className="size-3" />
+          </Kbd>
+          <Kbd>
+            <ArrowDown className="size-3" />
+          </Kbd>{' '}
+          move
         </span>
         <span className="flex items-center gap-1">
           <Kbd>Enter</Kbd> open

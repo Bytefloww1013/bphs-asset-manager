@@ -141,7 +141,7 @@ export function PhoneNav({ area }: { area: Area }) {
                     </h2>
                     {shownArea.confidential && (
                       <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-workspace">
-                        <Lock className="size-3" aria-hidden />
+                        <Lock className="size-3.5" aria-hidden />
                         Confidential
                       </p>
                     )}

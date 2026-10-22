@@ -1,11 +1,12 @@
 import { useLocation } from '@tanstack/react-router'
-import { Lock, Pin, PinOff, Search } from 'lucide-react'
+import { Command, Lock, Pin, PinOff, Search } from 'lucide-react'
 import { useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/cn.ts'
 import { areaById, jumpIndex } from '@/lib/nav.ts'
 import { useUser } from '@/lib/session.ts'
 import { MAX_PINS, togglePin, usePins } from '@/lib/sidebar-prefs.ts'
 import type { Area } from '@/lib/workspace.ts'
+import { Tooltip } from '../ui/tooltip.tsx'
 import { PageList } from './page-list.tsx'
 
 // Mac keyboards say Command where everyone else says Ctrl. The panel only shows on a wide window, so a desktop check is enough.
@@ -53,9 +54,9 @@ export function PagesPanel({ area, collapsed, onJump }: { area: Area; collapsed:
           <span className="flex-1">Jump to…</span>
           <kbd
             aria-hidden
-            className="rounded-[5px] bg-sunken px-[5px] py-px font-sans text-xs text-ink-3 ring-1 ring-inset ring-line"
+            className="flex items-center gap-0.5 rounded-[5px] bg-sunken px-[5px] py-px font-sans text-xs text-ink-3 ring-1 ring-inset ring-line"
           >
-            {onMac ? '⌘ K' : 'Ctrl K'}
+            {onMac ? <Command className="size-3" /> : 'Ctrl'} K
           </kbd>
         </button>
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-1">
@@ -82,18 +83,19 @@ function PinButton() {
   const label = pinned ? 'Unpin this page' : 'Pin this page'
   const Icon = pinned ? PinOff : Pin
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-disabled={full || undefined}
-      title={full ? `Home holds ${MAX_PINS} pins at most. Unpin one first.` : label}
-      onClick={() => {
-        if (!full) togglePin(page.to)
-      }}
-      className="-mr-1 grid size-[1.625rem] shrink-0 place-items-center rounded-[0.375rem] text-ink-3 transition-colors duration-150 hover:bg-surface/70 hover:text-ink aria-disabled:cursor-not-allowed aria-disabled:text-ink-4 aria-disabled:hover:bg-transparent"
-    >
-      <Icon className="size-[0.9375rem]" aria-hidden strokeWidth={1.75} />
-    </button>
+    <Tooltip content={full ? `Home holds ${MAX_PINS} pins at most. Unpin one first.` : label} side="bottom">
+      <button
+        type="button"
+        aria-label={label}
+        aria-disabled={full || undefined}
+        onClick={() => {
+          if (!full) togglePin(page.to)
+        }}
+        className="-mr-1 grid size-[1.625rem] shrink-0 place-items-center rounded-[0.375rem] text-ink-3 transition-colors duration-150 hover:bg-surface/70 hover:text-ink aria-disabled:cursor-not-allowed aria-disabled:text-ink-4 aria-disabled:hover:bg-transparent"
+      >
+        <Icon className="size-[0.9375rem]" aria-hidden strokeWidth={1.75} />
+      </button>
+    </Tooltip>
   )
 }
 

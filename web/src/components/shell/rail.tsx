@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { Link } from '@tanstack/react-router'
+import { Link, useLinkProps } from '@tanstack/react-router'
 import { Ellipsis, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { APP_NAME } from '@/lib/brand.ts'
@@ -39,15 +39,18 @@ function RailTile({ icon: Icon, label, active }: { icon: LucideIcon; label: stri
 }
 
 function RailLink({ area, active }: { area: NavArea; active: boolean }) {
+  // Link would mark itself aria-current="page" whenever the address sits under its target, so the props are taken from
+  // useLinkProps and the rail's own state, "this area", is set last.
+  const linkProps = useLinkProps({ to: area.home })
   const link = (
-    <Link
-      to={area.home}
+    <a
+      {...linkProps}
       aria-label={area.name}
       aria-current={active ? 'true' : undefined}
       className={cn(itemStyle, active ? 'font-semibold text-ink' : 'text-ink-2 hover:text-ink')}
     >
       <RailTile icon={area.icon} label={area.label} active={active} />
-    </Link>
+    </a>
   )
   // The short label ("Tasks") leaves out part of the name, so the full one shows on hover and focus.
   return area.name === area.label ? (
