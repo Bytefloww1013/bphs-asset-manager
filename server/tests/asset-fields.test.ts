@@ -1,4 +1,7 @@
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_BRANDS, ensureDefaultLists } from '../bootstrap.ts'
+import * as schema from '../db/schema.ts'
 import { assets } from '../db/schema.ts'
 import { migratedBefore, setup } from './helpers.ts'
 
@@ -326,5 +329,27 @@ describe('migration 0023', () => {
     ).toThrow(/UNIQUE/)
     expect(() => sqlite.exec("delete from asset_brands where name = 'Unknown'")).toThrow(/FOREIGN KEY/)
     expect(() => sqlite.exec('delete from assets where id = 7')).toThrow(/FOREIGN KEY/)
+  })
+
+  it('gives an upgraded database with users the default brands, so assets can be added', () => {
+    const { sqlite, rest } = migratedBefore('0023_', { foreignKeys: true })
+    sqlite.exec(`
+      insert into users (id, name, email, password_hash) values (1, 'Admin', 'admin@x.example', 'x');
+      insert into asset_types (id, name) values (1, 'Laptop');
+      insert into assets (id, tag, type_id, status, created_at) values (1, 'A-1', 1, 'in_service', 100);`)
+    rest()
+    const db = drizzle(sqlite, { schema })
+    ensureDefaultLists(db)
+    ensureDefaultLists(db) // a restart adds nothing more
+
+    const brands = sqlite.prepare('select name, is_active from asset_brands order by name').all()
+    expect(brands).toEqual(
+      [...DEFAULT_BRANDS.map((name) => ({ name, is_active: 1 })), { name: 'Unknown', is_active: 0 }].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    )
+    expect(
+      sqlite.prepare('select b.name from assets a join asset_brands b on b.id = a.brand_id where a.id = 1').get(),
+    ).toEqual({ name: 'Unknown' })
   })
 })

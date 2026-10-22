@@ -21,16 +21,18 @@ export const DEFAULT_RATINGS = [
  * lists hold is what its admins made of them, and an emptied list must not come back to the defaults at the next restart.
  */
 export function ensureDefaultLists(db: Db) {
-  if ((db.select({ n: count() }).from(users).get()?.n ?? 0) > 0) return
-  if ((db.select({ n: count() }).from(assetTypes).get()?.n ?? 0) === 0) {
-    db.insert(assetTypes)
-      .values(DEFAULT_TYPES.map((name) => ({ name })))
-      .run()
-  }
+  // Brands are the exception. No active brand happens only on a database the 0023 migration has just upgraded (admins can't
+  // archive or delete the last active one), and without one no physical asset can be added.
   if ((db.select({ n: count() }).from(assetBrands).where(eq(assetBrands.isActive, true)).get()?.n ?? 0) === 0) {
     db.insert(assetBrands)
       .values(DEFAULT_BRANDS.map((name) => ({ name })))
       .onConflictDoNothing()
+      .run()
+  }
+  if ((db.select({ n: count() }).from(users).get()?.n ?? 0) > 0) return
+  if ((db.select({ n: count() }).from(assetTypes).get()?.n ?? 0) === 0) {
+    db.insert(assetTypes)
+      .values(DEFAULT_TYPES.map((name) => ({ name })))
       .run()
   }
   if ((db.select({ n: count() }).from(conditionRatings).get()?.n ?? 0) === 0) {

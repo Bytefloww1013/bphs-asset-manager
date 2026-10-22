@@ -12,7 +12,7 @@ Source: [issue #19](https://github.com/Bytefloww1013/bphs-asset-manager/issues/1
   - Brands on the Lists page beside Types: add, rename, archive (**soft delete**), **restrict delete** for a brand in use, the last active brand can't be archived or deleted; every change audited (`assetbrand`).
   - Migration **backfills** an **"Unknown"** brand onto every existing asset. Unknown is created **archived**: no picker offers it and the server refuses it on create/update; the edit form shows Brand empty for an asset on an archived brand and requires a choice before saving.
   - Bulk paste columns become: tag, type, brand, model, Entra ObjectId, serial, condition, holder. Brand is matched by name among active brands, like Type; a bad row is reported by number.
-  - A first run (no users) gets default brands, as it gets default Types, so the forms work at once.
+  - A first run (no users) gets default brands, as it gets default Types, so the forms work at once. Changed in Phase 3: any start with no active brand adds them, so an upgraded database (only the archived Unknown) can add assets too; the last-active rule means this happens only once, after `0023`.
   - Asset create and update audit entries include the new fields.
   - `server/seed.ts` seeds realistic brands, models and Entra ObjectIds, including assets with no Model or no Entra ObjectId.
 - **Out of scope:** digital assets; any Microsoft Graph or Entra sync (the ID is stored only); the employee/program file importer; the colour and logo redesign.
@@ -70,9 +70,9 @@ Source: [issue #19](https://github.com/Bytefloww1013/bphs-asset-manager/issues/1
 
 ## Phase 3 - Docs, smoke test and blast-radius audit
 
-- [ ] 3.1 Agent D - Docs: `README.md`, `RUNBOOK.md`, `PRODUCT.md`, `DEPLOY-GUIDE.md` and `docs/` where they describe physical assets, Lists or exports.
-- [ ] 3.2 Agent E - `docs/verify/asset-fields-smoke.mjs`.
-- [ ] 3.3 Blast-radius audit: every file referencing physical assets checked (list below), fixes made.
+- [x] 3.1 Agent D - Docs: `README.md`, `RUNBOOK.md`, `PRODUCT.md`, `DEPLOY-GUIDE.md` and `docs/` where they describe physical assets, Lists or exports.
+- [x] 3.2 Agent E - `docs/verify/asset-fields-smoke.mjs`.
+- [x] 3.3 Blast-radius audit: every file referencing physical assets checked (list below), fixes made.
 
 ## Phase 4 - Verify
 
@@ -83,3 +83,21 @@ Source: [issue #19](https://github.com/Bytefloww1013/bphs-asset-manager/issues/1
 ## Blast-radius audit (3.3)
 
 Files that reference physical assets (from `git grep` and CodeGraph); each is ticked once checked against the new fields.
+
+Changed for the new fields (Phases 1-2):
+- [x] `server/db/schema.ts`, migration `0023`, `shared/schemas.ts`, `shared/types.ts`
+- [x] `server/services/assets.ts` (read, create, update, bulk, audit), `assignments.ts` (open rows), `reports.ts` (dashboard), `lists.ts` + `server/routes/lists.ts` (brands), `refs.ts` (lookups), `server/bootstrap.ts` (default brands), `server/seed.ts`
+- [x] `web/src/routes/_app/assets.index.tsx`, `available.tsx`, `assets.$tag.tsx`, `assignments.tsx`, `index.tsx`, `lists.tsx`
+- [x] `web/src/features/assets/quick-add.tsx`, `asset-actions.tsx`; `assignments/issue-sheet.tsx`, `return-sheet.tsx`; `employees/employee-parts.tsx`; `common/status.tsx` (search text), `common/list-parts.tsx`
+- [x] `web/src/lib/exports.ts`, `queries.ts`; tests in `server/tests/` and `web/src/lib/exports.test.ts`
+
+Checked, no change needed:
+- [x] `server/routes/assets.ts`, `server/app.ts`: pass rows through from the services.
+- [x] `server/services/employees.ts`, `programs.ts`: holdings come from `loadAssetRows`, so they carry the fields already.
+- [x] `server/services/notifications.ts`: overdue reminders and relinks use the tag only.
+- [x] `web/src/features/programs/program-parts.tsx`, `routes/_app/programs.tsx`: counts only, no asset rows.
+- [x] `web/src/features/common/printout.tsx`: prints grievances, not asset details.
+- [x] `web/src/components/shell/quick-switcher.tsx`: pages only, no asset search.
+- [x] `web/src/routes/_app/audit.tsx`, Overview recent activity: print `entityType` raw, so brand changes read `assetbrand`, like the existing `assettype`. Left as is.
+- [x] `server/services/imports.ts`: employee/program importer, out of scope.
+- [x] Digital asset files: untouched (guardrail).

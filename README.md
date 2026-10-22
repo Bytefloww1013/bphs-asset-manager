@@ -104,7 +104,7 @@ Five workspaces, each picked in the rail on the left (under "More" when they do 
 | Sign in | `/login` |
 | Forced password change | `/password-change` |
 | Overview (inventory, out the longest, condition watch, free stock, activity) | `/` |
-| Physical Assets register with quick-add and spreadsheet paste | `/assets` |
+| Physical Assets register (Type, Brand, Model, Entra ObjectId, Serial) with quick-add and spreadsheet paste | `/assets` |
 | Asset detail with assignment and condition history | `/assets/BPHS-0102` |
 | Active assignments with bulk return | `/assignments` |
 | Available assets, with an `I` shortcut to issue | `/available` |
@@ -113,7 +113,7 @@ Five workspaces, each picked in the rail on the left (under "More" when they do 
 | Digital Assets: license and account seats, one per row, issued to employees | `/digital-assets` |
 | Employees with quick-add | `/employees` |
 | Programs, which can hold physical assets the way an employee does | `/programs` |
-| Lists: asset types, digital asset types and condition ratings | `/lists` |
+| Lists: asset types, asset brands, digital asset types and condition ratings | `/lists` |
 | Import/Export: employees and programs in from CSV or Excel (map columns, preview, then commit); every list out as CSV or Excel | `/import-export` |
 | Audit log (filter, search, CSV export) | `/audit` |
 | Users (Super Admin only) | `/users` |
@@ -225,7 +225,7 @@ The design was reworked for legibility and comfort, not just restyled:
 
 - Larger type (14px body, 12px floor), 36px controls, 56px rows, horizontal rules only, and measured contrast (the spec's greys were 1.7-2.6:1). Fully responsive down to a phone.
 - The spec's Dashboard combined a metrics rail and the asset grid. Here **Overview** answers "what needs a decision" and **Physical Assets** is the register.
-- The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once, after showing them for a last look.
+- The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once, after showing them for a last look. Its columns are tag, type, brand, model, Entra ObjectId, serial, condition, holder.
 - Issue and Return open as right-hand sheets rather than centred modals, and are still linkable.
 - The design-time "viewing as" toggle is gone: access comes from the signed-in account, and unavailable actions are shown disabled with the reason.
 
@@ -236,6 +236,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - No dark theme yet (the tokens are semantic, so it is additive).
 - HTTPS and scheduled backups live on the VPS (Nginx with Certbot, and a cron job running `scripts/backup-offbox.sh`), not in the container, so a fresh server needs DEPLOY-GUIDE followed again.
 - The audit log export caps at 50,000 rows per download, and is CSV only.
+- Entra ObjectId is stored only: nothing syncs it with Entra or Microsoft Graph.
 - Only employees and programs can be imported. Physical and digital assets are added on their own pages (physical assets also by spreadsheet paste); each could become importable by adding one definition to `shared/importers.ts` and one creator to `server/services/imports.ts`.
 - Every account that works in Grievances can read every grievance, and every account in Administrative Reviews every review except one about itself; there is no limit to named people.
 - Review due dates are recorded but nothing is flagged overdue. Reviews and grievances send no notifications at all, on purpose.
