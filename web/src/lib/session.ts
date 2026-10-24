@@ -35,7 +35,15 @@ export function useUser(): SessionUser {
   return data
 }
 
-/** Why this account may not do something that needs this level in this section, or undefined when it may: fits a `disabledReason`. */
+/**
+ * Whether this account may do what needs this level in this section. A control it may not use is not drawn at all; it is never
+ * shown disabled with the missing access as its reason (issue #27).
+ */
+export function useCan(section: Section, level: AccessLevel): boolean {
+  return canAt(useUser(), section, level)
+}
+
+/** Why this account may not do something that needs this level in this section. Being removed: use `useCan` (issue #27). */
 export function useDenied(section: Section, level: AccessLevel): string | undefined {
   return canAt(useUser(), section, level) ? undefined : needsAccess(section, level)
 }

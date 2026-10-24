@@ -7,7 +7,7 @@ import { Input, Switch } from '@/components/ui/form.tsx'
 import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 
 // The parts of an editable list of names: the lists on the Lists screen, and any a module keeps on a page of its own.
 
@@ -29,7 +29,7 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLInputElement>(null)
   const save = useWrite((value: string) => api.patch(`/${kind.path}/${id}`, { name: value }), { silent: true })
-  const readOnly = useDenied(kind.section, 'edit')
+  const canEdit = useCan(kind.section, 'edit')
 
   async function commit() {
     if (draft.trim() === name) return setEditing(false)
@@ -46,7 +46,7 @@ export function EditableName({ kind, id, name, tone }: { kind: ListKind; id: num
     return (
       <div className="group flex items-center gap-2">
         {tone ? <Badge tone={tone}>{name}</Badge> : <span className="font-medium">{name}</span>}
-        {!readOnly && (
+        {canEdit && (
           <IconButton
             label={`Rename ${name}`}
             size="sm"
@@ -104,7 +104,7 @@ export function AddRow({ kind, placeholder, noun }: { kind: ListKind; placeholde
     silent: true,
     success: `${noun} added`,
   })
-  if (useDenied(kind.section, 'edit')) return null
+  if (!useCan(kind.section, 'edit')) return null
   return (
     <form
       className="px-5 pb-4"
@@ -151,6 +151,7 @@ export const isOnlyActive = <T extends { isActive: boolean }>(info: {
 }) =>
   info.row.original.isActive && info.table.getCoreRowModel().rows.filter((row) => row.original.isActive).length === 1
 
+/** A list row's Delete; not drawn without Full access. A row still in use, or the only active one, says why it can't go. */
 export function DeleteButton({
   kind,
   id,
@@ -166,16 +167,17 @@ export function DeleteButton({
   inUseReason: string
   onlyActive: boolean
 }) {
-  const noFull = useDenied(kind.section, 'full')
+  const canDelete = useCan(kind.section, 'full')
   const [open, setOpen] = useState(false)
   const remove = useWrite(() => api.delete(`/${kind.path}/${id}`), { success: `${name} deleted` })
+  if (!canDelete) return null
   return (
     <>
       <IconButton
         label={`Delete ${name}`}
         size="sm"
         variant="danger-ghost"
-        disabledReason={noFull ?? (inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined)}
+        disabledReason={inUse ? inUseReason : onlyActive ? onlyActiveReason(kind) : undefined}
         onClick={() => setOpen(true)}
       >
         <Trash2 className="size-4" />
@@ -193,6 +195,7 @@ export function DeleteButton({
   )
 }
 
+/** A list row's on/off switch. Without Edit access it is the state as a badge, so it still reads the same. */
 export function ActiveSwitch({
   kind,
   id,
@@ -207,13 +210,15 @@ export function ActiveSwitch({
   onlyActive: boolean
 }) {
   const toggle = useWrite((isActive: boolean) => api.patch(`/${kind.path}/${id}`, { isActive }))
-  const noEdit = useDenied(kind.section, 'edit')
+  if (!useCan(kind.section, 'edit')) {
+    return <Badge tone={active ? 'ok' : 'neutral'}>{active ? 'Active' : 'Inactive'}</Badge>
+  }
   return (
     <Switch
       label={`${name} is ${active ? 'active' : 'inactive'}`}
       checked={active}
       disabled={toggle.isPending}
-      disabledReason={noEdit ?? (onlyActive ? onlyActiveReason(kind) : undefined)}
+      disabledReason={onlyActive ? onlyActiveReason(kind) : undefined}
       onChange={(next) => toggle.mutate(next)}
     />
   )

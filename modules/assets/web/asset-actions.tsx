@@ -10,7 +10,7 @@ import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overl
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError, fieldMessages } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { type AssetRow, assetUpdateSchema } from '../shared/index.ts'
 import { useSheetActions } from './open.ts'
 import { lookupsQuery } from './queries.ts'
@@ -29,8 +29,8 @@ export function AssetRowActions({
 }) {
   const sheets = useSheetActions()
   const navigate = useNavigate()
-  const noEdit = useDenied('assets', 'edit')
-  const noFull = useDenied('assets', 'full')
+  const canEdit = useCan('assets', 'edit')
+  const canDelete = useCan('assets', 'full')
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState<'retire' | 'delete' | null>(null)
 
@@ -47,30 +47,26 @@ export function AssetRowActions({
       icon: Eye,
       onSelect: () => void navigate({ to: '/assets/$tag', params: { tag: asset.tag } }),
     },
-    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), hidden: !canEdit },
     {
       label: 'Assign to program',
       icon: Building2,
       onSelect: () => sheets.issueToProgram(asset.id),
+      hidden: !canEdit,
       disabledReason:
-        noEdit ??
-        (asset.state === 'assigned'
-          ? 'Return it first.'
-          : asset.state === 'retired'
-            ? 'Reinstate it first.'
-            : undefined),
+        asset.state === 'assigned' ? 'Return it first.' : asset.state === 'retired' ? 'Reinstate it first.' : undefined,
     },
     asset.state === 'retired'
-      ? { label: 'Reinstate', icon: RotateCcw, onSelect: () => reinstate.mutate(undefined), disabledReason: noEdit }
+      ? { label: 'Reinstate', icon: RotateCcw, onSelect: () => reinstate.mutate(undefined), hidden: !canEdit }
       : {
           label: 'Retire',
           icon: Archive,
           onSelect: () => setConfirm('retire'),
+          hidden: !canEdit,
           disabledReason:
-            noEdit ??
-            (asset.state === 'assigned'
+            asset.state === 'assigned'
               ? `Assigned to ${(asset.holder ?? asset.program)?.name}. Return it first.`
-              : undefined),
+              : undefined,
         },
     {
       label: 'Delete',
@@ -78,34 +74,27 @@ export function AssetRowActions({
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason:
-        noFull ??
-        (asset.hasHistory ? 'Has assignment history. Retire it instead; history is never deleted.' : undefined),
+      hidden: !canDelete,
+      disabledReason: asset.hasHistory
+        ? 'Has assignment history. Retire it instead; history is never deleted.'
+        : undefined,
     },
   ]
 
   return (
     <div className="flex items-center justify-end gap-1.5">
       {!hidePrimary &&
+        canEdit &&
         (asset.state === 'assigned' ? (
-          <Button
-            size="sm"
-            disabledReason={noEdit}
-            onClick={() => asset.assignmentId && sheets.returnAsset(asset.assignmentId)}
-          >
+          <Button size="sm" onClick={() => asset.assignmentId && sheets.returnAsset(asset.assignmentId)}>
             Return
           </Button>
         ) : asset.state === 'in_storage' ? (
-          <Button size="sm" disabledReason={noEdit} onClick={() => sheets.issue(asset.id)}>
+          <Button size="sm" onClick={() => sheets.issue(asset.id)}>
             Issue
           </Button>
         ) : (
-          <Button
-            size="sm"
-            disabledReason={noEdit}
-            onClick={() => reinstate.mutate(undefined)}
-            loading={reinstate.isPending}
-          >
+          <Button size="sm" onClick={() => reinstate.mutate(undefined)} loading={reinstate.isPending}>
             Reinstate
           </Button>
         ))}

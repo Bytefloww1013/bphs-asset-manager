@@ -38,8 +38,9 @@ export interface ButtonProps extends ComponentProps<'button'> {
   loading?: boolean
   icon?: ReactNode
   /**
-   * Keeps the button focusable but inert and explains why. Used for rules like
-   * "only a Super Admin can delete", so the rule is visible instead of hidden.
+   * Keeps the button focusable but inert and explains why. Only for a record rule that blocks an action the account may use
+   * ("Has assignment history. Mark it inactive instead.") or a placeholder; a button the account's access doesn't allow is not
+   * drawn at all (issue #27).
    */
   disabledReason?: string
 }

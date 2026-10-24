@@ -18,7 +18,7 @@ import { Sheet } from '@/components/ui/overlay.tsx'
 import { ApiError, api } from '@/lib/api.ts'
 import { formatDateTime, plural } from '@/lib/format.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 
 const ACCEPT = Object.keys(ATTACHMENT_TYPES)
   .map((extension) => `.${extension}`)
@@ -228,7 +228,7 @@ export function AttachmentList({
   files: Attachment[]
   sealed: boolean
 }) {
-  const noWithdraw = useDenied(record.section, 'full')
+  const canWithdraw = useCan(record.section, 'full')
   const [withdrawing, setWithdrawing] = useState<Attachment | null>(null)
   return (
     <>
@@ -245,13 +245,9 @@ export function AttachmentList({
               </>
             }
             action={
-              !sealed && (
-                <Button
-                  size="sm"
-                  variant="danger-ghost"
-                  disabledReason={noWithdraw}
-                  onClick={() => setWithdrawing(file)}
-                >
+              !sealed &&
+              canWithdraw && (
+                <Button size="sm" variant="danger-ghost" onClick={() => setWithdrawing(file)}>
                   Withdraw
                 </Button>
               )

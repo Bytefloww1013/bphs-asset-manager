@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDate } from '@/lib/format.ts'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import type { DigitalAssetRow, DigitalAssetState } from '../../shared/index.ts'
 import {
   DigitalAssetIdCell,
@@ -104,7 +104,7 @@ const searchText = (row: DigitalAssetRow) =>
 
 function DigitalAssetsPage() {
   usePageTitle('Digital Assets')
-  const readOnly = useDenied('assets', 'edit')
+  const readOnly = !useCan('assets', 'edit')
   const { show = 'all' } = Route.useSearch() as { show?: Show }
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(digitalAssetsQuery)

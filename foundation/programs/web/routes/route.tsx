@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import type { ProgramRow } from '../../shared/index.ts'
 import { programsExport } from '../exports.ts'
 import { ProgramRowActions, QuickAddProgram } from '../program-parts.tsx'
@@ -67,7 +67,7 @@ const searchText = (row: ProgramRow) => [row.name, row.code, row.address].filter
 
 function ProgramsPage() {
   usePageTitle('Programs')
-  const readOnly = useDenied('assets', 'edit')
+  const readOnly = !useCan('assets', 'edit')
   const { show = 'active' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(programsQuery)

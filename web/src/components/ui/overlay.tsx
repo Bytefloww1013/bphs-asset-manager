@@ -137,13 +137,17 @@ export interface MenuItem {
   icon?: LucideIcon
   onSelect: () => void
   tone?: 'default' | 'danger'
-  /** When set the item is shown but inert, with the reason beneath it. */
+  /** True when the account's access doesn't allow it: the item is left out of the menu (issue #27). */
+  hidden?: boolean
+  /** When set the item is shown but inert, with the reason beneath it: a record rule that blocks an action the account may use. */
   disabledReason?: string
   separatorBefore?: boolean
 }
 
-/** Overflow menu for the less common row actions. */
+/** Overflow menu for the less common row actions. With no item left to show, the menu and its trigger are not drawn. */
 export function Menu({ label, items, trigger }: { label: string; items: MenuItem[]; trigger?: ReactNode }) {
+  const shown = items.filter((item) => !item.hidden)
+  if (!shown.length) return null
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -164,9 +168,9 @@ export function Menu({ label, items, trigger }: { label: string; items: MenuItem
           }}
           className="z-[60] min-w-52 max-w-72 animate-pop-in rounded-panel border border-line bg-surface p-1.5 shadow-pop"
         >
-          {items.map((item) => (
+          {shown.map((item, index) => (
             <div key={item.label}>
-              {item.separatorBefore && <DropdownMenu.Separator className="-mx-1.5 my-1.5 h-px bg-line" />}
+              {item.separatorBefore && index > 0 && <DropdownMenu.Separator className="-mx-1.5 my-1.5 h-px bg-line" />}
               <DropdownMenu.Item
                 disabled={Boolean(item.disabledReason)}
                 onSelect={item.onSelect}

@@ -54,11 +54,11 @@ Shared files (lockfiles, manifests, CI config, CLAUDE.md/AGENTS.md, this plan) b
 
 ## Phase 2 - Shared components and row-action menus
 
-- [ ] 2.1 Replace `useDenied` with a boolean `useCan(section, level)` in `web/src/lib/session.ts`, doc comment states the hide rule
-- [ ] 2.2 `DeleteButton` hidden without Full; `ActiveSwitch` shows a read-only `Badge` without Edit; record-rule reasons kept (`list-parts.tsx`)
-- [ ] 2.3 File Withdraw hidden without permission (`records/files.tsx`); `MenuItem` doc and comment at `overlay.tsx:140`; `Button` doc example (`button.tsx:41-42`)
-- [ ] 2.4 Menus with no usable items hide their trigger (shared helper in `overlay.tsx` if one fits)
-- [ ] 2.5 Row actions: `asset-actions.tsx`, `digital-parts.tsx`, `employee-parts.tsx`, `program-parts.tsx`
+- [x] 2.1 Replace `useDenied` with a boolean `useCan(section, level)` in `web/src/lib/session.ts`, doc comment states the hide rule
+- [x] 2.2 `DeleteButton` hidden without Full; `ActiveSwitch` shows a read-only `Badge` without Edit; record-rule reasons kept (`list-parts.tsx`)
+- [x] 2.3 File Withdraw hidden without permission (`records/files.tsx`); `MenuItem` doc and comment at `overlay.tsx:140`; `Button` doc example (`button.tsx:41-42`)
+- [x] 2.4 Menus with no usable items hide their trigger (shared helper in `overlay.tsx` if one fits)
+- [x] 2.5 Row actions: `asset-actions.tsx`, `digital-parts.tsx`, `employee-parts.tsx`, `program-parts.tsx`
 
 ## Phase 3 - Record pages, forms, lock screens, URL gates
 

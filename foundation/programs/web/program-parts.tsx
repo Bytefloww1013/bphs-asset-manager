@@ -12,7 +12,7 @@ import { ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { plural } from '@/lib/format.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import type { ProgramRow } from '../shared/index.ts'
 import {
   createProgram,
@@ -106,8 +106,8 @@ export function QuickAddProgram({ onAdded }: { onAdded: (id: number) => void }) 
 
 /** The program's status and what it holds, then its actions. The grid keeps its three columns for the program itself. */
 export function ProgramRowActions({ program }: { program: ProgramRow }) {
-  const noEdit = useDenied('assets', 'edit')
-  const noFull = useDenied('assets', 'full')
+  const canEdit = useCan('assets', 'edit')
+  const canDelete = useCan('assets', 'full')
   const [editing, setEditing] = useState(false)
   const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null)
   const deactivate = useWrite(() => deactivateProgram(program.id), {
@@ -119,21 +119,21 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
   const remove = useWrite(() => deleteProgram(program.id), { success: `${program.name} deleted` })
 
   const items: MenuItem[] = [
-    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), hidden: !canEdit },
     program.isActive
       ? {
           label: 'Deactivate',
           icon: Archive,
           onSelect: () => setConfirm('deactivate'),
+          hidden: !canEdit,
           disabledReason:
-            noEdit ??
-            (program.assetsHeld > 0 ? `Holds ${plural(program.assetsHeld, 'asset')}. Return them first.` : undefined),
+            program.assetsHeld > 0 ? `Holds ${plural(program.assetsHeld, 'asset')}. Return them first.` : undefined,
         }
       : {
           label: 'Reactivate',
           icon: ArchiveRestore,
           onSelect: () => reactivate.mutate(undefined),
-          disabledReason: noEdit,
+          hidden: !canEdit,
         },
     {
       label: 'Delete',
@@ -141,7 +141,8 @@ export function ProgramRowActions({ program }: { program: ProgramRow }) {
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: noFull ?? program.deleteBlocked ?? undefined,
+      hidden: !canDelete,
+      disabledReason: program.deleteBlocked ?? undefined,
     },
   ]
 

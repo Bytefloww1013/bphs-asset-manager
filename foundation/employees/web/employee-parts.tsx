@@ -11,7 +11,7 @@ import { ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { plural } from '@/lib/format.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { useWorkspace } from '@/lib/workspace.ts'
 import { openReviewWork } from '../shared/figures.ts'
 import type { EmployeeRow } from '../shared/index.ts'
@@ -117,8 +117,8 @@ export function QuickAddEmployee({ onAdded }: { onAdded: (id: number) => void })
 export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
   // In Grievances, an employee is a person to name, not someone who holds equipment.
   const assets = useWorkspace() === 'assets'
-  const noEdit = useDenied('employees', 'edit')
-  const noFull = useDenied('employees', 'full')
+  const canEdit = useCan('employees', 'edit')
+  const canFull = useCan('employees', 'full')
   const [editing, setEditing] = useState(false)
   const [holdings, setHoldings] = useState(false)
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null)
@@ -133,16 +133,16 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
 
   const items: MenuItem[] = [
     ...(assets ? [{ label: 'What they hold', icon: PackageSearch, onSelect: () => setHoldings(true) }] : []),
-    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), disabledReason: noEdit },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setEditing(true), hidden: !canEdit },
     employee.state === 'archived'
-      ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => restore.mutate(undefined), disabledReason: noFull }
+      ? { label: 'Restore', icon: ArchiveRestore, onSelect: () => restore.mutate(undefined), hidden: !canFull }
       : {
           label: 'Archive',
           icon: Archive,
           onSelect: () => setConfirm('archive'),
-          disabledReason: noFull
-            ? noFull
-            : employee.assetsHeld > 0
+          hidden: !canFull,
+          disabledReason:
+            employee.assetsHeld > 0
               ? `Holds ${employee.assetsHeld} asset${employee.assetsHeld === 1 ? '' : 's'}. Return them first.`
               : employee.digitalHeld > 0
                 ? `Holds ${plural(employee.digitalHeld, 'digital asset')}. Unassign them first.`
@@ -158,7 +158,8 @@ export function EmployeeRowActions({ employee }: { employee: EmployeeRow }) {
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: noFull ?? employee.deleteBlocked ?? undefined,
+      hidden: !canFull,
+      disabledReason: employee.deleteBlocked ?? undefined,
     },
   ]
 

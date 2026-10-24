@@ -11,7 +11,7 @@ import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import { useWorkspace } from '@/lib/workspace.ts'
 import type { EmployeeRow } from '../shared/index.ts'
 import { EmployeeRowActions, QuickAddEmployee } from './employee-parts.tsx'
@@ -74,7 +74,7 @@ const searchText = (row: EmployeeRow) => [row.name, row.code, row.department, ro
 
 export function EmployeesPage() {
   usePageTitle('Employees')
-  const readOnly = useDenied('employees', 'edit')
+  const readOnly = !useCan('employees', 'edit')
   // The page is in Assets, Grievances and Administrative Reviews.
   const assets = useWorkspace() === 'assets'
   const { show = 'active' } = useSearch({ strict: false }) as { show?: Show }

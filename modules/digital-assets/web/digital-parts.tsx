@@ -14,7 +14,7 @@ import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { formatDate, formatDateTime, plural } from '@/lib/format.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { looksLikeSecret, type DigitalAssetRow, type DigitalAssetState } from '../shared/index.ts'
 import { digitalAssetDetailQuery, digitalLookupsQuery } from './queries.ts'
 
@@ -154,8 +154,8 @@ export function DigitalAssetIdCell({ asset }: { asset: DigitalAssetRow }) {
 }
 
 export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
-  const noEdit = useDenied('assets', 'edit')
-  const noFull = useDenied('assets', 'full')
+  const canEdit = useCan('assets', 'edit')
+  const canDelete = useCan('assets', 'full')
   const [sheet, setSheet] = useState<'issue' | 'edit' | 'detail' | null>(null)
   const [confirm, setConfirm] = useState<'unassign' | 'deactivate' | 'delete' | null>(null)
   const unassign = useWrite(
@@ -172,15 +172,15 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
 
   const items: MenuItem[] = [
     { label: 'Assignment history', icon: History, onSelect: () => setSheet('detail') },
-    { label: 'Edit details', icon: Pencil, onSelect: () => setSheet('edit'), disabledReason: noEdit },
+    { label: 'Edit details', icon: Pencil, onSelect: () => setSheet('edit'), hidden: !canEdit },
     asset.state === 'inactive'
-      ? { label: 'Reactivate', icon: RotateCcw, onSelect: () => reactivate.mutate(undefined), disabledReason: noEdit }
+      ? { label: 'Reactivate', icon: RotateCcw, onSelect: () => reactivate.mutate(undefined), hidden: !canEdit }
       : {
           label: 'Mark inactive',
           icon: Ban,
           onSelect: () => setConfirm('deactivate'),
-          disabledReason:
-            noEdit ?? (asset.employee ? `Issued to ${asset.employee.name}. Unassign it first.` : undefined),
+          hidden: !canEdit,
+          disabledReason: asset.employee ? `Issued to ${asset.employee.name}. Unassign it first.` : undefined,
         },
     {
       label: 'Delete',
@@ -188,28 +188,22 @@ export function DigitalAssetRowActions({ asset }: { asset: DigitalAssetRow }) {
       tone: 'danger',
       separatorBefore: true,
       onSelect: () => setConfirm('delete'),
-      disabledReason: noFull ?? (asset.hasHistory ? 'Has assignment history. Mark it inactive instead.' : undefined),
+      hidden: !canDelete,
+      disabledReason: asset.hasHistory ? 'Has assignment history. Mark it inactive instead.' : undefined,
     },
   ]
 
   return (
     <div className="flex items-center justify-end gap-1.5">
-      {asset.state === 'active' ? (
-        <Button
-          size="sm"
-          icon={<Undo2 className="size-3.5" />}
-          disabledReason={noEdit}
-          onClick={() => setConfirm('unassign')}
-        >
+      {!canEdit ? null : asset.state === 'active' ? (
+        <Button size="sm" icon={<Undo2 className="size-3.5" />} onClick={() => setConfirm('unassign')}>
           Unassign
         </Button>
       ) : (
         <Button
           size="sm"
           icon={<Send className="size-3.5" />}
-          disabledReason={
-            noEdit ?? (asset.state === 'inactive' ? 'Inactive. Reactivate it before issuing.' : undefined)
-          }
+          disabledReason={asset.state === 'inactive' ? 'Inactive. Reactivate it before issuing.' : undefined}
           onClick={() => setSheet('issue')}
         >
           Issue
