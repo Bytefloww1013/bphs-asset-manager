@@ -5,18 +5,16 @@ import { ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { PageHeader } from '@/components/ui/layout.tsx'
-import { useUser } from '@/lib/session.ts'
 import { reviewCapCode, reviewCapSeq, reviewCapStatusLabel } from '../../shared/constants.ts'
-import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
 import { CapForm } from '../cap-form.tsx'
 import { ReviewLoadError } from '../load-error.tsx'
 import { useReviewPageTitle } from '../page-title.ts'
-import { reviewCapsQuery, reviewQuery } from '../queries.ts'
+import { ensureReviewToManage, reviewCapsQuery, reviewQuery } from '../queries.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/caps/$cap/edit')({
   loader: ({ context, params }) =>
     Promise.all([
-      context.queryClient.ensureQueryData(reviewQuery(params.code)),
+      ensureReviewToManage(context, params.code),
       context.queryClient.ensureQueryData(reviewCapsQuery(params.code)),
       context.queryClient.ensureQueryData(employeesQuery),
     ]),
@@ -26,7 +24,6 @@ export const Route = createFileRoute('/_app/reviews/$code/caps/$cap/edit')({
 
 function EditCapPage() {
   const { code, cap: named } = Route.useParams()
-  const user = useUser()
   const { data: review } = useQuery(reviewQuery(code))
   const { data: caps } = useQuery(reviewCapsQuery(code))
   const cap = caps?.find((one) => one.seq === reviewCapSeq(named))
@@ -45,9 +42,7 @@ function EditCapPage() {
         ? `${review.code} is Completed. Reopen it to change a CAP.`
         : cap.status === 'completed' || cap.status === 'cancelled'
           ? `${reviewCapCode(cap.seq)} is ${reviewCapStatusLabel(cap.status)}. Reopen it before editing it.`
-          : !canManageReview(user, review.reviewer.id)
-            ? reviewManageReason(review.reviewer.name)
-            : null
+          : null
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

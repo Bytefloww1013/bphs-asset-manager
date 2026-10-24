@@ -12,7 +12,7 @@ import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { api } from '@/lib/api.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied, usePageTitle, useUser } from '@/lib/session.ts'
+import { useCan, usePageTitle, useUser } from '@/lib/session.ts'
 import {
   TASK_ASSIGNER_REMINDERS_LABEL,
   TASK_NOTE_MAX,
@@ -20,7 +20,13 @@ import {
   TASK_REMINDER_PRESET_LABEL,
   TASK_WEEKDAY_LABEL,
 } from '../../shared/constants.ts'
-import { canEditTask, taskApproveReason, taskClosedReason, taskEditReason } from '../../shared/permissions.ts'
+import {
+  canApproveTask,
+  canDeleteTask,
+  canEditTask,
+  taskApproveReason,
+  taskClosedReason,
+} from '../../shared/permissions.ts'
 import type { TaskDetail } from '../../shared/types.ts'
 import { TaskFiles } from '../files.tsx'
 import { TaskLoadError } from '../load-error.tsx'
@@ -50,7 +56,7 @@ function TaskPage() {
   const [confirm, setConfirm] = useState<'cancel' | 'delete' | null>(null)
   const [sendingBack, setSendingBack] = useState(false)
   usePageTitle(task?.title ?? 'Task')
-  const noFull = useDenied('tasks', 'full')
+  const canEditAny = useCan('tasks', 'edit')
 
   const cancel = useWrite(() => api.post<TaskDetail>(`/tasks/${id}/cancel`), { success: 'Task cancelled' })
   const approve = useWrite(() => api.post<TaskDetail>(`/tasks/${id}/approve`), { success: 'Task approved' })
@@ -61,10 +67,17 @@ function TaskPage() {
   if (!task) return null
 
   const ownership = ownershipOf(task)
-  // The server's checks, said before anything is pressed: a cancelled, completed or awaiting task takes no edit and no cancel.
-  const noEdit =
-    (canEditTask(user, ownership) ? null : taskEditReason(ownership)) ?? taskClosedReason(task.status) ?? undefined
-  const noApprove = taskApproveReason(user, ownership) ?? undefined
+  // An action this account's access doesn't allow is not drawn; one it allows but the task's state or the four-eyes rule
+  // blocks says why (issue #27). A cancelled, completed or awaiting task takes no edit and no cancel.
+  const mayEdit = canEditTask(user, ownership)
+  const closed = taskClosedReason(task.status) ?? undefined
+  // Its assignee is never its approver, even with the access to approve it, so they see Approve and Send back with that rule.
+  const ownTask = user.id === ownership.assigneeUserId
+  const mayApprove =
+    canApproveTask(user, ownership) || (ownTask && (canEditAny || user.id === ownership.assignerUserId))
+  const notApprover = ownTask ? (taskApproveReason(user, ownership) ?? undefined) : undefined
+  const mayDelete = canDeleteTask(user)
+  const awaiting = task.status === 'awaiting_approval'
   const sentBack = task.status === 'outstanding' || task.status === 'past_due' ? sendBackNote(task.events) : null
 
   return (
@@ -80,41 +93,48 @@ function TaskPage() {
           <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
             {task.title}
           </h1>
-          <div className="flex flex-wrap items-center gap-2">
-            {task.status === 'awaiting_approval' && (
-              <>
+          {((awaiting && mayApprove) || mayEdit || mayDelete) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {awaiting && mayApprove && (
+                <>
+                  <Button
+                    variant="primary"
+                    icon={<CheckCircle2 className="size-4" aria-hidden />}
+                    disabledReason={notApprover}
+                    loading={approve.isPending}
+                    onClick={() => approve.mutate(undefined)}
+                  >
+                    Approve
+                  </Button>
+                  <Button disabledReason={notApprover} onClick={() => setSendingBack(true)}>
+                    Send back
+                  </Button>
+                </>
+              )}
+              {mayEdit && (
+                <>
+                  <Button
+                    disabledReason={closed}
+                    onClick={() => void navigate({ to: '/tasks/$id/edit', params: { id: String(id) } })}
+                  >
+                    Edit
+                  </Button>
+                  <Button variant="danger-ghost" disabledReason={closed} onClick={() => setConfirm('cancel')}>
+                    Cancel task
+                  </Button>
+                </>
+              )}
+              {mayDelete && (
                 <Button
-                  variant="primary"
-                  icon={<CheckCircle2 className="size-4" aria-hidden />}
-                  disabledReason={noApprove}
-                  loading={approve.isPending}
-                  onClick={() => approve.mutate(undefined)}
+                  variant="danger"
+                  icon={<Trash2 className="size-4" aria-hidden />}
+                  onClick={() => setConfirm('delete')}
                 >
-                  Approve
+                  Delete
                 </Button>
-                <Button disabledReason={noApprove} onClick={() => setSendingBack(true)}>
-                  Send back
-                </Button>
-              </>
-            )}
-            <Button
-              disabledReason={noEdit}
-              onClick={() => void navigate({ to: '/tasks/$id/edit', params: { id: String(id) } })}
-            >
-              Edit
-            </Button>
-            <Button variant="danger-ghost" disabledReason={noEdit} onClick={() => setConfirm('cancel')}>
-              Cancel task
-            </Button>
-            <Button
-              variant="danger"
-              icon={<Trash2 className="size-4" aria-hidden />}
-              disabledReason={noFull}
-              onClick={() => setConfirm('delete')}
-            >
-              Delete
-            </Button>
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

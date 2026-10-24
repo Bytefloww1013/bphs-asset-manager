@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ClipboardList, Undo2 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
 import { ExportButton } from '@/components/export-button.tsx'
@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { Checkbox, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDateTime, plural } from '@/lib/format.ts'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import type { AssignmentRow } from '../../shared/index.ts'
 import { assignmentsExport } from '../exports.ts'
 import { useSheetActions } from '../open.ts'
@@ -30,11 +30,14 @@ const holder = (row: AssignmentRow) => (row.employee ?? row.program)!
 
 function RowActions({ row }: { row: AssignmentRow }) {
   const sheets = useSheetActions()
+  const canReturn = useCan('assets', 'edit')
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Button size="sm" onClick={() => sheets.returnAsset(row.id)}>
-        Return
-      </Button>
+      {canReturn && (
+        <Button size="sm" onClick={() => sheets.returnAsset(row.id)}>
+          Return
+        </Button>
+      )}
       <Link
         to="/assets/$tag"
         params={{ tag: row.assetTag }}
@@ -46,28 +49,29 @@ function RowActions({ row }: { row: AssignmentRow }) {
   )
 }
 
+/** Ticking rows is only for returning them together, so an account that cannot return assets gets no checkboxes (issue #27). */
+const selectColumn = c.display({
+  id: 'select',
+  header: ({ table }) => (
+    <Checkbox
+      aria-label="Select all rows on this page"
+      checked={table.getIsAllPageRowsSelected()}
+      ref={(el) => {
+        if (el) el.indeterminate = table.getIsSomePageRowsSelected()
+      }}
+      onChange={table.getToggleAllPageRowsSelectedHandler()}
+    />
+  ),
+  cell: ({ row }) => (
+    <Checkbox
+      aria-label={`Select ${row.original.assetTag}`}
+      checked={row.getIsSelected()}
+      onChange={row.getToggleSelectedHandler()}
+    />
+  ),
+  meta: { width: 'w-12' },
+})
 const columns = [
-  c.display({
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        aria-label="Select all rows on this page"
-        checked={table.getIsAllPageRowsSelected()}
-        ref={(el) => {
-          if (el) el.indeterminate = table.getIsSomePageRowsSelected()
-        }}
-        onChange={table.getToggleAllPageRowsSelectedHandler()}
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        aria-label={`Select ${row.original.assetTag}`}
-        checked={row.getIsSelected()}
-        onChange={row.getToggleSelectedHandler()}
-      />
-    ),
-    meta: { width: 'w-12' },
-  }),
   c.accessor('assetTag', {
     header: 'Asset',
     cell: (info) => (
@@ -134,14 +138,15 @@ function AssignmentsPage() {
   const { data = [], isPending } = useQuery(assignmentsQuery)
   const [search, setSearch] = useState('')
   const [returning, setReturning] = useState<AssignmentRow[] | null>(null)
-  const readOnly = useDenied('assets', 'edit')
+  const canReturn = useCan('assets', 'edit')
+  const shownColumns = useMemo(() => (canReturn ? [selectColumn, ...columns] : columns), [canReturn])
   const table = useGrid({
     data,
-    columns,
+    columns: shownColumns,
     getRowId,
     searchText,
     search,
-    selectable: true,
+    selectable: canReturn,
     initialSorting: [{ id: 'daysOut', desc: true }],
   })
   const selected = table.getSelectedRowModel().rows.map((row) => row.original)
@@ -156,16 +161,16 @@ function AssignmentsPage() {
         actions={
           <>
             <ExportButton dataset={assignmentsExport} items={data} />
-            <Button
-              variant="primary"
-              icon={<Undo2 className="size-4" />}
-              disabledReason={
-                readOnly ?? (selected.length === 0 ? 'Tick one or more rows to return them together' : undefined)
-              }
-              onClick={() => setReturning(selected)}
-            >
-              {selected.length > 0 ? `Return selected (${selected.length})` : 'Return selected'}
-            </Button>
+            {canReturn && (
+              <Button
+                variant="primary"
+                icon={<Undo2 className="size-4" />}
+                disabledReason={selected.length === 0 ? 'Tick one or more rows to return them together' : undefined}
+                onClick={() => setReturning(selected)}
+              >
+                {selected.length > 0 ? `Return selected (${selected.length})` : 'Return selected'}
+              </Button>
+            )}
           </>
         }
       />

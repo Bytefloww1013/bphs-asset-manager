@@ -9,7 +9,7 @@ import { Alert, EmptyState } from '@/components/ui/feedback.tsx'
 import { Fact, Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { formatDateTime } from '@/lib/format.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { grievanceEntryCode, grievanceEntryKindLabel } from '../../shared/constants.ts'
 import type { GrievanceEntry } from '../../shared/types.ts'
 import { GrievanceLoadError } from '../load-error.tsx'
@@ -59,7 +59,8 @@ function EntryLink({
 
 function EntryPage() {
   const { code, seq: named } = Route.useParams()
-  const readOnly = useDenied('grievances', 'edit')
+  // A correction needs Edit access to Grievances, even for the owner; without it Add correction isn't drawn (issue #27).
+  const canEdit = useCan('grievances', 'edit')
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
   const { data: attachments } = useQuery(grievanceAttachmentsQuery(code))
@@ -129,7 +130,7 @@ function EntryPage() {
               </p>
             )}
           </div>
-          {correctable && !readOnly && (
+          {correctable && canEdit && (
             <Link
               to="/grievances/$code/entries/new"
               params={{ code: grievance.code }}

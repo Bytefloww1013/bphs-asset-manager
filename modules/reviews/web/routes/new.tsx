@@ -1,10 +1,15 @@
 import { employeesQuery } from '#foundation/employees/web/index.ts'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { PageHeader } from '@/components/ui/layout.tsx'
+import { canAt } from '@shared/permissions.ts'
 import { ReviewForm } from '../form.tsx'
 import { useReviewPageTitle } from '../page-title.ts'
 
 export const Route = createFileRoute('/_app/reviews/new')({
+  // Recording a review needs Edit in Administrative Reviews; without it the page is not found (issue #27).
+  beforeLoad: ({ context }) => {
+    if (!canAt(context.user, 'reviews', 'edit')) throw notFound()
+  },
   loader: ({ context }) => context.queryClient.ensureQueryData(employeesQuery),
   component: NewReviewPage,
 })

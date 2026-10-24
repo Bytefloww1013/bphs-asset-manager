@@ -15,9 +15,7 @@ import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
 import { refreshData } from '@/lib/session.ts'
-import { useUser } from '@/lib/session.ts'
 import { reviewCapCode } from '../shared/constants.ts'
-import { canManageReview, reviewManageReason } from '../shared/permissions.ts'
 import { reviewCapCreateSchema, reviewCapUpdateSchema } from '../shared/schemas.ts'
 import type { ReviewCap, ReviewDetail } from '../shared/types.ts'
 import { ReviewStatusBadge } from './status.tsx'
@@ -30,13 +28,13 @@ interface Problem {
 
 /**
  * Add a CAP to a review, or edit one. It is the grievance's Add entry form with a responsible employee and a due date, and no
- * Occurred at: a CAP's time is recorded when it is saved. An edit goes on the review's history with what it replaced.
+ * Occurred at: a CAP's time is recorded when it is saved. An edit goes on the review's history with what it replaced. Its pages are
+ * not found by an account that may not change the review (issue #27), so the form does not check access itself.
  */
 export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?: ReviewCap; onReload?: () => void }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const toast = useToast()
-  const user = useUser()
   const { data: employees = [] } = useQuery(employeesQuery)
   // What the form started from, read once, as on the review form: a CAP that changes underneath is for the save to refuse.
   const [was] = useState(cap)
@@ -228,13 +226,11 @@ export function CapForm({ review, cap, onReload }: { review: ReviewDetail; cap?:
               type="submit"
               loading={save.isPending}
               disabledReason={
-                !canManageReview(user, review.reviewer.id)
-                  ? reviewManageReason(review.reviewer.name)
-                  : stale
-                    ? 'This CAP was changed by someone else. Reload it first.'
-                    : was && !dirty
-                      ? 'Nothing has been changed yet.'
-                      : undefined
+                stale
+                  ? 'This CAP was changed by someone else. Reload it first.'
+                  : was && !dirty
+                    ? 'Nothing has been changed yet.'
+                    : undefined
               }
             >
               {was ? 'Save changes' : 'Save CAP'}

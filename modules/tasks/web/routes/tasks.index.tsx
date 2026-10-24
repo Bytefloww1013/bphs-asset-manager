@@ -38,17 +38,11 @@ export const Route = createFileRoute('/_app/tasks/')({
   component: TasksPage,
 })
 
-const DENIED = 'Assigning tasks needs Assign access to Employee Tasks.'
 const assignTask = (
   <Link to="/tasks/new" className={buttonStyles('primary')}>
     <Plus className="size-4" aria-hidden />
     Assign task
   </Link>
-)
-const assignDenied = (
-  <Button variant="primary" icon={<Plus className="size-4" aria-hidden />} disabledReason={DENIED}>
-    Assign task
-  </Button>
 )
 
 /** Everyone in one role across the tasks, once each, by name. */
@@ -133,7 +127,7 @@ function TasksPage() {
     initialSorting: [{ id: 'dueAt', desc: false }],
     resetKey: JSON.stringify(search),
   })
-  const action = canAssign ? assignTask : assignDenied
+  const action = canAssign ? assignTask : undefined
   const clear = () => void navigate({ search: (prev) => ({ status: prev.status }) })
 
   return (

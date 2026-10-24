@@ -101,8 +101,8 @@ const ROUTES = [
 
 /**
  * Where a page does not simply open as itself, what each account is expected to get instead: `redirect` is the address it
- * must land on (which must then open cleanly), `shows` a state it must show, and `allow` the console errors that state brings
- * (a failed request the page answers on screen). Anything not listed must open at its own address.
+ * must land on (which must then open cleanly), `shows` a state it must show, `standalone` that it is drawn without the app
+ * shell, and `allow` the console errors that state brings (a failed request the page answers on screen). Anything not listed must open at its own address.
  */
 const COMMON = {
   '/login': { redirect: '/' }, // Signed in, the sign-in page sends you on.
@@ -110,6 +110,8 @@ const COMMON = {
   '/me/': { redirect: '/me/inbox' },
   '/employees/import': { redirect: '/import-export?type=employees' }, // The old address of the employee import.
 }
+/** A page the account's access doesn't allow: the root not-found page, which has no app shell (issue #27). */
+const NOT_FOUND = { shows: "That page doesn't exist", standalone: true }
 const EXPECT = {
   priya: {
     ...COMMON,
@@ -126,9 +128,9 @@ const EXPECT = {
     '/maintenance/': { redirect: '/' },
     '/maintenance/new': { redirect: '/' },
     '/maintenance/$id': { redirect: '/' },
-    // Super Admin only: the page says so instead of opening.
-    '/users': { shows: 'Super Admin only' },
-    '/me/notices': { shows: 'Super Admin only' },
+    // Super Admin only: the page is not found, drawn outside the app shell (issue #27).
+    '/users': NOT_FOUND,
+    '/me/notices': NOT_FOUND,
   },
 }
 
@@ -337,7 +339,7 @@ function problemsOf(seen, log, address, expected = {}) {
   const broken = seen.lines.filter((line) => line !== expected.shows && BROKEN.some((pattern) => pattern.test(line)))
   if (broken.length) problems.push(`shows "${broken[0]}"`)
   if (expected.shows && !seen.lines.includes(expected.shows)) problems.push(`does not show "${expected.shows}"`)
-  if (!STANDALONE.test(seen.at) && !seen.shell) problems.push('no app shell (#main)')
+  if (!STANDALONE.test(seen.at) && !expected.standalone && !seen.shell) problems.push('no app shell (#main)')
   if (!seen.text) problems.push('blank main region')
   if (seen.loading) problems.push('still loading after 10s')
   return problems

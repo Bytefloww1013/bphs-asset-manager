@@ -37,6 +37,6 @@ The project's directives are in `docs/directives/`.
 - `ActiveSwitch` / maintenance Status for read-only -> `Badge` with dot, never hidden
 - Lock screens (`/users`, `/me/notices`, `/tasks/new`) -> standard not-found, not a redirect
 - Menu item the account may not use -> `hidden: !can`, never `disabledReason`; `Menu` drops its trigger when nothing is left
-- Permission checks in components -> `useCan(section, level)` (boolean); `useDenied` is removed at the end of Phase 3
-- `docs/verify/*` scripts write logs to `/home/josh/tmp` -> `mkdir -p /home/josh/tmp` once per container
+- Permission checks in components -> `useCan(section, level)` (boolean)
+- `throw notFound()` in a route draws the root not-found page with no app shell -> a routes-smoke expectation for it is `NOT_FOUND` (`standalone: true`), not a `shows` alone
 <!-- byte-gh-do-issue #27 END -->

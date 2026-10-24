@@ -9,7 +9,7 @@ import { Alert } from '@/components/ui/feedback.tsx'
 import { Fact, Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { RichTextView } from '@/components/ui/rich-text.tsx'
 import { formatDateTime } from '@/lib/format.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { grievanceEntryCode, grievanceEntryKindLabel } from '../../shared/constants.ts'
 import type { GrievancePerson } from '../../shared/types.ts'
 import { GrievanceLoadError } from '../load-error.tsx'
@@ -56,7 +56,9 @@ function GrievancePage() {
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
   const { data: files } = useQuery(grievanceAttachmentsQuery(code))
   useGrievancePageTitle(grievance?.code ?? code.toUpperCase())
-  const readOnly = useDenied('grievances', 'edit')
+  // Adding to the timeline and attaching files need Edit access to Grievances, even for the owner; without it they aren't
+  // drawn (issue #27).
+  const canEdit = useCan('grievances', 'edit')
   if (!grievance || !entries || !files) return null
   // A grievance that is finished takes nothing more on its timeline; the server refuses it whatever the page shows.
   const sealed = grievance.status === 'closed' || grievance.status === 'voided'
@@ -166,7 +168,7 @@ function GrievancePage() {
             title="Timeline"
             description="Actions taken and events, by when they happened."
             actions={
-              sealed || readOnly ? null : (
+              sealed || !canEdit ? null : (
                 <>
                   <AttachFiles record={grievanceFiles} code={grievance.code} />
                   <Link

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { Lock, Megaphone } from 'lucide-react'
+import { createFileRoute, notFound } from '@tanstack/react-router'
+import { Megaphone } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { UserRow } from '@shared/types.ts'
 import { Button } from '@/components/ui/button.tsx'
@@ -25,27 +25,17 @@ import {
 } from '../../shared/index.ts'
 import { noticesQuery } from '../queries.ts'
 
-export const Route = createFileRoute('/_app/me/notices')({ component: NoticesPage })
+// Notices go to every account's Inbox, so only Super Admins send them; to anyone else the page doesn't exist (issue #27).
+export const Route = createFileRoute('/_app/me/notices')({
+  beforeLoad: ({ context }) => {
+    if (!canSendNotices(context.user)) throw notFound()
+  },
+  component: NoticesPage,
+})
 
 function NoticesPage() {
   usePageTitle('Notices')
-  const user = useUser()
   const [writing, setWriting] = useState(false)
-  if (!canSendNotices(user)) {
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader title="Notices" />
-        <Panel>
-          <EmptyState
-            icon={Lock}
-            title="Super Admin only"
-            description="Notices go to every account's Inbox, so only Super Admins send them."
-            className="py-20"
-          />
-        </Panel>
-      </div>
-    )
-  }
   return (
     <div className="flex flex-col gap-6">
       <PageHeader

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/form.tsx'
 import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import type { ListEditor } from '@/modules.ts'
 import {
   type ConditionRatingRow,
@@ -39,7 +39,7 @@ function EditableScore({ id, name, score }: { id: number; name: string; score: n
   const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLInputElement>(null)
   const save = useWrite((value: number) => api.patch(`/condition-ratings/${id}`, { score: value }), { silent: true })
-  const readOnly = useDenied('assets', 'edit')
+  const canEdit = useCan('assets', 'edit')
 
   async function commit() {
     if (draft.trim() === String(score)) return setEditing(false)
@@ -56,7 +56,7 @@ function EditableScore({ id, name, score }: { id: number; name: string; score: n
     return (
       <div className="group flex items-center gap-1">
         <Mono className="w-7 text-right font-medium">{score}</Mono>
-        {!readOnly && (
+        {canEdit && (
           <IconButton
             label={`Change the score of ${name}`}
             size="sm"
@@ -124,7 +124,7 @@ function AddRating() {
     silent: true,
     success: 'Rating added',
   })
-  if (useDenied('assets', 'edit')) return null
+  if (!useCan('assets', 'edit')) return null
   return (
     <form
       className="px-5 pb-4"

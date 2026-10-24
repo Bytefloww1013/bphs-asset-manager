@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/feedback.tsx'
 import { Mono, PageHeader, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { cn } from '@/lib/cn.ts'
 import { formatRelative, plural } from '@/lib/format.ts'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import { OVERDUE_DAYS } from '../../shared/index.ts'
 import { useSheetActions } from '../open.ts'
 import { dashboardQuery } from '../queries.ts'
@@ -23,7 +23,7 @@ function Overview() {
   usePageTitle('Overview')
   const { data } = useQuery(dashboardQuery)
   const sheets = useSheetActions()
-  const readOnly = useDenied('assets', 'edit')
+  const canEdit = useCan('assets', 'edit')
 
   return (
     <div className="flex flex-col gap-7">
@@ -31,7 +31,7 @@ function Overview() {
         title="Overview"
         description="Where the equipment is, and what needs a decision."
         actions={
-          !readOnly && (
+          canEdit && (
             <>
               <Link to="/assets" className={buttonStyles()}>
                 <Plus className="size-4" aria-hidden />

@@ -1,8 +1,11 @@
 // The reviews module's queries, keyed under its resource (the convention is in web/src/modules.ts).
 import { logCsvUrl, logQuery, type AuditParams } from '#foundation/audit/web/index.ts'
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, type QueryClient } from '@tanstack/react-query'
+import { notFound } from '@tanstack/react-router'
 import { api, qs } from '@/lib/api.ts'
+import type { SessionUser } from '@shared/types.ts'
 import type { ReviewStatus } from '../shared/constants.ts'
+import { canManageReview } from '../shared/permissions.ts'
 import type {
   ReviewActionItem,
   ReviewAttachment,
@@ -34,6 +37,16 @@ export const reviewQuery = (code: string) =>
     queryKey: ['reviews', 'detail', code.toUpperCase()],
     queryFn: () => api.get<ReviewDetail>(`/reviews/${encodeURIComponent(code)}`),
   })
+
+/**
+ * Loads the review for a page that changes it or adds to it. To an account that may not, the page is not found (issue #27); a
+ * review that is voided or completed is a record rule, and the page itself says so.
+ */
+export async function ensureReviewToManage(context: { queryClient: QueryClient; user: SessionUser }, code: string) {
+  const review = await context.queryClient.ensureQueryData(reviewQuery(code))
+  if (!canManageReview(context.user, review.reviewer.id)) throw notFound()
+  return review
+}
 
 /** Every entry on one review's history, under the review's own key like a grievance's. */
 export const reviewEntriesQuery = (code: string) =>

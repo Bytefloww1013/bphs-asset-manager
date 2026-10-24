@@ -12,14 +12,12 @@ import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useUser } from '@/lib/session.ts'
 import { reviewCapCode, reviewEntryCode } from '../../shared/constants.ts'
-import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
 import { reviewEntryCreateSchema } from '../../shared/schemas.ts'
 import type { ReviewEntry } from '../../shared/types.ts'
 import { ReviewLoadError } from '../load-error.tsx'
 import { useReviewPageTitle } from '../page-title.ts'
-import { reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '../queries.ts'
+import { ensureReviewToManage, reviewCapsQuery, reviewEntriesQuery, reviewQuery } from '../queries.ts'
 import { ReviewStatusBadge } from '../status.tsx'
 
 export const Route = createFileRoute('/_app/reviews/$code/entries/new')({
@@ -32,7 +30,7 @@ export const Route = createFileRoute('/_app/reviews/$code/entries/new')({
   },
   loader: ({ context, params }) =>
     Promise.all([
-      context.queryClient.ensureQueryData(reviewQuery(params.code)),
+      ensureReviewToManage(context, params.code),
       context.queryClient.ensureQueryData(reviewEntriesQuery(params.code)),
       context.queryClient.ensureQueryData(reviewCapsQuery(params.code)),
     ]),
@@ -52,7 +50,6 @@ const instant = (local: string) =>
 function NewUpdatePage() {
   const { code } = Route.useParams()
   const { corrects, cap: capSeq } = Route.useSearch()
-  const user = useUser()
   const { data: review } = useQuery(reviewQuery(code))
   const { data: entries } = useQuery(reviewEntriesQuery(code))
   const { data: caps } = useQuery(reviewCapsQuery(code))
@@ -263,14 +260,7 @@ function NewUpdatePage() {
               {blocked ? (cap ? 'Back to the CAP' : 'Back to the review') : 'Cancel'}
             </Link>
             {!blocked && (
-              <Button
-                variant="primary"
-                type="submit"
-                loading={save.isPending}
-                disabledReason={
-                  canManageReview(user, review.reviewer.id) ? undefined : reviewManageReason(review.reviewer.name)
-                }
-              >
+              <Button variant="primary" type="submit" loading={save.isPending}>
                 {correcting ? 'Save correction' : 'Save update'}
               </Button>
             )}

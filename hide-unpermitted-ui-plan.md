@@ -62,11 +62,11 @@ Shared files (lockfiles, manifests, CI config, CLAUDE.md/AGENTS.md, this plan) b
 
 ## Phase 3 - Record pages, forms, lock screens, URL gates
 
-- [ ] 3.1 Assets: `slots.tsx` (Issue to / Assign to), `assets.$tag.tsx`, `assignments.tsx` (also selection checkboxes), `available.tsx` (also the I key), other `useDenied` sites
-- [ ] 3.2 Grievances: `manage.tsx`, `form.tsx`, `$code.entries.new.tsx`, `$code.edit.tsx`, new-grievance gate, other sites; comments `manage.tsx:30-31`, `form.tsx:53`
-- [ ] 3.3 Reviews: `manage.tsx`, `form.tsx`, `cap-form.tsx`, `$code.caps.$cap.index.tsx`, `$code.entries.new.tsx`, `$code.edit.tsx`, `$code.caps.$cap.edit.tsx`, new review/CAP/entry gates; comment `$code.caps.$cap.index.tsx:105`
-- [ ] 3.4 Maintenance (`$id.tsx` Status badge / Dispatched to text, `new.tsx` gate) and Tasks (`tasks.index.tsx`, `tasks.$id.index.tsx`, `tasks.$id.edit.tsx`, `files.tsx`, `tasks.new.tsx` not-found)
-- [ ] 3.5 `import-export.tsx` (only allowed importers; tab and route hidden when none), `users.tsx` and `notices.tsx` lock screens become not-found
+- [x] 3.1 Assets: `slots.tsx` (Issue to / Assign to), `assets.$tag.tsx`, `assignments.tsx` (also selection checkboxes), `available.tsx` (also the I key), other `useDenied` sites
+- [x] 3.2 Grievances: `manage.tsx`, `form.tsx`, `$code.entries.new.tsx`, `$code.edit.tsx`, new-grievance gate, other sites; comments `manage.tsx:30-31`, `form.tsx:53`
+- [x] 3.3 Reviews: `manage.tsx`, `form.tsx`, `cap-form.tsx`, `$code.caps.$cap.index.tsx`, `$code.entries.new.tsx`, `$code.edit.tsx`, `$code.caps.$cap.edit.tsx`, new review/CAP/entry gates; comment `$code.caps.$cap.index.tsx:105`
+- [x] 3.4 Maintenance (`$id.tsx` Status badge / Dispatched to text, `new.tsx` gate) and Tasks (`tasks.index.tsx`, `tasks.$id.index.tsx`, `tasks.$id.edit.tsx`, `files.tsx`, `tasks.new.tsx` not-found)
+- [x] 3.5 `import-export.tsx` (only allowed importers; tab and route hidden when none), `users.tsx` and `notices.tsx` lock screens become not-found
 
 ## Phase 4 - Checks, smokes and docs
 

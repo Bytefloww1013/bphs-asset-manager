@@ -1,30 +1,34 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { PageHeader } from '@/components/ui/layout.tsx'
-import { usePageTitle, useUser } from '@/lib/session.ts'
-import { canEditTask, taskClosedReason, taskEditReason } from '../../shared/permissions.ts'
+import { usePageTitle } from '@/lib/session.ts'
+import { canEditTask, taskClosedReason } from '../../shared/permissions.ts'
 import { TaskLoadError } from '../load-error.tsx'
 import { ownershipOf } from '../parts.tsx'
 import { taskQuery } from '../queries.ts'
 import { TaskForm } from '../task-form.tsx'
 
 export const Route = createFileRoute('/_app/tasks/$id/edit')({
-  loader: ({ context, params }) => context.queryClient.ensureQueryData(taskQuery(Number(params.id))),
+  // Who may edit depends on who assigned the task, so the page is gated once the task is loaded: an account that may not
+  // change it finds no such page (issue #27).
+  loader: async ({ context, params }) => {
+    const task = await context.queryClient.ensureQueryData(taskQuery(Number(params.id)))
+    if (!canEditTask(context.user, ownershipOf(task))) throw notFound()
+    return task
+  },
   errorComponent: ({ error }) => <TaskLoadError error={error} />,
   component: EditTaskPage,
 })
 
 function EditTaskPage() {
   const id = Number(Route.useParams({ select: (params) => params.id }))
-  const user = useUser()
   const { data: task } = useQuery(taskQuery(id))
   usePageTitle(task ? `Edit ${task.title}` : 'Edit task')
   if (!task) return null
-  // The page says why before anything is typed; the server refuses the same whatever the page shows.
-  const ownership = ownershipOf(task)
-  const refused = taskClosedReason(task.status) ?? (canEditTask(user, ownership) ? null : taskEditReason(ownership))
+  // A task that is closed says why before anything is typed; the server refuses the same whatever the page shows.
+  const refused = taskClosedReason(task.status)
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

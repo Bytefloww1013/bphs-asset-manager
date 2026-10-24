@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, useBlocker, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound, useBlocker, useNavigate } from '@tanstack/react-router'
 import { ChevronLeft } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { BLANK_ENTRY, EntryFields, type EntryText } from '@/components/records/entry-fields.tsx'
@@ -12,7 +12,7 @@ import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { canAt } from '@shared/permissions.ts'
 import { grievanceEntryCode, grievanceStatusLabel } from '../../shared/constants.ts'
 import { grievanceEntryCreateSchema } from '../../shared/schemas.ts'
 import type { GrievanceEntry } from '../../shared/types.ts'
@@ -26,6 +26,11 @@ export const Route = createFileRoute('/_app/grievances/$code/entries/new')({
   validateSearch: (search: Record<string, unknown>): { corrects?: number } => {
     const corrects = Number(search.corrects)
     return Number.isInteger(corrects) && corrects > 0 ? { corrects } : {}
+  },
+  // Adding to a timeline needs Edit access to Grievances, even for the grievance's owner; to anyone else the page doesn't exist
+  // (issue #27).
+  beforeLoad: ({ context }) => {
+    if (!canAt(context.user, 'grievances', 'edit')) throw notFound()
   },
   loader: ({ context, params }) =>
     Promise.all([
@@ -53,7 +58,6 @@ const KIND_HINTS = {
 function NewEntryPage() {
   const { code } = Route.useParams()
   const { corrects } = Route.useSearch()
-  const readOnly = useDenied('grievances', 'edit')
   const { data: grievance } = useQuery(grievanceQuery(code))
   const { data: entries } = useQuery(grievanceEntriesQuery(code))
   // A correction is this same form with its type fixed and the entry it corrects named; that entry is never touched.
@@ -269,7 +273,7 @@ function NewEntryPage() {
               {blocked ? 'Back to the grievance' : 'Cancel'}
             </Link>
             {!blocked && (
-              <Button variant="primary" type="submit" loading={save.isPending} disabledReason={readOnly}>
+              <Button variant="primary" type="submit" loading={save.isPending}>
                 {correcting ? 'Save correction' : 'Save entry'}
               </Button>
             )}

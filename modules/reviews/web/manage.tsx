@@ -5,16 +5,19 @@ import { ChangeSheet, Note, useChange } from '@/components/records/change-sheet.
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Segmented } from '@/components/ui/form.tsx'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { reviewStatusLabel } from '../shared/constants.ts'
 import { REVIEW_OPEN_STATUSES } from '../shared/schemas.ts'
 import type { ReviewDetail } from '../shared/types.ts'
 
 type Task = 'status' | 'void'
 
-/** Edit, Change status and Void, for the account that may change the review. The server refuses anyone else whatever the page shows. */
+/**
+ * Edit, Change status and Void, for the account that may change the review. Void needs Full access to Administrative Reviews and
+ * is left out without it (issue #27). The server refuses anyone else whatever the page shows.
+ */
 export function ReviewActions({ review }: { review: ReviewDetail }) {
-  const noVoid = useDenied('reviews', 'full')
+  const canVoid = useCan('reviews', 'full')
   const [task, setTask] = useState<Task | null>(null)
   const close = () => setTask(null)
   return (
@@ -23,9 +26,11 @@ export function ReviewActions({ review }: { review: ReviewDetail }) {
         <Pencil className="size-4" aria-hidden /> Edit
       </Link>
       <Button onClick={() => setTask('status')}>Change status</Button>
-      <Button variant="danger-ghost" disabledReason={noVoid} onClick={() => setTask('void')}>
-        Void
-      </Button>
+      {canVoid && (
+        <Button variant="danger-ghost" onClick={() => setTask('void')}>
+          Void
+        </Button>
+      )}
       {task === 'status' && <StatusSheet review={review} onClose={close} />}
       {task === 'void' && <VoidSheet review={review} onClose={close} />}
     </>

@@ -5,26 +5,20 @@ import { ChevronLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { PageHeader } from '@/components/ui/layout.tsx'
-import { useUser } from '@/lib/session.ts'
-import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
 import { ReviewForm } from '../form.tsx'
 import { ReviewLoadError } from '../load-error.tsx'
 import { useReviewPageTitle } from '../page-title.ts'
-import { reviewQuery } from '../queries.ts'
+import { ensureReviewToManage, reviewQuery } from '../queries.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/edit')({
   loader: ({ context, params }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(reviewQuery(params.code)),
-      context.queryClient.ensureQueryData(employeesQuery),
-    ]),
+    Promise.all([ensureReviewToManage(context, params.code), context.queryClient.ensureQueryData(employeesQuery)]),
   errorComponent: ReviewLoadError,
   component: EditReviewPage,
 })
 
 function EditReviewPage() {
   const { code } = Route.useParams()
-  const user = useUser()
   const { data: review } = useQuery(reviewQuery(code))
   useReviewPageTitle(`Edit ${review?.code ?? code.toUpperCase()}`)
   // The form starts from the review once. Reloading after someone else's edit starts it again from what is there now.
@@ -32,11 +26,7 @@ function EditReviewPage() {
   if (!review) return null
   // The page says why before anything is typed; the server refuses the same whatever the page shows.
   const refused =
-    review.status === 'voided'
-      ? `${review.code} has been voided. It is kept as a record and cannot be changed.`
-      : !canManageReview(user, review.reviewer.id)
-        ? reviewManageReason(review.reviewer.name)
-        : null
+    review.status === 'voided' ? `${review.code} has been voided. It is kept as a record and cannot be changed.` : null
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

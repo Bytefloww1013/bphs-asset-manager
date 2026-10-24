@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDate, formatDateTime } from '@/lib/format.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { MAINTENANCE_OPEN, type MaintenanceRow, type MaintenanceStatus } from '../../shared/index.ts'
 import { useMaintenancePageTitle } from '../page-title.ts'
 import { maintenanceQuery } from '../queries.ts'
@@ -101,7 +101,7 @@ const columns = [
 
 function MaintenancePage() {
   useMaintenancePageTitle()
-  const readOnly = useDenied('maintenance', 'edit')
+  const canEnter = useCan('maintenance', 'edit')
   const navigate = useNavigate({ from: Route.fullPath })
   const tab = Route.useSearch().status ?? 'open'
   const [search, setSearch] = useState('')
@@ -123,7 +123,7 @@ function MaintenancePage() {
       <PageHeader
         title="Requests"
         description="Maintenance work order requests, from the Zoho form or entered here."
-        actions={readOnly ? undefined : newRequest}
+        actions={canEnter ? newRequest : undefined}
       />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
@@ -182,7 +182,7 @@ function MaintenancePage() {
                 icon={Wrench}
                 title="No requests yet"
                 description="Requests sent from the Zoho form, or entered here, are listed on this page."
-                action={readOnly ? undefined : newRequest}
+                action={canEnter ? newRequest : undefined}
               />
             )
           }

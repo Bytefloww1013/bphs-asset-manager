@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { useId, useRef, useState } from 'react'
+import { canAt } from '@shared/permissions.ts'
 import { localToday } from '@shared/schemas.ts'
 import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert, useToast } from '@/components/ui/feedback.tsx'
@@ -9,13 +10,18 @@ import { PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
 import type { MaintenanceDetail } from '../../shared/index.ts'
 import { maintenanceCreateSchema } from '../../shared/schemas.ts'
 import { useMaintenancePageTitle } from '../page-title.ts'
 import { maintenanceQuery } from '../queries.ts'
 
-export const Route = createFileRoute('/_app/maintenance/new')({ component: NewRequestPage })
+export const Route = createFileRoute('/_app/maintenance/new')({
+  // Entering a request needs Edit access, as the API does; without it the page does not exist (issue #27).
+  beforeLoad: ({ context }) => {
+    if (!canAt(context.user, 'maintenance', 'edit')) throw notFound()
+  },
+  component: NewRequestPage,
+})
 
 interface Problem {
   message: string
@@ -36,7 +42,6 @@ const blank = {
 /** For a request that came another way, by phone or in person, or one Zoho never delivered. */
 function NewRequestPage() {
   useMaintenancePageTitle('New request')
-  const readOnly = useDenied('maintenance', 'edit')
   const navigate = useNavigate()
   const toast = useToast()
   const programsId = useId()
@@ -138,7 +143,7 @@ function NewRequestPage() {
             </Field>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="primary" loading={save.isPending} disabledReason={readOnly}>
+            <Button type="submit" variant="primary" loading={save.isPending}>
               Save request
             </Button>
             <Link to="/maintenance" className={buttonStyles('ghost')}>

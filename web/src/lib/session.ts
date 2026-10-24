@@ -2,7 +2,7 @@ import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { useEffect, useSyncExternalStore } from 'react'
 import { isInAppPath, type AccessLevel, type Section } from '@shared/constants.ts'
-import { canAt, canUseWorkspace, needsAccess, workspacesOf } from '@shared/permissions.ts'
+import { canAt, canUseWorkspace, workspacesOf } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
 import { ApiError, api } from './api.ts'
 import { APP_NAME } from './brand.ts'
@@ -41,11 +41,6 @@ export function useUser(): SessionUser {
  */
 export function useCan(section: Section, level: AccessLevel): boolean {
   return canAt(useUser(), section, level)
-}
-
-/** Why this account may not do something that needs this level in this section. Being removed: use `useCan` (issue #27). */
-export function useDenied(section: Section, level: AccessLevel): string | undefined {
-  return canAt(useUser(), section, level) ? undefined : needsAccess(section, level)
 }
 
 /** Sets the browser tab title for the current screen. */

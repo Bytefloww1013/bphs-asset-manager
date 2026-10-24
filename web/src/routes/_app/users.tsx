@@ -2,8 +2,8 @@ import { employeesQuery } from '#foundation/employees/web/index.ts'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { Copy, KeyRound, Lock, LockOpen, Link2, Shield, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
+import { createFileRoute, notFound } from '@tanstack/react-router'
+import { Copy, KeyRound, LockOpen, Link2, Shield, UserPlus, UserRoundCheck, UserRoundX } from 'lucide-react'
 import { useState } from 'react'
 import {
   ACCESS_LEVEL_LABEL,
@@ -25,10 +25,10 @@ import { Stacked } from '@/components/status.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
-import { Alert, EmptyState, useToast } from '@/components/ui/feedback.tsx'
+import { Alert, useToast } from '@/components/ui/feedback.tsx'
 import { Field, Input, Segmented, Switch } from '@/components/ui/form.tsx'
 import { InfoPopover } from '@/components/ui/info-popover.tsx'
-import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
+import { Mono, PageHeader } from '@/components/ui/layout.tsx'
 import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overlay.tsx'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
@@ -38,6 +38,11 @@ import { usePageTitle, useUser } from '@/lib/session.ts'
 import { usersQuery } from '@/lib/users.ts'
 
 export const Route = createFileRoute('/_app/users')({
+  // Creating accounts, resetting another user's password and deactivating accounts stay with Super Admins: someone who could
+  // edit accounts could give themselves more access. To anyone else the page doesn't exist (issue #27).
+  beforeLoad: ({ context }) => {
+    if (!context.user.superAdmin) throw notFound()
+  },
   // The people an account can be linked to (`useLinkablePeople`), ready when a sheet opens.
   loader: ({ context }) => context.queryClient.ensureQueryData(employeesQuery),
   component: UsersPage,
@@ -45,21 +50,6 @@ export const Route = createFileRoute('/_app/users')({
 
 function UsersPage() {
   usePageTitle('Users')
-  if (!useUser().superAdmin) {
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader title="Users" />
-        <Panel>
-          <EmptyState
-            icon={Lock}
-            title="Super Admin only"
-            description="Creating accounts, resetting another user's password and deactivating accounts stay with Super Admins. Someone who could edit accounts could give themselves more access."
-            className="py-20"
-          />
-        </Panel>
-      </div>
-    )
-  }
   return <UsersTable />
 }
 

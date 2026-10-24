@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Kbd, Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDate, plural } from '@/lib/format.ts'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import type { AssetRow } from '../../shared/index.ts'
 import { AssetRowActions } from '../asset-actions.tsx'
 import { useSheetActions } from '../open.ts'
@@ -26,21 +26,20 @@ export const Route = createFileRoute('/_app/available')({
 
 const c = columnsFor<AssetRow>()
 
-/** On this page Issue is the point, so it is the primary button and the shortcut is shown on it. */
+/**
+ * On this page Issue is the point, so it is the primary button and the shortcut is shown on it. An account that cannot
+ * issue assets is not shown it (issue #27).
+ */
 function AvailableActions({ asset }: { asset: AssetRow }) {
   const sheets = useSheetActions()
-  const readOnly = useDenied('assets', 'edit')
+  const canIssue = useCan('assets', 'edit')
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Button
-        size="sm"
-        variant="primary"
-        aria-keyshortcuts="I"
-        disabledReason={readOnly}
-        onClick={() => sheets.issue(asset.id)}
-      >
-        Issue <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none max-sm:hidden">I</Kbd>
-      </Button>
+      {canIssue && (
+        <Button size="sm" variant="primary" aria-keyshortcuts="I" onClick={() => sheets.issue(asset.id)}>
+          Issue <Kbd className="border-white/30 bg-white/15 text-on-accent shadow-none max-sm:hidden">I</Kbd>
+        </Button>
+      )}
       <AssetRowActions asset={asset} hidePrimary />
     </div>
   )
@@ -111,6 +110,7 @@ function AvailablePage() {
   const { type: linked } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const sheets = useSheetActions()
+  const canIssue = useCan('assets', 'edit')
   const { data = [], isPending } = useQuery(assetsQuery)
   const { data: lookups } = useQuery(lookupsQuery)
   const [search, setSearch] = useState('')
@@ -171,20 +171,25 @@ function AvailablePage() {
           label="Available physical assets"
           noun="assets"
           loading={isPending}
-          rowProps={(row) => ({
-            tabIndex: 0,
-            onKeyDown: (event) => {
-              if (
-                event.key.toLowerCase() === 'i' &&
-                !event.metaKey &&
-                !event.ctrlKey &&
-                event.target === event.currentTarget
-              ) {
-                event.preventDefault()
-                sheets.issue(row.original.id)
-              }
-            },
-          })}
+          // The I key issues the focused row, so it is off, with the row's focus stop, wherever Issue is not shown.
+          rowProps={
+            canIssue
+              ? (row) => ({
+                  tabIndex: 0,
+                  onKeyDown: (event) => {
+                    if (
+                      event.key.toLowerCase() === 'i' &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      event.target === event.currentTarget
+                    ) {
+                      event.preventDefault()
+                      sheets.issue(row.original.id)
+                    }
+                  },
+                })
+              : undefined
+          }
           empty={
             type !== 'all' && stock.length > 0 ? (
               <EmptyState
@@ -214,9 +219,11 @@ function AvailablePage() {
             />
           }
         />
-        <p className="text-sm text-ink-3">
-          Focus a row with <Kbd>Tab</Kbd> and press <Kbd>I</Kbd> to issue it.
-        </p>
+        {canIssue && (
+          <p className="text-sm text-ink-3">
+            Focus a row with <Kbd>Tab</Kbd> and press <Kbd>I</Kbd> to issue it.
+          </p>
+        )}
       </div>
     </div>
   )

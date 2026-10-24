@@ -14,7 +14,7 @@ import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
 import { refreshData } from '@/lib/session.ts'
-import { useDenied, useUser } from '@/lib/session.ts'
+import { useUser } from '@/lib/session.ts'
 import { RECORD_TITLE_MAX, localToday } from '@shared/schemas.ts'
 import { REVIEW_FINDINGS_MAX, REVIEW_SUMMARY_MAX, reviewCreateSchema, reviewUpdateSchema } from '../shared/schemas.ts'
 import type { ReviewDetail } from '../shared/types.ts'
@@ -33,7 +33,8 @@ interface Problem {
 
 /**
  * The form a review is recorded with, and the same form for editing one. Every edit is written to the review's history with what
- * it replaced, so nothing asks why.
+ * it replaced, so nothing asks why. Its pages are not found by an account that may not save it (issue #27), so the form does not
+ * check access itself.
  *
  * Nothing typed here is kept in browser storage: a review is sensitive and the machine may be shared.
  */
@@ -43,7 +44,6 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
   const toast = useToast()
   const user = useUser()
   const { data: employees = [] } = useQuery(employeesQuery)
-  const noCreate = useDenied('reviews', 'edit')
   // What the form started from, read once: a review that changes underneath is for the save to refuse, not for the form to follow.
   const [was] = useState(review)
   // The year the new code will most likely carry, for the placeholder; the server assigns the real one.
@@ -271,12 +271,11 @@ export function ReviewForm({ review, onReload }: { review?: ReviewDetail; onRelo
               type="submit"
               loading={save.isPending}
               disabledReason={
-                (review ? undefined : noCreate) ??
-                (stale
+                stale
                   ? 'This review was edited by someone else. Reload it first.'
                   : was && !dirty
                     ? 'Nothing has been changed yet.'
-                    : undefined)
+                    : undefined
               }
             >
               {was ? 'Save changes' : 'Save review'}

@@ -10,7 +10,7 @@ import { DateInput, FilterTabs, SearchInput, Select } from '@/components/ui/form
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDateTime, formatRelative, startOfLocalDay } from '@/lib/format.ts'
 import { useSearchBox } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { grievanceStatusLabel } from '../../shared/constants.ts'
 import type { GrievancePerson, GrievanceRow } from '../../shared/types.ts'
 import { useGrievancePageTitle } from '../page-title.ts'
@@ -73,7 +73,8 @@ const getRowId = (row: GrievanceRow) => String(row.id)
 
 function GrievancesPage() {
   useGrievancePageTitle()
-  const readOnly = useDenied('grievances', 'edit')
+  // Recording a grievance needs Edit access to Grievances; without it New grievance isn't drawn (issue #27).
+  const canEdit = useCan('grievances', 'edit')
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const setFilter = (patch: GrievanceSearch, replace = false) =>
@@ -206,7 +207,7 @@ function GrievancesPage() {
       <PageHeader
         title="Grievances"
         description="Employee grievances and what was done about each one. Confidential."
-        actions={readOnly ? undefined : newGrievance}
+        actions={canEdit ? newGrievance : undefined}
       />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
@@ -323,7 +324,7 @@ function GrievancesPage() {
                   icon={Scale}
                   title="No grievances yet"
                   description="Grievances recorded here will be listed on this page."
-                  action={readOnly ? undefined : newGrievance}
+                  action={canEdit ? newGrievance : undefined}
                 />
               )
             }

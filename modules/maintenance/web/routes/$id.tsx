@@ -15,7 +15,7 @@ import { ConfirmDialog } from '@/components/ui/overlay.tsx'
 import { ApiError, api } from '@/lib/api.ts'
 import { formatDateTime } from '@/lib/format.ts'
 import { useWrite } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import {
   MAINTENANCE_NOTE_MAX,
   MAINTENANCE_STATUSES,
@@ -75,8 +75,8 @@ function RequestPage() {
   const [note, setNote] = useState('')
   const [deleting, setDeleting] = useState(false)
   useMaintenancePageTitle(request?.code)
-  const noEdit = useDenied('maintenance', 'edit')
-  const noFull = useDenied('maintenance', 'full')
+  const canEdit = useCan('maintenance', 'edit')
+  const canDelete = useCan('maintenance', 'full')
 
   const dispatch = useWrite(
     (employeeId: number | null) => api.post<MaintenanceDetail>(`/maintenance/${id}/dispatch`, { employeeId }),
@@ -123,14 +123,11 @@ function RequestPage() {
           <h1 className="max-w-[40ch] text-2xl font-semibold tracking-[-0.015em] text-ink [overflow-wrap:anywhere]">
             {request.location}
           </h1>
-          <Button
-            variant="danger"
-            icon={<Trash2 className="size-4" aria-hidden />}
-            disabledReason={noFull}
-            onClick={() => setDeleting(true)}
-          >
-            Delete
-          </Button>
+          {canDelete && (
+            <Button variant="danger" icon={<Trash2 className="size-4" aria-hidden />} onClick={() => setDeleting(true)}>
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
@@ -162,38 +159,50 @@ function RequestPage() {
         </p>
       </Panel>
 
-      <Panel className="grid gap-5 p-5 sm:grid-cols-2">
-        <Field label="Dispatched to" hint={noEdit ?? 'Choosing someone makes a Not Started request Dispatched.'}>
-          <Combobox
-            items={choices}
-            value={assignee}
-            onChange={(person) => dispatch.mutate(person?.id ?? null)}
-            getKey={employeeKey}
-            getLabel={employeeLabel}
-            getSearch={employeeSearch}
-            placeholder="Nobody yet"
-            emptyText="No active employee matches"
-            disabled={!!noEdit || dispatch.isPending}
-          />
-        </Field>
-        <Field label="Status" hint={request.assignee ? undefined : 'Dispatched needs someone chosen first.'}>
-          <Select
-            value={request.status}
-            disabled={!!noEdit || status.isPending}
-            onChange={(event) => status.mutate(event.target.value as MaintenanceStatus)}
-          >
-            {MAINTENANCE_STATUSES.map((value) => (
-              <option
-                key={value}
-                value={value}
-                disabled={value === 'dispatched' && !request.assignee && request.status !== value}
-              >
-                {maintenanceStatusLabel(value)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </Panel>
+      {canEdit ? (
+        <Panel className="grid gap-5 p-5 sm:grid-cols-2">
+          <Field label="Dispatched to" hint="Choosing someone makes a Not Started request Dispatched.">
+            <Combobox
+              items={choices}
+              value={assignee}
+              onChange={(person) => dispatch.mutate(person?.id ?? null)}
+              getKey={employeeKey}
+              getLabel={employeeLabel}
+              getSearch={employeeSearch}
+              placeholder="Nobody yet"
+              emptyText="No active employee matches"
+              disabled={dispatch.isPending}
+            />
+          </Field>
+          <Field label="Status" hint={request.assignee ? undefined : 'Dispatched needs someone chosen first.'}>
+            <Select
+              value={request.status}
+              disabled={status.isPending}
+              onChange={(event) => status.mutate(event.target.value as MaintenanceStatus)}
+            >
+              {MAINTENANCE_STATUSES.map((value) => (
+                <option
+                  key={value}
+                  value={value}
+                  disabled={value === 'dispatched' && !request.assignee && request.status !== value}
+                >
+                  {maintenanceStatusLabel(value)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </Panel>
+      ) : (
+        // Without Edit access the two still read as they stand, as plain facts rather than controls (issue #27).
+        <Panel aria-label="Dispatch">
+          <dl className="grid divide-line max-sm:divide-y sm:grid-cols-2 sm:divide-x">
+            <Fact label="Dispatched to">{request.assignee?.name}</Fact>
+            <Fact label="Status">
+              <MaintenanceStatusBadge status={request.status} />
+            </Fact>
+          </dl>
+        </Panel>
+      )}
 
       <Panel>
         <PanelHeader
@@ -225,7 +234,7 @@ function RequestPage() {
             </li>
           ))}
         </ol>
-        {!noEdit && (
+        {canEdit && (
           <form
             className="flex flex-col gap-3 border-t border-line p-5"
             onSubmit={(event) => {

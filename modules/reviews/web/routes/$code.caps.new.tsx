@@ -7,14 +7,11 @@ import { PageHeader } from '@/components/ui/layout.tsx'
 import { CapForm } from '../cap-form.tsx'
 import { ReviewLoadError } from '../load-error.tsx'
 import { useReviewPageTitle } from '../page-title.ts'
-import { reviewQuery } from '../queries.ts'
+import { ensureReviewToManage, reviewQuery } from '../queries.ts'
 
 export const Route = createFileRoute('/_app/reviews/$code/caps/new')({
   loader: ({ context, params }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(reviewQuery(params.code)),
-      context.queryClient.ensureQueryData(employeesQuery),
-    ]),
+    Promise.all([ensureReviewToManage(context, params.code), context.queryClient.ensureQueryData(employeesQuery)]),
   errorComponent: ReviewLoadError,
   component: NewCapPage,
 })
@@ -25,7 +22,7 @@ function NewCapPage() {
   const { data: review } = useQuery(reviewQuery(code))
   useReviewPageTitle(`Add a CAP to ${review?.code ?? code.toUpperCase()}`)
   if (!review) return null
-  // The server refuses the same whatever the page shows; a review that cannot be reached is not offered the button at all.
+  // The server refuses the same whatever the page shows. The page is not found by an account that may not change the review.
   const refused =
     review.status === 'voided'
       ? `${review.code} has been voided. Nothing more can be added to it.`

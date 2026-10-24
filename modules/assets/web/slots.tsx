@@ -4,7 +4,7 @@ import type { ProgramRow } from '#foundation/programs/shared/index.ts'
 import { useQuery } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button.tsx'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { useWorkspace } from '@/lib/workspace.ts'
 import { useSheetActions } from './open.ts'
 import { assetsQuery } from './queries.ts'
@@ -12,16 +12,15 @@ import { AssetTagLink } from './status.tsx'
 
 export function IssueToEmployee({ employee }: { employee: EmployeeRow }) {
   const sheets = useSheetActions()
-  const noIssue = useDenied('assets', 'edit')
-  // In Grievances, an employee is a person to name, not someone who holds equipment.
-  if (useWorkspace() !== 'assets') return null
+  const canIssue = useCan('assets', 'edit')
+  // In Grievances, an employee is a person to name, not someone who holds equipment. An account that cannot issue assets
+  // is not shown the button; one that can is told why an archived employee takes none (issue #27).
+  if (useWorkspace() !== 'assets' || !canIssue) return null
   return (
     <Button
       size="sm"
       icon={<Send className="size-3.5" />}
-      disabledReason={
-        noIssue ?? (employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined)
-      }
+      disabledReason={employee.state === 'archived' ? 'Archived employees cannot be issued assets.' : undefined}
       onClick={() => sheets.issue(undefined, employee.id)}
     >
       Issue to
@@ -58,12 +57,13 @@ export function HeldAssets({ employee }: { employee: EmployeeRow }) {
 
 export function AssignToProgram({ program }: { program: ProgramRow }) {
   const sheets = useSheetActions()
-  const noEdit = useDenied('assets', 'edit')
+  // Not drawn for an account that cannot assign assets; a deactivated program keeps it, disabled with the rule (issue #27).
+  if (!useCan('assets', 'edit')) return null
   return (
     <Button
       size="sm"
       icon={<Send className="size-3.5" />}
-      disabledReason={noEdit ?? (program.isActive ? undefined : 'A deactivated program cannot be assigned assets.')}
+      disabledReason={program.isActive ? undefined : 'A deactivated program cannot be assigned assets.'}
       onClick={() => sheets.issueToProgram(undefined, program.id)}
     >
       Assign to

@@ -1,11 +1,16 @@
 import { employeesQuery } from '#foundation/employees/web/index.ts'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
+import { canAt } from '@shared/permissions.ts'
 import { PageHeader } from '@/components/ui/layout.tsx'
 import { GrievanceForm } from '../form.tsx'
 import { useGrievancePageTitle } from '../page-title.ts'
 import { grievanceAccountHoldersQuery, grievanceCategoriesQuery } from '../queries.ts'
 
 export const Route = createFileRoute('/_app/grievances/new')({
+  // Recording a grievance needs Edit access to Grievances; to anyone else the page doesn't exist (issue #27).
+  beforeLoad: ({ context }) => {
+    if (!canAt(context.user, 'grievances', 'edit')) throw notFound()
+  },
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(employeesQuery),

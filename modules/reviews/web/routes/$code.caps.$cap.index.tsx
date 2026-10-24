@@ -31,7 +31,7 @@ import {
   reviewEntryKindLabel,
   type ReviewCapStatus,
 } from '../../shared/constants.ts'
-import { canManageReview, reviewManageReason } from '../../shared/permissions.ts'
+import { canManageReview } from '../../shared/permissions.ts'
 import type { ReviewCap, ReviewDetail } from '../../shared/types.ts'
 import { ReviewLoadError } from '../load-error.tsx'
 import { useReviewPageTitle } from '../page-title.ts'
@@ -102,14 +102,10 @@ function CapPage() {
   // Its own history: what the app wrote about it, and the updates and corrections filed under it.
   const history = entries.filter((entry) => entry.cap === cap.seq)
   const files = allFiles.filter((file) => file.cap === cap.seq)
-  // Someone who may not use a button still sees it, with the reason, as on a grievance; the server refuses whatever the page shows.
-  const refused =
-    review.status === 'completed'
-      ? `${review.code} is Completed. Reopen it to change a CAP.`
-      : canManageReview(user, review.reviewer.id)
-        ? undefined
-        : reviewManageReason(review.reviewer.name)
-  const manage = review.status !== 'voided'
+  // Someone who may not change the review sees none of its buttons (issue #27). For the one who may, a Completed review keeps them
+  // drawn with the reason they cannot be used. The server refuses whatever the page shows.
+  const manage = review.status !== 'voided' && canManageReview(user, review.reviewer.id)
+  const refused = review.status === 'completed' ? `${review.code} is Completed. Reopen it to change a CAP.` : undefined
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">

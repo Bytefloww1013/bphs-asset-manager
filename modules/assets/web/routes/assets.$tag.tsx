@@ -11,7 +11,7 @@ import { Mono, Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { ApiError } from '@/lib/api.ts'
 import { cn } from '@/lib/cn.ts'
 import { formatDate, formatDateTime, formatDays, plural } from '@/lib/format.ts'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import type { ConditionEntry, HistoryRow } from '../../shared/index.ts'
 import { AssetRowActions } from '../asset-actions.tsx'
 import { useSheetActions } from '../open.ts'
@@ -108,7 +108,7 @@ function AssetDetailPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const sheets = useSheetActions()
-  const readOnly = useDenied('assets', 'edit')
+  const canEdit = useCan('assets', 'edit')
   usePageTitle(tag.toUpperCase())
   const table = useGrid({
     data: data?.history ?? [],
@@ -138,17 +138,13 @@ function AssetDetailPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {asset.state === 'assigned' && asset.assignmentId && (
-              <Button
-                variant="primary"
-                disabledReason={readOnly}
-                onClick={() => sheets.returnAsset(asset.assignmentId!)}
-              >
+            {canEdit && asset.state === 'assigned' && asset.assignmentId && (
+              <Button variant="primary" onClick={() => sheets.returnAsset(asset.assignmentId!)}>
                 Return
               </Button>
             )}
-            {asset.state === 'in_storage' && (
-              <Button variant="primary" disabledReason={readOnly} onClick={() => sheets.issue(asset.id)}>
+            {canEdit && asset.state === 'in_storage' && (
+              <Button variant="primary" onClick={() => sheets.issue(asset.id)}>
                 Issue
               </Button>
             )}

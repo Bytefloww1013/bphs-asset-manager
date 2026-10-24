@@ -9,7 +9,7 @@ import { DateInput, FilterTabs, SearchInput, Select } from '@/components/ui/form
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
 import { formatDateTime, formatRelative, startOfLocalDay } from '@/lib/format.ts'
 import { useSearchBox } from '@/lib/hooks.ts'
-import { useDenied } from '@/lib/session.ts'
+import { useCan } from '@/lib/session.ts'
 import { REVIEW_STATUSES, reviewStatusLabel } from '../../shared/constants.ts'
 import type { ReviewPerson, ReviewRow } from '../../shared/types.ts'
 import { useReviewPageTitle } from '../page-title.ts'
@@ -147,7 +147,7 @@ const columns = [
 
 function ReviewsPage() {
   useReviewPageTitle()
-  const readOnly = useDenied('reviews', 'edit')
+  const canCreate = useCan('reviews', 'edit')
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const setFilter = (patch: ReviewSearch, replace = false) =>
@@ -171,7 +171,7 @@ function ReviewsPage() {
       <PageHeader
         title="Reviews"
         description="Administrative reviews of employees, with their corrective action plans."
-        actions={readOnly ? undefined : newReview}
+        actions={canCreate ? newReview : undefined}
       />
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">
@@ -269,7 +269,7 @@ function ReviewsPage() {
                   icon={ClipboardCheck}
                   title="No reviews yet"
                   description="Administrative reviews recorded here will be listed on this page."
-                  action={readOnly ? undefined : newReview}
+                  action={canCreate ? newReview : undefined}
                 />
               )
             }

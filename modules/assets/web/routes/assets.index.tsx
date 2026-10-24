@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button.tsx'
 import { EmptyState } from '@/components/ui/feedback.tsx'
 import { FilterTabs, SearchInput } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Toolbar } from '@/components/ui/layout.tsx'
-import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { useCan, usePageTitle } from '@/lib/session.ts'
 import type { AssetRow } from '../../shared/index.ts'
 import { AssetRowActions } from '../asset-actions.tsx'
 import { assetsExport } from '../exports.ts'
@@ -107,7 +107,7 @@ const getRowId = (row: AssetRow) => String(row.id)
 
 function AssetsPage() {
   usePageTitle('Physical Assets')
-  const readOnly = useDenied('assets', 'edit')
+  const canEdit = useCan('assets', 'edit')
   const { state = 'all' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const { data = [], isPending } = useQuery(assetsQuery)
@@ -149,7 +149,7 @@ function AssetsPage() {
         actions={<ExportButton dataset={assetsExport} items={data} />}
       />
 
-      {!readOnly && <QuickAddAsset onAdded={setFlash} />}
+      {canEdit && <QuickAddAsset onAdded={setFlash} />}
 
       <div className="flex flex-col gap-3">
         <Toolbar className="justify-between">

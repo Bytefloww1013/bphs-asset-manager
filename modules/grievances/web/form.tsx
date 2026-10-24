@@ -16,7 +16,6 @@ import { api } from '@/lib/api.ts'
 import { fieldMessages, splitApiError } from '@/lib/form.ts'
 import { useWrite } from '@/lib/hooks.ts'
 import { refreshData } from '@/lib/session.ts'
-import { useDenied } from '@/lib/session.ts'
 import { RECORD_NOTE_MAX, RECORD_SHORT_DESCRIPTION_MAX, RECORD_TITLE_MAX, localToday } from '@shared/schemas.ts'
 import { grievanceCreateSchema, grievanceUpdateSchema } from '../shared/schemas.ts'
 import type { GrievanceDetail, GrievancePerson } from '../shared/types.ts'
@@ -41,6 +40,9 @@ interface Problem {
  * The form a grievance is recorded with, and the same form for editing one. Given a grievance it starts from what that grievance
  * says, asks why it is being changed, and leaves the owner alone: the owner is changed from the grievance's page.
  *
+ * Who may use it is settled by the route before the form is drawn: recording one needs Edit access to Grievances, and editing
+ * one needs the right to change that grievance, which an owner with Read has for their own (issue #27).
+ *
  * Nothing typed here is kept in browser storage: a grievance is sensitive and the machine may be shared.
  */
 export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDetail; onReload?: () => void }) {
@@ -50,8 +52,6 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
   const { data: employees = [] } = useQuery(employeesQuery)
   const { data: categories = [] } = useQuery(grievanceCategoriesQuery)
   const { data: accountHolders } = useQuery(grievanceAccountHoldersQuery)
-  // Recording one needs Edit; an owner with Read may still edit their own.
-  const noCreate = useDenied('grievances', 'edit')
   // What the form started from. It is read once: a grievance that changes underneath is for the save to refuse, not for the form to follow.
   const [was] = useState(grievance)
   // The year the new code will most likely carry, for the placeholder; the server assigns the real one.
@@ -346,12 +346,11 @@ export function GrievanceForm({ grievance, onReload }: { grievance?: GrievanceDe
               type="submit"
               loading={save.isPending}
               disabledReason={
-                (grievance ? undefined : noCreate) ??
-                (stale
+                stale
                   ? 'This grievance was edited by someone else. Reload it first.'
                   : was && !dirty
                     ? 'Nothing has been changed yet.'
-                    : undefined)
+                    : undefined
               }
             >
               {was ? 'Save changes' : 'Save grievance'}

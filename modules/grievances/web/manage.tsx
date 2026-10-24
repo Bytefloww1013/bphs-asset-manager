@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Segmented } from '@/components/ui/form.tsx'
-import { useDenied, useUser } from '@/lib/session.ts'
+import { useCan, useUser } from '@/lib/session.ts'
 import { grievanceStatusLabel } from '../shared/constants.ts'
-import { canManageGrievance, grievanceManageReason } from '../shared/permissions.ts'
+import { canManageGrievance } from '../shared/permissions.ts'
 import { GRIEVANCE_OPEN_STATUSES } from '../shared/schemas.ts'
 import type { GrievanceDetail } from '../shared/types.ts'
 import { grievanceAccountHoldersQuery } from './queries.ts'
@@ -27,42 +27,45 @@ export function ownerAccountNote(
 type Task = 'status' | 'owner' | 'void'
 
 /**
- * Edit, Change status, Change owner and Void, for a grievance's page. Someone who may not use one still sees it, with the reason;
- * the server refuses them whatever the page shows. A voided grievance offers none of them.
+ * Edit, Change status, Change owner and Void, for a grievance's page. Each is drawn only for someone who may use it: the first
+ * three for the owner or anyone with Edit access to Grievances, Void for Grievances Full (issue #27). A closed grievance keeps
+ * Edit and Change owner disabled with the reason. A voided grievance offers none of them, and with nothing to offer this draws
+ * nothing. The server refuses whatever the page shows.
  */
 export function GrievanceActions({ grievance }: { grievance: GrievanceDetail }) {
   const user = useUser()
   const navigate = useNavigate()
-  const noVoid = useDenied('grievances', 'full')
+  const canVoid = useCan('grievances', 'full')
   const [task, setTask] = useState<Task | null>(null)
-  if (grievance.status === 'voided') return null
-  const notOwner = canManageGrievance(user, grievance.owner.id)
-    ? undefined
-    : grievanceManageReason(grievance.owner.name)
+  const canManage = canManageGrievance(user, grievance.owner.id)
+  if (grievance.status === 'voided' || (!canManage && !canVoid)) return null
+  const closed = grievance.status === 'closed'
   const close = () => setTask(null)
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button
-        disabledReason={notOwner ?? (grievance.status === 'closed' ? 'Reopen it before editing it.' : undefined)}
-        onClick={() => void navigate({ to: '/grievances/$code/edit', params: { code: grievance.code } })}
-      >
-        Edit
-      </Button>
-      <Button disabledReason={notOwner} onClick={() => setTask('status')}>
-        Change status
-      </Button>
-      <Button
-        disabledReason={
-          notOwner ?? (grievance.status === 'closed' ? 'Reopen it before changing its owner.' : undefined)
-        }
-        onClick={() => setTask('owner')}
-      >
-        Change owner
-      </Button>
-      <Button variant="danger-ghost" disabledReason={noVoid} onClick={() => setTask('void')}>
-        Void
-      </Button>
+      {canManage && (
+        <>
+          <Button
+            disabledReason={closed ? 'Reopen it before editing it.' : undefined}
+            onClick={() => void navigate({ to: '/grievances/$code/edit', params: { code: grievance.code } })}
+          >
+            Edit
+          </Button>
+          <Button onClick={() => setTask('status')}>Change status</Button>
+          <Button
+            disabledReason={closed ? 'Reopen it before changing its owner.' : undefined}
+            onClick={() => setTask('owner')}
+          >
+            Change owner
+          </Button>
+        </>
+      )}
+      {canVoid && (
+        <Button variant="danger-ghost" onClick={() => setTask('void')}>
+          Void
+        </Button>
+      )}
       {task === 'status' && <StatusSheet grievance={grievance} onClose={close} />}
       {task === 'owner' && <OwnerSheet grievance={grievance} onClose={close} />}
       {task === 'void' && <VoidSheet grievance={grievance} onClose={close} />}

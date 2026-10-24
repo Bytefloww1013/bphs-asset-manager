@@ -7,7 +7,7 @@ import { Field, Textarea } from '@/components/ui/form.tsx'
 import { Panel, PanelHeader } from '@/components/ui/layout.tsx'
 import { useUser } from '@/lib/session.ts'
 import { TASK_NOTE_MAX } from '../shared/constants.ts'
-import { taskFileWithdrawProblem } from '../shared/permissions.ts'
+import { mayWithdrawTaskFile, taskFileWithdrawProblem } from '../shared/permissions.ts'
 import type { TaskAttachment, TaskDetail } from '../shared/types.ts'
 import { ownershipOf } from './parts.tsx'
 
@@ -20,7 +20,8 @@ const SIDE_LABEL: Record<TaskAttachment['side'], string> = {
 
 /**
  * A task's files, for Employee Tasks (`base` `/tasks`) or My Space (`/me/tasks`). Each downloads as a file to save. A withdrawn
- * file stays on the list, with the reason, but no longer downloads. Nothing shows while the task has no files.
+ * file stays on the list, with the reason, but no longer downloads. Nothing shows while the task has no files. Withdraw is drawn
+ * only for whoever added the file or may change the task; for them, a file that can no longer go says why (issue #27).
  */
 export function TaskFiles({ task, base }: { task: TaskDetail; base: '/tasks' | '/me/tasks' }) {
   const user = useUser()
@@ -38,14 +39,16 @@ export function TaskFiles({ task, base }: { task: TaskDetail; base: '/tasks' | '
             href={`/api${base}/${task.id}/attachments/${file.id}`}
             details={<> · {SIDE_LABEL[file.side]}</>}
             action={
-              <Button
-                size="sm"
-                variant="danger-ghost"
-                disabledReason={taskFileWithdrawProblem(user, ownership, file) ?? undefined}
-                onClick={() => setWithdrawing(file)}
-              >
-                Withdraw
-              </Button>
+              mayWithdrawTaskFile(user, ownership, file) && (
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  disabledReason={taskFileWithdrawProblem(user, ownership, file) ?? undefined}
+                  onClick={() => setWithdrawing(file)}
+                >
+                  Withdraw
+                </Button>
+              )
             }
           />
         ))}

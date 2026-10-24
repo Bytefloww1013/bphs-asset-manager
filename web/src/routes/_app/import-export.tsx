@@ -3,7 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { Download, FileSpreadsheet, FileUp, ScrollText, TriangleAlert } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { autoMap, type Importer } from '@shared/importers.ts'
-import { canAt, needsAccess } from '@shared/permissions.ts'
+import { canAt } from '@shared/permissions.ts'
 import { IMPORT_MAX_CELL, IMPORT_MAX_ROWS, type ImportInput } from '@shared/schemas.ts'
 import type { ImportPreview, ImportRow } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
@@ -34,27 +34,37 @@ export const Route = createFileRoute('/_app/import-export')({
 
 function ImportExportPage() {
   usePageTitle('Import/Export')
-  const { view = 'import', type } = Route.useSearch()
+  const user = useUser()
+  const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  // The modules' importers (`importers()`): the one the address names, or the first.
-  const importer = importers().find((candidate) => candidate.type === type) ?? importers()[0]
+  // The modules' importers the account may use (`importers()`): the one the address names, or the first. Without any, there is
+  // no Import tab at all, only Export (issue #27).
+  const allowed = importers().filter((candidate) => canAt(user, candidate.section, 'edit'))
+  const view: View = allowed.length && search.view !== 'export' ? 'import' : 'export'
+  const importer = allowed.find((candidate) => candidate.type === search.type) ?? allowed[0]
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Import/Export"
-        description="Bring employees and programs in from a spreadsheet, or take any list out as a CSV or Excel file. An import only adds records: it never changes one that exists, and never issues anything."
-      />
-      <FilterTabs<View>
-        label="Import or export"
-        value={view}
-        onChange={(next) =>
-          void navigate({ search: (old) => ({ ...old, view: next === 'export' ? 'export' : undefined }) })
+        description={
+          allowed.length
+            ? 'Bring employees and programs in from a spreadsheet, or take any list out as a CSV or Excel file. An import only adds records: it never changes one that exists, and never issues anything.'
+            : 'Take any list out as a CSV or Excel file.'
         }
-        options={[
-          { value: 'import', label: 'Import' },
-          { value: 'export', label: 'Export' },
-        ]}
       />
+      {allowed.length > 0 && (
+        <FilterTabs<View>
+          label="Import or export"
+          value={view}
+          onChange={(next) =>
+            void navigate({ search: (old) => ({ ...old, view: next === 'export' ? 'export' : undefined }) })
+          }
+          options={[
+            { value: 'import', label: 'Import' },
+            { value: 'export', label: 'Export' },
+          ]}
+        />
+      )}
       {view === 'export' ? (
         <ExportSection />
       ) : (
@@ -63,6 +73,7 @@ function ImportExportPage() {
           <ImportSection
             key={importer.type}
             importer={importer}
+            options={allowed}
             onType={(next) => void navigate({ search: (old) => ({ ...old, type: next }) })}
           />
         )
@@ -142,9 +153,17 @@ function previewColumns(importer: Importer) {
   ]
 }
 
-function ImportSection({ importer, onType }: { importer: Importer; onType: (type: string) => void }) {
+function ImportSection({
+  importer,
+  options,
+  onType,
+}: {
+  importer: Importer
+  /** The importers this account may use; never empty. */
+  options: readonly Importer[]
+  onType: (type: string) => void
+}) {
   const { type } = importer
-  const user = useUser()
   const input = useRef<HTMLInputElement>(null)
   // Counts the files chosen and the mappings tried, so an answer about an earlier one is dropped when it arrives late.
   const latest = useRef(0)
@@ -272,26 +291,24 @@ function ImportSection({ importer, onType }: { importer: Importer; onType: (type
   const failed = done?.rows.filter((row) => row.result === 'error') ?? []
   const toCreate = preview?.summary.create ?? 0
   const problems = shown ? shown.summary.duplicates + shown.summary.errors : 0
-  const blocked = !canAt(user, importer.section, 'edit')
-    ? needsAccess(importer.section, 'edit')
-    : done
-      ? 'This file has been imported. Choose another to import more.'
-      : !file
-        ? 'Choose a file first.'
-        : unmapped.length > 0
-          ? `Say which column holds ${unmapped.map((field) => field.label).join(', ')}.`
-          : !preview
-            ? 'The rows are still being checked.'
-            : toCreate === 0
-              ? 'Nothing new to create.'
-              : undefined
+  const blocked = done
+    ? 'This file has been imported. Choose another to import more.'
+    : !file
+      ? 'Choose a file first.'
+      : unmapped.length > 0
+        ? `Say which column holds ${unmapped.map((field) => field.label).join(', ')}.`
+        : !preview
+          ? 'The rows are still being checked.'
+          : toCreate === 0
+            ? 'Nothing new to create.'
+            : undefined
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       <Panel className="flex flex-col gap-5 self-start p-5">
         <Field label="What are you importing?">
           <Select value={type} onChange={(event) => onType(event.target.value)}>
-            {importers().map((option) => (
+            {options.map((option) => (
               <option key={option.type} value={option.type}>
                 {option.label}
               </option>
