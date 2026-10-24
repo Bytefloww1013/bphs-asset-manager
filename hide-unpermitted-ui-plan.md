@@ -1,6 +1,6 @@
 # Issue #27 - Hide UI elements the account lacks permission for across all workspaces - Implementation
 
-Status: in progress | Started: 2026-10-24 | Branch: `docs/test-context-skill` | Issue: https://github.com/Bytefloww1013/bphs-asset-manager/issues/27
+Status: done | Started: 2026-10-24 | Branch: `docs/test-context-skill` | Issue: https://github.com/Bytefloww1013/bphs-asset-manager/issues/27
 
 ## Decisions
 
@@ -76,7 +76,7 @@ Shared files (lockfiles, manifests, CI config, CLAUDE.md/AGENTS.md, this plan) b
 
 ## Phase 5 - Verify + cleanup
 
-- [ ] 5.1 Tests, smokes and local CI commands pass, output shown in chat
-- [ ] 5.2 Every acceptance criterion from the issue checked
-- [ ] 5.3 User confirms manual DoD items
-- [ ] 5.4 Issue block removed from AGENTS.md (`check-agentsmd ... clean`)
+- [x] 5.1 Tests, smokes and local CI commands pass, output shown in chat
+- [x] 5.2 Every acceptance criterion from the issue checked
+- [x] 5.3 User confirms manual DoD items
+- [x] 5.4 Issue block removed from AGENTS.md (`check-agentsmd ... clean`)

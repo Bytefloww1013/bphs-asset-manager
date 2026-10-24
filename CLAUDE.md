@@ -71,6 +71,9 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - `node docs/verify/migration-check.mjs [--db <file>]` - rehearses migration 0024 (custody merge) on the seeded fixture or a copy of a backup; `KEEP=<dir>` keeps the migrated copy.
 - `docs/verify/verify-done.sh` - the current branch's Definition of Done checks, one PASS/FAIL line each; exit 0 means done.
 - `docs/verify/quick-check.sh` - format, registries, lint, typecheck and test in one run; use it after each phase.
+- `node docs/verify/hidden-smoke.mjs` - every route as Marcus and a read-only account; fails on a control disabled for missing access (issue #27).
+- `docs/verify/no-permission-disabled.sh` - fails on web code that turns a permission into a disabled reason.
+- `docs/verify/*` scratch files and logs go to `BPHS_TMP` (default `$TMPDIR`, else `/tmp`); set `CHROME` to the browser for the `.mjs` smokes (`/opt/pw-browsers/chromium-*/chrome-linux64/chrome` in a cloud container).
 - Demo accounts (seed): `p.raghunathan@bphs.local` (Super Admin) and `m.oyelaran@bphs.local` (Admin), password `Demo-pass1!`.
 
 # WORKFLOWS
@@ -96,4 +99,5 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - Tailwind scans only Vite's root `web/` -> each module tier needs an `@source '../../<tier>/*/web/**/*.{ts,tsx}'` line in `web/src/styles.css` (a folder glob doesn't work); the CSS baseline check in `verify-done.sh` catches a missed one.
 - `docs/**` is in both the Oxfmt and Oxlint ignore lists -> `format`/`lint` never check `docs/verify/*.mjs`; check those with `node --check` and by running them.
 - `docs:gen` and `docs:check` load every `web/module.ts` under `tsx --tsconfig web/tsconfig.json` -> a web module must load outside a browser (no `window` or `document` as it loads).
+- `throw notFound()` in a route draws the root not-found page, with no app shell -> a `routes-smoke.mjs` expectation for it is `NOT_FOUND` (`standalone: true`), not `shows` alone.
 - Moving code between files or modules -> move first (`git mv`), then reshape, in the same commit, so `git blame -C -C` can follow it.
