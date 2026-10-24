@@ -1,0 +1,36 @@
+import { eq } from 'drizzle-orm'
+import { describe, expect, it } from 'vitest'
+import { auditLog } from '#foundation/audit/server/index.ts'
+import { setup } from '#kernel/testing/index.ts'
+
+describe('{{label}}', () => {
+  it('adds and lists entries, and audits each one', async () => {
+    const t = await setup()
+    const cookie = await t.asSuper()
+    expect((await t.call('POST', '/api/{{id}}', { cookie, body: { name: ' Second ' } })).status).toBe(201)
+    expect((await t.call('POST', '/api/{{id}}', { cookie, body: { name: 'First' } })).status).toBe(201)
+    expect((await t.call('POST', '/api/{{id}}', { cookie, body: { name: ' ' } })).status).toBe(422)
+    expect((await t.call('GET', '/api/{{id}}', { cookie })).data).toEqual([
+      { id: 2, name: 'First' },
+      { id: 1, name: 'Second' },
+    ])
+    const audited = t.db
+      .select({ action: auditLog.action, details: auditLog.details })
+      .from(auditLog)
+      .where(eq(auditLog.entityType, '{{id}}'))
+      .all()
+    expect(audited).toEqual([
+      { action: 'create', details: 'Second' },
+      { action: 'create', details: 'First' },
+    ])
+  })
+
+  it('is behind its own permission', async () => {
+    const t = await setup()
+    const reader = await t.signInAs({ '{{id}}': 'read' })
+    expect((await t.call('GET', '/api/{{id}}', { cookie: reader.cookie })).status).toBe(200)
+    expect((await t.call('POST', '/api/{{id}}', { cookie: reader.cookie, body: { name: 'Cog' } })).status).toBe(403)
+    const stranger = await t.signInAs({})
+    expect((await t.call('GET', '/api/{{id}}', { cookie: stranger.cookie })).status).toBe(403)
+  })
+})

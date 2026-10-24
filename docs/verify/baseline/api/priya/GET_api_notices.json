@@ -1,0 +1,7 @@
+{
+  "request": "GET /api/notices",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": []
+}

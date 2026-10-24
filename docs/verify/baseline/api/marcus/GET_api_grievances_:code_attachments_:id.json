@@ -1,0 +1,11 @@
+{
+  "request": "GET /api/grievances/GR-2026-0002/attachments/2",
+  "status": 200,
+  "contentType": "text/plain",
+  "contentDisposition": "attachment; filename=\"walkthrough-notes.txt\"; filename*=UTF-8''walkthrough-notes.txt",
+  "bodyKind": "text",
+  "body": [
+    "Back stairwell: timer relay cuts the circuit at 22:00. Replacement ordered.",
+    ""
+  ]
+}

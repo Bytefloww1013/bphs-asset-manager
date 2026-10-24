@@ -1,0 +1,330 @@
+{
+  "request": "GET /api/grievances/audit",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "entries": [
+      {
+        "action": "void",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0005",
+        "details": "GR-2026-0005 · Short-notice rota changes, Intake · Status: Open → Voided",
+        "entityId": 5,
+        "entityType": "grievance",
+        "id": 29,
+        "occurredAt": "2026-09-23T09:10:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0005",
+        "details": "GR-2026-0005 · Short-notice rota changes, Intake",
+        "entityId": 5,
+        "entityType": "grievance",
+        "id": 28,
+        "occurredAt": "2026-09-23T09:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0004",
+        "details": "GR-2026-0004 E02 · Asked Intake for the last three rotas",
+        "entityId": 23,
+        "entityType": "grievance_entry",
+        "id": 27,
+        "occurredAt": "2026-09-21T14:00:00.000Z",
+        "seq": 2
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0004",
+        "details": "GR-2026-0004 · Rota changes posted with less than a week's notice",
+        "entityId": 4,
+        "entityType": "grievance",
+        "id": 26,
+        "occurredAt": "2026-09-19T11:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 · Stairwell lights failing at night, Harbour House · Status: In progress → Resolved",
+        "entityId": 2,
+        "entityType": "grievance",
+        "id": 17,
+        "occurredAt": "2026-09-11T09:30:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 E07 · Timer replaced",
+        "entityId": 14,
+        "entityType": "grievance_entry",
+        "id": 16,
+        "occurredAt": "2026-09-10T16:00:00.000Z",
+        "seq": 7
+      },
+      {
+        "action": "withdraw",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 · rota-notes.txt",
+        "entityId": 4,
+        "entityType": "grievance_attachment",
+        "id": 25,
+        "occurredAt": "2026-09-02T09:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "attach",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 · rota-notes.txt",
+        "entityId": 4,
+        "entityType": "grievance_attachment",
+        "id": 24,
+        "occurredAt": "2026-09-01T11:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "attach",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 · witness-statement-1.txt",
+        "entityId": 3,
+        "entityType": "grievance_attachment",
+        "id": 23,
+        "occurredAt": "2026-09-01T11:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 E05 · Statements taken",
+        "entityId": 20,
+        "entityType": "grievance_entry",
+        "id": 22,
+        "occurredAt": "2026-09-01T11:00:00.000Z",
+        "seq": 5
+      },
+      {
+        "action": "entry",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 E04 · Interview with Owen",
+        "entityId": 19,
+        "entityType": "grievance_entry",
+        "id": 21,
+        "occurredAt": "2026-08-26T15:00:00.000Z",
+        "seq": 4
+      },
+      {
+        "action": "status",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 · Comments about accent in team meetings · Status: Open → In progress",
+        "entityId": 3,
+        "entityType": "grievance",
+        "id": 20,
+        "occurredAt": "2026-08-24T09:05:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "owner",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 · Comments about accent in team meetings · Owner: Priya Raghunathan → Alice Nkemdirim",
+        "entityId": 3,
+        "entityType": "grievance",
+        "id": 19,
+        "occurredAt": "2026-08-24T09:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "create",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0003",
+        "details": "GR-2026-0003 · Comments about accent in team meetings",
+        "entityId": 3,
+        "entityType": "grievance",
+        "id": 18,
+        "occurredAt": "2026-08-22T10:05:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "update",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 · Stairwell lights failing at night, Harbour House · Edited: Title, Short description",
+        "entityId": 2,
+        "entityType": "grievance",
+        "id": 15,
+        "occurredAt": "2026-08-12T11:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 E05 · Walk-through was with Ivo, not Grant",
+        "entityId": 12,
+        "entityType": "grievance_entry",
+        "id": 14,
+        "occurredAt": "2026-08-08T09:10:00.000Z",
+        "seq": 5
+      },
+      {
+        "action": "attach",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 · walkthrough-notes.txt",
+        "entityId": 2,
+        "entityType": "grievance_attachment",
+        "id": 13,
+        "occurredAt": "2026-08-07T15:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 E04 · Facilities walk-through",
+        "entityId": 11,
+        "entityType": "grievance_entry",
+        "id": 12,
+        "occurredAt": "2026-08-07T15:00:00.000Z",
+        "seq": 4
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 · Stairwell lighting at Harbour House · Status: Open → In progress",
+        "entityId": 2,
+        "entityType": "grievance",
+        "id": 11,
+        "occurredAt": "2026-08-05T10:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 E02 · Earlier near-fall reported by night staff",
+        "entityId": 9,
+        "entityType": "grievance_entry",
+        "id": 10,
+        "occurredAt": "2026-08-04T09:00:00.000Z",
+        "seq": 2
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "code": "GR-2026-0002",
+        "details": "GR-2026-0002 · Stairwell lighting at Harbour House",
+        "entityId": 2,
+        "entityType": "grievance",
+        "id": 9,
+        "occurredAt": "2026-08-02T13:15:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "status",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 · Overtime not paid for July double shifts · Status: Resolved → Closed",
+        "entityId": 1,
+        "entityType": "grievance",
+        "id": 8,
+        "occurredAt": "2026-08-02T09:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "status",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 · Overtime not paid for July double shifts · Status: In progress → Resolved",
+        "entityId": 1,
+        "entityType": "grievance",
+        "id": 7,
+        "occurredAt": "2026-07-23T11:00:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 E05 · Back pay approved",
+        "entityId": 5,
+        "entityType": "grievance_entry",
+        "id": 6,
+        "occurredAt": "2026-07-13T10:00:00.000Z",
+        "seq": 5
+      },
+      {
+        "action": "entry",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 E04 · Payroll confirmed the hours were missed",
+        "entityId": 4,
+        "entityType": "grievance_entry",
+        "id": 5,
+        "occurredAt": "2026-07-05T16:00:00.000Z",
+        "seq": 4
+      },
+      {
+        "action": "status",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 · Overtime not paid for July double shifts · Status: Open → In progress",
+        "entityId": 1,
+        "entityType": "grievance",
+        "id": 4,
+        "occurredAt": "2026-06-30T14:20:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "entry",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 E02 · Met with Tomas and Bilal",
+        "entityId": 2,
+        "entityType": "grievance_entry",
+        "id": 3,
+        "occurredAt": "2026-06-30T14:00:00.000Z",
+        "seq": 2
+      },
+      {
+        "action": "attach",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 · july-timesheet-summary.txt",
+        "entityId": 1,
+        "entityType": "grievance_attachment",
+        "id": 2,
+        "occurredAt": "2026-06-28T09:40:00.000Z",
+        "seq": null
+      },
+      {
+        "action": "create",
+        "actor": "p.raghunathan@bphs.local",
+        "code": "GR-2026-0001",
+        "details": "GR-2026-0001 · Overtime not paid for July double shifts",
+        "entityId": 1,
+        "entityType": "grievance",
+        "id": 1,
+        "occurredAt": "2026-06-28T09:40:00.000Z",
+        "seq": null
+      }
+    ],
+    "total": 29
+  }
+}

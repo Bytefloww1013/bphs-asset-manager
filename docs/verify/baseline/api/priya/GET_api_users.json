@@ -1,0 +1,110 @@
+{
+  "request": "GET /api/users",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "access": {
+        "employees": "edit",
+        "grievances": "edit",
+        "tasks": "assign"
+      },
+      "email": "d.whitfield@bphs.local",
+      "employeeId": 2,
+      "failedLogins": 0,
+      "id": 3,
+      "lastLoginAt": null,
+      "lockedUntil": null,
+      "mustChangePassword": true,
+      "name": "Dana Whitfield",
+      "state": "active",
+      "superAdmin": false
+    },
+    {
+      "access": {
+        "assets": "edit",
+        "employees": "edit",
+        "grievances": "edit",
+        "reviews": "edit",
+        "tasks": "edit"
+      },
+      "email": "m.oyelaran@bphs.local",
+      "employeeId": 3,
+      "failedLogins": 0,
+      "id": 2,
+      "lastLoginAt": "2026-10-01T10:00:00.000Z",
+      "lockedUntil": null,
+      "mustChangePassword": false,
+      "name": "Marcus Oyelaran",
+      "state": "active",
+      "superAdmin": false
+    },
+    {
+      "access": {
+        "assets": "edit",
+        "employees": "edit"
+      },
+      "email": "ops@bphs.local",
+      "employeeId": 5,
+      "failedLogins": 5,
+      "id": 4,
+      "lastLoginAt": "2026-09-30T08:00:00.000Z",
+      "lockedUntil": "2026-10-01T13:11:00.000Z",
+      "mustChangePassword": false,
+      "name": "Ops Account",
+      "state": "locked",
+      "superAdmin": false
+    },
+    {
+      "access": {},
+      "email": "p.raghunathan@bphs.local",
+      "employeeId": 1,
+      "failedLogins": 0,
+      "id": 1,
+      "lastLoginAt": "2026-10-01T13:00:00.000Z",
+      "lockedUntil": null,
+      "mustChangePassword": false,
+      "name": "Priya Raghunathan",
+      "state": "active",
+      "superAdmin": true
+    },
+    {
+      "access": {
+        "assets": "read",
+        "employees": "read",
+        "grievances": "read",
+        "maintenance": "read",
+        "reviews": "read",
+        "tasks": "read"
+      },
+      "email": "r.delgado@bphs.local",
+      "employeeId": 10,
+      "failedLogins": 0,
+      "id": 6,
+      "lastLoginAt": "2026-09-28T12:00:00.000Z",
+      "lockedUntil": null,
+      "mustChangePassword": false,
+      "name": "Rosa Delgado",
+      "state": "active",
+      "superAdmin": false
+    },
+    {
+      "access": {
+        "assets": "edit",
+        "employees": "edit",
+        "grievances": "edit"
+      },
+      "email": "n.abernathy@bphs.local",
+      "employeeId": 9,
+      "failedLogins": 0,
+      "id": 5,
+      "lastLoginAt": "2026-05-04T06:00:00.000Z",
+      "lockedUntil": null,
+      "mustChangePassword": false,
+      "name": "Neil Abernathy",
+      "state": "deactivated",
+      "superAdmin": false
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+# `{{id}}` ({{tier}})
+
+{{Label}}: say here, in a line or two, what this module is for and who uses it.
+
+## Tables
+
+- `{{table}}` (`server/schema.ts`): `name`, `created_at`.
+
+## Resources and rules
+
+- `{{id}}`, {{where}}: Read lists the entries, Edit adds them, and Full is the same as Edit.
+- Each add writes an audit entry (`{{id}}`) in the same transaction.
+
+## Hooks
+
+- None yet. The hooks and slots a module can provide or use are in `docs/modules.md`.
+
+## Public API
+
+- `server/index.ts`: the `{{camel}}` table.
+- `shared/index.ts`: `{{camel}}CreateSchema`, `{{Pascal}}CreateInput`, `{{Pascal}}Row`.
+- `web/index.ts`: `{{camel}}Query`.
+
+## Pages
+
+- `/{{id}}` (`web/routes/route.tsx`).
+
+## Gotchas
+
+- None yet.

@@ -4,9 +4,9 @@ Final result: passed
 
 This is the local visual/interaction result. The Docker runtime, actual desktop hover, and stale-icon cache checks now pass. The user clarified that VPS deployment and public DNS/TLS verification are outside this brand-update task. All required brand acceptance checks are complete.
 
-**Source visual truth:** supplied `brand-assets/hero-banner.png`, `logo-header-wide.png`, and `favicon-1024.png`; existing rendered app baseline in `docs/brand-review/phase0.png`; the approved placement/palette requirements in BRAND-UPDATE.md. The user explicitly authorized SVG reconstruction and the login hero. Comparisons assess preservation of the working interface plus these intentional changes, rather than treating the old placeholder artwork as the target.
+**Source visual truth:** supplied `brand-assets/hero-banner.png`, `logo-header-wide.png`, and `favicon-1024.png`; existing rendered app baseline in `docs/brand-review/phase0.png`; the approved placement/palette requirements in BRAND-UPDATE.md (since removed; `git show 1a562fe^:BRAND-UPDATE.md`). The user explicitly authorized SVG reconstruction and the login hero. Comparisons assess preservation of the working interface plus these intentional changes, rather than treating the old placeholder artwork as the target.
 
-**Rendered implementation:** production Vite output served by the existing Node server on local port 3140 with isolated seeded data. Full-view comparisons: `docs/brand-review/phase1.png` through `phase5.png`. Final readable views: `docs/brand-review/login-desktop.png`, `login-phone.png`, and `standalone-error-phone.png`. Individual route/state captures and browser scripts remain in `/tmp/bphs-brand-review/`.
+**Rendered implementation:** production Vite output served by the existing Node server on local port 3140 with isolated seeded data. Full-view comparisons: `docs/brand-review/phase1.png` through `phase5.png`. Final readable views: `docs/brand-review/login-desktop.png`, `login-phone.png`, and `standalone-error-phone.png`. Individual route/state captures and browser scripts were kept in `/tmp/bphs-brand-review/`, which is gone.
 
 **Viewport/density:** desktop 1440×1000, tablet 834×1112, phone 390×844, narrow phone 320×740; DPR 1, light theme, self-hosted Geist loaded before capture. Full-page screenshots can extend below the CSS viewport for long records; comparisons pair the same route, content, viewport, and auth state. Seed data, last-login events, and relative timestamps differ slightly across runs; these are not design findings.
 
@@ -49,7 +49,7 @@ Final project checks pass: client/server typecheck, production build, and 176 te
 
 # My Space end-to-end check (2026-10-19)
 
-Result: passed, 33 of 33. This is the check for the My Space slice 2.2 (the plan is in git history).
+Result: passed, 33 of 33. This is the check for the My Space slice 2.2 (the plan is in git history). My Space has since become Home, first in the workspace rail (#6, merged in #15): the account-menu entry and the Back link are gone, and Personal Dashboard is now My Dashboard, so those steps no longer apply.
 
 **Setup:** a production build (`bun run build`) served by the Node server (`SERVE_WEB=true`) with isolated seeded data. Headless Firefox driven by puppeteer-core, at 1366×860 (wide) and 390×844 (narrow, drawer). All accounts use the seed password.
 
@@ -128,7 +128,7 @@ Result: passed, 47 of 47. This is the check for the notifications slice 5.2 (the
 
 **Not covered:**
 - A real screen reader. Names and "Muted." were checked from the DOM.
-- In the browser: the overdue reminder, a digital asset issue, a bulk return, an account unlock and a linked-employee change. Each is covered by `server/tests/notification-events.test.ts`.
+- In the browser: the overdue reminder, a digital asset issue, a bulk return, an account unlock and a linked-employee change. Each is covered by a server test, now `modules/assets/server/notifications.test.ts` (the overdue reminder, the bulk return), `modules/digital-assets/server/notifications.test.ts` (the digital asset issue) and `server/tests/notification-events.test.ts` (the unlock, the linked-employee change).
 - The 30-second refetch was not timed. Counts were read after navigating or bringing the tab to the front.
 
 **Follow-up fixes (same day):** two gaps from the slice 3 check, rechecked on a seeded production build, 11 of 11 (the pre-fix build failed 6 of them).

@@ -1,12 +1,32 @@
-import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
 import { redirect } from '@tanstack/react-router'
 import { useEffect, useSyncExternalStore } from 'react'
 import { isInAppPath, type AccessLevel, type Section } from '@shared/constants.ts'
 import { canAt, canUseWorkspace, needsAccess, workspacesOf } from '@shared/permissions.ts'
 import type { SessionUser } from '@shared/types.ts'
-import { meQuery } from './queries.ts'
+import { ApiError, api } from './api.ts'
 import { APP_NAME } from './brand.ts'
-import { WORKSPACE_HOME, type Area } from './workspace.ts'
+import { workspaceHome, type Area } from './workspace.ts'
+
+export const meQuery = queryOptions({
+  queryKey: ['me'],
+  queryFn: async ({ client }): Promise<SessionUser | null> => {
+    try {
+      return (await api.get<{ user: SessionUser }>('/auth/me')).user
+    } catch (error) {
+      // Signed out: nobody. But a tab that was signed in keeps who it was, as an error, so the page stays up while it asks for the
+      // password again (handleAuthFailure in router.tsx). The API still answers /auth/me for a user who must change their password.
+      if (error instanceof ApiError && error.status === 401 && !client.getQueryData(['me'])) return null
+      throw error
+    }
+  },
+  retry: false,
+})
+
+/** After any write, refresh everything that could have changed. The data set is small; correctness beats cleverness. */
+export function refreshData(queryClient: QueryClient) {
+  return queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
+}
 
 /** The signed-in user. Only call inside routes below the auth guard. */
 export function useUser(): SessionUser {
@@ -45,7 +65,7 @@ export async function requireSession(queryClient: QueryClient, href: string, are
   const user = await queryClient.ensureQueryData(meQuery)
   if (!user) throw redirect({ to: '/login', search: { redirect: returnPath(href) } })
   if (user.mustChangePassword) throw redirect({ to: '/password-change' })
-  if (area !== 'me' && !canUseWorkspace(user, area)) throw redirect({ to: WORKSPACE_HOME[workspacesOf(user)[0]!] })
+  if (area !== 'me' && !canUseWorkspace(user, area)) throw redirect({ to: workspaceHome(workspacesOf(user)[0]!) })
   return user
 }
 

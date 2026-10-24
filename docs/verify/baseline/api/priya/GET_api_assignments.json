@@ -1,0 +1,1516 @@
+{
+  "request": "GET /api/assignments",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "e919dfa2-6dba-48a5-8084-a577e8fdec79",
+      "assetId": 46,
+      "assetModel": "iPhone 13",
+      "assetTag": "BPHS-0046",
+      "assetType": "Phone",
+      "daysOut": 600,
+      "employee": {
+        "code": "E-1102",
+        "department": "Intake",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      "id": 46,
+      "issueRating": "New",
+      "issuedAt": "2025-02-08T06:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": "cf5d4b78-3e4e-41ba-9e61-5aba328b443c",
+      "assetId": 5,
+      "assetModel": "Latitude 7440",
+      "assetTag": "BPHS-0005",
+      "assetType": "Laptop",
+      "daysOut": 556,
+      "employee": null,
+      "id": 135,
+      "issueRating": "Good",
+      "issuedAt": "2025-03-24T07:46:56.560Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": {
+        "code": "PRG-310",
+        "id": 4,
+        "name": "Youth Outreach"
+      }
+    },
+    {
+      "assetBrand": "Microsoft",
+      "assetEntraObjectId": null,
+      "assetId": 97,
+      "assetModel": "Wired Keyboard 600",
+      "assetTag": "BPHS-0097",
+      "assetType": "Keyboard",
+      "daysOut": 354,
+      "employee": {
+        "code": "E-1177",
+        "department": "IT",
+        "id": 11,
+        "name": "Wen Zhao"
+      },
+      "id": 106,
+      "issueRating": "New",
+      "issuedAt": "2025-10-12T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "e790c279-6cfb-4184-8ef7-9a76abc8c141",
+      "assetId": 45,
+      "assetModel": "iPhone 14",
+      "assetTag": "BPHS-0045",
+      "assetType": "Phone",
+      "daysOut": 333,
+      "employee": {
+        "code": "E-1247",
+        "department": "Facilities",
+        "id": 14,
+        "name": "Ivo Petrov"
+      },
+      "id": 44,
+      "issueRating": "Good",
+      "issuedAt": "2025-11-02T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "30d2de56-48bf-4eff-af8f-4b1c34a23b7d",
+      "assetId": 26,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0026",
+      "assetType": "Laptop",
+      "daysOut": 328,
+      "employee": {
+        "code": "E-1233",
+        "department": "Clinical Services",
+        "id": 13,
+        "name": "Hanna Vuorinen"
+      },
+      "id": 28,
+      "issueRating": "Good",
+      "issuedAt": "2025-11-07T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 104,
+      "assetModel": "MK270",
+      "assetTag": "BPHS-0104",
+      "assetType": "Keyboard",
+      "daysOut": 325,
+      "employee": {
+        "code": "E-1201",
+        "department": "Residential",
+        "id": 4,
+        "name": "Tomas Berger"
+      },
+      "id": 117,
+      "issueRating": "Good",
+      "issuedAt": "2025-11-10T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": null,
+      "assetId": 77,
+      "assetModel": "S24C450",
+      "assetTag": "BPHS-0077",
+      "assetType": "Monitor",
+      "daysOut": 320,
+      "employee": {
+        "code": "E-1304",
+        "department": "Intake",
+        "id": 19,
+        "name": "Jules Okafor"
+      },
+      "id": 79,
+      "issueRating": "Good",
+      "issuedAt": "2025-11-15T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "0884ad6c-4379-43ba-9833-35ac8f6aa48d",
+      "assetId": 8,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0008",
+      "assetType": "Laptop",
+      "daysOut": 314,
+      "employee": null,
+      "id": 138,
+      "issueRating": "Good",
+      "issuedAt": "2025-11-20T16:39:18.658Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-110",
+        "id": 2,
+        "name": "Maple Court Residential"
+      }
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 98,
+      "assetModel": "K120",
+      "assetTag": "BPHS-0098",
+      "assetType": "Keyboard",
+      "daysOut": 300,
+      "employee": {
+        "code": "E-1042",
+        "department": "IT",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "id": 107,
+      "issueRating": "Good",
+      "issuedAt": "2025-12-05T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": null,
+      "assetId": 78,
+      "assetModel": null,
+      "assetTag": "BPHS-0078",
+      "assetType": "Monitor",
+      "daysOut": 273,
+      "employee": {
+        "code": "E-1288",
+        "department": "HR",
+        "id": 6,
+        "name": "Alice Nkemdirim"
+      },
+      "id": 82,
+      "issueRating": "Good",
+      "issuedAt": "2026-01-01T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 86,
+      "assetModel": "E24 G5",
+      "assetTag": "BPHS-0086",
+      "assetType": "Monitor",
+      "daysOut": 270,
+      "employee": {
+        "code": "E-0904",
+        "department": "Finance",
+        "id": 8,
+        "name": "Aaron Feldman-Rees"
+      },
+      "id": 95,
+      "issueRating": "Good",
+      "issuedAt": "2026-01-04T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": null,
+      "assetId": 49,
+      "assetModel": "iPhone 13",
+      "assetTag": "BPHS-0049",
+      "assetType": "Phone",
+      "daysOut": 267,
+      "employee": {
+        "code": "E-1271",
+        "department": "Finance",
+        "id": 16,
+        "name": "Kerry Milton"
+      },
+      "id": 48,
+      "issueRating": "Good",
+      "issuedAt": "2026-01-07T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Lenovo",
+      "assetEntraObjectId": "00f89fe5-dff0-42f5-9183-5933f77ab819",
+      "assetId": 27,
+      "assetModel": "ThinkPad T14 Gen 4",
+      "assetTag": "BPHS-0027",
+      "assetType": "Laptop",
+      "daysOut": 259,
+      "employee": {
+        "code": "E-0988",
+        "department": "Finance",
+        "id": 3,
+        "name": "Marcus Oyelaran"
+      },
+      "id": 29,
+      "issueRating": "Good",
+      "issuedAt": "2026-01-15T12:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Microsoft",
+      "assetEntraObjectId": null,
+      "assetId": 113,
+      "assetModel": null,
+      "assetTag": "BPHS-0113",
+      "assetType": "Mouse",
+      "daysOut": 253,
+      "employee": {
+        "code": "E-1315",
+        "department": "Intake",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      "id": 130,
+      "issueRating": "New",
+      "issuedAt": "2026-01-21T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Microsoft",
+      "assetEntraObjectId": null,
+      "assetId": 116,
+      "assetModel": "Basic Optical Mouse",
+      "assetTag": "BPHS-0116",
+      "assetType": "Mouse",
+      "daysOut": 249,
+      "employee": {
+        "code": "E-1322",
+        "department": "Clinical Services",
+        "id": 20,
+        "name": "Elena Marsh"
+      },
+      "id": 132,
+      "issueRating": "Good",
+      "issuedAt": "2026-01-25T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 16,
+      "assetModel": "ProBook 450 G9",
+      "assetTag": "BPHS-0016",
+      "assetType": "Laptop",
+      "daysOut": 247,
+      "employee": null,
+      "id": 140,
+      "issueRating": "Good",
+      "issuedAt": "2026-01-26T16:28:31.554Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-400",
+        "id": 5,
+        "name": "Day Program"
+      }
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "53c6bf82-2c7a-4d5f-aa61-ecd56980b666",
+      "assetId": 14,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0014",
+      "assetType": "Laptop",
+      "daysOut": 242,
+      "employee": {
+        "code": "E-1102",
+        "department": "Intake",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      "id": 12,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-01T08:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": null,
+      "assetId": 71,
+      "assetModel": "S24C450",
+      "assetTag": "BPHS-0071",
+      "assetType": "Monitor",
+      "daysOut": 239,
+      "employee": {
+        "code": "E-1247",
+        "department": "Facilities",
+        "id": 14,
+        "name": "Ivo Petrov"
+      },
+      "id": 72,
+      "issueRating": "New",
+      "issuedAt": "2026-02-04T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 96,
+      "assetModel": null,
+      "assetTag": "BPHS-0096",
+      "assetType": "Keyboard",
+      "daysOut": 235,
+      "employee": {
+        "code": "E-1288",
+        "department": "HR",
+        "id": 6,
+        "name": "Alice Nkemdirim"
+      },
+      "id": 104,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-08T10:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 103,
+      "assetModel": null,
+      "assetTag": "BPHS-0103",
+      "assetType": "Keyboard",
+      "daysOut": 235,
+      "employee": {
+        "code": "E-1339",
+        "department": "IT",
+        "id": 21,
+        "name": "Theo Lindqvist"
+      },
+      "id": 116,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-08T10:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "5cc61000-694e-4b07-b1c6-30cbce6c1a45",
+      "assetId": 7,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0007",
+      "assetType": "Laptop",
+      "daysOut": 231,
+      "employee": null,
+      "id": 137,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-11T19:07:08.050Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-310",
+        "id": 4,
+        "name": "Youth Outreach"
+      }
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "c4a1a692-9d4a-4109-98b4-fb79b80942b0",
+      "assetId": 11,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0011",
+      "assetType": "Laptop",
+      "daysOut": 227,
+      "employee": {
+        "code": "E-1315",
+        "department": "Intake",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      "id": 9,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-16T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "c76412d9-cdc7-46e8-bdf9-d53e896340a7",
+      "assetId": 56,
+      "assetModel": "iPhone 13",
+      "assetTag": "BPHS-0056",
+      "assetType": "Phone",
+      "daysOut": 223,
+      "employee": {
+        "code": "E-0988",
+        "department": "Finance",
+        "id": 3,
+        "name": "Marcus Oyelaran"
+      },
+      "id": 57,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-20T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": "a2e12b2e-e770-45e4-9c35-41aa731d3418",
+      "assetId": 18,
+      "assetModel": "EliteBook 840 G10",
+      "assetTag": "BPHS-0018",
+      "assetType": "Laptop",
+      "daysOut": 222,
+      "employee": null,
+      "id": 142,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-20T23:41:58.413Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": {
+        "code": "PRG-110",
+        "id": 2,
+        "name": "Maple Court Residential"
+      }
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 90,
+      "assetModel": null,
+      "assetTag": "BPHS-0090",
+      "assetType": "Keyboard",
+      "daysOut": 220,
+      "employee": {
+        "code": "E-0904",
+        "department": "Finance",
+        "id": 8,
+        "name": "Aaron Feldman-Rees"
+      },
+      "id": 97,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-23T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 100,
+      "assetModel": null,
+      "assetTag": "BPHS-0100",
+      "assetType": "Keyboard",
+      "daysOut": 216,
+      "employee": {
+        "code": "E-1201",
+        "department": "Residential",
+        "id": 4,
+        "name": "Tomas Berger"
+      },
+      "id": 110,
+      "issueRating": "Good",
+      "issuedAt": "2026-02-27T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": "b1de9644-0ead-4273-86d8-cc0707060d7f",
+      "assetId": 12,
+      "assetModel": "EliteBook 840 G10",
+      "assetTag": "BPHS-0012",
+      "assetType": "Laptop",
+      "daysOut": 208,
+      "employee": null,
+      "id": 139,
+      "issueRating": "Good",
+      "issuedAt": "2026-03-07T08:17:07.045Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-200",
+        "id": 3,
+        "name": "Downtown Intake Centre"
+      }
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": "3794b1cb-8859-4587-870f-53b1e5e7714c",
+      "assetId": 13,
+      "assetModel": "Latitude 5440",
+      "assetTag": "BPHS-0013",
+      "assetType": "Laptop",
+      "daysOut": 208,
+      "employee": {
+        "code": "E-1219",
+        "department": "Residential",
+        "id": 12,
+        "name": "Bilal Osman"
+      },
+      "id": 11,
+      "issueRating": "New",
+      "issuedAt": "2026-03-07T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 101,
+      "assetModel": "MK270",
+      "assetTag": "BPHS-0101",
+      "assetType": "Keyboard",
+      "daysOut": 203,
+      "employee": {
+        "code": "E-1356",
+        "department": "Residential",
+        "id": 23,
+        "name": "Callum Reyes"
+      },
+      "id": 111,
+      "issueRating": "Good",
+      "issuedAt": "2026-03-12T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "5ef50f61-abf9-4397-bc70-b71da6951d9b",
+      "assetId": 32,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0032",
+      "assetType": "Laptop",
+      "daysOut": 181,
+      "employee": {
+        "code": "E-1042",
+        "department": "IT",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "id": 34,
+      "issueRating": "Good",
+      "issuedAt": "2026-04-03T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 106,
+      "assetModel": null,
+      "assetTag": "BPHS-0106",
+      "assetType": "Mouse",
+      "daysOut": 176,
+      "employee": {
+        "code": "E-0761",
+        "department": "Facilities",
+        "id": 5,
+        "name": "Grant Halloway"
+      },
+      "id": 119,
+      "issueRating": "New",
+      "issuedAt": "2026-04-08T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Lenovo",
+      "assetEntraObjectId": "a6f34ecf-bb4f-4892-b8e5-c7f72f0acb6c",
+      "assetId": 9,
+      "assetModel": "ThinkPad T14 Gen 4",
+      "assetTag": "BPHS-0009",
+      "assetType": "Laptop",
+      "daysOut": 174,
+      "employee": {
+        "code": "E-0988",
+        "department": "Finance",
+        "id": 3,
+        "name": "Marcus Oyelaran"
+      },
+      "id": 5,
+      "issueRating": "Good",
+      "issuedAt": "2026-04-10T08:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 80,
+      "assetModel": "E24 G5",
+      "assetTag": "BPHS-0080",
+      "assetType": "Monitor",
+      "daysOut": 170,
+      "employee": {
+        "code": "E-1042",
+        "department": "IT",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "id": 86,
+      "issueRating": "Good",
+      "issuedAt": "2026-04-14T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": null,
+      "assetId": 62,
+      "assetModel": "P2723DE",
+      "assetTag": "BPHS-0062",
+      "assetType": "Monitor",
+      "daysOut": 161,
+      "employee": {
+        "code": "E-1356",
+        "department": "Residential",
+        "id": 23,
+        "name": "Callum Reyes"
+      },
+      "id": 64,
+      "issueRating": "New",
+      "issuedAt": "2026-04-23T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 102,
+      "assetModel": null,
+      "assetTag": "BPHS-0102",
+      "assetType": "Keyboard",
+      "daysOut": 160,
+      "employee": {
+        "code": "E-1233",
+        "department": "Clinical Services",
+        "id": 13,
+        "name": "Hanna Vuorinen"
+      },
+      "id": 113,
+      "issueRating": "New",
+      "issuedAt": "2026-04-24T08:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": null,
+      "assetId": 63,
+      "assetModel": "P2723DE",
+      "assetTag": "BPHS-0063",
+      "assetType": "Monitor",
+      "daysOut": 158,
+      "employee": {
+        "code": "E-1102",
+        "department": "Intake",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      "id": 66,
+      "issueRating": "Good",
+      "issuedAt": "2026-04-26T08:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": null,
+      "assetId": 68,
+      "assetModel": "S24C450",
+      "assetTag": "BPHS-0068",
+      "assetType": "Monitor",
+      "daysOut": 153,
+      "employee": {
+        "code": "E-1363",
+        "department": "HR",
+        "id": 24,
+        "name": "Imani Brooks"
+      },
+      "id": 71,
+      "issueRating": "New",
+      "issuedAt": "2026-05-01T07:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": null,
+      "assetId": 64,
+      "assetModel": null,
+      "assetTag": "BPHS-0064",
+      "assetType": "Monitor",
+      "daysOut": 152,
+      "employee": {
+        "code": "E-1304",
+        "department": "Intake",
+        "id": 19,
+        "name": "Jules Okafor"
+      },
+      "id": 68,
+      "issueRating": "Good",
+      "issuedAt": "2026-05-02T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 99,
+      "assetModel": "K120",
+      "assetTag": "BPHS-0099",
+      "assetType": "Keyboard",
+      "daysOut": 147,
+      "employee": {
+        "code": "E-1356",
+        "department": "Residential",
+        "id": 23,
+        "name": "Callum Reyes"
+      },
+      "id": 108,
+      "issueRating": "Good",
+      "issuedAt": "2026-05-07T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": "763c28e9-ee68-4f72-ad6e-ef6907725bbc",
+      "assetId": 15,
+      "assetModel": "ProBook 450 G9",
+      "assetTag": "BPHS-0015",
+      "assetType": "Laptop",
+      "daysOut": 134,
+      "employee": {
+        "code": "E-1201",
+        "department": "Residential",
+        "id": 4,
+        "name": "Tomas Berger"
+      },
+      "id": 13,
+      "issueRating": "Good",
+      "issuedAt": "2026-05-20T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Microsoft",
+      "assetEntraObjectId": null,
+      "assetId": 111,
+      "assetModel": null,
+      "assetTag": "BPHS-0111",
+      "assetType": "Mouse",
+      "daysOut": 133,
+      "employee": {
+        "code": "E-1247",
+        "department": "Facilities",
+        "id": 14,
+        "name": "Ivo Petrov"
+      },
+      "id": 127,
+      "issueRating": "New",
+      "issuedAt": "2026-05-21T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "e9286288-8dbc-4b25-9b70-0c2adf86bcbf",
+      "assetId": 60,
+      "assetModel": "iPhone SE (3rd gen)",
+      "assetTag": "BPHS-0060",
+      "assetType": "Phone",
+      "daysOut": 129,
+      "employee": {
+        "code": "E-1315",
+        "department": "Intake",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      "id": 59,
+      "issueRating": "Good",
+      "issuedAt": "2026-05-25T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": "deab9436-a576-4ba3-ad3e-e7a4b49ddc0b",
+      "assetId": 21,
+      "assetModel": "Latitude 5440",
+      "assetTag": "BPHS-0021",
+      "assetType": "Laptop",
+      "daysOut": 126,
+      "employee": {
+        "code": "E-1348",
+        "department": "Finance",
+        "id": 22,
+        "name": "Farah Siddiqui"
+      },
+      "id": 19,
+      "issueRating": "New",
+      "issuedAt": "2026-05-28T08:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Lenovo",
+      "assetEntraObjectId": "6daa2a05-6a4c-4b15-8593-1d41c911da08",
+      "assetId": 23,
+      "assetModel": "ThinkPad E14",
+      "assetTag": "BPHS-0023",
+      "assetType": "Laptop",
+      "daysOut": 124,
+      "employee": {
+        "code": "E-1322",
+        "department": "Clinical Services",
+        "id": 20,
+        "name": "Elena Marsh"
+      },
+      "id": 22,
+      "issueRating": "Good",
+      "issuedAt": "2026-05-30T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Lenovo",
+      "assetEntraObjectId": null,
+      "assetId": 2,
+      "assetModel": "ThinkPad T14 Gen 4",
+      "assetTag": "BPHS-0002",
+      "assetType": "Laptop",
+      "daysOut": 122,
+      "employee": {
+        "code": "E-1201",
+        "department": "Residential",
+        "id": 4,
+        "name": "Tomas Berger"
+      },
+      "id": 3,
+      "issueRating": "New",
+      "issuedAt": "2026-06-01T11:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": "1bdfabb3-3be0-46f6-8637-042e15934335",
+      "assetId": 54,
+      "assetModel": null,
+      "assetTag": "BPHS-0054",
+      "assetType": "Phone",
+      "daysOut": 122,
+      "employee": {
+        "code": "E-1042",
+        "department": "IT",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "id": 54,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-01T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "c00ece45-7114-40d2-af41-e2b9b12454a5",
+      "assetId": 36,
+      "assetModel": "iPhone 14",
+      "assetTag": "BPHS-0036",
+      "assetType": "Phone",
+      "daysOut": 119,
+      "employee": {
+        "code": "E-0761",
+        "department": "Facilities",
+        "id": 5,
+        "name": "Grant Halloway"
+      },
+      "id": 38,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-04T09:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Lenovo",
+      "assetEntraObjectId": "aa42e597-d255-49c2-9870-c054865d097a",
+      "assetId": 28,
+      "assetModel": "ThinkPad T14 Gen 4",
+      "assetTag": "BPHS-0028",
+      "assetType": "Laptop",
+      "daysOut": 111,
+      "employee": null,
+      "id": 144,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-11T19:52:24.980Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-310",
+        "id": 4,
+        "name": "Youth Outreach"
+      }
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "a958f430-2d13-49e6-ba78-2e0d22f13b79",
+      "assetId": 41,
+      "assetModel": "iPhone 13",
+      "assetTag": "BPHS-0041",
+      "assetType": "Phone",
+      "daysOut": 111,
+      "employee": {
+        "code": "E-1322",
+        "department": "Clinical Services",
+        "id": 20,
+        "name": "Elena Marsh"
+      },
+      "id": 40,
+      "issueRating": "New",
+      "issuedAt": "2026-06-12T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "5a4c3cd1-e6ad-4980-aeeb-8832e4f016bb",
+      "assetId": 47,
+      "assetModel": "iPhone 14",
+      "assetTag": "BPHS-0047",
+      "assetType": "Phone",
+      "daysOut": 107,
+      "employee": {
+        "code": "E-1177",
+        "department": "IT",
+        "id": 11,
+        "name": "Wen Zhao"
+      },
+      "id": 47,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-16T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Lenovo",
+      "assetEntraObjectId": "b9c0cd12-291e-4cbd-ba6c-79fd4d8a424f",
+      "assetId": 4,
+      "assetModel": "ThinkPad E14",
+      "assetTag": "BPHS-0004",
+      "assetType": "Laptop",
+      "daysOut": 105,
+      "employee": null,
+      "id": 134,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-18T07:51:39.498Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": {
+        "code": "PRG-110",
+        "id": 2,
+        "name": "Maple Court Residential"
+      }
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 84,
+      "assetModel": "E24 G5",
+      "assetTag": "BPHS-0084",
+      "assetType": "Monitor",
+      "daysOut": 102,
+      "employee": {
+        "code": "E-1348",
+        "department": "Finance",
+        "id": 22,
+        "name": "Farah Siddiqui"
+      },
+      "id": 92,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-21T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": null,
+      "assetId": 42,
+      "assetModel": "Galaxy S23",
+      "assetTag": "BPHS-0042",
+      "assetType": "Phone",
+      "daysOut": 96,
+      "employee": {
+        "code": "E-0761",
+        "department": "Facilities",
+        "id": 5,
+        "name": "Grant Halloway"
+      },
+      "id": 42,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-27T07:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "1ddd3342-25cb-4c76-bdc7-86e40a8396a9",
+      "assetId": 17,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0017",
+      "assetType": "Laptop",
+      "daysOut": 95,
+      "employee": null,
+      "id": 141,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-27T16:01:28.248Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-400",
+        "id": 5,
+        "name": "Day Program"
+      }
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 72,
+      "assetModel": "E24 G5",
+      "assetTag": "BPHS-0072",
+      "assetType": "Monitor",
+      "daysOut": 93,
+      "employee": {
+        "code": "E-1247",
+        "department": "Facilities",
+        "id": 14,
+        "name": "Ivo Petrov"
+      },
+      "id": 74,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-30T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "1dbc0c89-b8fe-4d38-9efb-d6fcc5a53f8c",
+      "assetId": 20,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0020",
+      "assetType": "Laptop",
+      "daysOut": 92,
+      "employee": null,
+      "id": 143,
+      "issueRating": "Good",
+      "issuedAt": "2026-06-30T20:51:20.256Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": {
+        "code": "PRG-400",
+        "id": 5,
+        "name": "Day Program"
+      }
+    },
+    {
+      "assetBrand": "Microsoft",
+      "assetEntraObjectId": null,
+      "assetId": 92,
+      "assetModel": "Wired Keyboard 600",
+      "assetTag": "BPHS-0092",
+      "assetType": "Keyboard",
+      "daysOut": 89,
+      "employee": {
+        "code": "E-0904",
+        "department": "Finance",
+        "id": 8,
+        "name": "Aaron Feldman-Rees"
+      },
+      "id": 99,
+      "issueRating": "New",
+      "issuedAt": "2026-07-04T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Microsoft",
+      "assetEntraObjectId": null,
+      "assetId": 105,
+      "assetModel": "Basic Optical Mouse",
+      "assetTag": "BPHS-0105",
+      "assetType": "Mouse",
+      "daysOut": 84,
+      "employee": {
+        "code": "E-1177",
+        "department": "IT",
+        "id": 11,
+        "name": "Wen Zhao"
+      },
+      "id": 118,
+      "issueRating": "New",
+      "issuedAt": "2026-07-09T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "7fe2dbd9-e768-4963-9f94-7517c6e925e0",
+      "assetId": 24,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0024",
+      "assetType": "Laptop",
+      "daysOut": 81,
+      "employee": {
+        "code": "E-1348",
+        "department": "Finance",
+        "id": 22,
+        "name": "Farah Siddiqui"
+      },
+      "id": 24,
+      "issueRating": "New",
+      "issuedAt": "2026-07-12T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": "69d04d3c-992a-42c8-9037-4ff6b203b470",
+      "assetId": 35,
+      "assetModel": "Galaxy A54",
+      "assetTag": "BPHS-0035",
+      "assetType": "Phone",
+      "daysOut": 77,
+      "employee": {
+        "code": "E-1102",
+        "department": "Intake",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      "id": 37,
+      "issueRating": "New",
+      "issuedAt": "2026-07-16T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 82,
+      "assetModel": "E24 G5",
+      "assetTag": "BPHS-0082",
+      "assetType": "Monitor",
+      "daysOut": 75,
+      "employee": {
+        "code": "E-1102",
+        "department": "Intake",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      "id": 88,
+      "issueRating": "New",
+      "issuedAt": "2026-07-18T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Samsung",
+      "assetEntraObjectId": "f2fff6e9-7f9b-400b-97ba-01ca184ec80b",
+      "assetId": 55,
+      "assetModel": "Galaxy A54",
+      "assetTag": "BPHS-0055",
+      "assetType": "Phone",
+      "daysOut": 73,
+      "employee": {
+        "code": "E-1219",
+        "department": "Residential",
+        "id": 12,
+        "name": "Bilal Osman"
+      },
+      "id": 56,
+      "issueRating": "New",
+      "issuedAt": "2026-07-20T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": "5253b55b-7963-4191-8ecc-5bdbb259e49d",
+      "assetId": 1,
+      "assetModel": "EliteBook 840 G10",
+      "assetTag": "BPHS-0001",
+      "assetType": "Laptop",
+      "daysOut": 70,
+      "employee": {
+        "code": "E-1177",
+        "department": "IT",
+        "id": 11,
+        "name": "Wen Zhao"
+      },
+      "id": 2,
+      "issueRating": "Good",
+      "issuedAt": "2026-07-23T12:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 112,
+      "assetModel": null,
+      "assetTag": "BPHS-0112",
+      "assetType": "Mouse",
+      "daysOut": 67,
+      "employee": {
+        "code": "E-1130",
+        "department": "Clinical Services",
+        "id": 2,
+        "name": "Dana Whitfield"
+      },
+      "id": 128,
+      "issueRating": "Good",
+      "issuedAt": "2026-07-26T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": "84c18567-dbcd-4812-a02a-e030da2ca9ab",
+      "assetId": 31,
+      "assetModel": "Latitude 7440",
+      "assetTag": "BPHS-0031",
+      "assetType": "Laptop",
+      "daysOut": 60,
+      "employee": null,
+      "id": 145,
+      "issueRating": "Good",
+      "issuedAt": "2026-08-02T04:40:52.844Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": {
+        "code": "PRG-200",
+        "id": 3,
+        "name": "Downtown Intake Centre"
+      }
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 10,
+      "assetModel": "ProBook 450 G9",
+      "assetTag": "BPHS-0010",
+      "assetType": "Laptop",
+      "daysOut": 49,
+      "employee": {
+        "code": "E-0904",
+        "department": "Finance",
+        "id": 8,
+        "name": "Aaron Feldman-Rees"
+      },
+      "id": 6,
+      "issueRating": "Good",
+      "issuedAt": "2026-08-13T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": null,
+      "assetId": 51,
+      "assetModel": "iPhone 13",
+      "assetTag": "BPHS-0051",
+      "assetType": "Phone",
+      "daysOut": 48,
+      "employee": {
+        "code": "E-1271",
+        "department": "Finance",
+        "id": 16,
+        "name": "Kerry Milton"
+      },
+      "id": 51,
+      "issueRating": "Good",
+      "issuedAt": "2026-08-14T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": null,
+      "assetId": 29,
+      "assetModel": null,
+      "assetTag": "BPHS-0029",
+      "assetType": "Laptop",
+      "daysOut": 44,
+      "employee": {
+        "code": "E-1219",
+        "department": "Residential",
+        "id": 12,
+        "name": "Bilal Osman"
+      },
+      "id": 31,
+      "issueRating": "Good",
+      "issuedAt": "2026-08-18T05:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Logitech",
+      "assetEntraObjectId": null,
+      "assetId": 110,
+      "assetModel": "M185",
+      "assetTag": "BPHS-0110",
+      "assetType": "Mouse",
+      "daysOut": 44,
+      "employee": {
+        "code": "E-1233",
+        "department": "Clinical Services",
+        "id": 13,
+        "name": "Hanna Vuorinen"
+      },
+      "id": 125,
+      "issueRating": "Good",
+      "issuedAt": "2026-08-18T08:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "7bbb6a15-698c-466f-956c-a82a6cc780d4",
+      "assetId": 22,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0022",
+      "assetType": "Laptop",
+      "daysOut": 35,
+      "employee": {
+        "code": "E-1219",
+        "department": "Residential",
+        "id": 12,
+        "name": "Bilal Osman"
+      },
+      "id": 20,
+      "issueRating": "Good",
+      "issuedAt": "2026-08-27T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "b2db44d9-be27-48d1-9b3a-e4496f8bcda5",
+      "assetId": 19,
+      "assetModel": "MacBook Air 13 M2",
+      "assetTag": "BPHS-0019",
+      "assetType": "Laptop",
+      "daysOut": 26,
+      "employee": {
+        "code": "E-1247",
+        "department": "Facilities",
+        "id": 14,
+        "name": "Ivo Petrov"
+      },
+      "id": 16,
+      "issueRating": "Good",
+      "issuedAt": "2026-09-05T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": "979729bd-1c51-4bc1-a0d0-a6fc298b17a7",
+      "assetId": 6,
+      "assetModel": "Latitude 7440",
+      "assetTag": "BPHS-0006",
+      "assetType": "Laptop",
+      "daysOut": 25,
+      "employee": null,
+      "id": 136,
+      "issueRating": "Good",
+      "issuedAt": "2026-09-06T03:35:44.629Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": {
+        "code": "PRG-400",
+        "id": 5,
+        "name": "Day Program"
+      }
+    },
+    {
+      "assetBrand": "Dell",
+      "assetEntraObjectId": null,
+      "assetId": 88,
+      "assetModel": "P2723DE",
+      "assetTag": "BPHS-0088",
+      "assetType": "Monitor",
+      "daysOut": 24,
+      "employee": {
+        "code": "E-1282",
+        "department": "Clinical Services",
+        "id": 17,
+        "name": "Owen Castellano"
+      },
+      "id": 96,
+      "issueRating": "Good",
+      "issuedAt": "2026-09-07T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "Apple",
+      "assetEntraObjectId": "04b23c6d-2dcb-4ffe-8eb0-277e660acd91",
+      "assetId": 43,
+      "assetModel": "iPhone 13",
+      "assetTag": "BPHS-0043",
+      "assetType": "Phone",
+      "daysOut": 23,
+      "employee": {
+        "code": "E-1288",
+        "department": "HR",
+        "id": 6,
+        "name": "Alice Nkemdirim"
+      },
+      "id": 43,
+      "issueRating": "Good",
+      "issuedAt": "2026-09-08T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 30,
+      "assetModel": "EliteBook 840 G10",
+      "assetTag": "BPHS-0030",
+      "assetType": "Laptop",
+      "daysOut": 12,
+      "employee": {
+        "code": "E-1296",
+        "department": "Residential",
+        "id": 18,
+        "name": "Mina Haddad"
+      },
+      "id": 33,
+      "issueRating": "Good",
+      "issuedAt": "2026-09-19T13:00:00.000Z",
+      "issuedBy": "m.oyelaran@bphs.local",
+      "program": null
+    },
+    {
+      "assetBrand": "HP",
+      "assetEntraObjectId": null,
+      "assetId": 73,
+      "assetModel": "E24 G5",
+      "assetTag": "BPHS-0073",
+      "assetType": "Monitor",
+      "daysOut": 8,
+      "employee": {
+        "code": "E-1315",
+        "department": "Intake",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      "id": 77,
+      "issueRating": "New",
+      "issuedAt": "2026-09-23T13:00:00.000Z",
+      "issuedBy": "p.raghunathan@bphs.local",
+      "program": null
+    }
+  ]
+}

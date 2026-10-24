@@ -1,20 +1,27 @@
 import { useRouterState } from '@tanstack/react-router'
 import { WORKSPACES, WORKSPACE_LABEL, type Workspace } from '@shared/constants.ts'
+import type { RoutePath } from '@/modules.ts'
+import { workspaces } from '@/registry.ts'
+import { once } from './once.ts'
 
 export { WORKSPACE_LABEL, type Workspace }
 
-/** Each workspace's first page. */
-export const WORKSPACE_HOME = {
-  assets: '/',
-  grievances: '/grievances',
-  maintenance: '/maintenance',
-  reviews: '/reviews',
-  tasks: '/tasks',
-} as const satisfies Record<Workspace, string>
+/** Each workspace's first page, which its rail link opens. */
+export const workspaceHome = (workspace: Workspace): RoutePath =>
+  workspaces().find((entry) => entry.id === workspace)?.home ?? '/'
 
-/** The address decides the workspace, so a link, a reload and the back button always land on the right side. */
+// The deepest home first, so the workspace at `/` only takes what no other holds.
+const byDepth = once(() => [...workspaces()].sort((a, b) => b.home.length - a.home.length))
+
+/**
+ * The address decides the workspace, so a link, a reload and the back button always land on the right side: the workspace
+ * whose home the address is at or under.
+ */
 export const workspaceOf = (pathname: string): Workspace =>
-  (/^\/(grievances|maintenance|reviews|tasks)(?:\/|$)/.exec(pathname)?.[1] as Workspace | undefined) ?? 'assets'
+  (
+    byDepth().find(({ home }) => home === '/' || pathname === home || pathname.startsWith(`${home}/`)) ??
+    workspaces()[0]!
+  ).id as Workspace
 
 export function useWorkspace(): Workspace {
   return useRouterState({ select: (state) => workspaceOf(state.location.pathname) })

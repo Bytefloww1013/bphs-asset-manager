@@ -2,6 +2,8 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   // Setting plugins replaces Oxlint's defaults, so every plugin we want is listed.
   "plugins": ["typescript", "react", "jsx-a11y", "import", "unicorn", "vitest", "oxc"],
+  // The module boundaries (issue #23): one rule, `boundaries/imports`, in an in-repo plugin, so no new dependency.
+  "jsPlugins": ["./scripts/oxlint-boundaries.ts"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -10,11 +12,14 @@
     "typeAware": true
   },
   "rules": {
+    "boundaries/imports": "error",
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "error",
     "no-console": "error",
     // Vitest's expect takes a failure message as a second argument.
     "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+    // shared/testing.ts `expectToday` asserts too.
+    "vitest/expect-expect": ["error", { "assertFunctionNames": ["expect", "expectToday"] }],
     // Side-effect imports: stylesheets, fonts and the global Zod setup.
     "import/no-unassigned-import": ["warn", { "allow": ["**/*.css", "@fontsource-variable/*", "./zod-config.ts"] }],
     // TanStack Table `cell`/`header` and our `detail`/`link` props take render functions, not components.
@@ -69,12 +74,18 @@
   ],
   "overrides": [
     {
-      "files": ["server/**"],
+      "files": ["server/**", "foundation/*/server/**", "modules/*/server/**"],
       "env": { "node": true },
       // The server has no logger: console is its log, and admin/seed/backup are CLI scripts.
       "rules": { "no-console": "off" }
     },
-    { "files": ["web/src/**"], "env": { "browser": true } },
+    {
+      "files": ["scripts/**"],
+      "env": { "node": true },
+      // Build and repo tools run from the command line, and console is how they report.
+      "rules": { "no-console": "off" }
+    },
+    { "files": ["web/src/**", "foundation/*/web/**", "modules/*/web/**"], "env": { "browser": true } },
     { "files": ["**/*.test.ts"], "env": { "vitest": true } },
     {
       "files": ["web/src/components/ui/combobox.tsx", "web/src/components/ui/form.tsx"],

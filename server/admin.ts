@@ -9,13 +9,14 @@
  *
  * Every change is written to the audit log as actor "server-cli".
  */
+import { auditLog } from '#foundation/audit/server/index.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { describeAccess } from '../shared/permissions.ts'
 import { config } from './config.ts'
 import { createDb, runMigrations, type DbLike } from './db/client.ts'
-import { auditLog, users } from './db/schema.ts'
+import { users } from './db/schema.ts'
 import { generateOneTimePassword, hashPassword } from './lib/password.ts'
 import { deleteUserSessions } from './services/auth.ts'
 import { isLocked, tellPasswordReset, tellUnlocked } from './services/users.ts'

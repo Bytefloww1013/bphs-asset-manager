@@ -1,66 +1,28 @@
-import {
-  AppWindow,
-  ArrowDownUp,
-  Building2,
-  ClipboardCheck,
-  ClipboardList,
-  House,
-  Inbox,
-  Laptop,
-  LayoutDashboard,
-  LayoutGrid,
-  ListChecks,
-  ListPlus,
-  ListTodo,
-  Megaphone,
-  Package,
-  PackageCheck,
-  Scale,
-  ScrollText,
-  ShieldCheck,
-  Tags,
-  UserRound,
-  Users,
-  Wrench,
-  type LucideIcon,
-} from 'lucide-react'
-import { canAssignTasks, canAt, canSendNotices, workspacesOf, type Grantee } from '@shared/permissions.ts'
-import { WORKSPACE_HOME, WORKSPACE_LABEL, type Area } from './workspace.ts'
+import { House, LayoutGrid, UserRound, type LucideIcon } from 'lucide-react'
+import { workspacesOf, type Grantee } from '@shared/permissions.ts'
+import { HOME_GROUPS, type NavGroupEntry, type NavPage, type RoutePath } from '@/modules.ts'
+import { navPages, workspaces } from '@/registry.ts'
+import { once } from './once.ts'
+import { WORKSPACE_LABEL, type Area, type Workspace } from './workspace.ts'
 
 // The one nav model: the rail, the pages panel, the phone drawer and the quick switcher all read it, so they never disagree.
+// Each module declares its workspaces and pages (`web/module.ts`); Home and its own pages are the kernel's.
 
-/** Every page the sidebar links to. A pin can only ever be one of these. */
-export const NAV_PATHS = [
-  '/me/inbox',
-  '/me/tasks',
-  '/me/profile',
-  '/me/notices',
-  '/',
-  '/assignments',
-  '/available',
-  '/assets',
-  '/digital-assets',
-  '/employees',
-  '/programs',
-  '/lists',
-  '/import-export',
-  '/audit',
-  '/users',
-  '/grievances',
-  '/grievances/employees',
-  '/grievances/categories',
-  '/grievances/audit',
-  '/maintenance',
-  '/reviews',
-  '/reviews/actions',
-  '/reviews/employees',
-  '/reviews/audit',
-  '/tasks',
-  '/tasks/new',
-] as const
-export type NavPath = (typeof NAV_PATHS)[number]
+/** A page the sidebar links to. A pin can only ever be one of `navPaths()`. */
+export type NavPath = RoutePath
 
-export const isNavPath = (value: unknown): value is NavPath => NAV_PATHS.includes(value as NavPath)
+/** Home's own pages; modules add the rest of Home's through the registry. */
+const HOME_PAGES: readonly NavPage[] = [
+  { workspace: 'me', group: 'start', order: 10, label: 'My Dashboard', icon: LayoutGrid, soon: 'Coming later' },
+  { workspace: 'me', group: 'mine', order: 20, to: '/me/profile', label: 'Profile', icon: UserRound },
+]
+
+const pages = once(() => [...HOME_PAGES, ...navPages()])
+
+/** Every page the sidebar links to, whoever is signed in. */
+export const navPaths = once((): readonly NavPath[] => pages().flatMap((page) => (page.to ? [page.to] : [])))
+
+export const isNavPath = (value: unknown): value is NavPath => navPaths().includes(value as NavPath)
 
 export interface NavArea {
   id: Area
@@ -73,59 +35,29 @@ export interface NavArea {
   home: NavPath
   /** Grievances and Administrative Reviews: no count or badge ever shows for them. */
   confidential: boolean
+  groups: readonly NavGroupEntry[]
 }
 
 /** The areas in rail order. Home belongs to the person signed in and needs no access grant. */
-export const AREAS: readonly NavArea[] = [
-  { id: 'me', name: 'Home', label: 'Home', icon: House, home: '/me/inbox', confidential: false },
-  {
-    id: 'assets',
-    name: WORKSPACE_LABEL.assets,
-    label: 'Assets',
-    icon: Package,
-    home: WORKSPACE_HOME.assets,
-    confidential: false,
-  },
-  {
-    id: 'maintenance',
-    name: WORKSPACE_LABEL.maintenance,
-    label: 'Maintenance',
-    icon: Wrench,
-    home: WORKSPACE_HOME.maintenance,
-    confidential: false,
-  },
-  {
-    id: 'tasks',
-    name: WORKSPACE_LABEL.tasks,
-    label: 'Tasks',
-    icon: ListTodo,
-    home: WORKSPACE_HOME.tasks,
-    confidential: false,
-  },
-  {
-    id: 'reviews',
-    name: WORKSPACE_LABEL.reviews,
-    label: 'Reviews',
-    icon: ClipboardCheck,
-    home: WORKSPACE_HOME.reviews,
-    confidential: true,
-  },
-  {
-    id: 'grievances',
-    name: WORKSPACE_LABEL.grievances,
-    label: 'Grievances',
-    icon: Scale,
-    home: WORKSPACE_HOME.grievances,
-    confidential: true,
-  },
-]
+export const areas = once((): readonly NavArea[] => [
+  { id: 'me', name: 'Home', label: 'Home', icon: House, home: '/me/inbox', confidential: false, groups: HOME_GROUPS },
+  ...workspaces().map(({ id, label, icon, home, confidential, groups = [{ id: '' }] }) => ({
+    id: id as Workspace,
+    name: WORKSPACE_LABEL[id as Workspace],
+    label,
+    icon,
+    home,
+    confidential,
+    groups,
+  })),
+])
 
-export const areaById = (id: Area): NavArea => AREAS.find((area) => area.id === id) ?? AREAS[0]!
+export const areaById = (id: Area): NavArea => areas().find((area) => area.id === id) ?? areas()[0]!
 
 /** Home, then each workspace the account can read, in rail order. */
 export function areasFor(user: Grantee): NavArea[] {
   const usable: readonly Area[] = workspacesOf(user)
-  return AREAS.filter((area) => area.id === 'me' || usable.includes(area.id))
+  return areas().filter((area) => area.id === 'me' || usable.includes(area.id))
 }
 
 export interface NavEntry {
@@ -147,101 +79,33 @@ export interface NavGroup {
   items: NavEntry[]
 }
 
-/** The panel's page groups for an area. Nothing from one area appears in another. */
-export function navFor(area: Area, user: Grantee, unread?: number): NavGroup[] {
-  // The employee list stays readable to every picker; the page itself needs Employees.
-  const employees = canAt(user, 'employees', 'read')
-  const only = <T>(when: boolean, entry: T): T[] => (when ? [entry] : [])
-  switch (area) {
-    case 'me':
-      return [
-        {
-          items: [
-            { label: 'My Dashboard', icon: LayoutGrid, soon: 'Coming later' },
-            { to: '/me/inbox', label: 'Inbox', icon: Inbox, count: unread },
-          ],
-        },
-        {
-          items: [
-            { to: '/me/tasks', label: 'My tasks', icon: ListTodo },
-            { to: '/me/profile', label: 'Profile', icon: UserRound },
-            ...only(canSendNotices(user), { to: '/me/notices', label: 'Notices', icon: Megaphone } as const),
-          ],
-        },
-      ]
-    case 'maintenance':
-      return [{ items: [{ to: '/maintenance', label: 'Requests', icon: ClipboardList }] }]
-    case 'tasks':
-      return [
-        {
-          items: [
-            { to: '/tasks', label: 'All tasks', icon: ListTodo },
-            {
-              to: '/tasks/new',
-              label: 'Assign task',
-              icon: ListPlus,
-              lock: canAssignTasks(user) ? undefined : 'Needs Assign access',
-            },
-          ],
-        },
-      ]
-    case 'reviews':
-      return [
-        {
-          items: [
-            { to: '/reviews', label: 'Reviews', icon: ClipboardCheck },
-            { to: '/reviews/actions', label: 'Action items', icon: ListChecks },
-            ...only(employees, { to: '/reviews/employees', label: 'Employees', icon: Users } as const),
-          ],
-        },
-        { heading: 'Administration', items: [{ to: '/reviews/audit', label: 'Audit log', icon: ScrollText }] },
-      ]
-    case 'grievances':
-      return [
-        {
-          items: [
-            { to: '/grievances', label: 'Grievances', icon: Scale },
-            ...only(employees, { to: '/grievances/employees', label: 'Employees', icon: Users } as const),
-          ],
-        },
-        {
-          heading: 'Administration',
-          items: [
-            { to: '/grievances/categories', label: 'Categories', icon: Tags },
-            { to: '/grievances/audit', label: 'Audit log', icon: ScrollText },
-          ],
-        },
-      ]
-    case 'assets':
-      return [
-        {
-          heading: 'Work',
-          items: [
-            { to: '/', label: 'Overview', icon: LayoutDashboard },
-            { to: '/assignments', label: 'Assignments', icon: ClipboardList },
-            { to: '/available', label: 'Available', icon: PackageCheck },
-          ],
-        },
-        {
-          heading: 'Records',
-          items: [
-            { to: '/assets', label: 'Physical Assets', icon: Laptop },
-            { to: '/digital-assets', label: 'Digital Assets', icon: AppWindow },
-            ...only(employees, { to: '/employees', label: 'Employees', icon: Users } as const),
-            { to: '/programs', label: 'Programs', icon: Building2 },
-          ],
-        },
-        {
-          heading: 'Administration',
-          items: [
-            { to: '/lists', label: 'Lists', icon: ListChecks },
-            { to: '/import-export', label: 'Import/Export', icon: ArrowDownUp },
-            { to: '/audit', label: 'Audit log', icon: ScrollText },
-            { to: '/users', label: 'Users', icon: ShieldCheck, lock: user.superAdmin ? undefined : 'Super Admin only' },
-          ],
-        },
-      ]
+/** Each area's pages by group id, in order. A page that names no group is in its area's first. */
+const byGroup = once(() => {
+  const sorted = [...pages()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+  const groups = new Map<string, NavPage[]>()
+  for (const page of sorted) {
+    const key = `${page.workspace} ${page.group ?? areaById(page.workspace as Area).groups[0]?.id}`
+    groups.set(key, [...(groups.get(key) ?? []), page])
   }
+  return groups
+})
+
+/** The panel's page groups for an area. Nothing from one area appears in another, and a group with no page shown is left out. */
+export function navFor(area: Area, user: Grantee, unread?: number): NavGroup[] {
+  const { groups, confidential } = areaById(area)
+  return groups.flatMap(({ id, heading }) => {
+    const items = (byGroup().get(`${area} ${id}`) ?? [])
+      .filter((page) => page.visible?.(user) ?? true)
+      .map((page): NavEntry => ({
+        to: page.to,
+        label: page.label,
+        icon: page.icon,
+        lock: page.lock?.(user),
+        soon: page.soon,
+        count: page.badge === 'unread' && !confidential ? unread : undefined,
+      }))
+    return items.length ? [{ heading, items }] : []
+  })
 }
 
 /** The height of one rail item (icon over its label), which the rail draws and `fitRail` counts with. */

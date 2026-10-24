@@ -1,0 +1,44 @@
+{
+  "request": "GET /api/grievances/categories",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "grievanceCount": 0,
+      "id": 1,
+      "isActive": true,
+      "name": "Conduct"
+    },
+    {
+      "grievanceCount": 1,
+      "id": 4,
+      "isActive": true,
+      "name": "Discrimination or harassment"
+    },
+    {
+      "grievanceCount": 1,
+      "id": 3,
+      "isActive": true,
+      "name": "Health and safety"
+    },
+    {
+      "grievanceCount": 0,
+      "id": 6,
+      "isActive": true,
+      "name": "Other"
+    },
+    {
+      "grievanceCount": 1,
+      "id": 2,
+      "isActive": true,
+      "name": "Pay and hours"
+    },
+    {
+      "grievanceCount": 2,
+      "id": 5,
+      "isActive": true,
+      "name": "Working conditions"
+    }
+  ]
+}

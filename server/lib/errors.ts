@@ -26,7 +26,11 @@ export function describeError(error: unknown): { status: number; code: string; m
   if (error instanceof HttpError)
     return { status: error.status, code: error.code, message: error.message, details: error.details }
   const code = (error as { code?: string } | null)?.code ?? ''
-  if (code === 'SQLITE_CONSTRAINT_UNIQUE' && error instanceof Error && /assignments\.asset_id/.test(error.message)) {
+  if (
+    code === 'SQLITE_CONSTRAINT_UNIQUE' &&
+    error instanceof Error &&
+    /assignments\.kind, assignments\.item_id/.test(error.message)
+  ) {
     return { status: 409, code: 'asset_already_assigned', message: 'This asset is already assigned.' }
   }
   if (code.startsWith('SQLITE_CONSTRAINT'))

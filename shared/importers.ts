@@ -1,7 +1,6 @@
 import type { ZodType } from 'zod'
 import type { Section } from './constants.ts'
 import { describeRowProblem } from './rows.ts'
-import { employeeCreateSchema, programCreateSchema } from './schemas.ts'
 
 export interface ImportField {
   /** The record's own name for the field; the server reads a row's values by it. */
@@ -14,6 +13,10 @@ export interface ImportField {
   example: string
 }
 
+/**
+ * A spreadsheet importer. A module registers it twice: with its store on the server (`hooks('importers')`) and on the website
+ * (`importers`). Records that hang off others (assets, assignments, digital assets) have none on purpose: an import never issues anything.
+ */
 export interface Importer {
   type: string
   /** Plural, as the screens name the record type. */
@@ -27,89 +30,6 @@ export interface Importer {
   /** The same rules the record's Add dialog follows. */
   schema: ZodType
 }
-
-/**
- * Everything that can be imported. Records that hang off others (assets, assignments, digital assets) are left out on
- * purpose: an import never issues anything.
- */
-export const IMPORTERS = {
-  employees: {
-    type: 'employees',
-    label: 'Employees',
-    singular: 'employee',
-    section: 'employees',
-    duplicateKey: 'code',
-    schema: employeeCreateSchema,
-    fields: [
-      {
-        key: 'code',
-        label: 'Employee ID',
-        required: true,
-        aliases: ['employee_id', 'employee number', 'employee no', 'emp id', 'staff id', 'id'],
-        example: 'E-2051',
-      },
-      {
-        key: 'firstName',
-        label: 'First name',
-        required: true,
-        aliases: ['first_name', 'given name', 'forename', 'first'],
-        example: 'Dana',
-      },
-      {
-        key: 'lastName',
-        label: 'Last name',
-        required: true,
-        aliases: ['last_name', 'surname', 'family name', 'last'],
-        example: 'Whitfield',
-      },
-      { key: 'department', label: 'Department', required: false, aliases: ['dept', 'team'], example: 'Finance' },
-      {
-        key: 'jobTitle',
-        label: 'Job title',
-        required: false,
-        aliases: ['job_title', 'title', 'position', 'role'],
-        example: 'Accounts Clerk',
-      },
-    ],
-  },
-  programs: {
-    type: 'programs',
-    label: 'Programs',
-    singular: 'program',
-    section: 'assets',
-    duplicateKey: 'code',
-    schema: programCreateSchema,
-    fields: [
-      {
-        key: 'code',
-        label: 'Program ID',
-        required: true,
-        aliases: ['program_id', 'program code', 'program number', 'code', 'id'],
-        example: 'PRG-014',
-      },
-      {
-        key: 'name',
-        label: 'Program name',
-        required: true,
-        aliases: ['program_name', 'program', 'name'],
-        example: 'Riverside Day Program',
-      },
-      {
-        key: 'address',
-        label: 'Program address',
-        required: false,
-        aliases: ['program_address', 'address', 'location', 'site'],
-        example: '12 Mill Road',
-      },
-    ],
-  },
-} as const satisfies Record<string, Importer>
-
-export type ImportType = keyof typeof IMPORTERS
-export const IMPORT_TYPES = Object.keys(IMPORTERS) as ImportType[]
-
-export const importerFor = (type: string): Importer | null =>
-  Object.hasOwn(IMPORTERS, type) ? IMPORTERS[type as ImportType] : null
 
 // "Employee ID", "employee_id" and "EmployeeId" are one header.
 const normalise = (header: string) => header.toLowerCase().replace(/[^a-z0-9]+/g, '')

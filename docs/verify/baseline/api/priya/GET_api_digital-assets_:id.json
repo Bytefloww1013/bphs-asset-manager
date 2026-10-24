@@ -1,0 +1,23 @@
+{
+  "request": "GET /api/digital-assets/1",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "asset": {
+      "account": "spare1@bphs.example",
+      "assignmentId": null,
+      "code": "DA-00001",
+      "createdAt": "2025-05-24T05:00:00.000Z",
+      "employee": null,
+      "hasHistory": false,
+      "id": 1,
+      "issuedAt": null,
+      "state": "not_issued",
+      "status": "in_service",
+      "type": "Microsoft 365",
+      "typeId": 5
+    },
+    "history": []
+  }
+}

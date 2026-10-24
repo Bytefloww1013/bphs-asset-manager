@@ -1,16 +1,18 @@
+import { writeAudit } from '#foundation/audit/server/index.ts'
+import { employees, fullName } from '#foundation/employees/server/index.ts'
+import { forgetEmployeeNotifications, notify } from '#foundation/notifications/server/index.ts'
 import { and, eq, sql } from 'drizzle-orm'
-import { ACCESS_LEVEL_LABEL, WORKSPACE_LABEL, WORKSPACES, type NotificationKind } from '../../shared/constants.ts'
-import { describeAccess, workspacesOf, type Grantee } from '../../shared/permissions.ts'
+import { ACCESS_LEVEL_LABEL, WORKSPACE_LABEL, WORKSPACES } from '../../shared/constants.ts'
+import { declaredAccess, describeAccess, keepUndeclared, workspacesOf, type Grantee } from '../../shared/permissions.ts'
+import type { NotificationKind } from '../../shared/registry.ts'
 import type { UserCreateInput, UserUpdateInput } from '../../shared/schemas.ts'
 import type { UserRow, UserState, UserWithPassword } from '../../shared/types.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { employees, users } from '../db/schema.ts'
-import { writeAudit, type Actor } from '../lib/audit.ts'
+import { users } from '../db/schema.ts'
+import type { Actor } from '../lib/actor.ts'
 import { conflict, invalid, notFound } from '../lib/errors.ts'
 import { generateOneTimePassword, hashPassword } from '../lib/password.ts'
 import { deleteUserSessions, firstAccountId } from './auth.ts'
-import { forgetEmployeeNotifications, notify } from './notifications.ts'
-import { fullName } from './refs.ts'
 
 function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
   const locked = row.lockedUntil !== null && row.lockedUntil > now
@@ -19,7 +21,7 @@ function toRow(row: typeof users.$inferSelect, now = new Date()): UserRow {
     id: row.id,
     name: row.name,
     email: row.email,
-    access: row.access,
+    access: declaredAccess(row.access),
     superAdmin: row.superAdmin,
     employeeId: row.employeeId,
     mustChangePassword: row.mustChangePassword,
@@ -165,7 +167,7 @@ export function updateUser(db: Db, actor: Actor, id: number, input: UserUpdateIn
         throw conflict('last_super_admin', 'There must always be at least one active Super Admin.')
       }
       assertWorkspace(next)
-      patch.access = next.access
+      patch.access = keepUndeclared(current.access, next.access)
       patch.superAdmin = next.superAdmin
       changes.push(`access: ${describeAccess(was)} → ${describeAccess(next)}`)
     }

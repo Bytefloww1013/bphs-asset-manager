@@ -5,6 +5,8 @@ on:
     branches: ['main']
   pull_request:
     branches: ['main']
+  # Run by hand on any branch (Actions tab or `gh workflow run CI --ref <branch>`), e.g. to try CI before opening a PR.
+  workflow_dispatch:
   # No paths-ignore: a check that never starts would block a required-check PR forever.
   # Super-Linter skips the same files through FILTER_REGEX_EXCLUDE below.
 
@@ -45,6 +47,15 @@ jobs:
       - name: Check formatting
         run: bun run format:check
 
+      # The generated module registries must match app.modules.ts and the manifests; it also checks the dependency graph.
+      - name: Module registries
+        run: bun run modules:gen --check
+
+      # Stale docs: a module README without its required sections, the module table in docs/architecture.md out of date,
+      # or a repo path quoted in a Markdown doc that no longer exists.
+      - name: Docs
+        run: bun run docs:check
+
       # Oxlint, type-aware; --format github turns each finding into an annotation on the PR.
       - name: Lint
         run: bun run lint --format github
@@ -57,6 +68,19 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      # The route smoke (issue #23): every route of the app, opened as two users in headless Chrome on a seeded scratch server.
+      # --no: the locked @puppeteer/browsers that puppeteer-core brings, never a fresh download of the tool.
+      - name: Install Chrome
+        id: chrome
+        run: echo "path=$(npx --no @puppeteer/browsers install chrome@stable --path "$RUNNER_TEMP/browsers" --format '{{path}}')" >>"$GITHUB_OUTPUT"
+
+      - name: Route smoke
+        run: node docs/verify/routes-smoke.mjs
+        env:
+          CHROME: ${{ steps.chrome.outputs.path }}
+          ROOT: ${{ runner.temp }}/bphs-routes-smoke
+          SKIP_BUILD: 1 # built by the step above
 
   lint:
     name: Super-Linter

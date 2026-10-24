@@ -28,6 +28,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist/web ./dist/web
 COPY --from=build /app/server ./server
 COPY --from=build /app/shared ./shared
+COPY --from=build /app/foundation ./foundation
+COPY --from=build /app/modules ./modules
 RUN mkdir -p /data && chown -R node:node /data
 # The image's `node` user, by number so the host can resolve it.
 USER 1000:1000

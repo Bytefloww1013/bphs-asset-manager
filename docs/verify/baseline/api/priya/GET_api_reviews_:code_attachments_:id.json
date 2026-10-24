@@ -1,0 +1,13 @@
+{
+  "request": "GET /api/reviews/AR-2026-0002/attachments/3",
+  "status": 200,
+  "contentType": "text/plain",
+  "contentDisposition": "attachment; filename=\"referrals-waiting.txt\"; filename*=UTF-8''referrals-waiting.txt",
+  "bodyKind": "text",
+  "body": [
+    "Received\tReferrer\tFirst call",
+    "09-02\tCounty CMH\t09-04",
+    "09-03\tSt. Anne’s\t",
+    ""
+  ]
+}

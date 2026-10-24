@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Grantee } from '@shared/permissions.ts'
-import { AREAS, NAV_PATHS, RAIL_ITEM_HEIGHT, areasFor, fitRail, jumpIndex, navFor } from './nav.ts'
+import { expectToday } from '@shared/testing.ts'
+import { RAIL_ITEM_HEIGHT, areas, areasFor, fitRail, jumpIndex, navFor, navPaths } from './nav.ts'
 
 // The seeded accounts' access (server/seed.ts).
 const priya: Grantee = { access: {}, superAdmin: true, employeeId: 1 }
@@ -23,7 +24,7 @@ const entries = (user: Grantee, area: Parameters<typeof navFor>[0], unread?: num
 
 describe('areasFor', () => {
   it('lists Home, then each readable workspace, in rail order', () => {
-    expect(names(priya)).toEqual([
+    expectToday(names(priya), [
       'Home',
       'Assets',
       'Maintenance',
@@ -31,7 +32,7 @@ describe('areasFor', () => {
       'Administrative Reviews',
       'Grievances',
     ])
-    expect(names(marcus)).toEqual(['Home', 'Assets', 'Employee Tasks', 'Administrative Reviews', 'Grievances'])
+    expectToday(names(marcus), ['Home', 'Assets', 'Employee Tasks', 'Administrative Reviews', 'Grievances'])
     expect(names(dana)).toEqual(['Home', 'Employee Tasks', 'Grievances'])
     expect(names(ops)).toEqual(['Home', 'Assets'])
   })
@@ -41,13 +42,17 @@ describe('areasFor', () => {
   })
 
   it('marks only Grievances and Administrative Reviews confidential', () => {
-    expect(AREAS.filter((area) => area.confidential).map((area) => area.id)).toEqual(['reviews', 'grievances'])
+    expect(
+      areas()
+        .filter((area) => area.confidential)
+        .map((area) => area.id),
+    ).toEqual(['reviews', 'grievances'])
   })
 })
 
 describe('navFor', () => {
   it('puts a count on Home’s Inbox only', () => {
-    for (const area of AREAS) {
+    for (const area of areas()) {
       const counted = entries(priya, area.id, 7).filter((item) => item.count !== undefined)
       expect(counted.map((item) => item.label)).toEqual(area.id === 'me' ? ['Inbox'] : [])
     }
@@ -90,9 +95,56 @@ describe('navFor', () => {
     expect(entries(dana, 'grievances').some((item) => item.to === '/grievances/employees')).toBe(true)
   })
 
-  it('links only to known sidebar pages', () => {
-    const links = AREAS.flatMap((area) => entries(priya, area.id).flatMap((item) => (item.to ? [item.to] : [])))
-    expect(links.filter((to) => !NAV_PATHS.includes(to))).toEqual([])
+  it('lists each area’s pages in today’s groups and order', () => {
+    const panels = (user: Grantee) =>
+      areasFor(user).map(
+        (area) =>
+          `${area.label}: ${navFor(area.id, user)
+            .map((group) => `${group.heading ?? '-'} (${group.items.map((item) => item.label).join(', ')})`)
+            .join(' / ')}`,
+      )
+    expectToday(panels(priya), [
+      'Home: - (My Dashboard, Inbox) / - (My tasks, Profile, Notices)',
+      'Assets: Work (Overview, Assignments, Available) / Records (Physical Assets, Digital Assets, Employees, Programs) / Administration (Lists, Import/Export, Audit log, Users)',
+      'Maintenance: - (Requests)',
+      'Tasks: - (All tasks, Assign task)',
+      'Reviews: - (Reviews, Action items, Employees) / Administration (Audit log)',
+      'Grievances: - (Grievances, Employees) / Administration (Categories, Audit log)',
+    ])
+  })
+
+  it('links only to the sidebar pages a pin can hold', () => {
+    expectToday(
+      [...navPaths()].sort(),
+      [
+        '/me/inbox',
+        '/me/tasks',
+        '/me/profile',
+        '/me/notices',
+        '/',
+        '/assignments',
+        '/available',
+        '/assets',
+        '/digital-assets',
+        '/employees',
+        '/programs',
+        '/lists',
+        '/import-export',
+        '/audit',
+        '/users',
+        '/grievances',
+        '/grievances/employees',
+        '/grievances/categories',
+        '/grievances/audit',
+        '/maintenance',
+        '/reviews',
+        '/reviews/actions',
+        '/reviews/employees',
+        '/reviews/audit',
+        '/tasks',
+        '/tasks/new',
+      ].sort(),
+    )
   })
 })
 

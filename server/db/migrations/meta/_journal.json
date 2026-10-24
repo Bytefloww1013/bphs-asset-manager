@@ -169,6 +169,13 @@
       "when": 1792699349214,
       "tag": "0023_asset_brands",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1792785317624,
+      "tag": "0024_custody_ledger",
+      "breakpoints": true
     }
   ]
 }

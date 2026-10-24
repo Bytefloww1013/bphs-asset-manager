@@ -1,5 +1,3 @@
-import { OVERDUE_DAYS } from '@shared/constants.ts'
-
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /** 2026-07-27, in the viewer's local time. ISO-style so it sorts and never reads as day/month. */
@@ -53,8 +51,6 @@ export function formatDays(days: number | null | undefined): string {
   if (days === null || days === undefined) return '—'
   return `${days.toLocaleString()} d`
 }
-
-export const isOverdue = (days: number | null | undefined) => days !== null && days !== undefined && days > OVERDUE_DAYS
 
 export function plural(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`

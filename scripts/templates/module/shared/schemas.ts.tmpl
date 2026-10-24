@@ -1,0 +1,5 @@
+import { z } from 'zod'
+import { requiredText } from '#shared/schemas.ts'
+
+export const {{camel}}CreateSchema = z.object({ name: requiredText(120, 'Name') })
+export type {{Pascal}}CreateInput = z.infer<typeof {{camel}}CreateSchema>

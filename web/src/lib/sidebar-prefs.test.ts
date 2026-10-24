@@ -22,8 +22,12 @@ const brokenStorage = (): Storage => {
   return { length: 0, clear: fail, getItem: fail, key: fail, removeItem: fail, setItem: fail }
 }
 
-// Each test gets a fresh module, as its fallback to memory is module state.
-const load = () => import('./sidebar-prefs.ts')
+// Each test gets a fresh module, as its fallback to memory is module state. The fresh registry needs the modules again.
+async function load() {
+  const [{ installModules }, { WEB_MODULES }] = await Promise.all([import('@/registry.ts'), import('@/modules.gen.ts')])
+  installModules(WEB_MODULES)
+  return import('./sidebar-prefs.ts')
+}
 
 beforeEach(() => {
   vi.resetModules()

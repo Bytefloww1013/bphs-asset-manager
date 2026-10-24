@@ -1,0 +1,461 @@
+{
+  "request": "GET /api/audit",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "entries": [
+      {
+        "action": "sign_in",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "p.raghunathan@bphs.local · signed in",
+        "entityId": 1,
+        "entityType": "user",
+        "id": 420,
+        "occurredAt": "2026-10-01T13:00:00.000Z"
+      },
+      {
+        "action": "update",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0093 · status: in_service → retired",
+        "entityId": 93,
+        "entityType": "asset",
+        "id": 251,
+        "occurredAt": "2026-09-30T13:00:00.000Z"
+      },
+      {
+        "action": "update",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0061 · status: in_service → retired",
+        "entityId": 61,
+        "entityType": "asset",
+        "id": 155,
+        "occurredAt": "2026-09-30T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0093 ← E-1315 · Damaged",
+        "entityId": 101,
+        "entityType": "assignment",
+        "id": 250,
+        "occurredAt": "2026-09-29T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0061 ← E-0988 · Damaged",
+        "entityId": 62,
+        "entityType": "assignment",
+        "id": 154,
+        "occurredAt": "2026-09-29T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0073 → E-1315 · New",
+        "entityId": 77,
+        "entityType": "assignment",
+        "id": 190,
+        "occurredAt": "2026-09-23T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0030 → E-1296 · Good",
+        "entityId": 33,
+        "entityType": "assignment",
+        "id": 80,
+        "occurredAt": "2026-09-19T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0061 → E-0988 · Good",
+        "entityId": 62,
+        "entityType": "assignment",
+        "id": 153,
+        "occurredAt": "2026-09-10T07:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0043 → E-1288 · Good",
+        "entityId": 43,
+        "entityType": "assignment",
+        "id": 107,
+        "occurredAt": "2026-09-08T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0088 → E-1282 · Good",
+        "entityId": 96,
+        "entityType": "assignment",
+        "id": 237,
+        "occurredAt": "2026-09-07T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0006 → program PRG-400 · Good",
+        "entityId": 136,
+        "entityType": "assignment",
+        "id": 333,
+        "occurredAt": "2026-09-06T03:35:44.629Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0019 → E-1247 · Good",
+        "entityId": 16,
+        "entityType": "assignment",
+        "id": 42,
+        "occurredAt": "2026-09-05T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0053 ← E-1102 · Good",
+        "entityId": 52,
+        "entityType": "assignment",
+        "id": 130,
+        "occurredAt": "2026-08-29T08:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0022 → E-1219 · Good",
+        "entityId": 20,
+        "entityType": "assignment",
+        "id": 51,
+        "occurredAt": "2026-08-27T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0061 ← E-1219 · Good",
+        "entityId": 61,
+        "entityType": "assignment",
+        "id": 152,
+        "occurredAt": "2026-08-21T07:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0110 → E-1233 · Good",
+        "entityId": 125,
+        "entityType": "assignment",
+        "id": 305,
+        "occurredAt": "2026-08-18T08:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0029 → E-1219 · Good",
+        "entityId": 31,
+        "entityType": "assignment",
+        "id": 76,
+        "occurredAt": "2026-08-18T05:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0110 ← E-1042 · Fair",
+        "entityId": 124,
+        "entityType": "assignment",
+        "id": 304,
+        "occurredAt": "2026-08-17T08:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0029 ← E-1102 · Poor",
+        "entityId": 30,
+        "entityType": "assignment",
+        "id": 75,
+        "occurredAt": "2026-08-17T05:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "DA-00030 → E-1296 · Accounting software",
+        "entityId": 30,
+        "entityType": "digitalasset",
+        "id": 413,
+        "occurredAt": "2026-08-17T02:52:49.652Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0051 → E-1271 · Good",
+        "entityId": 51,
+        "entityType": "assignment",
+        "id": 126,
+        "occurredAt": "2026-08-14T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0010 → E-0904 · Good",
+        "entityId": 6,
+        "entityType": "assignment",
+        "id": 18,
+        "occurredAt": "2026-08-13T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0093 → E-1315 · Good",
+        "entityId": 101,
+        "entityType": "assignment",
+        "id": 249,
+        "occurredAt": "2026-08-11T06:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0091 ← E-1102 · Good",
+        "entityId": 98,
+        "entityType": "assignment",
+        "id": 243,
+        "occurredAt": "2026-08-03T11:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0031 → program PRG-200 · Good",
+        "entityId": 145,
+        "entityType": "assignment",
+        "id": 342,
+        "occurredAt": "2026-08-02T04:40:52.844Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "DA-00012 → E-0904 · Microsoft 365",
+        "entityId": 12,
+        "entityType": "digitalasset",
+        "id": 369,
+        "occurredAt": "2026-07-29T12:00:58.105Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0094 ← E-1315 · Poor",
+        "entityId": 103,
+        "entityType": "assignment",
+        "id": 256,
+        "occurredAt": "2026-07-28T05:00:00.000Z"
+      },
+      {
+        "action": "update",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "program_id=PRG-090 · deactivated",
+        "entityId": 6,
+        "entityType": "program",
+        "id": 330,
+        "occurredAt": "2026-07-27T12:40:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0003 ← program PRG-090 · Fair",
+        "entityId": 133,
+        "entityType": "assignment",
+        "id": 329,
+        "occurredAt": "2026-07-27T11:40:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0112 → E-1130 · Good",
+        "entityId": 128,
+        "entityType": "assignment",
+        "id": 311,
+        "occurredAt": "2026-07-26T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0001 → E-1177 · Good",
+        "entityId": 2,
+        "entityType": "assignment",
+        "id": 4,
+        "occurredAt": "2026-07-23T12:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0001 ← E-1130 · Good",
+        "entityId": 1,
+        "entityType": "assignment",
+        "id": 3,
+        "occurredAt": "2026-07-22T12:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0093 ← E-1356 · Good",
+        "entityId": 100,
+        "entityType": "assignment",
+        "id": 248,
+        "occurredAt": "2026-07-22T06:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0055 → E-1219 · New",
+        "entityId": 56,
+        "entityType": "assignment",
+        "id": 138,
+        "occurredAt": "2026-07-20T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0082 → E-1102 · New",
+        "entityId": 88,
+        "entityType": "assignment",
+        "id": 217,
+        "occurredAt": "2026-07-18T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0035 → E-1102 · New",
+        "entityId": 37,
+        "entityType": "assignment",
+        "id": 91,
+        "occurredAt": "2026-07-16T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0024 → E-1348 · New",
+        "entityId": 24,
+        "entityType": "assignment",
+        "id": 59,
+        "occurredAt": "2026-07-12T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0105 → E-1177 · New",
+        "entityId": 118,
+        "entityType": "assignment",
+        "id": 287,
+        "occurredAt": "2026-07-09T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0092 → E-0904 · New",
+        "entityId": 99,
+        "entityType": "assignment",
+        "id": 245,
+        "occurredAt": "2026-07-04T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0091 → E-1102 · New",
+        "entityId": 98,
+        "entityType": "assignment",
+        "id": 242,
+        "occurredAt": "2026-07-04T11:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0020 → program PRG-400 · Good",
+        "entityId": 143,
+        "entityType": "assignment",
+        "id": 340,
+        "occurredAt": "2026-06-30T20:51:20.256Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0072 → E-1247 · Good",
+        "entityId": 74,
+        "entityType": "assignment",
+        "id": 184,
+        "occurredAt": "2026-06-30T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0017 → program PRG-400 · Good",
+        "entityId": 141,
+        "entityType": "assignment",
+        "id": 338,
+        "occurredAt": "2026-06-27T16:01:28.248Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0042 → E-0761 · Good",
+        "entityId": 42,
+        "entityType": "assignment",
+        "id": 105,
+        "occurredAt": "2026-06-27T07:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0042 ← E-0988 · Poor",
+        "entityId": 41,
+        "entityType": "assignment",
+        "id": 104,
+        "occurredAt": "2026-06-26T07:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0079 ← E-1042 · Fair",
+        "entityId": 83,
+        "entityType": "assignment",
+        "id": 206,
+        "occurredAt": "2026-06-23T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0084 → E-1348 · Good",
+        "entityId": 92,
+        "entityType": "assignment",
+        "id": 227,
+        "occurredAt": "2026-06-21T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0084 ← E-1177 · Good",
+        "entityId": 91,
+        "entityType": "assignment",
+        "id": 226,
+        "occurredAt": "2026-06-20T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "DA-00016 → E-1177 · Adobe Acrobat Pro",
+        "entityId": 16,
+        "entityType": "digitalasset",
+        "id": 379,
+        "occurredAt": "2026-06-19T08:10:34.687Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0004 → program PRG-110 · Good",
+        "entityId": 134,
+        "entityType": "assignment",
+        "id": 331,
+        "occurredAt": "2026-06-18T07:51:39.498Z"
+      }
+    ],
+    "total": 420
+  }
+}

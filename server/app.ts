@@ -1,33 +1,22 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { Hono, type Context } from 'hono'
-import { bodyLimit } from 'hono/body-limit'
+import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { csrf } from 'hono/csrf'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
-import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST, type AccessLevel, type Section } from '../shared/constants.ts'
-import { canAt, needsAccess } from '../shared/permissions.ts'
+import { undeclaredRoutes } from './access/route.ts'
 import { config } from './config.ts'
 import type { Db } from './db/client.ts'
-import { requireSuperAdmin, type Env } from './http.ts'
-import { describeError, forbidden } from './lib/errors.ts'
+import { forUpload, limitBody, type Env } from './http.ts'
+import { describeError } from './lib/errors.ts'
 import { authenticate } from './middleware.ts'
-import { assetRoutes, assignmentRoutes } from './routes/assets.ts'
+import { routes, webhooks } from './registry.ts'
 import { authRoutes } from './routes/auth.ts'
-import { listRoutes, reportRoutes } from './routes/lists.ts'
-import { employeeRoutes, userRoutes } from './routes/people.ts'
-import { digitalAssetRoutes } from './routes/digital-assets.ts'
-import { grievanceRoutes } from './routes/grievances.ts'
 import { importRoutes } from './routes/imports.ts'
-import { maintenanceRoutes } from './routes/maintenance.ts'
-import { meRoutes } from './routes/me.ts'
-import { noticeRoutes } from './routes/notices.ts'
-import { reviewRoutes } from './routes/reviews.ts'
-import { taskRoutes } from './routes/tasks.ts'
-import { programRoutes } from './routes/programs.ts'
-import { webhookRoutes } from './routes/webhooks.ts'
+import { listRoutes } from './routes/lists.ts'
+import { userRoutes } from './routes/users.ts'
 
 export interface AppOptions {
   /** Serve the built SPA (production). */
@@ -42,50 +31,6 @@ export interface AppOptions {
 // The largest thing anyone sends is an import: 2,000 rows of at most five 300-character cells as JSON, which fits with room to spare; signing in and changing a password send two short strings.
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_AUTH_BODY_BYTES = 16 * 1024
-// The routes that take a grievance's, a review's or a task's files, as multipart: ten files at their limit, and room for the form beside them.
-const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
-const UPLOAD_PATH =
-  /^\/api\/(grievances(\/[^/]+\/(entries|attachments))?|reviews\/[^/]+\/(entries|attachments|caps(\/[^/]+\/status)?)|tasks(\/[^/]+)?|me\/tasks\/[^/]+\/complete)$/
-
-/**
- * The access a request needs: reading needs Read in its section, anything else Edit; Full is checked on the routes that need it.
- * Users and notices answer to Super Admin, and anyone may read the employee list, which every workspace's pickers use.
- * Grievance owners manage their own with Read, and so do reviewers, so those routes are left to the service to decide.
- */
-function accessNeeded(method: string, path: string): { section: Section; level: AccessLevel } | null {
-  const read = method === 'GET' || method === 'HEAD'
-  const at = (section: Section) => ({ section, level: read ? 'read' : 'edit' }) as const
-  if (/^\/api\/(users|notices)(\/|$)/.test(path)) return null
-  // My Space: every account's own notifications, whatever its access.
-  if (/^\/api\/me(\/|$)/.test(path)) return null
-  if (/^\/api\/employees(\/|$)/.test(path)) return read ? null : at('employees')
-  // Each importer checks Edit in the section it writes to.
-  if (/^\/api\/import(\/|$)/.test(path)) return null
-  if (/^\/api\/grievances(\/|$)/.test(path)) {
-    const ownerMayDo =
-      (method === 'PATCH' && /^\/api\/grievances\/[^/]+$/.test(path)) ||
-      (method === 'POST' && /^\/api\/grievances\/[^/]+\/(status|owner|exports)$/.test(path))
-    return ownerMayDo ? { section: 'grievances', level: 'read' } : at('grievances')
-  }
-  if (/^\/api\/maintenance(\/|$)/.test(path)) return at('maintenance')
-  if (/^\/api\/reviews(\/|$)/.test(path)) {
-    // The service decides: the reviewer's account may change its own reviews, and any reader may report an export.
-    const reviewerMayDo =
-      (method === 'PATCH' && /^\/api\/reviews\/[^/]+(\/caps\/[^/]+)?$/.test(path)) ||
-      (method === 'POST' &&
-        /^\/api\/reviews\/[^/]+\/(status|entries|caps|caps\/[^/]+\/status|attachments|exports)$/.test(path))
-    return reviewerMayDo ? { section: 'reviews', level: 'read' } : at('reviews')
-  }
-  // Read lets a request in: the service decides who may assign, edit, cancel and approve.
-  if (/^\/api\/tasks(\/|$)/.test(path)) return { section: 'tasks', level: 'read' }
-  return at('assets')
-}
-
-const limitBody = (maxSize: number) =>
-  bodyLimit({
-    maxSize,
-    onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413),
-  })
 
 export function createApp(db: Db, options: AppOptions = {}) {
   const app = new Hono<Env>()
@@ -119,50 +64,26 @@ export function createApp(db: Db, options: AppOptions = {}) {
     c.header('Cache-Control', 'no-store')
   })
   // A body is refused before anything reads it, signed in or not: the smaller limit first, so it answers for the sign-in routes.
-  // An upload is the exception: its larger limit buffers the body, so it waits until the session is checked (below).
+  // An upload is the exception: its route's larger limit buffers the body, so it waits until the session is checked (upload()).
   app.use('/api/auth/*', limitBody(MAX_AUTH_BODY_BYTES))
-  const [uploadLimit, bodyLimitAll] = [limitBody(MAX_UPLOAD_BODY_BYTES), limitBody(MAX_BODY_BYTES)]
-  // Only a task's edit takes files with a PATCH.
-  const isUpload = (c: Context) =>
-    (c.req.method === 'POST' || (c.req.method === 'PATCH' && c.req.path.startsWith('/api/tasks/'))) &&
-    UPLOAD_PATH.test(c.req.path) &&
-    /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '')
-  app.use('/api/*', (c, next) => (isUpload(c) ? next() : bodyLimitAll(c, next)))
+  const bodyLimitAll = limitBody(MAX_BODY_BYTES)
+  app.use('/api/*', (c, next) => (forUpload(c) ? next() : bodyLimitAll(c, next)))
 
   app.get('/api/health', (c) => c.json({ ok: true }))
   app.route('/api/auth', authRoutes(db))
   // Zoho's calls carry a shared secret, not a session, so they are answered before the sign-in check below.
-  app.route('/api/webhooks', webhookRoutes(db, options.maintenanceWebhookSecret ?? config.maintenanceWebhookSecret))
+  for (const webhook of webhooks()) app.route(`/api/webhooks${webhook.base}`, webhook.create(db, options))
 
-  // Everything below needs a signed-in user.
+  // Everything below needs a signed-in user, and every route says what else it needs (server/access/route.ts).
   const api = new Hono<Env>()
   api.use('*', authenticate(db))
-  api.use('*', async (c, next) => {
-    const needed = accessNeeded(c.req.method, c.req.path)
-    if (needed && !canAt(c.get('user'), needed.section, needed.level))
-      throw forbidden(needsAccess(needed.section, needed.level))
-    await next()
-  })
-  api.use('*', (c, next) => (isUpload(c) ? uploadLimit(c, next) : next()))
-  api.route('/', reportRoutes(db))
-  api.route('/assets', assetRoutes(db))
-  api.route('/assignments', assignmentRoutes(db))
-  api.route('/employees', employeeRoutes(db))
-  api.route('/programs', programRoutes(db))
-  api.route('/import', importRoutes(db))
-  api.route('/digital-assets', digitalAssetRoutes(db))
-  api.route('/grievances', grievanceRoutes(db))
-  api.route('/maintenance', maintenanceRoutes(db))
-  api.route('/reviews', reviewRoutes(db))
-  api.route('/tasks', taskRoutes(db))
-  api.route('/me', meRoutes(db))
-  api.use('/notices/*', requireSuperAdmin)
-  api.use('/notices', requireSuperAdmin)
-  api.route('/notices', noticeRoutes(db))
-  api.route('/', listRoutes(db))
-  api.use('/users/*', requireSuperAdmin)
-  api.use('/users', requireSuperAdmin)
+  for (const router of routes()) api.route(router.base || '/', router.create(db, options))
+  // The Users page is the kernel's own, and so are the frameworks the modules' importers and lookup lists plug into.
   api.route('/users', userRoutes(db))
+  api.route('/import', importRoutes(db))
+  api.route('/', listRoutes(db))
+  const undeclared = undeclaredRoutes(api)
+  if (undeclared.length) throw new Error(`These API routes don't declare their access: ${undeclared.join(', ')}`)
   app.route('/api', api)
 
   app.onError((error, c) => {

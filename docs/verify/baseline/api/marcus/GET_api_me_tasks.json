@@ -1,0 +1,52 @@
+{
+  "request": "GET /api/me/tasks",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "assignee": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assigner": {
+        "email": "p.raghunathan@bphs.local",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "assignerSuperAdmin": true,
+      "completedAt": "2026-09-17T15:00:00.000Z",
+      "createdAt": "2026-09-06T09:00:00.000Z",
+      "dueAt": "2026-09-19T17:00:00.000Z",
+      "id": 8,
+      "requiresApproval": true,
+      "requiresFile": false,
+      "sendAt": "2026-09-06T09:00:00.000Z",
+      "status": "completed",
+      "title": "Compare quotes for the new copier lease"
+    },
+    {
+      "assignee": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assigner": {
+        "email": "d.whitfield@bphs.local",
+        "id": 3,
+        "name": "Dana Whitfield"
+      },
+      "assignerSuperAdmin": false,
+      "completedAt": "2026-09-30T15:00:00.000Z",
+      "createdAt": "2026-09-22T09:00:00.000Z",
+      "dueAt": "2026-10-03T17:00:00.000Z",
+      "id": 6,
+      "requiresApproval": true,
+      "requiresFile": false,
+      "sendAt": "2026-09-22T09:00:00.000Z",
+      "status": "awaiting_approval",
+      "title": "Reconcile the petty cash log for Maple Court"
+    }
+  ]
+}

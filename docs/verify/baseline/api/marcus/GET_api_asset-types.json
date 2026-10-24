@@ -1,0 +1,38 @@
+{
+  "request": "GET /api/asset-types",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "assetCount": 16,
+      "id": 4,
+      "isActive": true,
+      "name": "Keyboard"
+    },
+    {
+      "assetCount": 34,
+      "id": 1,
+      "isActive": true,
+      "name": "Laptop"
+    },
+    {
+      "assetCount": 28,
+      "id": 3,
+      "isActive": true,
+      "name": "Monitor"
+    },
+    {
+      "assetCount": 12,
+      "id": 5,
+      "isActive": true,
+      "name": "Mouse"
+    },
+    {
+      "assetCount": 26,
+      "id": 2,
+      "isActive": true,
+      "name": "Phone"
+    }
+  ]
+}

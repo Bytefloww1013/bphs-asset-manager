@@ -1,27 +1,11 @@
+import { employees } from '#foundation/employees/server/index.ts'
 import { describe, expect, it } from 'vitest'
-import type { Access } from '../../shared/constants.ts'
-import { employees, users } from '../db/schema.ts'
-import { ASSET_ADMIN, GRIEVANCE_ADMIN, migratedBefore, setup } from './helpers.ts'
+import { ASSET_ADMIN, GRIEVANCE_ADMIN, migratedBefore, setup } from '../testing/index.ts'
+
+/** The lists `/api/lookups` offers, as far as these tests read them. */
+type Lists = Record<'assetTypes' | 'assetBrands' | 'conditionRatings', { id: number; name: string }[]>
 
 type T = Awaited<ReturnType<typeof setup>>
-
-/** Signs in a new account with exactly this access. */
-async function as(t: T, access: Access, employeeId: number | null = null) {
-  const email = `x${Math.random().toString(36).slice(2)}@bphs.local`
-  const user = t.db
-    .insert(users)
-    .values({
-      name: 'Rosa Lindqvist',
-      email,
-      passwordHash: t.superUser.passwordHash,
-      access,
-      employeeId,
-      mustChangePassword: false,
-    })
-    .returning()
-    .get()
-  return { user, cookie: (await t.signIn(email)).cookie }
-}
 
 const employeeId = (t: T, code: string) =>
   t.db.insert(employees).values({ code, firstName: 'Ana', lastName: code }).returning().get().id
@@ -54,8 +38,8 @@ async function workspaces() {
   return {
     t,
     superAdmin,
-    assetAdmin: (await as(t, ASSET_ADMIN, assetPerson.id)).cookie,
-    grievanceAdmin: (await as(t, GRIEVANCE_ADMIN, grievancePerson.id)).cookie,
+    assetAdmin: (await t.signInAs(ASSET_ADMIN, assetPerson.id)).cookie,
+    grievanceAdmin: (await t.signInAs(GRIEVANCE_ADMIN, grievancePerson.id)).cookie,
     assetPerson,
     grievancePerson,
   }
@@ -64,7 +48,7 @@ async function workspaces() {
 describe('section access', () => {
   it('lets Read see a section and asks for Edit to change anything in it', async () => {
     const t = await setup()
-    const { cookie } = await as(t, { assets: 'read', grievances: 'read', maintenance: 'read', employees: 'read' })
+    const { cookie } = await t.signInAs({ assets: 'read', grievances: 'read', maintenance: 'read', employees: 'read' })
     for (const [label, url] of [
       ['Assets', '/api/assets'],
       ['Grievances', '/api/grievances'],
@@ -77,21 +61,21 @@ describe('section access', () => {
       expect(write.data.message).toBe(`You need Edit access to ${label} for this.`)
     }
     // Edit gets past the gate to the form's own checks.
-    const editor = await as(t, { assets: 'edit', maintenance: 'edit' })
+    const editor = await t.signInAs({ assets: 'edit', maintenance: 'edit' })
     expect((await t.call('POST', '/api/assets', { cookie: editor.cookie, body: {} })).status).toBe(422)
     expect((await t.call('POST', '/api/maintenance', { cookie: editor.cookie, body: {} })).status).toBe(422)
   })
 
   it('shuts a section that is not given, but leaves the employee list open to every picker', async () => {
     const t = await setup()
-    const { cookie } = await as(t, { maintenance: 'read' })
+    const { cookie } = await t.signInAs({ maintenance: 'read' })
     const assets = await t.call('GET', '/api/assets', { cookie })
     expect(assets.status).toBe(403)
     expect(assets.data.message).toBe('Your account does not have access to Assets.')
     expect((await t.call('GET', '/api/grievances', { cookie })).status).toBe(403)
-    expect((await t.call('GET', '/api/maintenance', { cookie: (await as(t, { assets: 'edit' })).cookie })).status).toBe(
-      403,
-    )
+    expect(
+      (await t.call('GET', '/api/maintenance', { cookie: (await t.signInAs({ assets: 'edit' })).cookie })).status,
+    ).toBe(403)
     expect((await t.call('GET', '/api/employees', { cookie })).status).toBe(200)
     expect((await t.call('POST', '/api/employees', { cookie, body: {} })).status).toBe(403)
     expect((await t.call('GET', '/api/users', { cookie })).status).toBe(403)
@@ -100,7 +84,8 @@ describe('section access', () => {
   it('asks for Full to delete or archive, and Full is enough', async () => {
     const t = await setup()
     const sup = await t.asSuper()
-    const { assetTypes, assetBrands, conditionRatings } = await t.lookups(sup)
+    const { assetTypes, assetBrands, conditionRatings } = (await t.call('GET', '/api/lookups', { cookie: sup }))
+      .data as Lists
     const asset = (
       await t.call('POST', '/api/assets', {
         cookie: sup,
@@ -113,7 +98,7 @@ describe('section access', () => {
       })
     ).data
     const lee = t.db.insert(employees).values({ code: 'E-3001', firstName: 'Lee', lastName: 'Okoro' }).returning().get()
-    const { user, cookie } = await as(t, { assets: 'edit', employees: 'edit' })
+    const { user, cookie } = await t.signInAs({ assets: 'edit', employees: 'edit' })
 
     const del = await t.call('DELETE', `/api/assets/${asset.id}`, { cookie })
     expect(del.status).toBe(403)
@@ -130,8 +115,8 @@ describe('section access', () => {
 
   it('lets an importer run with Edit in the section it writes to', async () => {
     const t = await setup()
-    const employeesOnly = await as(t, { assets: 'read', employees: 'edit' })
-    const assetsOnly = await as(t, { assets: 'edit' })
+    const employeesOnly = await t.signInAs({ assets: 'read', employees: 'edit' })
+    const assetsOnly = await t.signInAs({ assets: 'edit' })
     const people = { rows: [{ row: 2, values: { code: 'E-4000', firstName: 'Ana', lastName: 'Cole' } }] }
     const programs = { rows: [{ row: 2, values: { code: 'PRG-1', name: 'Riverside' } }] }
 
@@ -163,9 +148,13 @@ describe('section access', () => {
       },
     })
     expect(made.status).toBe(422)
-    expect(made.data.details.fields.access).toBe(
-      'Give at least Read Only access to Assets, Grievances, Maintenance, Administrative Reviews or Employee Tasks, or make the account a Super Admin.',
+    // Every workspace is named, today's and any a module adds: "…to Assets, Grievances, … or Employee Tasks, or make…".
+    const message: string = made.data.details.fields.access
+    expect(message).toMatch(
+      /^Give at least Read Only access to [^,]+(, [^,]+)* or [^,]+, or make the account a Super Admin\.$/,
     )
+    for (const name of ['Assets', 'Grievances', 'Maintenance', 'Administrative Reviews', 'Employee Tasks'])
+      expect(message).toContain(name)
     expect(
       (
         await t.call('POST', '/api/users', {
@@ -189,18 +178,6 @@ describe('section access', () => {
       body: { access: { maintenance: 'read' } },
     })
     expect(lowered.data).toMatchObject({ access: { maintenance: 'read' }, superAdmin: false })
-  })
-
-  it('takes Assign in Employee Tasks only', async () => {
-    const t = await setup()
-    const cookie = await t.asSuper()
-    const make = (email: string, access: Access, code: string) =>
-      t.call('POST', '/api/users', {
-        cookie,
-        body: { name: email, email, access, superAdmin: false, employeeId: employeeId(t, code) },
-      })
-    expect((await make('a@bphs.local', { assets: 'assign' } as unknown as Access, 'E-5101')).status).toBe(422)
-    expect((await make('b@bphs.local', { tasks: 'assign' }, 'E-5102')).status).toBe(201)
   })
 
   it('on upgrade, gives each role the access it had', () => {
@@ -256,17 +233,6 @@ describe('workspace access', () => {
     for (const cookie of [assetAdmin, grievanceAdmin]) expect(await status(t, cookie, 'GET', '/api/users')).toBe(403)
   })
 
-  it('opens Reviews with Read, and to no account that is not linked to an employee but the first', async () => {
-    const { t, superAdmin, assetAdmin } = await workspaces()
-    expect(await status(t, assetAdmin, 'GET', '/api/reviews')).toBe(403)
-    expect(
-      await status(t, (await as(t, { reviews: 'read' }, employeeId(t, 'E-3005'))).cookie, 'GET', '/api/reviews'),
-    ).toBe(200)
-    expect(await status(t, (await as(t, { reviews: 'full' })).cookie, 'GET', '/api/reviews')).toBe(403)
-    t.sqlite.prepare('update users set employee_id = null where id = ?').run(t.superUser.id)
-    expect(await status(t, superAdmin, 'GET', '/api/reviews')).toBe(200)
-  })
-
   it('shows both the employees, each with only the counts of their own workspace', async () => {
     const { t, superAdmin, assetAdmin, grievanceAdmin } = await workspaces()
     const priya = async (cookie: string) =>
@@ -296,32 +262,6 @@ describe('workspace access', () => {
       expect(
         (await t.call('PATCH', `/api/employees/${made.data.id}`, { cookie, body: { jobTitle: 'Clerk' } })).status,
       ).toBe(200)
-    }
-  })
-
-  it('counts only accounts that work in Grievances as able to own a grievance', async () => {
-    const { t, superAdmin, grievanceAdmin, assetPerson, grievancePerson } = await workspaces()
-    expect((await t.call('GET', '/api/grievances/account-holders', { cookie: grievanceAdmin })).data).toEqual([
-      t.person.id,
-      grievancePerson.id,
-    ])
-    const code = ((await t.call('GET', '/api/grievances', { cookie: superAdmin })).data as { rows: { code: string }[] })
-      .rows[0]!.code
-    for (const [person, hasAccount] of [
-      [assetPerson, false],
-      [grievancePerson, true],
-    ] as const) {
-      expect(
-        (
-          await t.call('POST', `/api/grievances/${code}/owner`, {
-            cookie: superAdmin,
-            body: { ownerId: person.id, note: 'Handing over.' },
-          })
-        ).status,
-      ).toBe(200)
-      expect((await t.call('GET', `/api/grievances/${code}`, { cookie: grievanceAdmin })).data.ownerHasAccount).toBe(
-        hasAccount,
-      )
     }
   })
 })

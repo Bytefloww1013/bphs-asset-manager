@@ -1,0 +1,27 @@
+{
+  "request": "GET /api/reviews/AR-2026-0003/caps/CAP01",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "addedBy": "Priya Raghunathan",
+    "bodyHtml": "",
+    "completedAt": null,
+    "completedBy": null,
+    "createdAt": "2026-09-25T16:00:00.000Z",
+    "dueDate": "2026-10-22",
+    "id": 8,
+    "responsible": {
+      "archived": false,
+      "code": "E-0904",
+      "id": 8,
+      "name": "Aaron Feldman-Rees"
+    },
+    "seq": 1,
+    "shortDescription": "The purchasing system refuses a PO over the limit with one approval.",
+    "status": "not_started",
+    "title": "Second approval on every PO over $5,000",
+    "updatedAt": "2026-09-25T16:00:00.000Z",
+    "version": 1
+  }
+}

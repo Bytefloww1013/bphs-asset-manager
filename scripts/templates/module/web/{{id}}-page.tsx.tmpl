@@ -1,0 +1,83 @@
+import { useQuery } from '@tanstack/react-query'
+import { CornerDownLeft, LayoutGrid } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button.tsx'
+import { Alert, EmptyState } from '@/components/ui/feedback.tsx'
+import { Field, Input } from '@/components/ui/form.tsx'
+import { PageHeader, Panel } from '@/components/ui/layout.tsx'
+import { ApiError } from '@/lib/api.ts'
+import { useWrite } from '@/lib/hooks.ts'
+import { useDenied, usePageTitle } from '@/lib/session.ts'
+import { add{{Pascal}} } from './api.ts'
+import { {{camel}}Query } from './queries.ts'
+
+export function {{Pascal}}Page() {
+  usePageTitle('{{Label}}')
+  const readOnly = useDenied('{{id}}', 'edit')
+  const { data = [], isPending } = useQuery({{camel}}Query)
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader title="{{Label}}" description="Say here, in a sentence, what this page is for." />
+      {!readOnly && <Add{{Pascal}} />}
+      {isPending ? null : data.length ? (
+        <Panel>
+          <ul className="divide-y divide-line">
+            {data.map((entry) => (
+              <li key={entry.id} className="px-5 py-3 text-sm">
+                {entry.name}
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : (
+        <EmptyState
+          icon={LayoutGrid}
+          title="Nothing here yet"
+          description={readOnly ? undefined : 'Add the first one above.'}
+        />
+      )}
+    </div>
+  )
+}
+
+function Add{{Pascal}}() {
+  const [name, setName] = useState('')
+  const [error, setError] = useState<ApiError | null>(null)
+  const add = useWrite(add{{Pascal}}, { success: (entry) => `${entry.name} added` })
+
+  async function commit() {
+    setError(null)
+    try {
+      await add.mutateAsync({ name })
+      setName('')
+    } catch (e) {
+      if (e instanceof ApiError) setError(e)
+    }
+  }
+
+  return (
+    <Panel className="p-5">
+      <form
+        className="flex flex-wrap items-end gap-3"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          void commit()
+        }}
+      >
+        <Field label="Name" error={error?.fields.name} className="w-full sm:w-80">
+          <Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" />
+        </Field>
+        <Button type="submit" variant="primary" loading={add.isPending}>
+          Add <CornerDownLeft className="size-3.5 opacity-70" aria-hidden />
+        </Button>
+      </form>
+      {error && !Object.keys(error.fields).length && (
+        <Alert tone="bad" className="mt-4">
+          {error.message}
+        </Alert>
+      )}
+    </Panel>
+  )
+}

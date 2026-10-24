@@ -1,0 +1,56 @@
+{
+  "request": "GET /api/asset-brands",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "assetCount": 32,
+      "id": 2,
+      "isActive": true,
+      "name": "Apple"
+    },
+    {
+      "assetCount": 13,
+      "id": 3,
+      "isActive": true,
+      "name": "Dell"
+    },
+    {
+      "assetCount": 21,
+      "id": 4,
+      "isActive": true,
+      "name": "HP"
+    },
+    {
+      "assetCount": 7,
+      "id": 5,
+      "isActive": true,
+      "name": "Lenovo"
+    },
+    {
+      "assetCount": 15,
+      "id": 6,
+      "isActive": true,
+      "name": "Logitech"
+    },
+    {
+      "assetCount": 13,
+      "id": 7,
+      "isActive": true,
+      "name": "Microsoft"
+    },
+    {
+      "assetCount": 15,
+      "id": 8,
+      "isActive": true,
+      "name": "Samsung"
+    },
+    {
+      "assetCount": 0,
+      "id": 1,
+      "isActive": false,
+      "name": "Unknown"
+    }
+  ]
+}

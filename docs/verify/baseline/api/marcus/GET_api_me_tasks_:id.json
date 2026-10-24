@@ -1,0 +1,69 @@
+{
+  "request": "GET /api/me/tasks/8",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "approvedAt": "2026-09-18T11:00:00.000Z",
+    "assignee": {
+      "email": "m.oyelaran@bphs.local",
+      "id": 2,
+      "name": "Marcus Oyelaran"
+    },
+    "assigner": {
+      "email": "p.raghunathan@bphs.local",
+      "id": 1,
+      "name": "Priya Raghunathan"
+    },
+    "assignerReminders": "first",
+    "assignerSuperAdmin": true,
+    "attachments": [],
+    "bodyHtml": "<p>Get at least three quotes and summarise the monthly cost of each.</p>",
+    "cancelledAt": null,
+    "completedAt": "2026-09-17T15:00:00.000Z",
+    "completionNote": "Three quotes attached to the shared drive.",
+    "createdAt": "2026-09-06T09:00:00.000Z",
+    "dueAt": "2026-09-19T17:00:00.000Z",
+    "events": [
+      {
+        "actor": "Priya Raghunathan",
+        "createdAt": "2026-09-06T09:00:00.000Z",
+        "details": "",
+        "id": 10,
+        "kind": "assigned",
+        "note": null
+      },
+      {
+        "actor": "Marcus Oyelaran",
+        "createdAt": "2026-09-17T15:00:00.000Z",
+        "details": "",
+        "id": 11,
+        "kind": "completed",
+        "note": "Three quotes attached to the shared drive."
+      },
+      {
+        "actor": "Priya Raghunathan",
+        "createdAt": "2026-09-18T11:00:00.000Z",
+        "details": "",
+        "id": 12,
+        "kind": "approved",
+        "note": null
+      }
+    ],
+    "id": 8,
+    "reminderDays": [
+      "MO",
+      "TU",
+      "WE",
+      "TH",
+      "FR"
+    ],
+    "reminderTime": "09:00",
+    "reminderZone": "America/New_York",
+    "requiresApproval": true,
+    "requiresFile": false,
+    "sendAt": "2026-09-06T09:00:00.000Z",
+    "status": "completed",
+    "title": "Compare quotes for the new copier lease"
+  }
+}

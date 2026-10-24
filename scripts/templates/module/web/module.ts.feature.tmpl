@@ -1,0 +1,10 @@
+import { LayoutGrid, List } from 'lucide-react'
+import { defineWebModule } from '@/modules.ts'
+import manifest from '../shared/manifest.ts'
+
+/** The {{Label}} workspace, last on the rail, with one page (`routes/route.tsx`). */
+export default defineWebModule({
+  manifest,
+  workspaces: [{ id: '{{id}}', label: '{{Label}}', icon: LayoutGrid, home: '/{{id}}', order: 90 }],
+  nav: [{ workspace: '{{id}}', to: '/{{id}}', label: '{{Label}}', icon: List }],
+})

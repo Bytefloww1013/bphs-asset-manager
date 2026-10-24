@@ -1,0 +1,352 @@
+{
+  "request": "GET /api/reviews/audit",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "entries": [
+      {
+        "action": "download",
+        "actor": "p.raghunathan@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP02 · referrals-waiting.txt",
+        "entityId": 3,
+        "entityType": "attachment",
+        "id": 33,
+        "occurredAt": "2026-10-01T13:00:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0005",
+        "details": "AR-2026-0005 · Medication log gaps on night shifts",
+        "entityId": 5,
+        "entityType": "review",
+        "id": 32,
+        "occurredAt": "2026-09-30T11:45:00.000Z"
+      },
+      {
+        "action": "void",
+        "actor": "p.raghunathan@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0004",
+        "details": "AR-2026-0004 · Referral backlog, Intake · Status: Open → Voided",
+        "entityId": 4,
+        "entityType": "review",
+        "id": 31,
+        "occurredAt": "2026-09-28T10:20:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0004",
+        "details": "AR-2026-0004 · Referral backlog, Intake",
+        "entityId": 4,
+        "entityType": "review",
+        "id": 30,
+        "occurredAt": "2026-09-28T10:00:00.000Z"
+      },
+      {
+        "action": "entry",
+        "actor": "r.delgado@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 E12 · Waits down to 6 days on average",
+        "entityId": 26,
+        "entityType": "entry",
+        "id": 27,
+        "occurredAt": "2026-09-21T14:00:00.000Z"
+      },
+      {
+        "action": "withdraw",
+        "actor": "p.raghunathan@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP02 · rota-notes.txt",
+        "entityId": 4,
+        "entityType": "attachment",
+        "id": 26,
+        "occurredAt": "2026-09-14T09:00:00.000Z"
+      },
+      {
+        "action": "attach",
+        "actor": "r.delgado@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP02 · rota-notes.txt",
+        "entityId": 4,
+        "entityType": "attachment",
+        "id": 25,
+        "occurredAt": "2026-09-13T16:00:00.000Z"
+      },
+      {
+        "action": "attach",
+        "actor": "r.delgado@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP02 · referrals-waiting.txt",
+        "entityId": 3,
+        "entityType": "attachment",
+        "id": 24,
+        "occurredAt": "2026-09-13T16:00:00.000Z"
+      },
+      {
+        "action": "entry",
+        "actor": "r.delgado@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 E09 · List started, not yet reviewed in the team meeting",
+        "entityId": 23,
+        "entityType": "entry",
+        "id": 23,
+        "occurredAt": "2026-09-13T16:00:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "r.delgado@bphs.local",
+        "cap": 4,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP04 · Ask referrers what they need from the first call",
+        "entityId": 7,
+        "entityType": "cap",
+        "id": 22,
+        "occurredAt": "2026-09-11T15:00:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "r.delgado@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP02 · Keep a list of referrals waiting · CAP02: Not started → In progress",
+        "entityId": 5,
+        "entityType": "cap",
+        "id": 21,
+        "occurredAt": "2026-09-03T10:00:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "r.delgado@bphs.local",
+        "cap": 1,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP01 · Name cover for the referral inbox · CAP01: Not started → Completed",
+        "entityId": 4,
+        "entityType": "cap",
+        "id": 20,
+        "occurredAt": "2026-08-31T11:00:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "r.delgado@bphs.local",
+        "cap": 3,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP03 · Report waits to the Program Director monthly",
+        "entityId": 6,
+        "entityType": "cap",
+        "id": 19,
+        "occurredAt": "2026-08-23T09:50:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "r.delgado@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP02 · Keep a list of referrals waiting",
+        "entityId": 5,
+        "entityType": "cap",
+        "id": 18,
+        "occurredAt": "2026-08-23T09:40:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "r.delgado@bphs.local",
+        "cap": 1,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 CAP01 · Name cover for the referral inbox",
+        "entityId": 4,
+        "entityType": "cap",
+        "id": 17,
+        "occurredAt": "2026-08-23T09:30:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "r.delgado@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 · Intake referral backlog · Status: Open → In progress",
+        "entityId": 2,
+        "entityType": "review",
+        "id": 16,
+        "occurredAt": "2026-08-23T09:00:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0002",
+        "details": "AR-2026-0002 · Intake referral backlog",
+        "entityId": 2,
+        "entityType": "review",
+        "id": 15,
+        "occurredAt": "2026-08-22T13:10:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 · Petty cash handling at Harbour House · Status: In progress → Completed",
+        "entityId": 1,
+        "entityType": "review",
+        "id": 14,
+        "occurredAt": "2026-07-25T14:00:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 1,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP01 · Count the float weekly, signed by two staff · CAP01: In progress → Completed",
+        "entityId": 1,
+        "entityType": "cap",
+        "id": 13,
+        "occurredAt": "2026-07-23T10:10:00.000Z"
+      },
+      {
+        "action": "attach",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP02 · receipts-august.txt",
+        "entityId": 2,
+        "entityType": "attachment",
+        "id": 12,
+        "occurredAt": "2026-07-23T10:00:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP02 · Send receipts to Finance each Friday · CAP02: Not started → Completed",
+        "entityId": 2,
+        "entityType": "cap",
+        "id": 11,
+        "occurredAt": "2026-07-23T10:00:00.000Z"
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 E10 · Spot count was on Tuesday, not Wednesday",
+        "entityId": 10,
+        "entityType": "entry",
+        "id": 10,
+        "occurredAt": "2026-07-18T09:15:00.000Z"
+      },
+      {
+        "action": "attach",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 1,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP01 · spot-count.txt",
+        "entityId": 1,
+        "entityType": "attachment",
+        "id": 9,
+        "occurredAt": "2026-07-17T16:00:00.000Z"
+      },
+      {
+        "action": "entry",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 E08 · Spot count matched the log",
+        "entityId": 8,
+        "entityType": "entry",
+        "id": 8,
+        "occurredAt": "2026-07-17T16:00:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 1,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP01 · Count the float weekly, signed by two staff · CAP01: Not started → In progress",
+        "entityId": 1,
+        "entityType": "cap",
+        "id": 7,
+        "occurredAt": "2026-07-13T09:00:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 3,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP03 · Move the float to a locked safe · CAP03: Not started → Cancelled",
+        "entityId": 3,
+        "entityType": "cap",
+        "id": 6,
+        "occurredAt": "2026-07-10T15:00:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 3,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP03 · Move the float to a locked safe",
+        "entityId": 3,
+        "entityType": "cap",
+        "id": 5,
+        "occurredAt": "2026-07-09T11:40:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 2,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP02 · Send receipts to Finance each Friday",
+        "entityId": 2,
+        "entityType": "cap",
+        "id": 4,
+        "occurredAt": "2026-07-09T11:30:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": 1,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 CAP01 · Count the float weekly, signed by two staff",
+        "entityId": 1,
+        "entityType": "cap",
+        "id": 3,
+        "occurredAt": "2026-07-09T11:20:00.000Z"
+      },
+      {
+        "action": "status",
+        "actor": "m.oyelaran@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 · Petty cash handling at Harbour House · Status: Open → In progress",
+        "entityId": 1,
+        "entityType": "review",
+        "id": 2,
+        "occurredAt": "2026-07-09T11:00:00.000Z"
+      },
+      {
+        "action": "create",
+        "actor": "p.raghunathan@bphs.local",
+        "cap": null,
+        "code": "AR-2026-0001",
+        "details": "AR-2026-0001 · Petty cash handling at Harbour House",
+        "entityId": 1,
+        "entityType": "review",
+        "id": 1,
+        "occurredAt": "2026-07-08T09:30:00.000Z"
+      }
+    ],
+    "total": 31
+  }
+}

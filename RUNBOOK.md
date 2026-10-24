@@ -11,6 +11,7 @@ Commands assume you are in the project folder on the server (the one with `docke
 | | |
 | --- | --- |
 | What it is | One Docker container: Node 24 serves the API and the built web app, with a SQLite file as the database |
+| What the image holds | In `/app`: the kernel (`server/`, `shared/`), the modules (`foundation/`, `modules/`), the built web app (`/app/dist/web`) and the production dependencies. No `docs/` or `scripts/`: those run from the checkout |
 | Compose service / container / image | `assets` / `bphs-assets` / `bphs-asset-manager:latest` |
 | URL | `http://<server>:8080` (host port 8080 maps to port 3000 in the container) |
 | Data | Docker volume `bphs-data` (real name `<project-folder>_bphs-data`, see `docker volume ls`), mounted at `/data` |
@@ -69,7 +70,7 @@ Everything the system knows is in `/data/bphs.sqlite`. Back up that, and nothing
 docker compose exec assets node server/backup.ts
 ```
 
-This uses SQLite's backup API, so it is safe while people are working. It writes `/data/backups/bphs-<timestamp>.sqlite`, a single self-contained file. It never writes over an existing file.
+This uses SQLite's backup API, so it is safe while people are working. It writes `/data/backups/bphs-<timestamp>.sqlite`, a single self-contained file. It never writes over an existing file. On a development checkout, `bun run db:backup` does the same, into the `backups` folder of `DATA_DIR`.
 
 A backup **inside the volume does not protect you** from losing the volume (disk failure, `docker volume rm`, a bad `docker compose down -v`). It needs to be copied off the machine.
 
@@ -184,7 +185,7 @@ docker compose exec assets node server/admin.ts unlock someone@company.example  
 docker compose exec assets node server/admin.ts reset-password admin@bphs.local   # new one-time password
 ```
 
-If the app is down, use `docker compose run --rm assets node server/admin.ts ...` instead of `exec`.
+If the app is down, use `docker compose run --rm assets node server/admin.ts ...` instead of `exec`. Like the server, the command first runs any pending migrations on the database it opens. On a development checkout, `bun run admin list` (and so on) does the same.
 
 - `reset-password` prints a one-time password. Give it to the person over a channel you trust. It also signs that account out everywhere, clears any lock, and forces a password change at the next sign-in.
 - A deactivated account stays deactivated: a Super Admin must reactivate it on the Users screen (the command tells you).
@@ -195,17 +196,25 @@ Lockout rule, for reference: 5 wrong passwords lock an account for 15 minutes. I
 
 ## 7. Upgrading
 
-Database migrations run automatically when the new version starts, and they only go forward. So take a backup first, and treat rolling back as "restore that backup".
+The server runs every pending database migration as it starts, before it serves anything (`runMigrations` in `server/db/client.ts`, called from `server/index.ts`; `server/admin.ts` runs them too). They all run in one transaction, so a migration that fails leaves the database exactly as it was (7.2). They only go forward: there is no undo. So take a backup right before upgrading, rehearse a new migration on a copy of it, and treat rolling back as "restore that backup" (7.3).
 
 ```bash
+git rev-parse HEAD                                    # the version you are leaving: note it for a rollback
 git pull                                              # or copy in the new version
-docker compose exec assets node server/backup.ts      # pre-upgrade safety copy (also run the off-box script)
-docker compose up -d --build                          # rebuild the image and recreate the container
-docker compose logs --tail 50 assets                  # expect "listening on :3000" and no errors
-curl -fsS http://localhost:8080/api/health
+DEST=/srv/backups/bphs ./scripts/backup-offbox.sh     # pre-upgrade backup, in the volume and on the host: note the name it prints
+docker tag bphs-asset-manager:latest bphs-asset-manager:previous   # keep the running version's image for a rollback
+docker compose build                                  # the new image; the old version keeps serving meanwhile
+# If the release adds a migration, rehearse it now, on a copy of that backup (7.1).
+docker compose up -d                                  # recreate the container on the new image; the migrations run as it starts
+docker compose logs --tail 50 assets                  # expect "BPHS-Connect listening on :3000" and no errors
+curl -fsS http://localhost:8080/api/health            # {"ok":true}
 ```
 
+The backup script ends with `backup ok: /srv/backups/bphs/bphs-<UTC timestamp>.sqlite (<size> bytes)`; the same file stays in the volume as `/data/backups/bphs-<UTC timestamp>.sqlite` for 7 days.
+
 Expect a short gap (seconds) while the container is recreated. Sessions live in the database, so people stay signed in.
+
+The health check answers as soon as the process serves, whatever the database holds, so check the pages too: sign in, open each workspace on the rail, the Physical Assets and Digital Assets lists, an employee who holds something, and the Audit log. The data should be as it was before the upgrade.
 
 The notifications release adds migration `server/db/migrations/0017_notifications.sql` (notifications and notices). Like every migration it runs on the first start and cannot be undone, so take the backup above before upgrading to it.
 
@@ -215,13 +224,67 @@ The Employee Tasks release adds `0020_tasks.sql` (tasks and their history), `002
 
 The asset fields release adds `0023_asset_brands.sql`: physical assets gain Brand (required, from a list), Model and Entra ObjectId. It rebuilds the assets table and gives every existing asset an archived brand called "Unknown"; assets, assignments and conditions keep every row. Take the same backup first. At its first start with no active brand, the app adds the default brands (Apple, Dell, HP, Lenovo, Logitech, Microsoft and Samsung), new database or upgraded; after upgrading, check the brands on the Lists page and add or archive to suit. Editing an asset still on Unknown asks for a brand before it saves. Entra ObjectId is stored only; nothing syncs it with Entra.
 
-**Housekeeping timer.** Every 6 hours (and once at start) the server signs out expired sessions, deletes notifications and notices over a year old, read or not, and sends the overdue-asset reminders (once per assignment). Nothing needs scheduling outside the container.
+The modular-architecture release adds `0024_custody_ledger.sql`: physical and digital assignments move into one `assignments` ledger. Every assignment is kept; physical ones keep their numbers, and digital ones are numbered after them, which nobody sees. Nothing else changes for users. The code is now a kernel plus modules ([docs/modules.md](docs/modules.md)), and an API path no route declares is refused (404). Take the same backup first, and rehearse the migration on it (7.1) before `docker compose up -d`. This release also changes the upgrade itself: the block above now tags the running image `previous` before the build, so 7.2 and 7.3 go back without rebuilding. Until now nothing kept the old image: once the build moved the `latest` tag to the new one, `docker image prune` deleted it, and going back meant rebuilding the old version.
 
-**Task clock.** Every minute (the first tick a minute after start) the server delivers tasks whose send time has come, notifies assigners of tasks newly past due, and sends the past-due reminders due at that minute. It marks what it has sent, so a restart neither repeats nor loses a delivery; a reminder day missed entirely while the server was down is skipped. It logs nothing when healthy. A task it cannot handle logs `Task clock: task <id> failed` and the others still run; a broken clock logs an error every minute. Check with `docker compose logs --since 1h assets | grep -iA3 "task clock\|error"`. To see it work, assign a test task to yourself with a send time two minutes ahead: it should appear in Home › My tasks, with a notification, within a minute of that time.
+**Housekeeping timer.** Every 6 hours (and once at start) the server signs out expired sessions, deletes notifications and notices over a year old, read or not, and sends the overdue-asset reminders (once per assignment). Nothing needs scheduling outside the container. These are the jobs `sessions.purge` (the kernel's), `notifications.purge` (the notifications module's) and `notifications.overdue-reminders` (the assets module's). A job that throws logs `Job <name> failed:` with the error; the other jobs and the server carry on.
 
-**Rolling back:** check out the previous version, restore the pre-upgrade backup (5.1) and rebuild (`docker compose up -d --build`). Do not run an older version against a database a newer version has migrated.
+**Task clock.** The tasks module's job `tasks.clock`. Every minute (the first tick a minute after start) the server delivers tasks whose send time has come, notifies assigners of tasks newly past due, and sends the past-due reminders due at that minute. It marks what it has sent, so a restart neither repeats nor loses a delivery; a reminder day missed entirely while the server was down is skipped. It logs nothing when healthy. A task it cannot handle logs `Task clock: task <id> failed` and the others still run; a broken clock logs `Job tasks.clock failed:` every minute. Check with `docker compose logs --since 1h assets | grep -iA3 "task clock\|tasks.clock\|error"`. To see it work, assign a test task to yourself with a send time two minutes ahead: it should appear in Home › My tasks, with a notification, within a minute of that time.
 
-**Cleaning up:** old images pile up with every rebuild: `docker image prune` (removes dangling images only).
+**Cleaning up:** old images pile up with every rebuild: `docker image prune` (removes dangling images only; the image tagged `previous` is kept until the next upgrade moves the tag). That image takes as much disk as the running one. Once the new version has run well for a while, `docker image rm bphs-asset-manager:previous` frees it; going back then needs a rebuild.
+
+### 7.1 Rehearse migration 0024 (the custody merge)
+
+Run this once, for the upgrade that brings `0024_custody_ledger.sql`, after `docker compose build` and before `docker compose up -d`. It uses the new image; `docs/` isn't in the image, so it is mounted from the checkout:
+
+```bash
+docker compose run --rm --no-deps -v "$PWD/docs/verify:/app/docs/verify:ro" --entrypoint node assets \
+  docs/verify/migration-check.mjs --db /data/backups/bphs-<UTC timestamp>.sqlite   # the file the backup printed
+```
+
+`docs/verify/migration-check.mjs` copies the file's bytes (with a `-wal` beside it, if there is one) to a temporary folder and works on that copy only: it never opens, changes or deletes the file it is given, and the live database is not touched. On the copy it runs the pending migrations with the app's own migrator, as the server does on start, then checks:
+
+- Row counts: every table has as many rows as before, and `assignments` has the physical rows plus the digital ones. `digital_assignments` is gone, and no other table appeared.
+- Every physical assignment kept its id and its values. Every digital one moved with its values, in its order, under an id after every id the physical ledger had handed out, and the id counter carries on from the highest.
+- Conditions, audit entries, notifications and every other table's id counter are unchanged.
+- `foreign_key_check` finds nothing, `integrity_check` says ok, and no item has two open assignments.
+- The four delete-guard triggers are there and work: an asset or digital asset with assignment history can't be deleted, and an assignment can't name an item that isn't there.
+
+It prints one line per check, `PASS: <check>` or `FAIL: <check> - <what differs>`, and `INFO:` lines for what it notes (the copy it made, how many migrations ran, a kind with no assignment to try its guard on). The last line is `RESULT: PASS` (exit 0) or `RESULT: FAIL (<number of failures>)` (exit 1). The temporary copy is deleted either way.
+
+- `RESULT: PASS`: go on with `docker compose up -d`.
+- Any `FAIL`: don't upgrade. Nothing has changed: the old version is still serving, on its own database. Keep the output and the backup, and report it.
+- `FAIL: rehearsal - This database has no digital_assignments table: it is already merged.`: this database already has 0024, so there is nothing to rehearse.
+
+`KEEP=<dir>` keeps the migrated copy as `<dir>/bphs.sqlite`, to look at on a development machine. The script deletes that file (and its `-wal` and `-shm`) before it starts, so never point `KEEP` at `/data` or any folder that holds a live database.
+
+Later migrations have no check of their own. Rehearse one by restoring the pre-upgrade backup into a scratch volume (5.3) after `docker compose build`: the admin command run there uses the new image, so it runs the pending migrations on the scratch copy first, and prints the accounts if they succeed or the error if one fails.
+
+### 7.2 If a migration fails
+
+The new container stops as it starts and Docker keeps restarting it: `docker compose ps` shows it restarting or unhealthy, the site is down, and the log shows a `DrizzleError: Failed to run the query '…'` whose trace goes through `runMigrations`. The pending migrations ran in one transaction, so the failure rolled all of them back: the database is exactly as the old version left it, and nothing was lost. Go back to the old version; no restore is needed:
+
+```bash
+docker compose logs --tail 100 assets > ~/bphs-failed-upgrade.log   # keep the error
+docker compose stop assets                                    # end the restart loop
+git switch --detach <the commit you noted>                    # the old version's code
+docker tag bphs-asset-manager:previous bphs-asset-manager:latest   # its image (without the tag: docker compose build, several minutes)
+docker compose up -d --force-recreate                         # a container on the old image
+curl -fsS http://localhost:8080/api/health
+```
+
+Report the log. Before the next upgrade, `git switch main` again. If the error comes from somewhere other than `runMigrations`, the new version got past its migrations and the database is migrated: roll back as in 7.3 instead.
+
+### 7.3 Rolling back
+
+Once the new version has started, its migrations are in the database, and an older version must not run on it. Going back means the old image and the pre-upgrade backup together:
+
+1. `docker compose stop assets`.
+2. `git switch --detach <the commit you noted>`, then `docker tag bphs-asset-manager:previous bphs-asset-manager:latest` (or `docker compose build`).
+3. Load the pre-upgrade backup from the host (`/srv/backups/bphs/bphs-<UTC timestamp>.sqlite`): steps 2 and 3 of 5.1.
+4. `docker compose up -d --force-recreate`, not `start`: `start` would start the new version's container again, which would migrate the restored database.
+5. Check as in step 4 of 5.1.
+
+This loses everything saved since the backup, including what people did on the new version (section 5). Before the next upgrade, `git switch main` again.
 
 ## 8. HTTPS and reverse proxy
 
@@ -260,7 +323,7 @@ Do not set `COOKIE_SECURE: 'true'` while users still reach the app over plain `h
 | Sign-in "works" then returns to the sign-in page | `COOKIE_SECURE` is `true` but users are on plain HTTP. Use HTTPS, or set it to `false` and `docker compose up -d` |
 | "Account locked" | 5 wrong passwords. Wait 15 minutes, or a Super Admin unlocks it, or `admin.ts unlock` (section 6) |
 | Forced to change password on every sign-in | Expected after an admin reset. Choose a new one (8+ characters, upper and lower case, a digit, a special character) |
-| Container shows `unhealthy` or keeps restarting | `docker compose logs --tail 100 assets`. Most common: the `/data` volume is not writable by the `node` user (if you replaced the named volume with a bind mount, `chown 1000:1000` the folder), or the database file is corrupt (restore, section 5) |
+| Container shows `unhealthy` or keeps restarting | `docker compose logs --tail 100 assets`. Most common: the `/data` volume is not writable by the `node` user (if you replaced the named volume with a bind mount, `chown 1000:1000` the folder), the database file is corrupt (restore, section 5), or, right after an upgrade, a migration failed (7.2) |
 | `database is locked` errors, or odd write failures | `DATA_DIR` is on a network share. SQLite in WAL mode needs a local disk |
 | Port 8080 already in use | Change the left number in `ports:` in `docker-compose.yml`, then `docker compose up -d` |
 | Import or a grievance, review or task file upload fails with 413 or "payload too large" | A reverse proxy in the way has a small body limit (section 8). Raise it to 4 MB, and to 101 MB for `/api/grievances`, `/api/reviews`, `/api/tasks` and `/api/me/tasks`. Without a proxy, the app itself refuses one file over 10 MB or more than 10 at once, with that reason |
@@ -350,7 +413,7 @@ Checked by running them against a real container and scratch Docker volumes whil
   - The audit log showed no grievance ID on file entries.
   - In Firefox, a date being typed was wiped.
   - Zod's eval probe broke the Content-Security-Policy.
-- Maintenance in headless Chromium (Playwright) against the production build, Oct 15 2026, on a scratch data directory and a throwaway secret: entries posted to the webhook as Zoho would, the list's tabs and search, dispatching through the employee picker, a status change and a note, hand entry with its validation, delete with its confirmation, an unknown ID, and phone width. The webhook's secret checks, lenient reading, duplicates and rules are covered by `server/tests/maintenance.test.ts`, and who may open Maintenance by `server/tests/access.test.ts`. **A real Zoho post was not seen**: do the test in DEPLOY-GUIDE step 15 the first time.
+- Maintenance in headless Chromium (Playwright) against the production build, Oct 15 2026, on a scratch data directory and a throwaway secret: entries posted to the webhook as Zoho would, the list's tabs and search, dispatching through the employee picker, a status change and a note, hand entry with its validation, delete with its confirmation, an unknown ID, and phone width. The webhook's secret checks, lenient reading, duplicates and rules are covered by `modules/maintenance/server/maintenance.test.ts`, and who may open Maintenance by `server/tests/access.test.ts`. **A real Zoho post was not seen**: do the test in DEPLOY-GUIDE step 15 the first time.
 - Administrative Reviews in headless Chromium (Playwright) against the production build, Oct 17 2026, on freshly seeded data, at 1400 px and at 390 px wide:
   1. Marcus (Reviews Edit) recorded a review through the form, with Rosa as the reviewer and Priya as the employee reviewed.
   2. Rosa (Reviews Read Only, but the reviewer) added three CAPs and an update on CAP01 with a file.
@@ -358,8 +421,10 @@ Checked by running them against a real container and scratch Docker volumes whil
   4. Rosa completed the review and printed its case file; the export was in the audit log.
   5. Priya, a Super Admin, could not find it in the review list (All, searched by ID), Action items (All, searched), the audit log (searched) or the API. Its review, CAP and case file links each answered "No review with that ID".
 
-  No sideways scrolling at either width. The console showed only the expected "Review not found" for Priya. Access rules, sealing and the employee guards are covered by `server/tests/reviews.test.ts`. **The printed PDF from Firefox was not seen**: print one review case file from each browser the first time.
+  No sideways scrolling at either width. The console showed only the expected "Review not found" for Priya. Access rules, sealing and the employee guards are covered by `modules/reviews/server/reviews.test.ts`. **The printed PDF from Firefox was not seen**: print one review case file from each browser the first time.
 - Graceful shutdown on SIGTERM (exit 0), log rotation settings (accepted by `docker compose config`), and that the cookie is `HttpOnly; Secure; SameSite=Lax` when `COOKIE_SECURE=true`.
+- Migration 0024's rehearsal (section 7.1), Oct 23 2026: the command in 7.1 in a throwaway image of this version, on a scratch pre-merge database mounted read-only, gave 18 PASS. On the production-shaped fixture (the script with no `--db`), 145 physical assignments kept their ids, 28 digital ones came after 150, and every page opened on the migrated copy.
+- In-process against the code, not in a container, Oct 23 2026: a migration that fails rolls back every pending migration, leaving the database as it was (7.2).
 
 **Not exercised**, so check them the first time you use them:
 
@@ -368,3 +433,4 @@ Checked by running them against a real container and scratch Docker volumes whil
 - The `crontab -e` line in section 4.2 (the script it calls was run by hand). Production uses the `/etc/cron.d` form from DEPLOY-GUIDE.md step 12 instead.
 - The first upload to Google Drive from cron, due 2026-10-22 at 02:15 (the uploads so far were run by hand).
 - Running a second container on a scratch volume to browse old data (end of section 5.3).
+- On production: the 0024 rehearsal on its real backup, and the `previous` image tag and the rollback in 7.2 and 7.3.
