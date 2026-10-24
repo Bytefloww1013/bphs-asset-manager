@@ -1,0 +1,32 @@
+---
+description: Hard UI rules for every page and component, distilled from DESIGN.md and PRODUCT.md
+scope: root
+covers: [ui, design, accessibility, components, icons, keyboard, sheets, dialogs, typography, color, motion, permissions]
+---
+
+# UI rules
+
+`DESIGN.md` is the full design system and `PRODUCT.md` the product principles; read the relevant section before building a screen. These rules never bend:
+
+## Permissions and state
+
+- Never hide a control the user may not use. Show it disabled, with the rule behind it in words.
+- Every status is a word plus a dot or icon; never color alone.
+
+## Look
+
+- Text people read or scan is 14px; 12px only for metadata. Every text pair meets 4.5:1 contrast.
+- Identifiers, timestamps and counts in Geist Mono or tabular figures; never mono on labels or sentences.
+- Icons are Lucide only: no emoji or Unicode glyphs, keyboard hints included.
+- No colored side stripes on rows, cards or alerts; a row highlight is a tint.
+- The accent is never decoration, a heading color or a status fill.
+- Overviews lead with what needs a decision, not a grid of KPI cards or hero numbers.
+
+## Interaction
+
+- Controls 36px (32px inside rows, 24px minimum target); rows 56px; visible keyboard focus.
+- Focused tasks open in the right-hand sheet; centered dialogs are for confirmations only.
+- The common path is keyboard-complete: Enter adds, Shift+Enter adds another, I issues from a focused row, Ctrl/Cmd+Enter submits a sheet.
+- Motion only for sheet entry, menu pop-ins, the row settle and the pages panel fold; honour `prefers-reduced-motion`.
+- Fonts and icons are self-hosted: the app must work with no internet.
+- TanStack `Link` sets `aria-current="page"` itself; for another value spread `useLinkProps` onto an `<a>` and set `aria-current` last.

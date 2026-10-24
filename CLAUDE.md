@@ -1,3 +1,5 @@
+@AGENTS.md
+
 <!-- rtk-instructions v2 -->
 # Command output
 
