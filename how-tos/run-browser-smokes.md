@@ -16,9 +16,9 @@ covers: [smoke, browser, chrome, firefox, puppeteer, playwright, headless, route
    - `SKIP_BUILD=1 node docs/verify/hidden-smoke.mjs`: no control is disabled because of missing access (issue #27).
 5. The smokes that need the shared scratch server on :3388:
    1. `SKIP_BUILD=1 docs/verify/scratch-server.sh start`
-   2. `node docs/verify/sidebar-smoke.mjs`, `node docs/verify/asset-fields-smoke.mjs`, and `node docs/verify/tasks-smoke.mjs` (Firefox: set `FIREFOX` if it isn't `/snap/bin/firefox`). The first run installs puppeteer-core outside the repo.
+   2. `node docs/verify/sidebar-smoke.mjs`, `node docs/verify/asset-fields-smoke.mjs`, and `node docs/verify/tasks-smoke.mjs` (Firefox: set `FIREFOX` if it isn't `/snap/bin/firefox`; a cloud container has no Firefox, so skip it there). The first run installs puppeteer-core outside the repo.
    3. `docs/verify/scratch-server.sh stop`
-6. Read the results: one `PASS`/`FAIL` line per check, then a summary. The exit code is 1 if any check failed. Logs are in the scratch folder the script names.
+6. Read the results: one `PASS`/`FAIL` line per check, then a summary. The exit code is 1 if any check failed. Each `FAIL` line says why; the scratch server's own log is `server.log` in its `ROOT` folder.
 7. A route smoke failure of `not in ROUTES: <path>` means a page was added without a `ROUTES` entry in `docs/verify/routes-smoke.mjs`. Add one.
 
 Each script's header comment lists its other env vars (`PORT`, `ROOT`, `BASE`, `ROUTE_TREE`, `EXTRA_ROUTES`). Never run the smokes against the real `DATA_DIR`.

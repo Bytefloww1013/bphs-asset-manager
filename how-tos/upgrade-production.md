@@ -10,10 +10,10 @@ The commands are in two places and must not be copied here. On the production VP
 
 1. Before you start, make sure the release is merged to `main` and its CI is green. Read the release notes in `RUNBOOK.md` section 7 for every migration it adds.
 2. Note the running commit (`git rev-parse HEAD`). You need it to go back.
-3. Take a backup with `scripts/backup-offbox.sh` (see `how-tos/backup-and-restore.md`). Note the file name from its last line, `backup ok: …`. Stop if the script fails.
+3. Take a backup with `scripts/backup-offbox.sh` (on the VPS, `CONTAINER=bphs-assets` and `sudo env`) (see `how-tos/backup-and-restore.md`). Note the file name from its last line, `backup ok: …`. Stop if the script fails.
 4. Pull, tag the running image `previous`, and build the new image. The old version keeps serving while it builds.
 5. If the release adds a migration, rehearse it on the backup before anything touches the live database: for 0024, with `docs/verify/migration-check.mjs` (RUNBOOK 7.1); for later migrations, in a scratch volume (RUNBOOK 5.3). On any `FAIL`, stop. Nothing has changed yet.
-6. Switch over (`up -d`). Then check:
+6. Switch over (`up -d`; on the VPS, `up -d --wait --wait-timeout 120`). Then check:
    - The log shows `BPHS-Connect listening on :3000` with no errors.
    - `/api/health` answers `{"ok":true}`.
    - Signed in, each workspace, both asset lists, an employee who holds something, and the Audit log show the data as it was before.
