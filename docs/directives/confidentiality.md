@@ -1,7 +1,7 @@
 ---
 description: Rules for the confidential modules (Grievances, Reviews) and for what may be kept in the browser
 scope: root
-covers: [confidential, privacy, notifications, grievances, reviews, browser-storage, localStorage, badges, audit]
+covers: [confidential, privacy, notifications, grievances, reviews, hr, new-module, manifest, lint, counts, badges, audit, browser-storage, localStorage, sessionStorage, IndexedDB, urls, preferences]
 ---
 
 # Confidentiality
@@ -17,4 +17,4 @@ covers: [confidential, privacy, notifications, grievances, reviews, browser-stor
 ## The browser
 
 - Nothing from inside a workspace is stored in the browser: no record content, names or ids in `localStorage`, `sessionStorage`, IndexedDB or URLs that are saved for later.
-- Browser storage holds UI preferences only (the pages panel's state, timeline order, pins of sidebar page paths), validated against the nav model on read.
+- Browser storage holds UI preferences only (the last workspace's name, the pages panel's state, timeline order, pins of sidebar page paths), validated on read (pins against the nav model, the workspace against the workspace list).

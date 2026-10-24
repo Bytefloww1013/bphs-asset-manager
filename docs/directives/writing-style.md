@@ -1,7 +1,7 @@
 ---
 description: How code comments, docs and user-facing text are written, and which docs a change must update
 scope: root
-covers: [comments, docs, writing, readme, prose, copy, documentation, markdown]
+covers: [comments, docs, writing, prose, copy, ui-copy, american-english, spelling, documentation, readme, module-readme, stale-docs, docs-check, docs-gen, markdown, issue-references]
 ---
 
 # Writing style

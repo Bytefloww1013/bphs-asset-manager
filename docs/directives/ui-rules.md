@@ -1,7 +1,7 @@
 ---
 description: Hard UI rules for every page and component, distilled from DESIGN.md and PRODUCT.md; hide what the user can't access
 scope: root
-covers: [ui, design, hidden, disabled, placeholder, accessibility, components, icons, keyboard, sheets, dialogs, typography, color, motion, permissions]
+covers: [ui, design, permissions, hidden, disabled, placeholder, coming-soon, status, accessibility, contrast, typography, mono, color, accent, icons, lucide, components, sizes, keyboard, focus, shortcuts, sheets, dialogs, motion, reduced-motion, fonts, offline, aria-current, tanstack-link]
 ---
 
 # UI rules

@@ -1,7 +1,7 @@
 ---
 description: How server code raises and reports errors to API clients
 scope: root
-covers: [errors, HttpError, api, validation, status-codes, bulk, server]
+covers: [errors, HttpError, api, validation, status-codes, bulk, server, notFound, conflict, forbidden, invalid, describeError, rowFailure, error-messages, constraints, field-errors]
 ---
 
 # API errors

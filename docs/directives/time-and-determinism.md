@@ -1,14 +1,14 @@
 ---
 description: Clocks, randomness and date formatting so seeds, tests and baselines come out the same every run
 scope: root
-covers: [dates, time, seed, determinism, clock, random, formatting, tests, baselines]
+covers: [dates, time, seed, SeedKit, determinism, clock, fixed-clock, FIXED_NOW, random, sqlite, baselines, browser-checks, remember-me, iso, daysBetween, formatUsDate, formatting, tests]
 ---
 
 # Time and determinism
 
 ## Seeds
 
-- Take the time from `kit.now` and randomness from `kit.rand` (`int`, `pick`, `daysAgo`); never `Date.now()`, `new Date()` or `Math.random()` in seed code.
+- Take the time from `kit.now` and randomness from the kit (`kit.rand`, `kit.int`, `kit.pick`, `kit.daysAgo`; `kit.deviceRand`/`kit.devicePick` for physical assets' device fields); never `Date.now()`, `new Date()` or `Math.random()` in seed code.
 - Load seed code only when seeding: `seed: async (db, kit) => ...(await import('./seed.ts'))...`.
 
 ## Fixed clock

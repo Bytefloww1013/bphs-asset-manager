@@ -1,7 +1,7 @@
 ---
 description: Branches, commits, pull requests and plans in this repo; supersedes the directives skill's rebase/fast-forward default
 scope: root
-covers: [git, branch, commit, pull-request, squash-merge, merge-conflict, plan, push]
+covers: [git, branch, commit, commit-message, pull-request, squash-merge, blame-ignore-revs, merge-conflict, rebase, force-push, git-mv, blame, format, quick-check, plan, phases, push]
 ---
 
 # Git and pull requests
