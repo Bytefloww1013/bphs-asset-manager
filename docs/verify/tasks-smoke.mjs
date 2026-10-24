@@ -5,7 +5,10 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
 
-const TOOLS = '/home/josh/tmp/bphs-qa-tools'
+/** Where scratch files go: `BPHS_TMP`, else the system temp folder. */
+const TMP = process.env.BPHS_TMP ?? process.env.TMPDIR ?? '/tmp'
+
+const TOOLS = `${TMP}/bphs-qa-tools`
 if (!fs.existsSync(`${TOOLS}/node_modules/puppeteer-core`)) execSync(`npm install --silent --prefix ${TOOLS} puppeteer-core`, { stdio: 'inherit' })
 const puppeteer = createRequire(`${TOOLS}/`)('puppeteer-core')
 
@@ -15,7 +18,7 @@ const ADMIN = 'p.raghunathan@bphs.local'
 const ASSIGNEE = { email: 'r.delgado@bphs.local', name: 'Rosa' }
 const TITLE = `Smoke task ${Date.now()}`
 // Snap Firefox cannot read /tmp or dot-folders; a fresh profile per run, removed in finally.
-const profile = `/home/josh/tmp/bphs-qa-profiles/tasks-smoke-${Date.now()}`
+const profile = `${TMP}/bphs-qa-profiles/tasks-smoke-${Date.now()}`
 
 const step = (name) => console.log(`  - ${name}`)
 

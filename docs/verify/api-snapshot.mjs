@@ -16,7 +16,7 @@
 //   node docs/verify/api-snapshot.mjs --compare  take a fresh snapshot and diff it against the baseline; exit 1 on any difference
 //
 // Server: unless BASE is set, it starts its own scratch server (docs/verify/scratch-server.sh, SKIP_BUILD=1, so no SPA) under
-// ROOT (default /home/josh/tmp/bphs-api-snapshot) on PORT (default 3392), with FIXED_NOW=2026-10-01T13:00:00Z and TZ=UTC, and
+// ROOT (default $BPHS_TMP/bphs-api-snapshot) on PORT (default 3392), with FIXED_NOW=2026-10-01T13:00:00Z and TZ=UTC, and
 // stops it at the end, on errors too. With BASE, the server must be freshly seeded under that clock and nothing else may have
 // used it: some GETs write (reading a notice marks it read; a grievance download is logged), so a second run sees different data.
 //
@@ -32,6 +32,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+/** Where scratch files go: `BPHS_TMP`, else the system temp folder. */
+const TMP = process.env.BPHS_TMP ?? process.env.TMPDIR ?? '/tmp'
+
 // Real clock, read first: when this process started, and now. The window around them is what counts as "stamped during this run".
 const realNow = () => performance.timeOrigin + performance.now()
 const REAL_START = performance.timeOrigin
@@ -46,7 +49,7 @@ const OWN_SERVER = !process.env.BASE
 const BASE = (process.env.BASE ?? `http://localhost:${PORT}`).replace(/\/+$/, '')
 const SERVER_ENV = {
   ...process.env,
-  ROOT: process.env.ROOT ?? '/home/josh/tmp/bphs-api-snapshot',
+  ROOT: process.env.ROOT ?? `${TMP}/bphs-api-snapshot`,
   PORT,
   FIXED_NOW: '2026-10-01T13:00:00Z',
   TZ: 'UTC',

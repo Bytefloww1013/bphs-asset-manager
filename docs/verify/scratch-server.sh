@@ -3,7 +3,9 @@
 # start: build (unless SKIP_BUILD=1), seed a fresh DATA_DIR, serve the API and SPA on $PORT. stop: kill it and remove its files.
 # FIXED_NOW (an ISO instant) pins the clock of the seed and the server (docs/verify/fixed-clock.mjs); ROOT and PORT let several run at once and CI use its own folder.
 cd "$(dirname "$0")/../.." || exit 1
-ROOT=${ROOT:-/home/josh/tmp/bphs-qa-tasks}   # under $HOME, not /tmp: snap Firefox can't read /tmp
+TMP=${BPHS_TMP:-${TMPDIR:-/tmp}} # where scratch files go
+mkdir -p "$TMP"
+ROOT=${ROOT:-$TMP/bphs-qa-tasks}   # snap Firefox can't read /tmp: for tasks-smoke, set BPHS_TMP to a folder under $HOME
 CLOCK=(--import ./docs/verify/fixed-clock.mjs)
 PORT=${PORT:-3388}
 

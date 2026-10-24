@@ -7,12 +7,14 @@
 # changes are copied first and copied back after (never `git checkout`), so uncommitted work survives; it checks that too.
 # One PASS/FAIL line per check; exit 0 only if all pass.
 cd "$(dirname "$0")/../.." || exit 1
+TMP=${BPHS_TMP:-${TMPDIR:-/tmp}} # where scratch files go
+mkdir -p "$TMP"
 ID=proof-widgets
 # `TIER=foundation` proves a foundation module instead: in `foundation/`, not listed in app.modules.ts, with no workspace.
 [ "${TIER:-feature}" = foundation ] && FOUNDATION=1 DIR=foundation/$ID || DIR=modules/$ID
 NAME=proof_widgets
 SAVED=$(mktemp -d)
-LOGS=/home/josh/tmp/bphs-new-module-proof
+LOGS=$TMP/bphs-new-module-proof
 CHANGED=(app.modules.ts shared/modules.gen.ts server/modules.gen.ts web/src/modules.gen.ts web/src/routeTree.gen.ts
   server/db/migrations/meta/_journal.json)
 failed=0

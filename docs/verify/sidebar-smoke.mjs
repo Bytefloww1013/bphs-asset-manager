@@ -5,11 +5,14 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
 
-const TOOLS = '/home/josh/tmp/bphs-qa-tools'
+/** Where scratch files go: `BPHS_TMP`, else the system temp folder. */
+const TMP = process.env.BPHS_TMP ?? process.env.TMPDIR ?? '/tmp'
+
+const TOOLS = `${TMP}/bphs-qa-tools`
 if (!fs.existsSync(`${TOOLS}/node_modules/puppeteer-core`)) execSync(`npm install --silent --prefix ${TOOLS} puppeteer-core`, { stdio: 'inherit' })
 const puppeteer = createRequire(`${TOOLS}/`)('puppeteer-core')
 
-const CHROME = process.env.CHROME ?? '/home/josh/tmp/bphs-spike-chrome/chrome/linux-155.0.8059.39/chrome-linux64/chrome'
+const CHROME = process.env.CHROME ?? `${TMP}/bphs-spike-chrome/chrome/linux-155.0.8059.39/chrome-linux64/chrome`
 const BASE = `http://localhost:${process.env.PORT ?? 3388}`
 const PASSWORD = 'Demo-pass1!'
 const PRIYA = 'p.raghunathan@bphs.local'

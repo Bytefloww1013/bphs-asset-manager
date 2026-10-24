@@ -6,7 +6,7 @@
 //   node docs/verify/access-matrix.mjs --compare  replay the stored probes and accounts on a fresh server and diff
 //
 // Server: unless BASE is set, it starts its own seeded scratch server with docs/verify/scratch-server.sh (ROOT, default
-// /home/josh/tmp/bphs-access-matrix; PORT, default 3393; FIXED_NOW=2026-10-01T13:00:00Z; TZ=UTC; SKIP_BUILD=1) and stops it
+// $BPHS_TMP/bphs-access-matrix; PORT, default 3393; FIXED_NOW=2026-10-01T13:00:00Z; TZ=UTC; SKIP_BUILD=1) and stops it
 // at the end, on errors too. With BASE, MATRIX_DATA_DIR must name that server's data folder (see "None" below); it has its own
 // name so that an app DATA_DIR exported in the shell, which may be the real one, is never written to.
 //
@@ -48,12 +48,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+/** Where scratch files go: `BPHS_TMP`, else the system temp folder. */
+const TMP = process.env.BPHS_TMP ?? process.env.TMPDIR ?? '/tmp'
+
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '../..')
 const BASELINE = path.join(HERE, 'baseline', 'access.json')
 const COMPARE = process.argv.includes('--compare')
 const OWN_SERVER = !process.env.BASE
-const ROOT = process.env.ROOT ?? '/home/josh/tmp/bphs-access-matrix'
+const ROOT = process.env.ROOT ?? `${TMP}/bphs-access-matrix`
 const PORT = process.env.PORT ?? '3393'
 const FIXED_NOW = '2026-10-01T13:00:00Z'
 const BASE = (process.env.BASE ?? `http://localhost:${PORT}`).replace(/\/+$/, '')

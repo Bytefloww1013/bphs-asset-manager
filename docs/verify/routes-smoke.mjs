@@ -14,15 +14,18 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 
+/** Where scratch files go: `BPHS_TMP`, else the system temp folder. */
+const TMP = process.env.BPHS_TMP ?? process.env.TMPDIR ?? '/tmp'
+
 const REPO = fileURLToPath(new URL('../..', import.meta.url))
-const CHROME = process.env.CHROME ?? '/home/josh/tmp/bphs-spike-chrome/chrome/linux-155.0.8059.39/chrome-linux64/chrome'
+const CHROME = process.env.CHROME ?? `${TMP}/bphs-spike-chrome/chrome/linux-155.0.8059.39/chrome-linux64/chrome`
 const TREE = process.env.ROUTE_TREE ?? `${REPO}web/src/routeTree.gen.ts`
 const PORT = process.env.PORT ?? '3391'
 const OWN_SERVER = !process.env.BASE
 const BASE = (process.env.BASE ?? `http://localhost:${PORT}`).replace(/\/$/, '')
 const SERVER_ENV = {
   ...process.env,
-  ROOT: process.env.ROOT ?? '/home/josh/tmp/bphs-routes-smoke',
+  ROOT: process.env.ROOT ?? `${TMP}/bphs-routes-smoke`,
   PORT,
   FIXED_NOW: '2026-10-01T13:00:00Z',
   TZ: 'UTC',

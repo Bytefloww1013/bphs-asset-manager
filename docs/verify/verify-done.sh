@@ -4,11 +4,13 @@
 # phase builds, so it counts as not done.
 # Earlier versions of this file are in git history: issue #19 (asset brand/model/Entra) at 944638a, issue #6 at 9e84fdb, issue #8 at 58a43cf.
 cd "$(dirname "$0")/../.." || exit 1
+TMP=${BPHS_TMP:-${TMPDIR:-/tmp}} # where scratch files go
+mkdir -p "$TMP"
 failed=0
 skipped=0
 ran=0
 base=$(git merge-base HEAD origin/main 2>/dev/null || git merge-base HEAD main)
-LOGS=${LOGS:-/home/josh/tmp/bphs-verify}
+LOGS=${LOGS:-$TMP/bphs-verify}
 mkdir -p "$LOGS"
 
 check() { # check "<name>" <command...>
