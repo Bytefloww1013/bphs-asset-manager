@@ -18,12 +18,13 @@ The baselines are in `docs/verify/baseline/`: `api/` (every GET response as Priy
 4. Review `git diff docs/verify/baseline/`: only the routes and accounts you meant to change should differ. Make sure no session token or real-clock value appears (`<real-now>` placeholders are fine).
 5. Commit the baseline in the same commit as the change that caused it.
 
+To run against a server you started yourself, set `BASE` (and `MATRIX_DATA_DIR` for the access matrix). The server must be freshly seeded under `FIXED_NOW=2026-10-01T13:00:00Z` and `TZ=UTC`, with nothing else using it. Each script's header comment has the details. Never point these scripts at the real `DATA_DIR`.
+
 ## The built-CSS baseline
 
-The CSS check catches a module tier whose classes Tailwind no longer finds (a missing `@source` line in `web/src/styles.css`).
+`web-css.sha256` is the hash of the whole built stylesheet. Tailwind writes a rule only for the classes it finds in the files it scans, so the hash changes whenever a class starts or stops being used anywhere in the app (issue #27 removed the lock screens, dropped `.py-20` and re-recorded it), and when Tailwind or `web/src/styles.css` changes. The check is there to catch the case where it changes because Tailwind stopped scanning a folder (a missing `@source` line).
 
 1. Compare: run `bun run build`, then `docs/verify/verify-done.sh`, and read its `built CSS matches the Phase 0 baseline` line.
-2. A difference with no CSS change in your branch means a missed `@source` line: fix `web/src/styles.css`, not the baseline.
-3. A difference your change was meant to make (new classes): run `bun run build`, then `cat dist/web/static/*.css | sha256sum | cut -d' ' -f1 > docs/verify/baseline/web-css.sha256`. No script records this yet, so it is a candidate for one.
-
-To run against a server you started yourself, set `BASE` (and `MATRIX_DATA_DIR` for the access matrix). The server must be freshly seeded under `FIXED_NOW=2026-10-01T13:00:00Z` and `TZ=UTC`, with nothing else using it. Each script's header comment has the details. Never point these scripts at the real `DATA_DIR`.
+2. If the hash changed, find out which rules did: build `main` in a worktree and diff its `dist/web/static/*.css` against yours.
+3. Rules missing for classes your branch still uses mean a missed `@source` line: fix `web/src/styles.css`, never the baseline.
+4. If only the classes your branch added or removed differ, re-record: run `bun run build`, then `cat dist/web/static/*.css | sha256sum | cut -d' ' -f1 > docs/verify/baseline/web-css.sha256`. Name the classes in the commit body, as #27 did. No script records this yet, so it is a candidate for one.

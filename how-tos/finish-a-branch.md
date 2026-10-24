@@ -12,7 +12,7 @@ Conventions (commit messages, squash-merge only, never push without being asked)
 2. Update stale docs (`docs/directives/writing-style.md`, "Keeping docs current"): the module README, `docs/modules.md`, `README.md`, `RUNBOOK.md`. After any module change, run `bun run docs:gen`. Then `bun run docs:check` must pass.
 3. If the change touched a schema, `docs/verify/schema-drift.sh` must pass (`how-tos/add-a-db-migration.md`).
 4. If the change touched routes, pages or access, run the browser smokes (`how-tos/run-browser-smokes.md`) and compare the baselines (`how-tos/update-verify-baselines.md`).
-5. Run the Definition of Done: `docs/verify/verify-done.sh` must exit 0, with no `FAIL` or `SKIP`. A change isn't done until it does. The script holds one issue's checks at a time (its header names the issue, and earlier versions are in git history), so check that it describes your work.
+5. Run the Definition of Done: `docs/verify/verify-done.sh` must exit 0, with no `FAIL` or `SKIP`. A change isn't done until it does. The script is rewritten for each issue, so first check that its header names yours. If it names another issue, rewrite it: replace the checks with your issue's Definition of Done, keep the `check`/`check_if`/`skip` helpers and the one-line-per-check contract, and add the outgoing issue and its last commit to the header's "Earlier versions" line.
 6. Remove anything that was for this branch only: issue notes in `CLAUDE.md` or `AGENTS.md`, scratch files, logs.
 7. Push only when the user says to: `git push -u origin <branch>`.
 8. Open the PR against `main` only when the user asks. It will be squash-merged, so its title becomes the commit subject.
