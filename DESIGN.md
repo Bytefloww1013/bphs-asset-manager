@@ -169,7 +169,7 @@ It replaces a dense, spreadsheet-style skin (9.5-11px type, 19px controls, a bor
 - One cool neutral family (hue 262) and one navy accent. The accent marks primary action, selection and focus, nothing else.
 - Status always travels with a word plus a dot or icon. Colour is never the only signal.
 - Mono type is reserved for identifiers and measurements: asset tags, serials, employee IDs, timestamps, audit details.
-- Permissions are visible: a control the user cannot use stays on screen, disabled, with the rule beside it.
+- What the user may not use isn't there: a page, section or control their access doesn't allow is not drawn at all. Disabled with a reason is kept for an action they may use that a record rule blocks, and for a page not built yet.
 - Restrained motion: sheets slide in, rows you just changed settle from a tint, the pages panel folds and its list settles in on a change of area, nothing else animates.
 
 ## Colors
@@ -252,7 +252,7 @@ Gently rounded and consistent: 8px on controls (buttons, inputs, selects, chips,
 - **Primary:** Navy Action fill, white text, a 1px inner highlight. Hover deepens to Navy Deep. One per view or sheet.
 - **Secondary:** Record White, Hairline Strong border, panel shadow; hover fills Sunken. The default for row actions (Issue, Return).
 - **Ghost / Danger:** Ghost is Ink Two on transparent; danger variants use Alert Red text on a Red Tint hover, or a solid red fill only inside a confirmation dialog.
-- **Disabled with a reason:** Never hidden. A rule-based disable (Super Admin only, has history, holds assets) keeps the button focusable, greys it, and shows the reason in a tooltip or beneath a menu item.
+- **Disabled with a reason:** Only for an action the account may use that a record rule blocks (has history, holds assets, already returned). It keeps the button focusable, grays it, and shows the reason in a tooltip or beneath a menu item. An action the account's access doesn't allow (Super Admin only, needs Full) is not drawn at all.
 
 ### Inputs / Fields
 - **Style:** Record White, 1px Hairline Strong border, 8px radius, a faint inset shadow; label above in Label weight, hint or error beneath in Caption.
@@ -282,7 +282,7 @@ A workspace rail with a pages panel beside it from 1024px up, a top bar and a dr
 
 **Settle.** On a change of area, but not on first load and not while the panel is folded, its contents fade in from 8px to the left over 240ms, so the new list reads as a new place. Under `prefers-reduced-motion` they simply appear.
 
-**Unavailable entries.** Two kinds of entry stay in the list, greyed, as a `span` with `role="link"` and `aria-disabled="true"` rather than a link: not a tab stop and not clickable. A **locked** entry is a page that exists but this account may not open: Users ("Super Admin only"), Assign task ("Needs Assign access"). A **coming-later** entry is planned but not built: My Dashboard ("Coming later"). Both are Ink Three with an Ink Four icon and a trailing lock or clock glyph, with the reason in Caption size beneath the name: beside it, a long name would not fit the panel. Screen readers hear the reason as part of the name. Neither appears in the quick switcher or under Pinned.
+**Unavailable entries.** A page this account may not open (Users for anyone but a Super Admin, Assign task without Assign access) is not in the list at all. Only a **coming-later** entry, planned but not built, stays in the list, grayed, as a `span` with `role="link"` and `aria-disabled="true"` rather than a link: not a tab stop and not clickable. My Dashboard ("Coming later") is one. It is Ink Three with an Ink Four icon and a trailing clock glyph, with the reason in Caption size beneath the name: beside it, a long name would not fit the panel. Screen readers hear the reason as part of the name. It never appears in the quick switcher or under Pinned.
 
 **Badges.** An entry has one trailing slot, for a count, a lock or the clock of "Coming later", each with words for a screen reader: " unread" after a count, and for a lock or clock the reason written beneath the name. The count is the bell's red pill (see Notifications). Only Home's Inbox ever carries one. Grievances and Administrative Reviews never show a count or a badge: not in the rail, the More menu, the panel, the drawer or the switcher. No rail item carries a count.
 
@@ -332,7 +332,7 @@ A review's Corrective Action Plans. They sit on the review's timeline among its 
 - **Entries about a CAP:** an update, correction or automatic entry filed on a CAP carries a `CAP01` chip, the same quiet chip as "Corrects E06", linking to the CAP's page.
 - **Controls:** Show is All, CAPs or Updates. "Hide automatic" never hides a CAP, only the automatic entries.
 - **Summary:** "2 of 3 done", which leaves Cancelled CAPs out of both numbers, then each CAP's number as a link beside its status badge.
-- **The CAP page** is laid out like a grievance entry's page. Under a "Corrective action plan" eyebrow with the status badge come the title and short description, then Add update, Edit, Change status, Mark complete and Attach files. An account that may not use them sees them disabled with the reason ("Only the reviewer (name) or someone with Edit access…"); on a Completed review the reason is that it must be reopened first. Panels follow: **Facts** (status, Responsible, due date, completed and by whom; then the review it belongs to and who added it), **Details**, **Files** once there are any, and **History**, the review's timeline narrowed to this CAP's entries.
+- **The CAP page** is laid out like a grievance entry's page. Under a "Corrective action plan" eyebrow with the status badge come the title and short description, then Add update, Edit, Change status, Mark complete and Attach files. An account that may not use them (anyone but the reviewer or someone with Edit access) doesn't see them; on a Completed review they are disabled with the reason that it must be reopened first. Panels follow: **Facts** (status, Responsible, due date, completed and by whom; then the review it belongs to and who added it), **Details**, **Files** once there are any, and **History**, the review's timeline narrowed to this CAP's entries.
 - **Changing status:** Mark complete opens the Change status sheet with Completed chosen and an Evidence file picker. Cancelled needs a reason. A note is shown under the change on the history, with who wrote it.
 - **Voided review:** a warn alert says the CAPs are kept as a record, and the buttons are gone.
 
@@ -342,7 +342,7 @@ Attachments on a grievance or an entry, and on a review, a CAP or an update. Onc
 - **Attaching later:** on a grievance that is not sealed, a secondary "Attach files" button with a paperclip, which turns into a spinner while the files go up. A refusal arrives as a toast in the server's words.
 - **List:** one row per file: a file icon, the filename as a navy download link, and a meta line in Ink 3 with size, who added it, when, and "with E03" when it came with an entry. Files always download; nothing opens in the page.
 - **Withdrawn:** the name is struck through in Ink 3 with no link, a warn "Withdrawn" badge, and a line giving the date and the reason. The row stays, so the list still shows everything that was ever added.
-- **Withdraw:** a danger-ghost button per file, shown disabled with the reason for an Admin and absent on a Closed or Voided grievance. It opens a sheet with a warn alert ("This cannot be undone") and a required reason, which is also shown on the timeline.
+- **Withdraw:** a danger-ghost button per file, shown only to an account with Grievances Full and absent on a Closed or Voided grievance. It opens a sheet with a warn alert ("This cannot be undone") and a required reason, which is also shown on the timeline.
 
 ### Case file
 A grievance printed whole, saved as a PDF from the browser's print dialog. Decided on 2026-10-13:
@@ -355,7 +355,7 @@ A grievance printed whole, saved as a PDF from the browser's print dialog. Decid
 
 ### Do:
 - **Do** keep text at 14px for anything a person reads or scans, 12px for metadata only, and every meaningful text pair at 4.5:1 or better (the system's own pairs measure 5.5-17.7:1).
-- **Do** give every status a word plus a dot or icon, and every disabled rule a visible reason.
+- **Do** give every status a word plus a dot or icon, and every control a record rule disables a visible reason.
 - **Do** set identifiers, timestamps and counts in Geist Mono or tabular figures so columns align.
 - **Do** keep controls at 36px (32px inside rows) and rows at 56px; make the common path keyboard-complete (Enter adds, Shift+Enter adds another, I issues from a focused row, Ctrl or Cmd+Enter submits a sheet).
 - **Do** open focused tasks in the right-hand sheet and save centred dialogs for confirmations.
@@ -368,7 +368,7 @@ A grievance printed whole, saved as a PDF from the browser's print dialog. Decid
 - **Don't** use a coloured side stripe on rows, cards or alerts. The row highlight is a tint, not a bar.
 - **Don't** use Unicode glyphs or emoji as icons (keyboard hints included); use the Lucide set.
 - **Don't** put a mono face on labels or sentences, or a display face on UI text.
-- **Don't** hide a control the user may not use. Disable it and say why.
+- **Don't** show a control, section or page the user's access doesn't allow, disabled or otherwise. Leave it out.
 - **Don't** add motion beyond sheet entry, menu pop-ins, the row settle and the pages panel's fold and settle, and honour `prefers-reduced-motion`.
 
 ## Brand artwork and authentication

@@ -14,7 +14,7 @@ covers: [ui, design, hidden, disabled, placeholder, accessibility, components, i
 - Gray out and disable an element in only two cases:
   - it is a placeholder for a page or feature that isn't built yet; say so in words (`Coming soon`);
   - the user has the permission, but a record rule blocks the action (deleting an asset with custody history, returning one already returned); show the rule in words.
-- This overrides `DESIGN.md` ("Don't hide a control the user may not use") and principle 4 in `PRODUCT.md`.
+- `DESIGN.md` and principle 4 in `PRODUCT.md` say the same.
 - Every status is a word plus a dot or icon; never color alone.
 
 ## Look
