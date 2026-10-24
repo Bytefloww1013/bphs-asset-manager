@@ -38,7 +38,7 @@ Employee Tasks: a task sent by one account to one or more others (one task each)
 
 ## Pages
 
-- The Tasks workspace (rail `order: 30`): All tasks (`/tasks`), Assign task (`/tasks/new`, locked below Assign), a task (`/tasks/$id`) and its edit page (`/tasks/$id/edit`).
+- The Tasks workspace (rail `order: 30`): All tasks (`/tasks`), Assign task (`/tasks/new`, left out of the panel and not found below Assign), a task (`/tasks/$id`) and its edit page (`/tasks/$id/edit`, not found for an account that may not edit the task).
 - My tasks on Home (`/me/tasks`, before Profile) and a task there (`/me/tasks/$id`). The files sit flat in `web/routes/` with the module's `routePrefix` `''`, so their URLs and route ids are unchanged, and they nest under the kernel's `me.tsx` by path.
 - The API is `/api/tasks` (the workspace) and `/api/me/tasks` (each account's own).
 

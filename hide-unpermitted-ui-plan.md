@@ -70,9 +70,9 @@ Shared files (lockfiles, manifests, CI config, CLAUDE.md/AGENTS.md, this plan) b
 
 ## Phase 4 - Checks, smokes and docs
 
-- [ ] 4.1 `docs/verify/no-permission-disabled.sh` (grep check) and `docs/verify/hidden-smoke.mjs` (Marcus + read-only account)
-- [ ] 4.2 `routes-smoke.mjs`: `/users`, `/me/notices` expect not-found for Marcus; `sidebar-smoke.mjs` expectations; web-css baseline if styles changed
-- [ ] 4.3 `README.md:282`, module READMEs, RUNBOOK and `docs/*` describe the hide rule; `bun run docs:gen`
+- [x] 4.1 `docs/verify/no-permission-disabled.sh` (grep check) and `docs/verify/hidden-smoke.mjs` (Marcus + read-only account)
+- [x] 4.2 `routes-smoke.mjs`: `/users`, `/me/notices` expect not-found for Marcus; `sidebar-smoke.mjs` expectations; web-css baseline if styles changed
+- [x] 4.3 `README.md:282`, module READMEs, RUNBOOK and `docs/*` describe the hide rule; `bun run docs:gen`
 
 ## Phase 5 - Verify + cleanup
 

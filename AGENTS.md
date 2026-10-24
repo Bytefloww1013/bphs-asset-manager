@@ -8,7 +8,7 @@ conventions for that task. Do not proceed without doing this first.
 The project's directives are in `docs/directives/`.
 
 <!-- byte-gh-do-issue #27 START -->
-## Issue #27 (branch `docs/test-context-skill` only - removed before the PR)
+## Issue #27 (branch docs/test-context-skill only - removed before the PR)
 
 ### Tools
 - `CHROME=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` - prefix every `docs/verify/*.mjs` smoke in this container (the default path is a dev machine's)
@@ -27,7 +27,7 @@ The project's directives are in `docs/directives/`.
 ### Important Information
 - Plan: `hide-unpermitted-ui-plan.md` (committed per phase, per CLAUDE.md "Plans")
 - Guardrail: no change under `server/`, `*/server/` or any `shared/permissions.ts`; server reason helpers stay
-- Guardrail: push only to `docs/test-context-skill`; no PR without asking
+- Guardrail: push only to docs/test-context-skill; no PR without asking
 - Rule source: `docs/directives/ui-rules.md` "Permissions and state"
 
 ### Gotchas

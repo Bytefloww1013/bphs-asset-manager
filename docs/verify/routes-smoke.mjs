@@ -131,6 +131,8 @@ const EXPECT = {
     // Super Admin only: the page is not found, drawn outside the app shell (issue #27).
     '/users': NOT_FOUND,
     '/me/notices': NOT_FOUND,
+    // The first task was assigned by a Super Admin, so Tasks Edit may not change it: its edit page is not found.
+    '/tasks/$id/edit': NOT_FOUND,
   },
 }
 

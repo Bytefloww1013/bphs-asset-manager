@@ -67,7 +67,7 @@ The module boundaries are one rule, `boundaries/imports`, from an in-repo JS plu
 
 `docs/verify/quick-check.sh` runs format, `modules:gen --check`, lint, typecheck and test in one go, one PASS/FAIL line each.
 
-For browser checks, `docs/verify/scratch-server.sh start|stop` runs a freshly seeded build on :3388 (its data under `$BPHS_TMP/bphs-qa-tasks`, or `ROOT`; never the real `DATA_DIR`). `node docs/verify/routes-smoke.mjs` opens every route in the route tree as a Super Admin and as an Admin in headless Chrome, against a scratch server of its own (`CHROME` names the browser); CI runs it after the build. `node docs/verify/tasks-smoke.mjs` drives the scratch server in headless Firefox: a task is assigned, shows on the assignee's bell, and is marked complete. It installs its own puppeteer-core outside the repo, in `$BPHS_TMP/bphs-qa-tools`; `FIREFOX` overrides `/snap/bin/firefox`. Every `docs/verify` script keeps its scratch files and logs in `BPHS_TMP` (default `$TMPDIR`, else `/tmp`); snap Firefox can't read `/tmp`, so set it to a folder under your home for the Firefox smokes.
+For browser checks, `docs/verify/scratch-server.sh start|stop` runs a freshly seeded build on :3388 (its data under `$BPHS_TMP/bphs-qa-tasks`, or `ROOT`; never the real `DATA_DIR`). `node docs/verify/routes-smoke.mjs` opens every route in the route tree as a Super Admin and as an Admin in headless Chrome, against a scratch server of its own (`CHROME` names the browser); CI runs it after the build. `node docs/verify/hidden-smoke.mjs` opens every route as Marcus and as a read-only account it makes, and fails on a control shown disabled for missing access; `docs/verify/no-permission-disabled.sh` fails on web code that turns a permission into a disabled reason ([#27](https://github.com/Bytefloww1013/bphs-asset-manager/issues/27)). `node docs/verify/tasks-smoke.mjs` drives the scratch server in headless Firefox: a task is assigned, shows on the assignee's bell, and is marked complete. It installs its own puppeteer-core outside the repo, in `$BPHS_TMP/bphs-qa-tools`; `FIREFOX` overrides `/snap/bin/firefox`. Every `docs/verify` script keeps its scratch files and logs in `BPHS_TMP` (default `$TMPDIR`, else `/tmp`); snap Firefox can't read `/tmp`, so set it to a folder under your home for the Firefox smokes.
 
 ## Deploy
 
@@ -279,7 +279,7 @@ The design was reworked for legibility and comfort, not just restyled:
 - The spec's Dashboard combined a metrics rail and the asset grid. Here **Overview** answers "what needs a decision" and **Physical Assets** is the register.
 - The grid's live entry row became a **Quick add** panel above the table, so labels stay visible. Spreadsheet paste still adds many rows at once, after showing them for a last look. Its columns are tag, type, brand, model, Entra ObjectId, serial, condition, holder.
 - Issue and Return open as right-hand sheets rather than centred modals, and are still linkable.
-- The design-time "viewing as" toggle is gone: access comes from the signed-in account, and unavailable actions are shown disabled with the reason.
+- The design-time "viewing as" toggle is gone: access comes from the signed-in account, and what it doesn't allow is not drawn: a page, tab or control its access doesn't allow is left out, and such a page reached by its address is not found ([#27](https://github.com/Bytefloww1013/bphs-asset-manager/issues/27)). Disabled with the reason is kept for an allowed action a record rule blocks, and for a page not built yet.
 
 ## Known gaps and next steps
 
