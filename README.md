@@ -252,6 +252,8 @@ scripts/             gen-modules.ts (modules:gen), new-module.ts and templates/m
                      docs-check.ts (docs:gen, docs:check), oxlint-boundaries.ts (the boundary lint rule), backup-offbox.sh
                      (scheduled, checked backups to the host)
 docs/                modules.md (the module guide), architecture.md, verify/ (scratch server, smokes and checks)
+how-tos/             Step-by-step procedures: add a module or migration, run the smokes and baselines, finish a branch,
+                     upgrade, back up and restore, recover an account
 dist/web/            Built SPA (generated)
 ```
 
