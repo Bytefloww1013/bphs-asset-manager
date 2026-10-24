@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "byte-gh-do-issue": {
+      "source": "Bytefloww1013/josh-skills",
+      "sourceType": "github",
+      "skillPath": "skills/Custom/byte-gh-do-issue/SKILL.md",
+      "computedHash": "d7604021f85e7b21ffcb0416eee7165cdabe84a6aeb9c21a38158dc2e1c3cfce"
+    },
+    "byte-gh-issue": {
+      "source": "Bytefloww1013/josh-skills",
+      "sourceType": "github",
+      "skillPath": "skills/Custom/byte-gh-issue/SKILL.md",
+      "computedHash": "02f2dbf6db229f9af77053c8f7fac8a3f2034b29efad573fda17b7b49806165f"
+    },
+    "review-team": {
+      "source": "Bytefloww1013/josh-skills",
+      "sourceType": "github",
+      "skillPath": "skills/Third-Party/review-team/SKILL.md",
+      "computedHash": "e968e5c74d5745f1370c67cd25432dd741c861a4fe4bffcbe145934a693aac45"
+    }
+  }
+}
