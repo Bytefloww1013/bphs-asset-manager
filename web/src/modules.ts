@@ -61,10 +61,8 @@ export interface NavPage {
   label: string
   icon: LucideIcon
   soon?: string
-  /** Left out: listed for everyone who can open the workspace. */
+  /** Left out: listed for everyone who can open the workspace. A page the account may not open is left out, never shown locked (issue #27). */
   visible?: (user: Grantee) => boolean
-  /** Why the page would turn the account away (it is shown greyed out, with a lock and this), or undefined. */
-  lock?: (user: Grantee) => string | undefined
   /** The Inbox's unread count. Never on a confidential workspace's page. */
   badge?: 'unread'
 }

@@ -45,7 +45,7 @@ export function PageList({ area, onNavigate }: { area: Area; onNavigate?: () => 
             <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => (
                 <li key={item.label}>
-                  {item.to && !item.lock && !item.soon ? (
+                  {item.to && !item.soon ? (
                     <Link
                       to={item.to}
                       onClick={onNavigate}
@@ -92,7 +92,7 @@ function Unavailable({ item }: { item: NavEntry }) {
       <item.icon className="size-[1.125rem] shrink-0 text-ink-4" aria-hidden strokeWidth={1.75} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate">{item.label}</span>
-        <span className="text-xs font-normal">{item.lock ?? item.soon}</span>
+        <span className="text-xs font-normal">{item.soon}</span>
       </span>
       <NavBadge entry={item} reasonShown />
     </span>
@@ -107,9 +107,7 @@ function Pinned({ onNavigate }: { onNavigate?: () => void }) {
   const listId = useId()
   const pages = areasFor(user).flatMap((area) =>
     navFor(area.id, user).flatMap((group) =>
-      group.items.flatMap((item) =>
-        item.to && !item.lock && !item.soon ? [{ ...item, to: item.to, area: area.id }] : [],
-      ),
+      group.items.flatMap((item) => (item.to && !item.soon ? [{ ...item, to: item.to, area: area.id }] : [])),
     ),
   )
   const pinned = pins.flatMap((pin) => pages.filter((page) => page.to === pin).slice(0, 1))

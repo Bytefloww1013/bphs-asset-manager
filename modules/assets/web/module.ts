@@ -72,7 +72,7 @@ export default defineWebModule({
       to: '/users',
       label: 'Users',
       icon: ShieldCheck,
-      lock: (user) => (user.superAdmin ? undefined : 'Super Admin only'),
+      visible: (user) => user.superAdmin,
     },
   ],
   slots: {

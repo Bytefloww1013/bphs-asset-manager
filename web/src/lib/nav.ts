@@ -65,8 +65,6 @@ export interface NavEntry {
   to?: NavPath
   label: string
   icon: LucideIcon
-  /** Why the page would turn the account away. Shown, greyed out, with a lock and this under its name, but is not a link. */
-  lock?: string
   /** Why the entry cannot be opened yet. It is shown, greyed out, but is not a link. */
   soon?: string
   /** Unread notifications. Only Home's Inbox ever carries one. */
@@ -100,7 +98,6 @@ export function navFor(area: Area, user: Grantee, unread?: number): NavGroup[] {
         to: page.to,
         label: page.label,
         icon: page.icon,
-        lock: page.lock?.(user),
         soon: page.soon,
         count: page.badge === 'unread' && !confidential ? unread : undefined,
       }))
@@ -135,13 +132,13 @@ export interface JumpEntry {
 
 /**
  * Everything the quick switcher can jump to: the sidebar pages of each area the account can read. It never holds a record,
- * a count, or an entry the account cannot open (coming later, or locked).
+ * a count, or an entry that cannot be opened yet (coming later).
  */
 export function jumpIndex(user: Grantee): JumpEntry[] {
   return areasFor(user).flatMap((area) =>
     navFor(area.id, user).flatMap((group) =>
       group.items.flatMap((item) =>
-        item.to && !item.soon && !item.lock
+        item.to && !item.soon
           ? [{ area: area.id, areaName: area.name, group: group.heading, label: item.label, to: item.to }]
           : [],
       ),

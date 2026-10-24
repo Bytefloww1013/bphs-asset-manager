@@ -15,7 +15,7 @@ export default defineWebModule({
       to: '/tasks/new',
       label: 'Assign task',
       icon: ListPlus,
-      lock: (user) => (canAssignTasks(user) ? undefined : 'Needs Assign access'),
+      visible: canAssignTasks,
     },
   ],
 })

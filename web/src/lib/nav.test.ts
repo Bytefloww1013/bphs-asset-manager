@@ -58,10 +58,10 @@ describe('navFor', () => {
     }
   })
 
-  it('never puts a count or lock on a confidential area', () => {
+  it('never puts a count or a reason on a confidential area', () => {
     for (const user of [priya, marcus, dana]) {
       for (const area of ['grievances', 'reviews'] as const) {
-        expect(entries(user, area, 7).every((item) => item.count === undefined && !item.lock && !item.soon)).toBe(true)
+        expect(entries(user, area, 7).every((item) => item.count === undefined && !item.soon)).toBe(true)
       }
     }
   })
@@ -80,13 +80,13 @@ describe('navFor', () => {
     expect(dashboard.soon).toBe('Coming later')
   })
 
-  it('locks Users for all but a Super Admin, and Assign task below Assign', () => {
-    const users = (user: Grantee) => entries(user, 'assets').find((item) => item.to === '/users')?.lock
-    const assign = (user: Grantee) => entries(user, 'tasks').find((item) => item.to === '/tasks/new')?.lock
-    expect(users(priya)).toBeUndefined()
-    expect(users(ops)).toBe('Super Admin only')
-    expect(assign(dana)).toBeUndefined()
-    expect(assign({ ...dana, access: { tasks: 'read' } })).toBe('Needs Assign access')
+  it('leaves out Users for all but a Super Admin, and Assign task below Assign (issue #27)', () => {
+    const users = (user: Grantee) => entries(user, 'assets').some((item) => item.to === '/users')
+    const assign = (user: Grantee) => entries(user, 'tasks').some((item) => item.to === '/tasks/new')
+    expect(users(priya)).toBe(true)
+    expect(users(ops)).toBe(false)
+    expect(assign(dana)).toBe(true)
+    expect(assign({ ...dana, access: { tasks: 'read' } })).toBe(false)
   })
 
   it('shows Employees only with access to Employees', () => {
@@ -110,6 +110,17 @@ describe('navFor', () => {
       'Tasks: - (All tasks, Assign task)',
       'Reviews: - (Reviews, Action items, Employees) / Administration (Audit log)',
       'Grievances: - (Grievances, Employees) / Administration (Categories, Audit log)',
+    ])
+    expectToday(panels(marcus), [
+      'Home: - (My Dashboard, Inbox) / - (My tasks, Profile)',
+      'Assets: Work (Overview, Assignments, Available) / Records (Physical Assets, Digital Assets, Employees, Programs) / Administration (Lists, Import/Export, Audit log)',
+      'Tasks: - (All tasks, Assign task)',
+      'Reviews: - (Reviews, Action items, Employees) / Administration (Audit log)',
+      'Grievances: - (Grievances, Employees) / Administration (Categories, Audit log)',
+    ])
+    expect(panels({ access: { tasks: 'read' }, superAdmin: false, employeeId: 6 })).toEqual([
+      'Home: - (My Dashboard, Inbox) / - (My tasks, Profile)',
+      'Tasks: - (All tasks)',
     ])
   })
 
