@@ -17,5 +17,15 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": [".", "../shared", "../drizzle.config.ts"]
+  "include": [
+    ".",
+    "../shared",
+    "../foundation/*/server",
+    "../foundation/*/shared",
+    "../modules/*/server",
+    "../modules/*/shared",
+    "../scripts",
+    "../app.modules.ts",
+    "../drizzle.config.ts"
+  ]
 }

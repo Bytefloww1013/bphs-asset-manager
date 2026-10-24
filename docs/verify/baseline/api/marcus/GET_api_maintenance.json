@@ -1,0 +1,10 @@
+{
+  "request": "GET /api/maintenance",
+  "status": 403,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "error": "forbidden",
+    "message": "Your account does not have access to Maintenance."
+  }
+}

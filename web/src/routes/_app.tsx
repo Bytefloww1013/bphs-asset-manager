@@ -1,11 +1,10 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { canAt, canUseWorkspace } from '@shared/permissions.ts'
+import { canUseWorkspace } from '@shared/permissions.ts'
 import { AppShell } from '@/components/shell/app-shell.tsx'
-import { IssueSheet } from '@/features/assignments/issue-sheet.tsx'
-import { ReturnSheet } from '@/features/assignments/return-sheet.tsx'
-import { lookupsQuery } from '@/lib/queries.ts'
-import { requireSession, useUser } from '@/lib/session.ts'
-import { WORKSPACE_HOME, areaOf, workspaceToReopen } from '@/lib/workspace.ts'
+import { Slot } from '@/components/slot.tsx'
+import { preloadModules } from '@/registry.ts'
+import { requireSession } from '@/lib/session.ts'
+import { areaOf, workspaceHome, workspaceToReopen } from '@/lib/workspace.ts'
 
 export interface SheetSearch {
   /** Open the Issue sheet for this asset id, or 'new' to pick one. */
@@ -36,22 +35,19 @@ export const Route = createFileRoute('/_app')({
     // so that choosing Assets in the switcher later is never undone.
     const reopen = workspaceToReopen()
     if (location.href === '/' && reopen !== 'assets' && canUseWorkspace(user, reopen))
-      throw redirect({ to: WORKSPACE_HOME[reopen] })
-    return { user, assets: canUseWorkspace(user, 'assets') }
+      throw redirect({ to: workspaceHome(reopen) })
+    return { user }
   },
-  // Pickers in the Issue and Return sheets need these; fetch once, up front.
-  loader: ({ context }) => (context.assets ? context.queryClient.ensureQueryData(lookupsQuery) : undefined),
+  // What the modules' sheets need (the Issue and Return sheets' pickers), fetched once, up front.
+  loader: ({ context }) => preloadModules(context.queryClient, context.user),
   component: AppLayout,
 })
 
 function AppLayout() {
-  // The Issue and Return sheets change Assets; an account that cannot is never shown them.
-  const assets = canAt(useUser(), 'assets', 'edit')
   return (
     <AppShell>
       <Outlet />
-      {assets && <IssueSheet />}
-      {assets && <ReturnSheet />}
+      <Slot name="app.overlays" props={{}} />
     </AppShell>
   )
 }

@@ -1,0 +1,230 @@
+{
+  "request": "GET /api/grievances",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "counts": {
+      "all": 5,
+      "closed": 1,
+      "in_progress": 1,
+      "open": 1,
+      "resolved": 1,
+      "voided": 1
+    },
+    "owners": [
+      {
+        "archived": false,
+        "code": "E-1288",
+        "id": 6,
+        "name": "Alice Nkemdirim"
+      },
+      {
+        "archived": false,
+        "code": "E-0988",
+        "id": 3,
+        "name": "Marcus Oyelaran"
+      },
+      {
+        "archived": false,
+        "code": "E-1042",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      }
+    ],
+    "rows": [
+      {
+        "category": {
+          "id": 5,
+          "name": "Working conditions"
+        },
+        "code": "GR-2026-0005",
+        "dateMade": "2026-09-19",
+        "employees": [
+          {
+            "archived": false,
+            "code": "E-1102",
+            "id": 10,
+            "name": "Rosa Delgado"
+          }
+        ],
+        "id": 5,
+        "lastActivityAt": "2026-09-23T09:10:00.000Z",
+        "management": [
+          {
+            "archived": false,
+            "code": "E-1315",
+            "id": 7,
+            "name": "Sasha Feldman"
+          }
+        ],
+        "owner": {
+          "archived": false,
+          "code": "E-0988",
+          "id": 3,
+          "name": "Marcus Oyelaran"
+        },
+        "preview": "Rosa says the rota changes at short notice.",
+        "shortDescription": "Shift changes posted two or three days ahead.",
+        "status": "voided",
+        "title": "Short-notice rota changes, Intake"
+      },
+      {
+        "category": {
+          "id": 5,
+          "name": "Working conditions"
+        },
+        "code": "GR-2026-0004",
+        "dateMade": "2026-09-19",
+        "employees": [
+          {
+            "archived": false,
+            "code": "E-1102",
+            "id": 10,
+            "name": "Rosa Delgado"
+          },
+          {
+            "archived": false,
+            "code": "E-1304",
+            "id": 19,
+            "name": "Jules Okafor"
+          }
+        ],
+        "id": 4,
+        "lastActivityAt": "2026-09-21T14:00:00.000Z",
+        "management": [
+          {
+            "archived": false,
+            "code": "E-1315",
+            "id": 7,
+            "name": "Sasha Feldman"
+          }
+        ],
+        "owner": {
+          "archived": false,
+          "code": "E-0988",
+          "id": 3,
+          "name": "Marcus Oyelaran"
+        },
+        "preview": "Rosa and Jules say the Intake rota has changed at short notice four times this month, which has cost them childcare they had already paid for.",
+        "shortDescription": "Intake staff say shift changes are posted two or three days ahead.",
+        "status": "open",
+        "title": "Rota changes posted with less than a week's notice"
+      },
+      {
+        "category": {
+          "id": 3,
+          "name": "Health and safety"
+        },
+        "code": "GR-2026-0002",
+        "dateMade": "2026-08-01",
+        "employees": [
+          {
+            "archived": false,
+            "code": "E-1356",
+            "id": 23,
+            "name": "Callum Reyes"
+          }
+        ],
+        "id": 2,
+        "lastActivityAt": "2026-09-11T09:30:00.000Z",
+        "management": [
+          {
+            "archived": false,
+            "code": "E-0761",
+            "id": 5,
+            "name": "Grant Halloway"
+          }
+        ],
+        "owner": {
+          "archived": false,
+          "code": "E-0988",
+          "id": 3,
+          "name": "Marcus Oyelaran"
+        },
+        "preview": "Callum reports that the lights in the back stairwell go out after about 10 pm and that he has nearly fallen twice carrying laundry down.",
+        "shortDescription": "A timer cuts the back stairwell lights at 10 pm; staff report near-falls.",
+        "status": "resolved",
+        "title": "Stairwell lights failing at night, Harbour House"
+      },
+      {
+        "category": {
+          "id": 4,
+          "name": "Discrimination or harassment"
+        },
+        "code": "GR-2026-0003",
+        "dateMade": "2026-08-21",
+        "employees": [
+          {
+            "archived": false,
+            "code": "E-1282",
+            "id": 17,
+            "name": "Owen Castellano"
+          }
+        ],
+        "id": 3,
+        "lastActivityAt": "2026-09-02T09:00:00.000Z",
+        "management": [
+          {
+            "archived": false,
+            "code": "E-1322",
+            "id": 20,
+            "name": "Elena Marsh"
+          }
+        ],
+        "owner": {
+          "archived": false,
+          "code": "E-1288",
+          "id": 6,
+          "name": "Alice Nkemdirim"
+        },
+        "preview": "Owen says that in at least three team meetings since August, colleagues have mimicked his accent when repeating what he said.\nHe has asked that this be dealt with without naming him to the team for now.",
+        "shortDescription": "A clinician says remarks about his accent are made in weekly team meetings.",
+        "status": "in_progress",
+        "title": "Comments about accent in team meetings"
+      },
+      {
+        "category": {
+          "id": 2,
+          "name": "Pay and hours"
+        },
+        "code": "GR-2026-0001",
+        "dateMade": "2026-06-26",
+        "employees": [
+          {
+            "archived": false,
+            "code": "E-1201",
+            "id": 4,
+            "name": "Tomas Berger"
+          },
+          {
+            "archived": false,
+            "code": "E-1219",
+            "id": 12,
+            "name": "Bilal Osman"
+          }
+        ],
+        "id": 1,
+        "lastActivityAt": "2026-08-02T09:00:00.000Z",
+        "management": [
+          {
+            "archived": false,
+            "code": "E-1296",
+            "id": 18,
+            "name": "Mina Haddad"
+          }
+        ],
+        "owner": {
+          "archived": false,
+          "code": "E-1042",
+          "id": 1,
+          "name": "Priya Raghunathan"
+        },
+        "preview": "Tomas and Bilal each covered four double shifts at Harbour House in the first half of July while the house was short-staffed. Their pay for the period shows regular hours only.\nTomas: 4 double shifts, 32 hours claimed\nBilal: 4 double shifts, 30 hours claimed",
+        "shortDescription": "Two support workers say the double shifts they covered in July are missing from their pay.",
+        "status": "closed",
+        "title": "Overtime not paid for July double shifts"
+      }
+    ]
+  }
+}

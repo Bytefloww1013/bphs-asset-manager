@@ -10,10 +10,10 @@ import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert } from '@/components/ui/feedback.tsx'
 import { Field, Input } from '@/components/ui/form.tsx'
 import { AuthBrand } from '@/components/ui/logo.tsx'
-import { cn } from '@/lib/cn.ts'
 import { api, ApiError } from '@/lib/api.ts'
+import { cn } from '@/lib/cn.ts'
 import { fieldError } from '@/lib/form.ts'
-import { meQuery, refreshData } from '@/lib/queries.ts'
+import { meQuery, refreshData } from '@/lib/session.ts'
 import { returnPath, useUser, usePageTitle } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/password-change')({

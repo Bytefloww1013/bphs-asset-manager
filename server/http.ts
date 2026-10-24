@@ -1,8 +1,10 @@
 import { zValidator } from '@hono/zod-validator'
 import type { Context, MiddlewareHandler } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
+import { matchedRoutes } from 'hono/route'
 import { validator } from 'hono/validator'
 import type { z, ZodType } from 'zod'
-import type { Section } from '../shared/constants.ts'
+import { ATTACHMENT_MAX_BYTES, ATTACHMENTS_PER_REQUEST, type Section } from '../shared/constants.ts'
 import { canAt, needsAccess } from '../shared/permissions.ts'
 import type { AuthUser } from './services/auth.ts'
 import { HttpError, forbidden } from './lib/errors.ts'
@@ -27,6 +29,27 @@ export function json<T extends ZodType>(schema: T) {
 }
 
 const isMultipart = (c: Context) => /^multipart\/form-data/i.test(c.req.header('Content-Type') ?? '')
+
+export const limitBody = (maxSize: number) =>
+  bodyLimit({
+    maxSize,
+    onError: (c) => c.json({ error: 'payload_too_large', message: 'That request is too large.' }, 413),
+  })
+
+// The routes that take a grievance's, a review's or a task's files, as multipart: ten files at their limit, and room for the form beside them.
+const MAX_UPLOAD_BODY_BYTES = ATTACHMENTS_PER_REQUEST * ATTACHMENT_MAX_BYTES + 1024 * 1024
+const UPLOADS = new WeakSet<object>()
+
+/** A route that takes files, placed right after its access declaration: a multipart body gets the larger upload limit there. */
+export function upload(): MiddlewareHandler<Env> {
+  const uploadLimit = limitBody(MAX_UPLOAD_BODY_BYTES)
+  const handler: MiddlewareHandler<Env> = (c, next) => (isMultipart(c) ? uploadLimit(c, next) : next())
+  UPLOADS.add(handler)
+  return handler
+}
+
+/** A multipart body sent to an upload() route: the app-wide limit leaves it to that route's own, after the session check. */
+export const forUpload = (c: Context) => isMultipart(c) && matchedRoutes(c).some((route) => UPLOADS.has(route.handler))
 
 /**
  * json(), or the same JSON as the `data` field of a multipart body that carries files as well; `formFiles` reads those.
@@ -68,11 +91,6 @@ export function requireFull(section: Section): MiddlewareHandler<Env> {
     if (!canAt(c.get('user'), section, 'full')) throw forbidden(needsAccess(section, 'full'))
     await next()
   }
-}
-
-export const requireSuperAdmin: MiddlewareHandler<Env> = async (c, next) => {
-  if (!c.get('user').superAdmin) throw forbidden('Only a Super Admin can do this.')
-  await next()
 }
 
 export function intParam(c: Context, name: string): number {

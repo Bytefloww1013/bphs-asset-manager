@@ -1,0 +1,24 @@
+{
+  "request": "GET /api/auth/me",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "user": {
+      "access": {
+        "assets": "edit",
+        "employees": "edit",
+        "grievances": "edit",
+        "reviews": "edit",
+        "tasks": "edit"
+      },
+      "email": "m.oyelaran@bphs.local",
+      "employeeId": 3,
+      "firstAccount": false,
+      "id": 2,
+      "mustChangePassword": false,
+      "name": "Marcus Oyelaran",
+      "superAdmin": false
+    }
+  }
+}

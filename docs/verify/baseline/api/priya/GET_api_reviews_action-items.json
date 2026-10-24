@@ -1,0 +1,160 @@
+{
+  "request": "GET /api/reviews/action-items",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "completedAt": "2026-07-23T10:10:00.000Z",
+      "dueDate": "2026-07-23",
+      "id": 1,
+      "responsible": {
+        "archived": false,
+        "code": "E-1296",
+        "id": 18,
+        "name": "Mina Haddad"
+      },
+      "review": {
+        "code": "AR-2026-0001",
+        "title": "Petty cash handling at Harbour House"
+      },
+      "seq": 1,
+      "shortDescription": "A second staff member counts with Mina every Friday and both sign the log.",
+      "status": "completed",
+      "title": "Count the float weekly, signed by two staff"
+    },
+    {
+      "completedAt": "2026-07-23T10:00:00.000Z",
+      "dueDate": "2026-07-23",
+      "id": 2,
+      "responsible": {
+        "archived": false,
+        "code": "E-1296",
+        "id": 18,
+        "name": "Mina Haddad"
+      },
+      "review": {
+        "code": "AR-2026-0001",
+        "title": "Petty cash handling at Harbour House"
+      },
+      "seq": 2,
+      "shortDescription": "Scan every receipt and email the week’s scans to Finance with the count.",
+      "status": "completed",
+      "title": "Send receipts to Finance each Friday"
+    },
+    {
+      "completedAt": null,
+      "dueDate": "2026-08-02",
+      "id": 3,
+      "responsible": {
+        "archived": false,
+        "code": "E-0761",
+        "id": 5,
+        "name": "Grant Halloway"
+      },
+      "review": {
+        "code": "AR-2026-0001",
+        "title": "Petty cash handling at Harbour House"
+      },
+      "seq": 3,
+      "shortDescription": "Fit a small safe in the house office.",
+      "status": "cancelled",
+      "title": "Move the float to a locked safe"
+    },
+    {
+      "completedAt": "2026-08-31T11:00:00.000Z",
+      "dueDate": "2026-09-01",
+      "id": 4,
+      "responsible": {
+        "archived": false,
+        "code": "E-1315",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      "review": {
+        "code": "AR-2026-0002",
+        "title": "Intake referral backlog"
+      },
+      "seq": 1,
+      "shortDescription": "Someone checks the inbox every working day Jules is away.",
+      "status": "completed",
+      "title": "Name cover for the referral inbox"
+    },
+    {
+      "completedAt": null,
+      "dueDate": "2026-09-26",
+      "id": 5,
+      "responsible": {
+        "archived": false,
+        "code": "E-1304",
+        "id": 19,
+        "name": "Jules Okafor"
+      },
+      "review": {
+        "code": "AR-2026-0002",
+        "title": "Intake referral backlog"
+      },
+      "seq": 2,
+      "shortDescription": "A shared list of each referral, the day it came in and the day of the first call.",
+      "status": "in_progress",
+      "title": "Keep a list of referrals waiting"
+    },
+    {
+      "completedAt": null,
+      "dueDate": "2026-10-15",
+      "id": 6,
+      "responsible": {
+        "archived": false,
+        "code": "E-1315",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      "review": {
+        "code": "AR-2026-0002",
+        "title": "Intake referral backlog"
+      },
+      "seq": 3,
+      "shortDescription": "The number of referrals waiting more than 5 working days, each month.",
+      "status": "not_started",
+      "title": "Report waits to the Program Director monthly"
+    },
+    {
+      "completedAt": null,
+      "dueDate": "2026-10-22",
+      "id": 8,
+      "responsible": {
+        "archived": false,
+        "code": "E-0904",
+        "id": 8,
+        "name": "Aaron Feldman-Rees"
+      },
+      "review": {
+        "code": "AR-2026-0003",
+        "title": "Purchase approvals over the Controller’s limit"
+      },
+      "seq": 1,
+      "shortDescription": "The purchasing system refuses a PO over the limit with one approval.",
+      "status": "not_started",
+      "title": "Second approval on every PO over $5,000"
+    },
+    {
+      "completedAt": null,
+      "dueDate": null,
+      "id": 7,
+      "responsible": {
+        "archived": false,
+        "code": "E-1304",
+        "id": 19,
+        "name": "Jules Okafor"
+      },
+      "review": {
+        "code": "AR-2026-0002",
+        "title": "Intake referral backlog"
+      },
+      "seq": 4,
+      "shortDescription": "A short survey of the five busiest referrers.",
+      "status": "not_started",
+      "title": "Ask referrers what they need from the first call"
+    }
+  ]
+}

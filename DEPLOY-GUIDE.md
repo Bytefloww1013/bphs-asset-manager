@@ -4,7 +4,7 @@
 
 This guide deploys this repository on **Ubuntu Server 26.04 LTS** at **50.6.205.113**, with the web app available at **https://bphs-connect.com**. It also enables **https://www.bphs-connect.com**.
 
-The existing Dockerfile builds the React frontend and runs the Hono API on Node 24. Nginx on the VPS forwards web requests to that container, and Certbot installs a free Let's Encrypt HTTPS certificate. SQLite stores the application data, including grievance, review and task attachments, in a persistent Docker volume.
+The existing Dockerfile builds the React frontend and runs the Hono API on Node 24. The image holds the kernel (`server/`, `shared/`), the modules (`foundation/`, `modules/`) and the built frontend. Nginx on the VPS forwards web requests to that container, and Certbot installs a free Let's Encrypt HTTPS certificate. SQLite stores the application data, including grievance, review and task attachments, in a persistent Docker volume.
 
 ```text
 Browser → bphs-connect.com:443 → Nginx → 127.0.0.1:8080 → app container:3000
@@ -186,7 +186,7 @@ sudo docker compose -f /etc/bphs-connect/compose.yml build
 
 The build installs dependencies from `bun.lock`, builds the frontend, and creates the production image. A first build can take several minutes.
 
-The deployment starts with an empty database: the app creates it, its tables and the first Super Admin on first start. Do not run the demo seed script (`db:seed`) on the VPS.
+The deployment starts with an empty database: the app creates it, its tables and the first Super Admin on first start. Do not run the demo seed script (`db:seed`) on the VPS; it refuses to run when `NODE_ENV` is `production`, as it is in the image.
 
 ## 8. Start the app and check its health
 
@@ -412,25 +412,65 @@ Check the backup log and alert if the newest successful backup becomes more than
 
 ## 13. Deploy later updates
 
-Push your tested changes to `main` first. If a change alters the database tables (`server/db/schema.ts`), generate its migration with `bun run db:generate` and commit the new files in `server/db/migrations/` with it; the app applies them at startup and keeps existing rows. On the VPS, back up before changing versions and record the old commit:
+Push your tested changes to `main` first. If a change alters the database tables (the kernel's `server/db/schema.ts`, or a module's `foundation/<id>/server/schema.ts` or `modules/<id>/server/schema.ts`), generate its migration with `bun run db:generate` and commit the new files in `server/db/migrations/` with it; the app applies them at startup and keeps existing rows.
+
+**Back up and build.** On the VPS, record the running version, back up right before changing versions, and build the new image:
 
 ```bash
 cd /opt/bphs-asset-manager
 git rev-parse HEAD
 sudo env DEST=/srv/backups/bphs CONTAINER=bphs-assets ./scripts/backup-offbox.sh
 git pull --ff-only origin main
+sudo docker tag bphs-asset-manager:latest bphs-asset-manager:previous
 sudo docker compose -f /etc/bphs-connect/compose.yml build
+```
+
+Keep the old commit ID and the backup's name from the script's last line, `backup ok: /srv/backups/bphs/bphs-<date>.sqlite (<size> bytes)`; the same file is in the volume as `/data/backups/bphs-<date>.sqlite` for a week. Stop if the backup, pull or build fails. The `previous` tag keeps the running version's image, so going back needs no rebuild. The app stays available throughout.
+
+**Rehearse the migration.** Do this before anything touches the live database. For the update that brings migration 0024 (the custody merge of the modular-architecture release), run the check on the backup you just made, with the new image:
+
+```bash
+sudo docker compose -f /etc/bphs-connect/compose.yml run --rm --no-deps \
+  -v /opt/bphs-asset-manager/docs/verify:/app/docs/verify:ro --entrypoint node assets \
+  docs/verify/migration-check.mjs --db /data/backups/bphs-<date>.sqlite
+```
+
+It migrates a temporary copy of the backup and checks row counts per table, foreign keys, the remapped digital-assignment ids and the new delete guards. It never writes to the backup or the live database. Expect `PASS` lines (and some `INFO`), then `RESULT: PASS`. On any `FAIL`, stop here: nothing has changed, and the old version keeps serving. Keep the output and the backup, and report it. [RUNBOOK.md section 7.1](RUNBOOK.md#71-rehearse-migration-0024-the-custody-merge) explains each check, and how to rehearse later migrations, which have no check of their own.
+
+**Switch over and check:**
+
+```bash
 sudo docker compose -f /etc/bphs-connect/compose.yml up -d --wait --wait-timeout 120
 sudo docker compose -f /etc/bphs-connect/compose.yml logs --tail 100 assets
 curl -fsS https://bphs-connect.com/api/health
 sudo docker image prune -f
 ```
 
-The last command removes the untagged image each rebuild leaves behind (never volumes), so old images do not fill the disk. Keep the old commit ID and the backup filename printed by the script. Stop if the backup, pull or build fails. The app stays available during the build, with a brief interruption when Compose replaces the container. Database migrations run on startup.
+Compose replaces the container, with a brief interruption, and the new version runs its migrations as it starts. Expect `up` to finish without an error, the log line `BPHS-Connect listening on :3000 (production), data in /data` with no errors before it, and `{"ok":true}`. The health check only shows that the process serves, so then sign in at https://bphs-connect.com and open each workspace on the rail, the Physical Assets and Digital Assets lists, an employee who holds something, and the Audit log: the data should be as it was before the update.
+
+The last command removes the untagged images each rebuild leaves behind (never volumes, and never the `previous` image), so old images do not fill the disk. Until the modular-architecture release nothing kept the old image, so this command deleted it and going back meant rebuilding the old version. The `previous` image takes as much disk as the running one: once the update has run well, `sudo docker image rm bphs-asset-manager:previous` frees that space, and going back then needs a rebuild.
 
 Changing settings in `/etc/bphs-connect/compose.yml` requires `up -d` to recreate the container; `restart` alone does not apply changed environment values.
 
-**Rollback:** if an update migrated the database, restore the matching pre-update backup and run the previous code together. An older app version against a newer schema is not a safe rollback. [RUNBOOK.md section 5](RUNBOOK.md#5-restore) gives the restore procedure; substitute `sudo docker compose -f /etc/bphs-connect/compose.yml` for every `docker compose` command there. Stop the app before replacing its database, and move the old database and its WAL/SHM files aside together. A restore discards changes made since the backup.
+**If the new version does not start.** `up` reports an error, the container keeps restarting, and nginx answers 502. Save the log first: going back replaces the container, and its log with it.
+
+```bash
+sudo docker compose -f /etc/bphs-connect/compose.yml logs --tail 200 assets > ~/bphs-failed-update.log
+```
+
+If the error is a `DrizzleError: Failed to run the query '…'` whose trace goes through `runMigrations`, a migration failed. All the migrations of that start run in one transaction, so the failure rolled them all back: the database is exactly as the old version left it. Go back to the old version; no restore is needed:
+
+```bash
+sudo docker compose -f /etc/bphs-connect/compose.yml stop assets
+git switch --detach <old commit ID>
+sudo docker tag bphs-asset-manager:previous bphs-asset-manager:latest
+sudo docker compose -f /etc/bphs-connect/compose.yml up -d --force-recreate --wait --wait-timeout 120
+curl -fsS https://bphs-connect.com/api/health
+```
+
+Report the saved log. Before the next update, run `git switch main`. Any other error means the new version got past its migrations: roll back with the restore, below.
+
+**Rollback:** if an update migrated the database, restore the matching pre-update backup and run the previous code together. An older app version against a newer schema is not a safe rollback. Stop the app, put back the old version as above (`git switch --detach`, then tag `previous` as `latest`), and restore the backup with steps 2 and 3 of [RUNBOOK.md section 5.1](RUNBOOK.md#51-restore-into-the-live-system), substituting `sudo docker compose -f /etc/bphs-connect/compose.yml` for every `docker compose` command there. Then start it with `up -d --force-recreate --wait --wait-timeout 120`, not `start`, which would run the new version's container and migrate the restored database again. [RUNBOOK.md section 7.3](RUNBOOK.md#73-rolling-back) has the steps in order. A restore discards changes made since the backup.
 
 Never use `docker compose down -v`, remove `bphs-connect-data`, or prune volumes as part of an update; those actions can delete your application data.
 
@@ -468,8 +508,8 @@ df -h
 | Backup log shows `invalid_grant` or `couldn't fetch token` | Google withdrew rclone's access. Run `sudo rclone config reconnect gdrive:`, answer `n` to the browser question, and repeat the `rclone authorize` step from step 12. |
 | Upload/import fails with 413 | Preserve the 4m and 101m Nginx limits after Certbot changes (101m covers `/api/grievances`, `/api/reviews`, `/api/tasks` and `/api/me/tasks`); the app also limits each attachment to 10 MiB. |
 | Excel import/export stalls | Check whether a proxy or browser policy changed the app's Content-Security-Policy or blocked its blob workers. |
-| Build is killed or reports no space | Check `free -h`, `df -h` and `sudo docker system df`; provide enough RAM/disk for the frontend build. Do not delete the data volume. |
-| App is unhealthy or repeatedly restarts | Read the container log for migration errors, configuration errors or an unwritable `/data`. |
+| Build is killed or reports no space | Check `free -h`, `df -h` and `sudo docker system df`; provide enough RAM/disk for the frontend build. Once the running version is confirmed good, `sudo docker image rm bphs-asset-manager:previous` frees the image kept for a rollback. Do not delete the data volume. |
+| App is unhealthy or repeatedly restarts | Read the container log for migration errors, configuration errors or an unwritable `/data`. Right after an update, a failed migration: see "If the new version does not start" in step 13. |
 | Data seems empty after an update | Verify you used the production Compose file and the `bphs-connect-data` volume before entering new records. |
 | App does not return after a VPS reboot | Check `sudo systemctl status docker nginx`. A deliberately stopped container needs `start assets`; its restart policy does not undo a manual stop. |
 

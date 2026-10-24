@@ -1,0 +1,22 @@
+{
+  "request": "GET /api/reviews/AR-2026-0005/entries",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "bodyHtml": "",
+      "cap": null,
+      "correctedBy": [],
+      "corrects": null,
+      "documentedBy": "Marcus Oyelaran",
+      "id": 31,
+      "kind": "system",
+      "occurredAt": "2026-09-30T11:45:00.000Z",
+      "recordedAt": "2026-09-30T11:45:00.000Z",
+      "seq": 1,
+      "shortDescription": "",
+      "title": "Review created"
+    }
+  ]
+}

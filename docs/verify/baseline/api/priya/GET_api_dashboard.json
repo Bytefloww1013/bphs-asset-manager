@@ -1,0 +1,288 @@
+{
+  "request": "GET /api/dashboard",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "byType": [
+      {
+        "free": 3,
+        "total": 33,
+        "type": "Laptop",
+        "typeId": 1
+      },
+      {
+        "free": 12,
+        "total": 26,
+        "type": "Phone",
+        "typeId": 2
+      },
+      {
+        "free": 12,
+        "total": 26,
+        "type": "Monitor",
+        "typeId": 3
+      },
+      {
+        "free": 4,
+        "total": 15,
+        "type": "Keyboard",
+        "typeId": 4
+      },
+      {
+        "free": 4,
+        "total": 11,
+        "type": "Mouse",
+        "typeId": 5
+      }
+    ],
+    "longestOut": [
+      {
+        "assetBrand": "Apple",
+        "assetModel": "iPhone 13",
+        "assetTag": "BPHS-0046",
+        "assetType": "Phone",
+        "assignmentId": 46,
+        "daysOut": 600,
+        "employee": {
+          "code": "E-1102",
+          "department": "Intake",
+          "id": 10,
+          "name": "Rosa Delgado"
+        },
+        "program": null
+      },
+      {
+        "assetBrand": "Dell",
+        "assetModel": "Latitude 7440",
+        "assetTag": "BPHS-0005",
+        "assetType": "Laptop",
+        "assignmentId": 135,
+        "daysOut": 556,
+        "employee": null,
+        "program": {
+          "code": "PRG-310",
+          "id": 4,
+          "name": "Youth Outreach"
+        }
+      },
+      {
+        "assetBrand": "Microsoft",
+        "assetModel": "Wired Keyboard 600",
+        "assetTag": "BPHS-0097",
+        "assetType": "Keyboard",
+        "assignmentId": 106,
+        "daysOut": 354,
+        "employee": {
+          "code": "E-1177",
+          "department": "IT",
+          "id": 11,
+          "name": "Wen Zhao"
+        },
+        "program": null
+      },
+      {
+        "assetBrand": "Apple",
+        "assetModel": "iPhone 14",
+        "assetTag": "BPHS-0045",
+        "assetType": "Phone",
+        "assignmentId": 44,
+        "daysOut": 333,
+        "employee": {
+          "code": "E-1247",
+          "department": "Facilities",
+          "id": 14,
+          "name": "Ivo Petrov"
+        },
+        "program": null
+      },
+      {
+        "assetBrand": "Apple",
+        "assetModel": "MacBook Air 13 M2",
+        "assetTag": "BPHS-0026",
+        "assetType": "Laptop",
+        "assignmentId": 28,
+        "daysOut": 328,
+        "employee": {
+          "code": "E-1233",
+          "department": "Clinical Services",
+          "id": 13,
+          "name": "Hanna Vuorinen"
+        },
+        "program": null
+      },
+      {
+        "assetBrand": "Logitech",
+        "assetModel": "MK270",
+        "assetTag": "BPHS-0104",
+        "assetType": "Keyboard",
+        "assignmentId": 117,
+        "daysOut": 325,
+        "employee": {
+          "code": "E-1201",
+          "department": "Residential",
+          "id": 4,
+          "name": "Tomas Berger"
+        },
+        "program": null
+      }
+    ],
+    "overdueCount": 2,
+    "poorCondition": [
+      {
+        "assetBrand": "Apple",
+        "assetId": 39,
+        "assetModel": "iPhone 14",
+        "assetTag": "BPHS-0039",
+        "assetType": "Phone",
+        "holder": null,
+        "rating": "Poor"
+      },
+      {
+        "assetBrand": "Apple",
+        "assetId": 58,
+        "assetModel": "iPhone 14",
+        "assetTag": "BPHS-0058",
+        "assetType": "Phone",
+        "holder": null,
+        "rating": "Poor"
+      },
+      {
+        "assetBrand": "Logitech",
+        "assetId": 94,
+        "assetModel": "MK270",
+        "assetTag": "BPHS-0094",
+        "assetType": "Keyboard",
+        "holder": null,
+        "rating": "Poor"
+      }
+    ],
+    "recent": [
+      {
+        "action": "sign_in",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "p.raghunathan@bphs.local · signed in",
+        "entityId": 1,
+        "entityType": "user",
+        "id": 420,
+        "occurredAt": "2026-10-01T13:00:00.000Z"
+      },
+      {
+        "action": "update",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0093 · status: in_service → retired",
+        "entityId": 93,
+        "entityType": "asset",
+        "id": 251,
+        "occurredAt": "2026-09-30T13:00:00.000Z"
+      },
+      {
+        "action": "update",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0061 · status: in_service → retired",
+        "entityId": 61,
+        "entityType": "asset",
+        "id": 155,
+        "occurredAt": "2026-09-30T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0093 ← E-1315 · Damaged",
+        "entityId": 101,
+        "entityType": "assignment",
+        "id": 250,
+        "occurredAt": "2026-09-29T13:00:00.000Z"
+      },
+      {
+        "action": "return",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0061 ← E-0988 · Damaged",
+        "entityId": 62,
+        "entityType": "assignment",
+        "id": 154,
+        "occurredAt": "2026-09-29T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "p.raghunathan@bphs.local",
+        "details": "BPHS-0073 → E-1315 · New",
+        "entityId": 77,
+        "entityType": "assignment",
+        "id": 190,
+        "occurredAt": "2026-09-23T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0030 → E-1296 · Good",
+        "entityId": 33,
+        "entityType": "assignment",
+        "id": 80,
+        "occurredAt": "2026-09-19T13:00:00.000Z"
+      },
+      {
+        "action": "issue",
+        "actor": "m.oyelaran@bphs.local",
+        "details": "BPHS-0061 → E-0988 · Good",
+        "entityId": 62,
+        "entityType": "assignment",
+        "id": 153,
+        "occurredAt": "2026-09-10T07:00:00.000Z"
+      }
+    ],
+    "topHolders": [
+      {
+        "count": 5,
+        "employee": {
+          "code": "E-1247",
+          "department": "Facilities",
+          "id": 14,
+          "name": "Ivo Petrov"
+        }
+      },
+      {
+        "count": 5,
+        "employee": {
+          "code": "E-1102",
+          "department": "Intake",
+          "id": 10,
+          "name": "Rosa Delgado"
+        }
+      },
+      {
+        "count": 4,
+        "employee": {
+          "code": "E-0904",
+          "department": "Finance",
+          "id": 8,
+          "name": "Aaron Feldman-Rees"
+        }
+      },
+      {
+        "count": 4,
+        "employee": {
+          "code": "E-1219",
+          "department": "Residential",
+          "id": 12,
+          "name": "Bilal Osman"
+        }
+      },
+      {
+        "count": 4,
+        "employee": {
+          "code": "E-1042",
+          "department": "IT",
+          "id": 1,
+          "name": "Priya Raghunathan"
+        }
+      }
+    ],
+    "totals": {
+      "assigned": 76,
+      "inStorage": 35,
+      "retired": 5,
+      "total": 116
+    }
+  }
+}

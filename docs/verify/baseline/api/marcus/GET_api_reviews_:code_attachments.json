@@ -1,0 +1,7 @@
+{
+  "request": "GET /api/reviews/AR-2026-0005/attachments",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": []
+}

@@ -1,0 +1,33 @@
+{
+  "request": "GET /api/tasks/accounts",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "email": "d.whitfield@bphs.local",
+      "id": 3,
+      "name": "Dana Whitfield"
+    },
+    {
+      "email": "m.oyelaran@bphs.local",
+      "id": 2,
+      "name": "Marcus Oyelaran"
+    },
+    {
+      "email": "ops@bphs.local",
+      "id": 4,
+      "name": "Ops Account"
+    },
+    {
+      "email": "p.raghunathan@bphs.local",
+      "id": 1,
+      "name": "Priya Raghunathan"
+    },
+    {
+      "email": "r.delgado@bphs.local",
+      "id": 6,
+      "name": "Rosa Delgado"
+    }
+  ]
+}

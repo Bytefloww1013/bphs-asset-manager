@@ -1,0 +1,12 @@
+{
+  "request": "GET /api/grievances/account-holders",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    1,
+    2,
+    3,
+    10
+  ]
+}

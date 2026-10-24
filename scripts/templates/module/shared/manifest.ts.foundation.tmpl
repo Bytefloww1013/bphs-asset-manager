@@ -1,0 +1,27 @@
+import { SHARED_LEVELS } from '#shared/levels.ts'
+import { defineSharedManifest } from '#shared/modules.ts'
+
+/** {{Label}}: records every workspace may use, its API and its page. Say here, in a line, what it is for. */
+export default defineSharedManifest({
+  id: '{{id}}',
+  tier: 'foundation',
+  label: '{{Label}}',
+  dependsOn: [],
+  confidential: false,
+  resources: [
+    {
+      key: '{{id}}',
+      label: '{{Label}}',
+      levels: SHARED_LEVELS,
+      help: {
+        none: 'The {{Label}} page is hidden.',
+        read: 'See the {{Label}} page.',
+        edit: 'Also add entries.',
+        full: 'The same as Edit.',
+      },
+      workspace: false,
+    },
+  ],
+  auditEntityTypes: ['{{id}}'],
+  routePrefix: '/{{id}}',
+})

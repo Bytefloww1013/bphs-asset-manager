@@ -1,0 +1,43 @@
+{
+  "request": "GET /api/condition-ratings",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "id": 1,
+      "isActive": true,
+      "name": "New",
+      "score": 100,
+      "snapshotCount": 184
+    },
+    {
+      "id": 2,
+      "isActive": true,
+      "name": "Good",
+      "score": 80,
+      "snapshotCount": 108
+    },
+    {
+      "id": 3,
+      "isActive": true,
+      "name": "Fair",
+      "score": 60,
+      "snapshotCount": 9
+    },
+    {
+      "id": 4,
+      "isActive": true,
+      "name": "Poor",
+      "score": 30,
+      "snapshotCount": 24
+    },
+    {
+      "id": 5,
+      "isActive": true,
+      "name": "Damaged",
+      "score": 10,
+      "snapshotCount": 5
+    }
+  ]
+}

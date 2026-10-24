@@ -1,0 +1,9 @@
+{
+  "request": "GET /api/me/notifications/count",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "unread": 3
+  }
+}

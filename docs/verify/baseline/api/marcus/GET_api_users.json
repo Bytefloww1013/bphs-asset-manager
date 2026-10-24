@@ -1,0 +1,10 @@
+{
+  "request": "GET /api/users",
+  "status": 403,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "error": "forbidden",
+    "message": "Only a Super Admin can do this."
+  }
+}

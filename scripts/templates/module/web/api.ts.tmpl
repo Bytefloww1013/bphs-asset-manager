@@ -1,0 +1,5 @@
+// The {{id}} module's writes. A page runs each through `useWrite` (`@/lib/hooks.ts`), which refreshes every query.
+import { api } from '@/lib/api.ts'
+import type { {{Pascal}}CreateInput, {{Pascal}}Row } from '../shared/index.ts'
+
+export const add{{Pascal}} = (body: {{Pascal}}CreateInput) => api.post<{{Pascal}}Row>('/{{id}}', body)

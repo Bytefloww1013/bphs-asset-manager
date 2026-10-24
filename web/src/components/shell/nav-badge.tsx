@@ -1,5 +1,5 @@
+import { UnreadBadge } from '#foundation/notifications/web/index.ts'
 import { Clock, Lock } from 'lucide-react'
-import { UnreadBadge } from '@/features/notifications/parts.tsx'
 import type { NavEntry } from '@/lib/nav.ts'
 
 /**

@@ -1,0 +1,51 @@
+{
+  "request": "GET /api/me/notifications",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "items": [
+      {
+        "archivedAt": null,
+        "body": "Laptop, issued by Marcus Oyelaran.",
+        "createdAt": "2026-10-01T12:31:12.000Z",
+        "id": 5,
+        "kind": "asset_issued",
+        "link": "/assets/BPHS-0003",
+        "readAt": null,
+        "title": "BPHS-0003 was issued to you"
+      },
+      {
+        "archivedAt": null,
+        "body": null,
+        "createdAt": "2026-09-30T13:00:00.000Z",
+        "id": 4,
+        "kind": "asset_issued",
+        "link": "/assets/BPHS-0007",
+        "readAt": null,
+        "title": "BPHS-0007 was issued to you"
+      },
+      {
+        "archivedAt": null,
+        "body": null,
+        "createdAt": "2026-09-29T13:00:00.000Z",
+        "id": 3,
+        "kind": "asset_overdue",
+        "link": "/assets/BPHS-0012",
+        "readAt": null,
+        "title": "BPHS-0012 is overdue"
+      },
+      {
+        "archivedAt": null,
+        "body": "See your Profile for what you can do now.",
+        "createdAt": "2026-09-25T13:00:00.000Z",
+        "id": 2,
+        "kind": "account_access_changed",
+        "link": "/me/profile",
+        "readAt": "2026-09-26T13:00:00.000Z",
+        "title": "Your access was changed"
+      }
+    ],
+    "nextCursor": null
+  }
+}

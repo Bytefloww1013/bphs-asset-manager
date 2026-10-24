@@ -1,0 +1,33 @@
+{
+  "request": "GET /api/reviews/AR-2026-0005",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "bodyHtml": "",
+    "code": "AR-2026-0005",
+    "completedAt": null,
+    "createdAt": "2026-09-30T11:45:00.000Z",
+    "employee": {
+      "archived": false,
+      "code": "E-1356",
+      "id": 23,
+      "name": "Callum Reyes"
+    },
+    "findings": "Five doses in October have no initials, all on nights Callum worked.\nThe doses were given: the residents’ charts and the blister packs agree.",
+    "id": 5,
+    "lastActivityAt": "2026-09-30T11:45:00.000Z",
+    "recordedBy": "Marcus Oyelaran",
+    "reviewDate": "2026-09-30",
+    "reviewer": {
+      "archived": false,
+      "code": "E-1296",
+      "id": 18,
+      "name": "Mina Haddad"
+    },
+    "status": "open",
+    "summary": "The night medication log at Harbour House has five unsigned doses this month.",
+    "title": "Medication log gaps on night shifts",
+    "version": 1
+  }
+}

@@ -5,6 +5,7 @@
   "printWidth": 120,
   "ignorePatterns": [
     "web/src/routeTree.gen.ts",
+    "**/modules.gen.ts",
     "server/db/migrations/**",
     "bun.lock",
     "brand-assets/**",

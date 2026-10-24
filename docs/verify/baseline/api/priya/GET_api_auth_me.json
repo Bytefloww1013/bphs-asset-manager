@@ -1,0 +1,18 @@
+{
+  "request": "GET /api/auth/me",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "user": {
+      "access": {},
+      "email": "p.raghunathan@bphs.local",
+      "employeeId": 1,
+      "firstAccount": true,
+      "id": 1,
+      "mustChangePassword": false,
+      "name": "Priya Raghunathan",
+      "superAdmin": true
+    }
+  }
+}

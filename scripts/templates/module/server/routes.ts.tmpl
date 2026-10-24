@@ -1,0 +1,18 @@
+import { Hono } from 'hono'
+import { requires } from '#kernel/access/route.ts'
+import type { Db } from '#kernel/db/client.ts'
+import { json, type Env } from '#kernel/http.ts'
+import { {{camel}}CreateSchema } from '../shared/index.ts'
+import { add{{Pascal}}, list{{Pascal}} } from './service.ts'
+
+/** `/api/{{id}}`. Each route's first handler says who may call it (`requires`); the app refuses a route without one. */
+export function {{camel}}Routes(db: Db) {
+  const app = new Hono<Env>()
+
+  app.get('/', requires('{{id}}', 'read'), (c) => c.json(list{{Pascal}}(db)))
+  app.post('/', requires('{{id}}', 'edit'), json({{camel}}CreateSchema), (c) =>
+    c.json(add{{Pascal}}(db, c.get('user'), c.req.valid('json')), 201),
+  )
+
+  return app
+}

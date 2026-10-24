@@ -1,0 +1,161 @@
+{
+  "request": "GET /api/reviews",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "counts": {
+      "all": 4,
+      "completed": 1,
+      "in_progress": 1,
+      "open": 1,
+      "voided": 1
+    },
+    "employees": [
+      {
+        "archived": false,
+        "code": "E-1296",
+        "id": 18,
+        "name": "Mina Haddad"
+      },
+      {
+        "archived": false,
+        "code": "E-1304",
+        "id": 19,
+        "name": "Jules Okafor"
+      },
+      {
+        "archived": false,
+        "code": "E-1356",
+        "id": 23,
+        "name": "Callum Reyes"
+      }
+    ],
+    "reviewers": [
+      {
+        "archived": false,
+        "code": "E-1102",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      {
+        "archived": false,
+        "code": "E-1296",
+        "id": 18,
+        "name": "Mina Haddad"
+      },
+      {
+        "archived": false,
+        "code": "E-0988",
+        "id": 3,
+        "name": "Marcus Oyelaran"
+      }
+    ],
+    "rows": [
+      {
+        "caps": {
+          "done": 0,
+          "total": 0
+        },
+        "code": "AR-2026-0005",
+        "employee": {
+          "archived": false,
+          "code": "E-1356",
+          "id": 23,
+          "name": "Callum Reyes"
+        },
+        "id": 5,
+        "lastActivityAt": "2026-09-30T11:45:00.000Z",
+        "nextDue": null,
+        "reviewDate": "2026-09-30",
+        "reviewer": {
+          "archived": false,
+          "code": "E-1296",
+          "id": 18,
+          "name": "Mina Haddad"
+        },
+        "status": "open",
+        "summary": "The night medication log at Harbour House has five unsigned doses this month.",
+        "title": "Medication log gaps on night shifts"
+      },
+      {
+        "caps": {
+          "done": 0,
+          "total": 0
+        },
+        "code": "AR-2026-0004",
+        "employee": {
+          "archived": false,
+          "code": "E-1304",
+          "id": 19,
+          "name": "Jules Okafor"
+        },
+        "id": 4,
+        "lastActivityAt": "2026-09-28T10:20:00.000Z",
+        "nextDue": null,
+        "reviewDate": "2026-08-21",
+        "reviewer": {
+          "archived": false,
+          "code": "E-1102",
+          "id": 10,
+          "name": "Rosa Delgado"
+        },
+        "status": "voided",
+        "summary": "Referrals wait too long for a first call.",
+        "title": "Referral backlog, Intake"
+      },
+      {
+        "caps": {
+          "done": 1,
+          "total": 4
+        },
+        "code": "AR-2026-0002",
+        "employee": {
+          "archived": false,
+          "code": "E-1304",
+          "id": 19,
+          "name": "Jules Okafor"
+        },
+        "id": 2,
+        "lastActivityAt": "2026-09-21T14:00:00.000Z",
+        "nextDue": "2026-09-26",
+        "reviewDate": "2026-08-21",
+        "reviewer": {
+          "archived": false,
+          "code": "E-1102",
+          "id": 10,
+          "name": "Rosa Delgado"
+        },
+        "status": "in_progress",
+        "summary": "Referrals waited up to 19 days for a first call; the target is 5.",
+        "title": "Intake referral backlog"
+      },
+      {
+        "caps": {
+          "done": 2,
+          "total": 2
+        },
+        "code": "AR-2026-0001",
+        "employee": {
+          "archived": false,
+          "code": "E-1296",
+          "id": 18,
+          "name": "Mina Haddad"
+        },
+        "id": 1,
+        "lastActivityAt": "2026-07-25T14:00:00.000Z",
+        "nextDue": null,
+        "reviewDate": "2026-07-07",
+        "reviewer": {
+          "archived": false,
+          "code": "E-0988",
+          "id": 3,
+          "name": "Marcus Oyelaran"
+        },
+        "status": "completed",
+        "summary": "Quarterly cash review found the float short twice and receipts missing for most of June.",
+        "title": "Petty cash handling at Harbour House"
+      }
+    ]
+  }
+}

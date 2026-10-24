@@ -1,44 +1,8 @@
-import { count, eq } from 'drizzle-orm'
+import { count } from 'drizzle-orm'
 import type { Db } from './db/client.ts'
-import { assetBrands, assetTypes, conditionRatings, users } from './db/schema.ts'
+import { users } from './db/schema.ts'
 import { config } from './config.ts'
 import { hashPassword } from './lib/password.ts'
-
-export const DEFAULT_TYPES = ['Laptop', 'Phone', 'Monitor', 'Keyboard', 'Mouse']
-/** The 0023 migration also leaves an archived "Unknown", so a new database counts active brands only. */
-export const DEFAULT_BRANDS = ['Apple', 'Dell', 'HP', 'Lenovo', 'Logitech', 'Microsoft', 'Samsung']
-/** Best condition first, each with its score out of 100. */
-export const DEFAULT_RATINGS = [
-  { name: 'New', score: 100 },
-  { name: 'Good', score: 80 },
-  { name: 'Fair', score: 60 },
-  { name: 'Poor', score: 30 },
-  { name: 'Damaged', score: 10 },
-]
-
-/**
- * Fill the reference lists on first run so the forms are usable immediately. A database with users in it is not new: whatever its
- * lists hold is what its admins made of them, and an emptied list must not come back to the defaults at the next restart.
- */
-export function ensureDefaultLists(db: Db) {
-  // Brands are the exception. No active brand happens only on a database the 0023 migration has just upgraded (admins can't
-  // archive or delete the last active one), and without one no physical asset can be added.
-  if ((db.select({ n: count() }).from(assetBrands).where(eq(assetBrands.isActive, true)).get()?.n ?? 0) === 0) {
-    db.insert(assetBrands)
-      .values(DEFAULT_BRANDS.map((name) => ({ name })))
-      .onConflictDoNothing()
-      .run()
-  }
-  if ((db.select({ n: count() }).from(users).get()?.n ?? 0) > 0) return
-  if ((db.select({ n: count() }).from(assetTypes).get()?.n ?? 0) === 0) {
-    db.insert(assetTypes)
-      .values(DEFAULT_TYPES.map((name) => ({ name })))
-      .run()
-  }
-  if ((db.select({ n: count() }).from(conditionRatings).get()?.n ?? 0) === 0) {
-    db.insert(conditionRatings).values(DEFAULT_RATINGS).run()
-  }
-}
 
 /** The first Super Admin's starting password, fixed so the first sign-in needs no log. It must be changed at first login. */
 const BOOTSTRAP_PASSWORD = 'Brightpath1!'

@@ -1,0 +1,46 @@
+{
+  "request": "GET /api/grievances/GR-2026-0005",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "bodyHtml": "<p>Rosa says the rota changes at short notice.</p>",
+    "category": {
+      "id": 5,
+      "name": "Working conditions"
+    },
+    "code": "GR-2026-0005",
+    "createdAt": "2026-09-23T09:00:00.000Z",
+    "dateMade": "2026-09-19",
+    "employees": [
+      {
+        "archived": false,
+        "code": "E-1102",
+        "id": 10,
+        "name": "Rosa Delgado"
+      }
+    ],
+    "id": 5,
+    "lastActivityAt": "2026-09-23T09:10:00.000Z",
+    "management": [
+      {
+        "archived": false,
+        "code": "E-1315",
+        "id": 7,
+        "name": "Sasha Feldman"
+      }
+    ],
+    "owner": {
+      "archived": false,
+      "code": "E-0988",
+      "id": 3,
+      "name": "Marcus Oyelaran"
+    },
+    "ownerHasAccount": true,
+    "recordedBy": "Marcus Oyelaran",
+    "shortDescription": "Shift changes posted two or three days ahead.",
+    "status": "voided",
+    "title": "Short-notice rota changes, Intake",
+    "version": 1
+  }
+}

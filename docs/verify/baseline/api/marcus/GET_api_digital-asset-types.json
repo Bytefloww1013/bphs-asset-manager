@@ -1,0 +1,62 @@
+{
+  "request": "GET /api/digital-asset-types",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "assetCount": 3,
+      "id": 9,
+      "isActive": true,
+      "name": "Accounting software"
+    },
+    {
+      "assetCount": 5,
+      "id": 6,
+      "isActive": true,
+      "name": "Adobe Acrobat Pro"
+    },
+    {
+      "assetCount": 8,
+      "id": 7,
+      "isActive": true,
+      "name": "Client records system"
+    },
+    {
+      "assetCount": 0,
+      "id": 1,
+      "isActive": true,
+      "name": "M365-BusinessStandard"
+    },
+    {
+      "assetCount": 0,
+      "id": 2,
+      "isActive": true,
+      "name": "M365-PowerBI"
+    },
+    {
+      "assetCount": 12,
+      "id": 5,
+      "isActive": true,
+      "name": "Microsoft 365"
+    },
+    {
+      "assetCount": 0,
+      "id": 4,
+      "isActive": true,
+      "name": "Relias"
+    },
+    {
+      "assetCount": 0,
+      "id": 3,
+      "isActive": true,
+      "name": "Zoho"
+    },
+    {
+      "assetCount": 4,
+      "id": 8,
+      "isActive": true,
+      "name": "Zoom"
+    }
+  ]
+}

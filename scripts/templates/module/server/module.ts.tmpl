@@ -1,0 +1,7 @@
+import { defineServerModule } from '#kernel/modules.ts'
+import manifest from '../shared/manifest.ts'
+import { {{camel}}Routes } from './routes.ts'
+import * as schema from './schema.ts'
+
+/** The {{Label}} API (`/api/{{id}}`). */
+export default defineServerModule({ manifest, schema, routes: [{ base: '/{{id}}', create: {{camel}}Routes }] })

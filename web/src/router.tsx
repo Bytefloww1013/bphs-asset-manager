@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
 import { ApiError } from './lib/api.ts'
-import { meQuery } from './lib/queries.ts'
+import { meQuery } from './lib/session.ts'
 import { returnPath, setSessionEnded } from './lib/session.ts'
 import { routeTree } from './routeTree.gen'
 

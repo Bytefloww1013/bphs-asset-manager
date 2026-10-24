@@ -1,0 +1,206 @@
+{
+  "request": "GET /api/tasks",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": [
+    {
+      "assignee": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assigner": {
+        "email": "p.raghunathan@bphs.local",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "assignerSuperAdmin": true,
+      "completedAt": null,
+      "createdAt": "2026-09-30T09:00:00.000Z",
+      "dueAt": "2026-10-11T17:00:00.000Z",
+      "id": 1,
+      "requiresApproval": false,
+      "requiresFile": false,
+      "sendAt": "2026-10-04T09:00:00.000Z",
+      "status": "scheduled",
+      "title": "Review the Q4 budget variance report"
+    },
+    {
+      "assignee": {
+        "email": "r.delgado@bphs.local",
+        "id": 6,
+        "name": "Rosa Delgado"
+      },
+      "assigner": {
+        "email": "d.whitfield@bphs.local",
+        "id": 3,
+        "name": "Dana Whitfield"
+      },
+      "assignerSuperAdmin": false,
+      "completedAt": null,
+      "createdAt": "2026-09-29T09:00:00.000Z",
+      "dueAt": "2026-10-06T17:00:00.000Z",
+      "id": 2,
+      "requiresApproval": false,
+      "requiresFile": false,
+      "sendAt": "2026-09-29T09:00:00.000Z",
+      "status": "outstanding",
+      "title": "Update the intake packet with the new consent form"
+    },
+    {
+      "assignee": {
+        "email": "r.delgado@bphs.local",
+        "id": 6,
+        "name": "Rosa Delgado"
+      },
+      "assigner": {
+        "email": "p.raghunathan@bphs.local",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "assignerSuperAdmin": true,
+      "completedAt": null,
+      "createdAt": "2026-09-25T09:00:00.000Z",
+      "dueAt": "2026-10-15T17:00:00.000Z",
+      "id": 3,
+      "requiresApproval": true,
+      "requiresFile": false,
+      "sendAt": "2026-09-25T09:00:00.000Z",
+      "status": "outstanding",
+      "title": "Complete the annual HIPAA privacy training"
+    },
+    {
+      "assignee": {
+        "email": "r.delgado@bphs.local",
+        "id": 6,
+        "name": "Rosa Delgado"
+      },
+      "assigner": {
+        "email": "d.whitfield@bphs.local",
+        "id": 3,
+        "name": "Dana Whitfield"
+      },
+      "assignerSuperAdmin": false,
+      "completedAt": null,
+      "createdAt": "2026-09-24T09:00:00.000Z",
+      "dueAt": "2026-10-04T17:00:00.000Z",
+      "id": 9,
+      "requiresApproval": false,
+      "requiresFile": false,
+      "sendAt": "2026-09-24T09:00:00.000Z",
+      "status": "cancelled",
+      "title": "Order replacement badge lanyards"
+    },
+    {
+      "assignee": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assigner": {
+        "email": "d.whitfield@bphs.local",
+        "id": 3,
+        "name": "Dana Whitfield"
+      },
+      "assignerSuperAdmin": false,
+      "completedAt": "2026-09-30T15:00:00.000Z",
+      "createdAt": "2026-09-22T09:00:00.000Z",
+      "dueAt": "2026-10-03T17:00:00.000Z",
+      "id": 6,
+      "requiresApproval": true,
+      "requiresFile": false,
+      "sendAt": "2026-09-22T09:00:00.000Z",
+      "status": "awaiting_approval",
+      "title": "Reconcile the petty cash log for Maple Court"
+    },
+    {
+      "assignee": {
+        "email": "r.delgado@bphs.local",
+        "id": 6,
+        "name": "Rosa Delgado"
+      },
+      "assigner": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assignerSuperAdmin": false,
+      "completedAt": null,
+      "createdAt": "2026-09-19T09:00:00.000Z",
+      "dueAt": "2026-09-29T17:00:00.000Z",
+      "id": 4,
+      "requiresApproval": false,
+      "requiresFile": false,
+      "sendAt": "2026-09-19T09:00:00.000Z",
+      "status": "past_due",
+      "title": "Submit October mileage reimbursement"
+    },
+    {
+      "assignee": {
+        "email": "r.delgado@bphs.local",
+        "id": 6,
+        "name": "Rosa Delgado"
+      },
+      "assigner": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assignerSuperAdmin": false,
+      "completedAt": "2026-09-21T15:00:00.000Z",
+      "createdAt": "2026-09-16T09:00:00.000Z",
+      "dueAt": "2026-09-23T17:00:00.000Z",
+      "id": 7,
+      "requiresApproval": false,
+      "requiresFile": false,
+      "sendAt": "2026-09-16T09:00:00.000Z",
+      "status": "completed",
+      "title": "Return the visitor sign-in binder to the front desk"
+    },
+    {
+      "assignee": {
+        "email": "d.whitfield@bphs.local",
+        "id": 3,
+        "name": "Dana Whitfield"
+      },
+      "assigner": {
+        "email": "p.raghunathan@bphs.local",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "assignerSuperAdmin": true,
+      "completedAt": null,
+      "createdAt": "2026-09-11T09:00:00.000Z",
+      "dueAt": "2026-09-27T17:00:00.000Z",
+      "id": 5,
+      "requiresApproval": false,
+      "requiresFile": false,
+      "sendAt": "2026-09-11T09:00:00.000Z",
+      "status": "past_due",
+      "title": "Renew the fire extinguisher inspection"
+    },
+    {
+      "assignee": {
+        "email": "m.oyelaran@bphs.local",
+        "id": 2,
+        "name": "Marcus Oyelaran"
+      },
+      "assigner": {
+        "email": "p.raghunathan@bphs.local",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      "assignerSuperAdmin": true,
+      "completedAt": "2026-09-17T15:00:00.000Z",
+      "createdAt": "2026-09-06T09:00:00.000Z",
+      "dueAt": "2026-09-19T17:00:00.000Z",
+      "id": 8,
+      "requiresApproval": true,
+      "requiresFile": false,
+      "sendAt": "2026-09-06T09:00:00.000Z",
+      "status": "completed",
+      "title": "Compare quotes for the new copier lease"
+    }
+  ]
+}

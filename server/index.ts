@@ -1,30 +1,37 @@
 import path from 'node:path'
 import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
-import { ensureBootstrapAdmin, ensureDefaultLists } from './bootstrap.ts'
+import { ensureBootstrapAdmin } from './bootstrap.ts'
 import { config, isProduction } from './config.ts'
 import { createDb, runMigrations } from './db/client.ts'
+import { SERVER_MODULES } from './modules.gen.ts'
+import type { Job } from './modules.ts'
+import { installModules, jobs, startModules } from './registry.ts'
 import { purgeExpiredSessions } from './services/auth.ts'
-import { purgeNotifications, sendOverdueReminders } from './services/notifications.ts'
-import { runTaskClock } from './services/tasks.ts'
 
+installModules(SERVER_MODULES)
 const { db, sqlite } = createDb(path.join(config.dataDir, 'bphs.sqlite'))
 runMigrations(db)
-ensureDefaultLists(db)
+// Before the first Super Admin is made: the default lists go into a database with no users only.
+await startModules(db)
 await ensureBootstrapAdmin(db)
-// Sessions are checked on every request, but keep the tables tidy: expired sessions and year-old notifications.
-// The same timer sends the overdue reminders.
+
+// Sessions are checked on every request, but expired ones are purged as well, to keep the table tidy. The modules' jobs follow.
+const JOBS: readonly Job[] = [
+  { name: 'sessions.purge', every: 6 * 60 * 60 * 1000, atStart: true, run: purgeExpiredSessions },
+  ...jobs(),
+]
 // Each job runs on its own: one that fails is logged, and neither stops the others nor takes the server down.
-function tidy() {
-  for (const job of [purgeExpiredSessions, purgeNotifications, sendOverdueReminders]) {
-    try {
-      job(db)
-    } catch (error) {
-      console.error(error)
-    }
+function run(job: Job) {
+  const failed = (error: unknown) => console.error(`Job ${job.name} failed:`, error)
+  try {
+    const result = job.run(db)
+    if (result instanceof Promise) result.catch(failed)
+  } catch (error) {
+    failed(error)
   }
 }
-tidy()
+for (const job of JOBS) if (job.atStart) run(job)
 
 const app = createApp(db, { serveWeb: isProduction || process.env.SERVE_WEB === 'true' })
 const server = serve({ fetch: app.fetch, port: config.port, hostname: '0.0.0.0' }, (info) => {
@@ -43,12 +50,4 @@ function shutdown(signal: string) {
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
 
-setInterval(tidy, 6 * 60 * 60 * 1000).unref()
-// The task clock: scheduled arrivals and past-due reminders. It marks what it sends, so a missed or repeated tick is harmless.
-setInterval(() => {
-  try {
-    runTaskClock(db)
-  } catch (error) {
-    console.error(error)
-  }
-}, 60_000).unref()
+for (const job of JOBS) setInterval(() => run(job), job.every).unref()

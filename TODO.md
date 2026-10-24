@@ -27,7 +27,7 @@ Things still to handle for BPHS-Connect. Tick an item off when it is done, and a
 
 ## Open security findings
 
-Still open from the 2026-10-14 security review, most serious first, checked against the code on 2026-10-21. The full review, with the reasoning behind each item, is `SECURITYREVIEW.md` in git history (`git show 6925196:SECURITYREVIEW.md`). The SR numbers refer to its sections. The backup items are under Backups above. Fix each in its own branch, not inside a feature.
+Still open from the 2026-10-14 security review, most serious first, checked against the code on 2026-10-21 and again on 2026-10-23, after the module split (#23). The full review, with the reasoning behind each item, is `SECURITYREVIEW.md` in git history (`git show 6925196:SECURITYREVIEW.md`). The SR numbers refer to its sections. The backup items are under Backups above. Fix each in its own branch, not inside a feature.
 
 - [ ] **Bootstrap with a known password (SR-18).** With no users, the app creates a Super Admin whose starting password is written in the repo (`server/bootstrap.ts`). If the volume is ever empty or mounted wrong, the public site starts with it. Require an explicit init step, or refuse to start with no users in production.
 - [ ] **Multi-factor authentication (SR-06).** A public site holding HR data signs in with a password only. Choose SSO, a gateway, or local MFA, and require it for Super Admins first.
@@ -39,7 +39,7 @@ Still open from the 2026-10-14 security review, most serious first, checked agai
 - [ ] **Container hardening (SR-13).** Add `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, and memory, CPU and PID limits to the production compose file.
 - [ ] **Session-ended and sign-out behaviour (SR-17).** Case content shows through the session-ended dialog, and a failed sign-out looks like a successful one.
 - [ ] **Upload scanning (SR-10).** Files are not virus-scanned and the DOCX/XLSX check is shallow. This is an accepted risk in the RUNBOOK; revisit before storing more sensitive files.
-- [ ] **Supply chain (SR-14).** esbuild 0.18.20 (via drizzle-kit) is still in the lockfile. There is no CI, image scan or secret scanning, and the image is tagged `:latest` only.
+- [ ] **Supply chain (SR-14).** esbuild 0.18.20 (via drizzle-kit) is still in the lockfile. CI now runs on pushes and pull requests to `main` (format, lint, typecheck, tests, build, and Gitleaks secret scanning through Super-Linter), but there is no image scan, and the image is tagged `:latest` only.
 - [ ] **Audit claims (SR-15).** RUNBOOK says every export is logged, but case-file prints are reported by the browser and reads are not audited. Make the runbook match what is guaranteed.
 - [ ] **Policy and sign-off (SR-05, SR-16).** No approved grievance access matrix, data-retention policy, or disk-encryption decision. Incident contact fields in the RUNBOOK are blank.
 
@@ -48,7 +48,11 @@ Still open from the 2026-10-14 security review, most serious first, checked agai
 - [x] Show a maintenance request's Date, Noticed and Zoho time in US format (10/15/2026 12:40 PM). Zoho sends day first and has no setting for it. Deployed 2026-10-16.
 - [x] Per-section access (None, Read, Edit or Full in Assets, Grievances, Maintenance and Employees) in place of roles. Deployed 2026-10-16.
 - [x] Administrative Reviews: a fourth workspace for reviews of employees' work, their Corrective Action Plans (CAPs), files, a printable case file and a Review Audit Log. Deployed (the live site serves `eacce4d`, the reviews case file). After deploying: link every account except the first to its employee on **Users**, since an unlinked account cannot open Reviews; give each account its Reviews level; and print one case file from each browser.
-- [ ] Employee Tasks: a fifth workspace for assigning tasks to accounts, completed in Home › My tasks, with a minute-by-minute task clock for scheduled sends and reminders. Built on `feature-task-system`, not deployed. Deploying adds migrations 0020–0022. After deploying: widen the nginx 101m location to `/api/reviews`, `/api/tasks` and `/api/me/tasks` ([DEPLOY-GUIDE.md step 9](DEPLOY-GUIDE.md#9-configure-nginx)), give each account its Tasks level on **Users**, and assign a test task with a send time a few minutes ahead to see the clock deliver it.
+- [ ] Employee Tasks: a fifth workspace for assigning tasks to accounts, completed in Home › My tasks, with a minute-by-minute task clock for scheduled sends and reminders. Merged to `main` ([#2](https://github.com/Bytefloww1013/bphs-asset-manager/pull/2)), not deployed. Deploying adds migrations 0020–0022. After deploying: widen the nginx 101m location to `/api/reviews`, `/api/tasks` and `/api/me/tasks` ([DEPLOY-GUIDE.md step 9](DEPLOY-GUIDE.md#9-configure-nginx)), give each account its Tasks level on **Users**, and assign a test task with a send time a few minutes ahead to see the clock deliver it.
+- [ ] Modular architecture ([#23](https://github.com/Bytefloww1013/bphs-asset-manager/issues/23)): the app split into a kernel, foundation modules and feature modules, with the same URLs, screens, API responses, access and notifications. Built on `refactor/issue23-modular-architecture`, not merged or deployed.
+  - Deploying adds migration 0024, which merges digital assignments into the one custody ledger. Before deploying, run `docs/verify/migration-check.mjs` on a copy of the pre-deploy backup, as RUNBOOK.md describes.
+  - Default-deny: an API path no route declares is now refused (404). Before, `accessNeeded()` checked any path it didn't recognise against Assets access.
+  - Waiting for it, and then built in the module shape: [#14](https://github.com/Bytefloww1013/bphs-asset-manager/issues/14), [#17](https://github.com/Bytefloww1013/bphs-asset-manager/issues/17), [#18](https://github.com/Bytefloww1013/bphs-asset-manager/issues/18), [#21](https://github.com/Bytefloww1013/bphs-asset-manager/issues/21) and [#22](https://github.com/Bytefloww1013/bphs-asset-manager/issues/22).
 - [ ] _Add requests here._ Build and check each one locally, then redeploy with [DEPLOY-GUIDE.md step 13](DEPLOY-GUIDE.md#13-deploy-later-updates), which takes a backup first.
 
 ## Future TODOs
@@ -59,11 +63,14 @@ Ideas agreed on but not planned yet. Each gets its own `[feature]-plan.md` when 
 - [ ] **Custom notification triggers.** Rules such as "notify me when a new asset is assigned to my program" or "when an asset comes back in poor condition". Default audience: Edit/Full in the section plus Super Admins. The notifications tables are designed so this needs only a rules table.
 - [x] **Show many workspaces cleanly.** Staff keep asking for more features and workspaces, and with Employee Tasks the old workspace switcher was crowded. Replaced (#6) by a workspace rail with "More" for those that do not fit, a pages panel beside it, Ctrl K / ⌘ K "Jump to…" for any page, and a phone drawer with "All workspaces". Merged to `main` on 2026-10-22 ([#15](https://github.com/Bytefloww1013/bphs-asset-manager/pull/15)).
 - [ ] **Mailbox in Home.** Messages between people, with replies.
-- [ ] **My Dashboard in Home** ([#14](https://github.com/Bytefloww1013/bphs-asset-manager/issues/14)). A home page each person can arrange, within limits. It already shows in Home as "My Dashboard", greyed out, "Coming later"; #14 tracks its first version.
+- [ ] **My Dashboard in Home** ([#14](https://github.com/Bytefloww1013/bphs-asset-manager/issues/14)). A home page each person can arrange, within limits. It already shows in Home as "My Dashboard", greyed out, "Coming later"; #14 tracks its first version. Since #23, modules add their widgets through the `home.widgets` slot, which Home draws at `/me` as soon as one exists (until then `/me` opens the Inbox), and #14 gives the My Dashboard entry its address.
+- [ ] **Finer permission resources.** Physical assets, digital assets, programs and the Audit Log all sit behind the one `assets` resource, as before the module split. Give them resources of their own, together with permission groups ([#21](https://github.com/Bytefloww1013/bphs-asset-manager/issues/21)). Found in #23; its own issue is still to be opened.
 - [ ] **Delete the Zoho test submission.** The 2026-10-15 Test Webhook and test entry under **Maintenance**, if still there. Setting the secret and configuring the webhook are done (see Production above).
 
 ## Maybe
 
+- [ ] **Unused extension points.** The server's `reports` hook (`server/modules.ts`) is declared but nothing registers or reads one, and the website's `employee.detail` slot, drawn under the employee's edit sheet (`foundation/employees/web/employee-parts.tsx`), has no entries since the assets module moved to `employee.actions` and `employee.holdings`. Use them or remove them. Found in #23.
+- [ ] **Access form order.** The Users access form lists Assets, Grievances, Maintenance, Administrative Reviews, Employee Tasks (each resource's `order`), while the rail runs Assets, Maintenance, Employee Tasks, Administrative Reviews, Grievances. #23 kept both as they were; decide whether the form should follow the rail.
 - [ ] fail2ban for SSH. Password guessing can no longer get in, because SSH is key-only except for the host's web console. This would only quieten the logs.
 
 ## Done

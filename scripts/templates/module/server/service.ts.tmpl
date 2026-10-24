@@ -1,0 +1,21 @@
+import { asc } from 'drizzle-orm'
+import { writeAudit } from '#foundation/audit/server/index.ts'
+import type { Db } from '#kernel/db/client.ts'
+import type { Actor } from '#kernel/lib/actor.ts'
+import type { {{Pascal}}CreateInput, {{Pascal}}Row } from '../shared/index.ts'
+import { {{camel}} } from './schema.ts'
+
+const row = { id: {{camel}}.id, name: {{camel}}.name }
+
+export function list{{Pascal}}(db: Db): {{Pascal}}Row[] {
+  return db.select(row).from({{camel}}).orderBy(asc({{camel}}.name), asc({{camel}}.id)).all()
+}
+
+/** Adds one, and its audit entry in the same transaction. */
+export function add{{Pascal}}(db: Db, actor: Actor, input: {{Pascal}}CreateInput): {{Pascal}}Row {
+  return db.transaction((tx) => {
+    const added = tx.insert({{camel}}).values({ name: input.name }).returning(row).get()
+    writeAudit(tx, actor, { action: 'create', entityType: '{{id}}', entityId: added.id, details: added.name })
+    return added
+  })
+}

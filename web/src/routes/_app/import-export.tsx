@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Download, FileSpreadsheet, FileUp, ScrollText, TriangleAlert } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
-import { IMPORTERS, IMPORT_TYPES, autoMap, type ImportType, type Importer } from '@shared/importers.ts'
+import { autoMap, type Importer } from '@shared/importers.ts'
 import { canAt, needsAccess } from '@shared/permissions.ts'
 import { IMPORT_MAX_CELL, IMPORT_MAX_ROWS, type ImportInput } from '@shared/schemas.ts'
 import type { ImportPreview, ImportRow } from '@shared/types.ts'
@@ -13,28 +13,31 @@ import { Button, buttonStyles } from '@/components/ui/button.tsx'
 import { Alert, EmptyState, useToast } from '@/components/ui/feedback.tsx'
 import { Field, FilterTabs, Select } from '@/components/ui/form.tsx'
 import { Mono, PageHeader, Panel, PanelHeader, Toolbar } from '@/components/ui/layout.tsx'
-import { useWrite } from '@/features/common/hooks.ts'
 import { api } from '@/lib/api.ts'
 import { cn } from '@/lib/cn.ts'
-import { EXPORTS, type ExportKey } from '@/lib/exports.ts'
 import { plural } from '@/lib/format.ts'
+import { useWrite } from '@/lib/hooks.ts'
 import { usePageTitle, useUser } from '@/lib/session.ts'
 import { UnreadableFile, downloadCsv, downloadTable, readTable, type FileFormat } from '@/lib/spreadsheet.ts'
+import type { ExportEntry } from '@/modules.ts'
+import { exportDatasets, importers } from '@/registry.ts'
 
 type View = 'import' | 'export'
 
 export const Route = createFileRoute('/_app/import-export')({
-  validateSearch: (search: Record<string, unknown>): { view?: 'export'; type?: ImportType } => ({
+  validateSearch: (search: Record<string, unknown>): { view?: 'export'; type?: string } => ({
     view: search.view === 'export' ? 'export' : undefined,
-    type: IMPORT_TYPES.find((type) => type === search.type),
+    type: importers().find((importer) => importer.type === search.type)?.type,
   }),
   component: ImportExportPage,
 })
 
 function ImportExportPage() {
   usePageTitle('Import/Export')
-  const { view = 'import', type = 'employees' } = Route.useSearch()
+  const { view = 'import', type } = Route.useSearch()
   const navigate = Route.useNavigate()
+  // The modules' importers (`importers()`): the one the address names, or the first.
+  const importer = importers().find((candidate) => candidate.type === type) ?? importers()[0]
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -56,11 +59,13 @@ function ImportExportPage() {
         <ExportSection />
       ) : (
         // A different record type is a different import: nothing read or mapped for one carries over to another.
-        <ImportSection
-          key={type}
-          type={type}
-          onType={(next) => void navigate({ search: (old) => ({ ...old, type: next }) })}
-        />
+        importer && (
+          <ImportSection
+            key={importer.type}
+            importer={importer}
+            onType={(next) => void navigate({ search: (old) => ({ ...old, type: next }) })}
+          />
+        )
       )}
     </div>
   )
@@ -137,8 +142,8 @@ function previewColumns(importer: Importer) {
   ]
 }
 
-function ImportSection({ type, onType }: { type: ImportType; onType: (type: ImportType) => void }) {
-  const importer: Importer = IMPORTERS[type]
+function ImportSection({ importer, onType }: { importer: Importer; onType: (type: string) => void }) {
+  const { type } = importer
   const user = useUser()
   const input = useRef<HTMLInputElement>(null)
   // Counts the files chosen and the mappings tried, so an answer about an earlier one is dropped when it arrives late.
@@ -285,10 +290,10 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       <Panel className="flex flex-col gap-5 self-start p-5">
         <Field label="What are you importing?">
-          <Select value={type} onChange={(event) => onType(event.target.value as ImportType)}>
-            {IMPORT_TYPES.map((key) => (
-              <option key={key} value={key}>
-                {IMPORTERS[key].label}
+          <Select value={type} onChange={(event) => onType(event.target.value)}>
+            {importers().map((option) => (
+              <option key={option.type} value={option.type}>
+                {option.label}
               </option>
             ))}
           </Select>
@@ -530,19 +535,17 @@ function ImportSection({ type, onType }: { type: ImportType; onType: (type: Impo
 
 // ---- Export -----------------------------------------------------------------------
 
-const EXPORT_ORDER: ExportKey[] = ['assets', 'digitalAssets', 'employees', 'programs', 'assignments']
-
 function ExportSection() {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [busy, setBusy] = useState<string | null>(null)
 
-  async function save(key: ExportKey, format: FileFormat) {
-    setBusy(`${key}:${format}`)
+  async function save(dataset: ExportEntry, format: FileFormat) {
+    setBusy(`${dataset.filename}:${format}`)
     try {
-      const count = await EXPORTS[key].fetchAndSave(queryClient, format)
+      const count = await dataset.fetchAndSave(queryClient, format)
       toast({
-        title: `${EXPORTS[key].label} exported`,
+        title: `${dataset.label} exported`,
         description: `${plural(count, 'row')} as ${format === 'csv' ? 'CSV' : 'Excel'}.`,
       })
     } catch (error) {
@@ -563,11 +566,15 @@ function ExportSection() {
         description="Each file holds every record as it is now, with who holds what. Excel cells are written as text, never as formulas."
       />
       <ul className="divide-y divide-line border-t border-line">
-        {EXPORT_ORDER.map((key) => (
-          <li key={key} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3.5">
+        {/* The modules' exports (`exportDatasets()`), in registry order. */}
+        {exportDatasets().map((dataset) => (
+          <li
+            key={dataset.filename}
+            className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3.5"
+          >
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold">{EXPORTS[key].label}</h3>
-              <p className="text-sm text-ink-3">{EXPORTS[key].description}</p>
+              <h3 className="text-sm font-semibold">{dataset.label}</h3>
+              <p className="text-sm text-ink-3">{dataset.description}</p>
             </div>
             <div className="flex items-center gap-2">
               {(['csv', 'xlsx'] as const).map((format) => (
@@ -575,10 +582,10 @@ function ExportSection() {
                   key={format}
                   size="sm"
                   icon={<Download className="size-4" />}
-                  loading={busy === `${key}:${format}`}
-                  disabled={busy !== null && busy !== `${key}:${format}`}
-                  aria-label={`Export ${EXPORTS[key].label} as ${format === 'csv' ? 'CSV' : 'Excel'}`}
-                  onClick={() => void save(key, format)}
+                  loading={busy === `${dataset.filename}:${format}`}
+                  disabled={busy !== null && busy !== `${dataset.filename}:${format}`}
+                  aria-label={`Export ${dataset.label} as ${format === 'csv' ? 'CSV' : 'Excel'}`}
+                  onClick={() => void save(dataset, format)}
                 >
                   {format === 'csv' ? 'CSV' : 'Excel'}
                 </Button>

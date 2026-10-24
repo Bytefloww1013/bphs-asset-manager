@@ -1,0 +1,119 @@
+{
+  "request": "GET /api/assets/tag/BPHS-0001",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "asset": {
+      "assignmentId": 2,
+      "brand": "HP",
+      "brandActive": true,
+      "brandId": 4,
+      "condition": {
+        "notes": null,
+        "rating": "Good",
+        "ratingId": 2,
+        "recordedAt": "2026-07-23T12:00:00.000Z"
+      },
+      "createdAt": "2026-05-30T12:00:00.000Z",
+      "daysOut": 70,
+      "entraObjectId": "5253b55b-7963-4191-8ecc-5bdbb259e49d",
+      "hasHistory": true,
+      "holder": {
+        "code": "E-1177",
+        "department": "IT",
+        "id": 11,
+        "name": "Wen Zhao"
+      },
+      "id": 1,
+      "issuedAt": "2026-07-23T12:00:00.000Z",
+      "lastReturnedAt": "2026-07-22T12:00:00.000Z",
+      "model": "EliteBook 840 G10",
+      "program": null,
+      "serial": "5CD2795GC34",
+      "state": "assigned",
+      "status": "in_service",
+      "tag": "BPHS-0001",
+      "type": "Laptop",
+      "typeId": 1
+    },
+    "conditions": [
+      {
+        "assessedBy": "Priya Raghunathan",
+        "assignmentId": 2,
+        "id": 4,
+        "kind": "issue",
+        "notes": null,
+        "rating": "Good",
+        "recordedAt": "2026-07-23T12:00:00.000Z",
+        "recordedBy": "m.oyelaran@bphs.local"
+      },
+      {
+        "assessedBy": "Marcus Oyelaran",
+        "assignmentId": 1,
+        "id": 3,
+        "kind": "return",
+        "notes": null,
+        "rating": "Good",
+        "recordedAt": "2026-07-22T12:00:00.000Z",
+        "recordedBy": "m.oyelaran@bphs.local"
+      },
+      {
+        "assessedBy": "Priya Raghunathan",
+        "assignmentId": 1,
+        "id": 2,
+        "kind": "issue",
+        "notes": null,
+        "rating": "New",
+        "recordedAt": "2026-06-09T12:00:00.000Z",
+        "recordedBy": "p.raghunathan@bphs.local"
+      },
+      {
+        "assessedBy": "Priya Raghunathan",
+        "assignmentId": null,
+        "id": 1,
+        "kind": "intake",
+        "notes": null,
+        "rating": "New",
+        "recordedAt": "2026-05-30T12:00:00.000Z",
+        "recordedBy": "m.oyelaran@bphs.local"
+      }
+    ],
+    "history": [
+      {
+        "daysHeld": 70,
+        "employee": {
+          "code": "E-1177",
+          "department": "IT",
+          "id": 11,
+          "name": "Wen Zhao"
+        },
+        "id": 2,
+        "issueRating": "Good",
+        "issuedAt": "2026-07-23T12:00:00.000Z",
+        "issuedBy": "m.oyelaran@bphs.local",
+        "program": null,
+        "returnRating": null,
+        "returnedAt": null,
+        "returnedBy": null
+      },
+      {
+        "daysHeld": 43,
+        "employee": {
+          "code": "E-1130",
+          "department": "Clinical Services",
+          "id": 2,
+          "name": "Dana Whitfield"
+        },
+        "id": 1,
+        "issueRating": "New",
+        "issuedAt": "2026-06-09T12:00:00.000Z",
+        "issuedBy": "p.raghunathan@bphs.local",
+        "program": null,
+        "returnRating": "Good",
+        "returnedAt": "2026-07-22T12:00:00.000Z",
+        "returnedBy": "p.raghunathan@bphs.local"
+      }
+    ]
+  }
+}

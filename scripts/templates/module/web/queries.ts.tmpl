@@ -1,0 +1,9 @@
+// The {{id}} module's queries, keyed under its own id (the convention is in web/src/modules.ts).
+import { queryOptions } from '@tanstack/react-query'
+import { api } from '@/lib/api.ts'
+import type { {{Pascal}}Row } from '../shared/index.ts'
+
+export const {{camel}}Query = queryOptions({
+  queryKey: ['{{id}}'],
+  queryFn: () => api.get<{{Pascal}}Row[]>('/{{id}}'),
+})

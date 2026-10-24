@@ -1,3 +1,4 @@
+import { employeesQuery } from '#foundation/employees/web/index.ts'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useForm } from '@tanstack/react-form'
 import { useQuery } from '@tanstack/react-query'
@@ -6,7 +7,9 @@ import { Copy, KeyRound, Lock, LockOpen, Link2, Shield, UserPlus, UserRoundCheck
 import { useState } from 'react'
 import {
   ACCESS_LEVEL_LABEL,
+  levelHelp,
   levelsFor,
+  SECTION_HINT,
   SECTION_LABEL,
   SECTIONS,
   SHARED_LEVELS,
@@ -18,6 +21,7 @@ import { describeAccess, type Grantee } from '@shared/permissions.ts'
 import type { UserRow, UserWithPassword } from '@shared/types.ts'
 import { DataGrid } from '@/components/data-grid/data-grid.tsx'
 import { columnsFor, useGrid } from '@/components/data-grid/grid.ts'
+import { Stacked } from '@/components/status.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Combobox } from '@/components/ui/combobox.tsx'
@@ -26,16 +30,16 @@ import { Field, Input, Segmented, Switch } from '@/components/ui/form.tsx'
 import { InfoPopover } from '@/components/ui/info-popover.tsx'
 import { Mono, PageHeader, Panel } from '@/components/ui/layout.tsx'
 import { ConfirmDialog, Menu, Sheet, type MenuItem } from '@/components/ui/overlay.tsx'
-import { Stacked } from '@/features/common/status.tsx'
-import { useWrite } from '@/features/common/hooks.ts'
-import { LEVEL_HELP } from '@/features/users/level-help.ts'
 import { api, ApiError } from '@/lib/api.ts'
 import { fieldError } from '@/lib/form.ts'
 import { formatDateTime, formatRelative, formatTime } from '@/lib/format.ts'
-import { lookupsQuery, usersQuery } from '@/lib/queries.ts'
+import { useWrite } from '@/lib/hooks.ts'
 import { usePageTitle, useUser } from '@/lib/session.ts'
+import { usersQuery } from '@/lib/users.ts'
 
 export const Route = createFileRoute('/_app/users')({
+  // The people an account can be linked to (`useLinkablePeople`), ready when a sheet opens.
+  loader: ({ context }) => context.queryClient.ensureQueryData(employeesQuery),
   component: UsersPage,
 })
 
@@ -191,7 +195,7 @@ function SectionLevels({
           {levelsFor(section).map((level) => (
             <div key={level}>
               <dt className="text-xs font-semibold text-ink">{ACCESS_LEVEL_LABEL[level]}</dt>
-              <dd className="text-xs text-ink-2">{LEVEL_HELP[section][level]}</dd>
+              <dd className="text-xs text-ink-2">{levelHelp(section, level)}</dd>
             </div>
           ))}
         </dl>
@@ -241,15 +245,7 @@ function AccessFields({
             />
           </Field>
           {SECTIONS.map((section) => (
-            <Field
-              key={section}
-              label={SECTION_LABEL[section]}
-              hint={
-                section === 'employees'
-                  ? 'None hides the Employees page. Every account can still choose employees in a form.'
-                  : undefined
-              }
-            >
+            <Field key={section} label={SECTION_LABEL[section]} hint={SECTION_HINT[section]}>
               <SectionLevels
                 section={section}
                 value={value.access[section] ?? 'none'}
@@ -338,10 +334,10 @@ function AccessSheet({ user, onClose }: { user: UserRow; onClose: () => void }) 
 
 /** Employees an account can be linked to. An employee may be linked to one account only, so those who already have one are not offered. */
 function useLinkablePeople() {
-  const { data: lookups } = useQuery(lookupsQuery)
+  const { data: employees = [] } = useQuery(employeesQuery)
   const { data: accounts = [] } = useQuery(usersQuery)
   const linked = new Set(accounts.map((account) => account.employeeId))
-  const everyone = lookups?.employees ?? []
+  const everyone = employees.filter((person) => person.state === 'active')
   return { everyone, people: everyone.filter((person) => !linked.has(person.id)) }
 }
 

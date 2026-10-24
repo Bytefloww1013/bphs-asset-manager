@@ -1,0 +1,58 @@
+// The assets module's public API, shared side: what other modules and the kernel may import from it.
+export {
+  ASSET_STATUSES,
+  CONDITION_KINDS,
+  OVERDUE_DAYS,
+  RATING_ATTENTION_BELOW,
+  RATING_DEFAULT_SCORE,
+  RATING_SCORE_MAX,
+  RATING_SCORE_MIN,
+  defaultRating,
+  ratingBand,
+} from './constants.ts'
+export type { AssetStatus, ConditionKind, RatingBand } from './constants.ts'
+export {
+  ENTRA_OBJECT_ID,
+  assetBrandCreateSchema,
+  assetBrandUpdateSchema,
+  assetBulkRowFields,
+  assetBulkSchema,
+  assetCreateSchema,
+  assetTag,
+  assetTypeCreateSchema,
+  assetTypeUpdateSchema,
+  assetUpdateSchema,
+  entraObjectId,
+  issueSchema,
+  ratingCreateSchema,
+  ratingUpdateSchema,
+  returnBulkSchema,
+  returnSchema,
+} from './schemas.ts'
+export type {
+  AssetBulkInput,
+  AssetCreateInput,
+  AssetUpdateInput,
+  IssueInput,
+  ReturnBulkInput,
+  ReturnInput,
+} from './schemas.ts'
+export type {
+  AssetBrandRow,
+  AssetBulkResult,
+  AssetDetail,
+  AssetRow,
+  AssetState,
+  AssetTypeRef,
+  AssetTypeRow,
+  AssignmentRow,
+  ConditionEntry,
+  ConditionRatingRef,
+  ConditionRatingRow,
+  ConditionSummary,
+  DashboardData,
+  HistoryRow,
+  Lookups,
+  NamedListRow,
+  ReturnBulkResult,
+} from './types.ts'

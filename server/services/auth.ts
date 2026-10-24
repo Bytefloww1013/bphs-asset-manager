@@ -1,11 +1,13 @@
+import { auditLog, writeAudit } from '#foundation/audit/server/index.ts'
 import { createHash, randomBytes } from 'node:crypto'
 import { and, eq, gt, lt, ne, sql } from 'drizzle-orm'
 import { LOCK_MINUTES, LOCK_THRESHOLD, REMEMBER_DAYS } from '../../shared/constants.ts'
+import { declaredAccess } from '../../shared/permissions.ts'
 import type { SessionUser } from '../../shared/types.ts'
 import { config } from '../config.ts'
 import type { Db, DbLike } from '../db/client.ts'
-import { auditLog, sessions, users } from '../db/schema.ts'
-import { writeAudit, type Actor } from '../lib/audit.ts'
+import { sessions, users } from '../db/schema.ts'
+import type { Actor } from '../lib/actor.ts'
 import { HttpError } from '../lib/errors.ts'
 import { hashPassword, verifyDecoy, verifyPassword } from '../lib/password.ts'
 
@@ -40,7 +42,7 @@ function toAuthUser(db: DbLike, row: typeof users.$inferSelect): AuthUser {
     id: row.id,
     name: row.name,
     email: row.email,
-    access: row.access,
+    access: declaredAccess(row.access),
     superAdmin: row.superAdmin,
     employeeId: row.employeeId,
     firstAccount: row.id === firstAccountId(db),

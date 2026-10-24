@@ -1,12 +1,11 @@
+import { employeesQuery } from '#foundation/employees/web/index.ts'
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { KeyRound } from 'lucide-react'
-import { ACCESS_LEVEL_LABEL, SECTION_LABEL, SECTIONS } from '@shared/constants.ts'
+import { ACCESS_LEVEL_LABEL, levelHelp, SECTION_LABEL, SECTIONS } from '@shared/constants.ts'
 import { Badge } from '@/components/ui/badge.tsx'
 import { buttonStyles } from '@/components/ui/button.tsx'
 import { Fact, Mono, PageHeader, Panel, PanelHeader } from '@/components/ui/layout.tsx'
-import { LEVEL_HELP } from '@/features/users/level-help.ts'
-import { employeesQuery } from '@/lib/queries.ts'
 import { usePageTitle, useUser } from '@/lib/session.ts'
 
 export const Route = createFileRoute('/_app/me/profile')({ component: ProfilePage })
@@ -78,7 +77,7 @@ function ProfilePage() {
                     <span className={level === 'none' ? 'text-ink-3' : 'font-medium text-ink'}>
                       {ACCESS_LEVEL_LABEL[level]}
                     </span>
-                    <span className="mt-0.5 block text-xs text-ink-3">{LEVEL_HELP[section][level]}</span>
+                    <span className="mt-0.5 block text-xs text-ink-3">{levelHelp(section, level)}</span>
                   </dd>
                 </div>
               )

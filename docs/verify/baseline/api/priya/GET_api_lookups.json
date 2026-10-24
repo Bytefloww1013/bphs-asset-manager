@@ -1,0 +1,292 @@
+{
+  "request": "GET /api/lookups",
+  "status": 200,
+  "contentType": "application/json",
+  "bodyKind": "json",
+  "body": {
+    "assetBrands": [
+      {
+        "id": 2,
+        "name": "Apple"
+      },
+      {
+        "id": 3,
+        "name": "Dell"
+      },
+      {
+        "id": 4,
+        "name": "HP"
+      },
+      {
+        "id": 5,
+        "name": "Lenovo"
+      },
+      {
+        "id": 6,
+        "name": "Logitech"
+      },
+      {
+        "id": 7,
+        "name": "Microsoft"
+      },
+      {
+        "id": 8,
+        "name": "Samsung"
+      }
+    ],
+    "assetTypes": [
+      {
+        "id": 4,
+        "name": "Keyboard"
+      },
+      {
+        "id": 1,
+        "name": "Laptop"
+      },
+      {
+        "id": 3,
+        "name": "Monitor"
+      },
+      {
+        "id": 5,
+        "name": "Mouse"
+      },
+      {
+        "id": 2,
+        "name": "Phone"
+      }
+    ],
+    "conditionRatings": [
+      {
+        "id": 1,
+        "name": "New",
+        "score": 100
+      },
+      {
+        "id": 2,
+        "name": "Good",
+        "score": 80
+      },
+      {
+        "id": 3,
+        "name": "Fair",
+        "score": 60
+      },
+      {
+        "id": 4,
+        "name": "Poor",
+        "score": 30
+      },
+      {
+        "id": 5,
+        "name": "Damaged",
+        "score": 10
+      }
+    ],
+    "digitalAssetTypes": [
+      {
+        "id": 9,
+        "name": "Accounting software"
+      },
+      {
+        "id": 6,
+        "name": "Adobe Acrobat Pro"
+      },
+      {
+        "id": 7,
+        "name": "Client records system"
+      },
+      {
+        "id": 1,
+        "name": "M365-BusinessStandard"
+      },
+      {
+        "id": 2,
+        "name": "M365-PowerBI"
+      },
+      {
+        "id": 5,
+        "name": "Microsoft 365"
+      },
+      {
+        "id": 4,
+        "name": "Relias"
+      },
+      {
+        "id": 3,
+        "name": "Zoho"
+      },
+      {
+        "id": 8,
+        "name": "Zoom"
+      }
+    ],
+    "employees": [
+      {
+        "code": "E-1201",
+        "department": "Residential",
+        "id": 4,
+        "name": "Tomas Berger"
+      },
+      {
+        "code": "E-1260",
+        "department": "HR",
+        "id": 15,
+        "name": "Nadia Brill"
+      },
+      {
+        "code": "E-1363",
+        "department": "HR",
+        "id": 24,
+        "name": "Imani Brooks"
+      },
+      {
+        "code": "E-1282",
+        "department": "Clinical Services",
+        "id": 17,
+        "name": "Owen Castellano"
+      },
+      {
+        "code": "E-1102",
+        "department": "Intake",
+        "id": 10,
+        "name": "Rosa Delgado"
+      },
+      {
+        "code": "E-1315",
+        "department": "Intake",
+        "id": 7,
+        "name": "Sasha Feldman"
+      },
+      {
+        "code": "E-0904",
+        "department": "Finance",
+        "id": 8,
+        "name": "Aaron Feldman-Rees"
+      },
+      {
+        "code": "E-1296",
+        "department": "Residential",
+        "id": 18,
+        "name": "Mina Haddad"
+      },
+      {
+        "code": "E-0761",
+        "department": "Facilities",
+        "id": 5,
+        "name": "Grant Halloway"
+      },
+      {
+        "code": "E-1339",
+        "department": "IT",
+        "id": 21,
+        "name": "Theo Lindqvist"
+      },
+      {
+        "code": "E-1322",
+        "department": "Clinical Services",
+        "id": 20,
+        "name": "Elena Marsh"
+      },
+      {
+        "code": "E-1271",
+        "department": "Finance",
+        "id": 16,
+        "name": "Kerry Milton"
+      },
+      {
+        "code": "E-1288",
+        "department": "HR",
+        "id": 6,
+        "name": "Alice Nkemdirim"
+      },
+      {
+        "code": "E-1304",
+        "department": "Intake",
+        "id": 19,
+        "name": "Jules Okafor"
+      },
+      {
+        "code": "E-1219",
+        "department": "Residential",
+        "id": 12,
+        "name": "Bilal Osman"
+      },
+      {
+        "code": "E-0988",
+        "department": "Finance",
+        "id": 3,
+        "name": "Marcus Oyelaran"
+      },
+      {
+        "code": "E-1247",
+        "department": "Facilities",
+        "id": 14,
+        "name": "Ivo Petrov"
+      },
+      {
+        "code": "E-1042",
+        "department": "IT",
+        "id": 1,
+        "name": "Priya Raghunathan"
+      },
+      {
+        "code": "E-1356",
+        "department": "Residential",
+        "id": 23,
+        "name": "Callum Reyes"
+      },
+      {
+        "code": "E-1348",
+        "department": "Finance",
+        "id": 22,
+        "name": "Farah Siddiqui"
+      },
+      {
+        "code": "E-1233",
+        "department": "Clinical Services",
+        "id": 13,
+        "name": "Hanna Vuorinen"
+      },
+      {
+        "code": "E-1130",
+        "department": "Clinical Services",
+        "id": 2,
+        "name": "Dana Whitfield"
+      },
+      {
+        "code": "E-1177",
+        "department": "IT",
+        "id": 11,
+        "name": "Wen Zhao"
+      }
+    ],
+    "programs": [
+      {
+        "code": "PRG-400",
+        "id": 5,
+        "name": "Day Program"
+      },
+      {
+        "code": "PRG-200",
+        "id": 3,
+        "name": "Downtown Intake Centre"
+      },
+      {
+        "code": "PRG-100",
+        "id": 1,
+        "name": "Harbour House Residential"
+      },
+      {
+        "code": "PRG-110",
+        "id": 2,
+        "name": "Maple Court Residential"
+      },
+      {
+        "code": "PRG-310",
+        "id": 4,
+        "name": "Youth Outreach"
+      }
+    ]
+  }
+}
