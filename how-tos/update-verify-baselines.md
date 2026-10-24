@@ -1,7 +1,7 @@
 ---
 description: Compare the API, access-matrix and built-CSS baselines against a fresh build and seeded server, and re-record them after an intended change
 scope: root
-covers: [baseline, api-snapshot, access-matrix, css, tailwind, web-css, scratch-server, fixed-clock, compare, record, regression, permissions, verify, verify-done]
+covers: [baseline, api-snapshot, access-matrix, css, tailwind, web-css, css-baseline, selectors, source, scratch-server, fixed-clock, compare, record, regression, permissions, verify, verify-done]
 ---
 
 # Compare or re-record the verify baselines
@@ -24,7 +24,6 @@ To run against a server you started yourself, set `BASE` (and `MATRIX_DATA_DIR` 
 
 `web-css.sha256` is the hash of the whole built stylesheet. Tailwind writes a rule only for the classes it finds in the files it scans, so the hash changes whenever a class starts or stops being used anywhere in the app (issue #27 removed the lock screens, dropped `.py-20` and re-recorded it), and when Tailwind or `web/src/styles.css` changes. The check is there to catch the case where it changes because Tailwind stopped scanning a folder (a missing `@source` line).
 
-1. Compare: run `bun run build`, then `docs/verify/verify-done.sh`, and read its `built CSS matches the Phase 0 baseline` line.
-2. If the hash changed, find out which rules did: build `main` in a worktree and diff its `dist/web/static/*.css` against yours.
-3. Rules missing for classes your branch still uses mean a missed `@source` line: fix `web/src/styles.css`, never the baseline.
-4. If only the classes your branch added or removed differ, re-record: run `bun run build`, then `cat dist/web/static/*.css | sha256sum | cut -d' ' -f1 > docs/verify/baseline/web-css.sha256`. Name the classes in the commit body, as #27 did. No script records this yet, so it is a candidate for one.
+1. Compare: `node docs/verify/css-baseline.mjs` (it builds first; `SKIP_BUILD=1` uses the build in `dist/web`). `verify-done.sh` runs the same check. On a difference it lists the selectors that came (`+`) and went (`-`) against `docs/verify/baseline/web-css.selectors`.
+2. A `-` selector for a class your branch still uses means a missed `@source` line: fix `web/src/styles.css`, never the baseline.
+3. If every listed selector is one your branch meant to add or remove, re-record: `node docs/verify/css-baseline.mjs --record`. It writes the hash and the selector list. Name the classes in the commit body, as #27 did.

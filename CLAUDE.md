@@ -66,6 +66,7 @@ Every feature plan in this repo follows these rules (set by the user, 2026-10-19
 - `docs/verify/scratch-server.sh start|stop` - seeded scratch API + SPA on :3388 for browser checks and the baselines; never the real DATA_DIR.
 - `node docs/verify/routes-smoke.mjs` - every route as Priya and Marcus in headless Chrome (also in CI).
 - `node docs/verify/api-snapshot.mjs [--compare]` / `node docs/verify/access-matrix.mjs [--compare]` - record or diff the API and access baselines in `docs/verify/baseline/`.
+- `node docs/verify/css-baseline.mjs [--record]` - diff or record the built-CSS baseline (hash and selector list); a failure lists the selectors that came and went.
 - `docs/verify/schema-drift.sh` - fails if `drizzle-kit generate` would write a migration.
 - `docs/verify/new-module-proof.sh` (`TIER=foundation` for the other tier) - scaffolds a throwaway module, runs every check on it, then removes it.
 - `node docs/verify/migration-check.mjs [--db <file>]` - rehearses migration 0024 (custody merge) on the seeded fixture or a copy of a backup; `KEEP=<dir>` keeps the migrated copy.

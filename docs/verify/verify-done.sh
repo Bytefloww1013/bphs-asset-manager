@@ -37,8 +37,8 @@ check_if() {
 boundaries_enforced() { # the boundary rule from Phase 2 (an in-repo Oxlint JS plugin) is part of `bun run lint`
   test -f scripts/oxlint-boundaries.ts && grep -q '"boundaries/imports": "error"' .oxlintrc.json 2>/dev/null
 }
-css_unchanged() { # the built CSS equals Phase 0's, so Tailwind still finds every class, including those only in module folders
-  [ "$(cat dist/web/static/*.css | sha256sum | cut -d' ' -f1)" = "$(cat docs/verify/baseline/web-css.sha256)" ]
+css_unchanged() { # the built CSS equals the baseline, so Tailwind still finds every class, including those only in module folders
+  SKIP_BUILD=1 node docs/verify/css-baseline.mjs # its log names the selectors that came or went
 }
 no_old_central_files() {
   local found=0
@@ -64,7 +64,7 @@ check "lint (no warnings)" bun run lint
 check "format:check" bun run format:check
 check "tests pass" bun run test
 check "build" bun run build
-check "built CSS matches the Phase 0 baseline" css_unchanged
+check "built CSS matches the baseline (css-baseline.mjs)" css_unchanged
 check_if modules:gen "registries current, dependency graph valid (modules:gen --check)" bun run modules:gen --check
 if boundaries_enforced; then check "lint carries the boundary rules" boundaries_enforced; else skip "lint carries the boundary rules" "Phase 2"; fi
 check "schema drift: no new migration" docs/verify/schema-drift.sh
