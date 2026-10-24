@@ -1,3 +1,9 @@
+---
+description: The map of the app - kernel, foundation and feature tiers, the registry, a request's path, boundaries and their checks, permissions, custody, data and migrations, and the generated module table
+scope: root
+covers: [architecture, kernel, modules, foundation, feature, tiers, registry, request, boundaries, lint, permissions, resources, custody, data, migrations, module-table, docs-gen]
+---
+
 # Architecture
 
 BPHS-Connect is one React website, one Hono API and one SQLite database, shipped as one Docker container. Inside, the code is a **kernel** plus **modules**: each feature owns its tables, rules, API, pages, seeds, tests and docs, and the kernel finds the modules through generated registries. A new feature is one folder plus one line.

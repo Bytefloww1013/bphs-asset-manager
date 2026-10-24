@@ -1,3 +1,9 @@
+---
+description: How to add, change, depend on and remove a module - layout, boundaries, server hooks, web slots, pages, permissions, seeds, tests, registry order and the rules that never bend
+scope: root
+covers: [modules, new-module, layout, dependsOn, boundaries, imports, public-api, server-hooks, web-slots, pages, permissions, seeds, tests, order, FEATURES, manifest, remove-module]
+---
+
 # Modules
 
 The app is a kernel plus modules. This guide says how to add one, change it, make it depend on another and remove it, and which rules each kind of code follows.
