@@ -24,4 +24,4 @@ The record is the product: history is never overwritten or silently deleted.
 
 ## In the UI
 
-- A destructive action that a rule blocks stays visible, disabled, with the rule behind it in words.
+- A destructive action that a record rule blocks stays visible, disabled, with the rule behind it in words, for a user who has the permission. A user without the permission never sees it (`docs/directives/ui-rules.md`).

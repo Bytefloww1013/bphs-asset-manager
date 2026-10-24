@@ -14,7 +14,7 @@ covers: [comments, docs, writing, readme, prose, copy, documentation, markdown]
 
 ## Docs and copy
 
-- British spelling in prose already present (behaviour, honour) stays; match the file you are in.
+- Write American English everywhere: comments, docs, UI copy and identifiers (behavior, honor, color, normalize, center). When you edit a line with British spelling, fix it.
 - User-facing text is calm and specific: name the record, say what happened and what to do (`Set a new password before continuing.`).
 - A doc that refers to a file that's gone quotes it as `git show <commit>:<path>`, so `docs:check` doesn't flag it.
 

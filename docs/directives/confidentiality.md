@@ -12,7 +12,7 @@ covers: [confidential, privacy, notifications, grievances, reviews, browser-stor
 - A confidential module never notifies: no notification kinds (`modules:gen` refuses them) and no import of `foundation/notifications` (lint rule (e)).
 - A confidential module never shows a count: no badge on its workspace, no totals on Home or dashboards outside it.
 - A confidential module keeps its own audit log and declares no `auditEntityTypes`.
-- A new module handling complaints, performance or HR case data is confidential too; ask the user if unsure.
+- A new module handling complaints, performance or HR case data is confidential too. Mark it `confidential: true` without asking the user first; say in your summary that you did.
 
 ## The browser
 
